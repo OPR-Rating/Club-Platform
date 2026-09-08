@@ -735,7 +735,7 @@
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script>
 /* ============================================================================
-   PLAT EARLY SNIPPET — plat-padel.html  VERSION: PLAT-PADEL v2026.09.08-p6 (Overall pairs ladder = every club's pair rows; version tag at the foot of every screen) (p5: REGISTER screen in the Overall Ledger: every player once with club pills; General Admin behind the register PIN via plat_admin v2) (p4: Overall = read-only ledger: no ✚ Enter, no Tournaments, no admin link; door re-styled) (p3: LANDING mode ?pool=P: hero + one button per club + Overall, nothing else; club pages carry an "‹ All clubs" chip instead of the strip)
+   PLAT EARLY SNIPPET — plat-padel.html  VERSION: PLAT-PADEL v2026.09.08-p7 (door: tiles clear the hero, padel-ball badges; Register moved to About in the Overall Ledger) (p6: Overall pairs ladder = every club's pair rows; version tag at the foot of every screen) (p5: REGISTER screen in the Overall Ledger: every player once with club pills; General Admin behind the register PIN via plat_admin v2) (p4: Overall = read-only ledger: no ✚ Enter, no Tournaments, no admin link; door re-styled) (p3: LANDING mode ?pool=P: hero + one button per club + Overall, nothing else; club pages carry an "‹ All clubs" chip instead of the strip)
    OPR-DOUBLES v2026.09.03-56 runs UNMODIFIED below (two marked hunks: the far CLUBS map and
    the install start_url). This snippet re-points every request at the PLATFORM:
      * host far -> OSR project (plat_ prefix), anon key swapped in the headers
@@ -3122,7 +3122,7 @@ const CLUB_NAME = _club.name;  // shown in the logo as "OPR · <name>"
     link.setAttribute('href', href);
   }catch(e){ /* install stays on the static manifest — no functional impact */ }
 })();
-const OPR_VERSION = "OPR-DOUBLES v2026.09.03-56 · PLAT replica p6";  // MANUAL PAIR CREATION REMOVED FROM ADMIN: Create a pair, Bulk create pairs and Re-derive all pairs are gone (they only made match-less ghost pairs, and Re-derive rewrote every stored initial club-wide). Pairs are born automatically at match entry. Current pairs list untouched; the underlying JS is left in place unreferenced, so no other code path changes. Includes v47 (set-score fix + double-tap guard) and all prior.
+const OPR_VERSION = "OPR-DOUBLES v2026.09.03-56 · PLAT replica p7";  // MANUAL PAIR CREATION REMOVED FROM ADMIN: Create a pair, Bulk create pairs and Re-derive all pairs are gone (they only made match-less ghost pairs, and Re-derive rewrote every stored initial club-wide). Pairs are born automatically at match entry. Current pairs list untouched; the underlying JS is left in place unreferenced, so no other code path changes. Includes v47 (set-score fix + double-tap guard) and all prior.
 // Explanation shown above the individual ladder. Open on load so it's read; collapsible
 // (state kept for the session) and scrolls away. Mechanics only — no outcome framing, so
 // members aren't nudged away from playing stronger opponents. Every clause maps to a real
@@ -8816,12 +8816,14 @@ async function clRemove(id, label){
   function esc(s){ return String(s==null?"":s).replace(/[&<>"']/g,function(c){return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c];}); }
   function go(id){ location.href="plat-padel.html?club="+id+(id===0?("&pool="+W.PLAT.pool):"")+(location.hash||""); }
   /* p3 LANDING: hero + one button per club (+ Overall); the rest of the home screen is hidden. */
+  var BALL='<svg viewBox="0 0 100 100" width="30" height="30" xmlns="http://www.w3.org/2000/svg" style="filter:drop-shadow(0 0 6px rgba(196,224,0,.5))"><circle cx="50" cy="50" r="46" fill="url(#bg1)" stroke="#7da300" stroke-width="1"/><path d="M18 18 Q50 50 18 82" fill="none" stroke="#fbfff0" stroke-width="4" stroke-linecap="round"/><path d="M82 18 Q50 50 82 82" fill="none" stroke="#fbfff0" stroke-width="4" stroke-linecap="round"/><ellipse cx="40" cy="32" rx="14" ry="9" fill="rgba(255,255,255,0.35)"/></svg>';
   function landing(){
     var host=document.querySelector("#homeScreen .home-content"); if(!host||document.getElementById("platDoor")) return;
     Array.prototype.forEach.call(host.children,function(el){ el.style.display="none"; });
     var cs=W.PLAT.clubs||[];
     var PAL=[["#6c3483","#3a1d6e"],["#1f7a8c","#0f4c5c"],["#b5651d","#7a3e0a"],["#2e7d32","#1b4d1e"],["#c2185b","#7b1040"],["#455a64","#263238"],["#8e24aa","#4a148c"]];
-    var d=document.createElement("div"); d.id="platDoor"; d.style.cssText="max-width:620px;margin:10px auto 0;display:flex;flex-direction:column;gap:14px;padding:0 4px";
+    host.style.marginTop="0"; host.style.paddingTop="26px";
+    var d=document.createElement("div"); d.id="platDoor"; d.style.cssText="max-width:620px;margin:0 auto;display:flex;flex-direction:column;gap:14px;padding:0 4px";
     var card=function(id,label,sub,pal,icon){
       return '<button onclick="window.platGo('+id+')" style="width:100%;text-align:left;display:flex;align-items:center;gap:16px;padding:18px 20px;border:none;border-radius:16px;cursor:pointer;color:#fff;'
         +'background:linear-gradient(135deg,'+pal[0]+','+pal[1]+');box-shadow:0 6px 18px rgba(58,29,110,.22);transition:transform .12s" onmousedown="this.style.transform=\'scale(.985)\'" onmouseup="this.style.transform=\'\'">'
@@ -8830,8 +8832,8 @@ async function clRemove(id, label){
         +'<div style="font-size:12.5px;opacity:.88;margin-top:5px;line-height:1.3">'+esc(sub)+'</div></div>'
         +'<div style="font-size:26px;opacity:.85;flex:0 0 auto">›</div></button>';
     };
-    d.innerHTML=cs.map(function(c,i){ return card(c.id,c.name,"Ratings · pairs · scores · tournaments",PAL[i%PAL.length],"🎾"); }).join("")
-      +card(0,"Overall Ledger","Every player across the clubs — one rating each · ladders and stats only",["#1a1a1a","#3d3d3d"],"📒")
+    d.innerHTML=cs.map(function(c,i){ return card(c.id,c.name,"Ratings · pairs · scores · tournaments",PAL[i%PAL.length],BALL); }).join("")
+      +card(0,"Overall Ledger","Every player across the clubs — one rating each · ladders and stats only",["#1a1a1a","#3d3d3d"],BALL)
       +'<div style="text-align:center;font-size:12px;color:#7a6f8a;margin:8px 0 14px;line-height:1.5">One register · one rating per player<br>Each club keeps its own pairs, matches, tournaments and stats</div>';
     host.insertBefore(d,host.firstChild);
   }
@@ -8855,9 +8857,14 @@ async function clRemove(id, label){
     document.getElementById("homeScreen").parentNode.appendChild(s);
   }
   function regTile(){
-    var grid=document.querySelector("#homeScreen .menu-grid"); if(!grid||document.getElementById("platRegTile")) return;
-    var b=document.createElement("button"); b.className="menu-btn"; b.id="platRegTile"; b.textContent="Register · all players"; b.onclick=function(){ regScreen(); W.showScreen("platRegScreen"); regLoad(); };
-    grid.insertBefore(b,grid.firstChild);
+    if(document.getElementById("platRegTile")) return;
+    var about=document.getElementById("aboutScreen"); if(!about) return;
+    var host=about.querySelector(".copyright"); 
+    var wrap=document.createElement("div"); wrap.style.cssText="text-align:center;margin:18px 0 8px";
+    var b=document.createElement("button"); b.className="menu-btn"; b.id="platRegTile"; b.style.cssText="display:inline-flex;min-height:44px;padding:10px 18px"; b.textContent="Register · all players & General Admin";
+    b.onclick=function(){ regScreen(); W.showScreen("platRegScreen"); regLoad(); };
+    wrap.appendChild(b);
+    if(host&&host.parentNode) host.parentNode.insertBefore(wrap,host); else about.appendChild(wrap);
   }
   function regLoad(){
     acall({action:"list_register",pool_id:W.PLAT.pool,discipline:"padel"}).then(function(r){
@@ -8954,7 +8961,7 @@ async function clRemove(id, label){
     else if(W.PLAT.name&&ht){ ht.textContent="OPR · "+W.PLAT.name; document.title="OPR · "+W.PLAT.name; }
     chip();
     // version tag at the foot of every screen (OPR only prints it on Home/About)
-    try{ var vt=(typeof OPR_VERSION!=="undefined"?OPR_VERSION:"")+"  ·  shim p6"; document.querySelectorAll(".screen").forEach(function(s){ if(s.querySelector(".platVer")) return; var d=document.createElement("div"); d.className="platVer"; d.textContent=vt; d.style.cssText="text-align:center;color:#b3a9c4;font-size:10px;letter-spacing:.5px;margin:14px 0 8px"; s.appendChild(d); }); }catch(e){}
+    try{ var vt=(typeof OPR_VERSION!=="undefined"?OPR_VERSION:"")+"  ·  shim p7"; document.querySelectorAll(".screen").forEach(function(s){ if(s.querySelector(".platVer")) return; var d=document.createElement("div"); d.className="platVer"; d.textContent=vt; d.style.cssText="text-align:center;color:#b3a9c4;font-size:10px;letter-spacing:.5px;margin:14px 0 8px"; s.appendChild(d); }); }catch(e){}
     if(location.hash==="#enter"){ W.showScreen("entryScreen"); }
   });
 })();
