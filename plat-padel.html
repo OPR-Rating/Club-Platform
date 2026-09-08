@@ -735,7 +735,7 @@
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script>
 /* ============================================================================
-   PLAT EARLY SNIPPET — plat-padel.html  VERSION: PLAT-PADEL v2026.09.08-p7 (door: tiles clear the hero, padel-ball badges; Register moved to About in the Overall Ledger) (p6: Overall pairs ladder = every club's pair rows; version tag at the foot of every screen) (p5: REGISTER screen in the Overall Ledger: every player once with club pills; General Admin behind the register PIN via plat_admin v2) (p4: Overall = read-only ledger: no ✚ Enter, no Tournaments, no admin link; door re-styled) (p3: LANDING mode ?pool=P: hero + one button per club + Overall, nothing else; club pages carry an "‹ All clubs" chip instead of the strip)
+   PLAT EARLY SNIPPET — plat-padel.html  VERSION: PLAT-PADEL v2026.09.08-p8 (OPR Admin member add/edit and pair re-derive routed to plat_admin / plat_admin_padel) (p7: door: tiles clear the hero, padel-ball badges; Register moved to About in the Overall Ledger) (p6: Overall pairs ladder = every club's pair rows; version tag at the foot of every screen) (p5: REGISTER screen in the Overall Ledger: every player once with club pills; General Admin behind the register PIN via plat_admin v2) (p4: Overall = read-only ledger: no ✚ Enter, no Tournaments, no admin link; door re-styled) (p3: LANDING mode ?pool=P: hero + one button per club + Overall, nothing else; club pages carry an "‹ All clubs" chip instead of the strip)
    OPR-DOUBLES v2026.09.03-56 runs UNMODIFIED below (two marked hunks: the far CLUBS map and
    the install start_url). This snippet re-points every request at the PLATFORM:
      * host far -> OSR project (plat_ prefix), anon key swapped in the headers
@@ -810,7 +810,27 @@
             .then(function(r){return r.json();}).then(function(o){ if(!o||!o.ok) return jsonResp({message:(o&&o.error)||"pair birth failed"},400); return jsonResp([{id:o.id,name:o.name}],201); });
         }
         if(method==="POST"&&tbl.indexOf("player_results")===0) return jsonResp([],201);
-        if(method!=="GET"&&method!=="HEAD") return jsonResp({message:"Member and pair edits live in the club admin (club.html) on the platform."},403);
+        // p8: OPR's Admin tab member writes -> platform admin actions, with the PIN the admin typed (ADMIN_PIN is OPR's global)
+        var apin=(typeof ADMIN_PIN!=="undefined")?ADMIN_PIN:"";
+        var idm=m[1].match(/[?&]id=eq\.(\d+)/); var rid=idm?Number(idm[1]):null;
+        var pb={}; try{ pb=JSON.parse(init.body||"{}"); }catch(e){}
+        var call=function(fnName,payload){ return _fetch(PLAT+"/functions/v1/"+fnName,{method:"POST",headers:Object.assign(h,{"Content-Type":"application/json"}),body:JSON.stringify(payload)}).then(function(r){return r.json();}); };
+        if(method==="POST"&&tbl==="individuals"){
+          var target=Number(pb.club_id)||CID; if(!target) return jsonResp({message:"Choose a club to register into."},400);
+          return call("plat_admin",{action:"add_member",club_id:target,admin_pin:apin,full_name:pb.full_name,gender:pb.gender,pin:pb.pin||null,seeds:{padel:(pb.seed_rating!=null&&pb.seed_rating!==""?Number(pb.seed_rating):null)}})
+            .then(function(o){ if(!o||!o.ok) return jsonResp({message:(o&&o.error)||"could not register"},400); return jsonResp([o.member],201); });
+        }
+        if(method==="PATCH"&&tbl==="individuals"&&rid){
+          var payload={action:"edit_member",club_id:CID,admin_pin:apin,individual_id:rid};
+          if(pb.full_name!=null) payload.new_name=pb.full_name; if(pb.pin!==undefined) payload.pin=pb.pin==null?"":pb.pin; if(pb.gender!=null) payload.gender=pb.gender;
+          if(pb.seed_rating!=null) payload.seeds={padel:Number(pb.seed_rating)};
+          return call("plat_admin",payload).then(function(o){ if(!o||!o.ok) return jsonResp({message:(o&&o.error)||"edit failed"},400); return jsonResp([],204); });
+        }
+        if(method==="PATCH"&&tbl==="players"&&rid){
+          if(pb.initial_rating==null) return jsonResp([],204);        // member-link stamps: pairs born via ensure_pair already carry their members
+          return call("plat_admin_padel",{action:"edit_member",master_pin:apin,id:rid,initial_rating:pb.initial_rating}).then(function(o){ if(!o||!o.ok) return jsonResp({message:(o&&o.error)||"edit failed"},400); return jsonResp([],204); });
+        }
+        if(method!=="GET"&&method!=="HEAD") return jsonResp({message:"Removing a person from the shared register is done in General Admin (Overall Ledger → About → Register)."},403);
         var rw=rewriteRest(m[1]);
         if(rw&&rw.synthetic) return jsonResp(rw.synthetic);
         u=PLAT+"/rest/v1/"+(rw||m[1]);
@@ -3122,7 +3142,7 @@ const CLUB_NAME = _club.name;  // shown in the logo as "OPR · <name>"
     link.setAttribute('href', href);
   }catch(e){ /* install stays on the static manifest — no functional impact */ }
 })();
-const OPR_VERSION = "OPR-DOUBLES v2026.09.03-56 · PLAT replica p7";  // MANUAL PAIR CREATION REMOVED FROM ADMIN: Create a pair, Bulk create pairs and Re-derive all pairs are gone (they only made match-less ghost pairs, and Re-derive rewrote every stored initial club-wide). Pairs are born automatically at match entry. Current pairs list untouched; the underlying JS is left in place unreferenced, so no other code path changes. Includes v47 (set-score fix + double-tap guard) and all prior.
+const OPR_VERSION = "OPR-DOUBLES v2026.09.03-56 · PLAT replica p8";  // MANUAL PAIR CREATION REMOVED FROM ADMIN: Create a pair, Bulk create pairs and Re-derive all pairs are gone (they only made match-less ghost pairs, and Re-derive rewrote every stored initial club-wide). Pairs are born automatically at match entry. Current pairs list untouched; the underlying JS is left in place unreferenced, so no other code path changes. Includes v47 (set-score fix + double-tap guard) and all prior.
 // Explanation shown above the individual ladder. Open on load so it's read; collapsible
 // (state kept for the session) and scrolls away. Mechanics only — no outcome framing, so
 // members aren't nudged away from playing stronger opponents. Every clause maps to a real
@@ -8961,7 +8981,7 @@ async function clRemove(id, label){
     else if(W.PLAT.name&&ht){ ht.textContent="OPR · "+W.PLAT.name; document.title="OPR · "+W.PLAT.name; }
     chip();
     // version tag at the foot of every screen (OPR only prints it on Home/About)
-    try{ var vt=(typeof OPR_VERSION!=="undefined"?OPR_VERSION:"")+"  ·  shim p7"; document.querySelectorAll(".screen").forEach(function(s){ if(s.querySelector(".platVer")) return; var d=document.createElement("div"); d.className="platVer"; d.textContent=vt; d.style.cssText="text-align:center;color:#b3a9c4;font-size:10px;letter-spacing:.5px;margin:14px 0 8px"; s.appendChild(d); }); }catch(e){}
+    try{ var vt=(typeof OPR_VERSION!=="undefined"?OPR_VERSION:"")+"  ·  shim p8"; document.querySelectorAll(".screen").forEach(function(s){ if(s.querySelector(".platVer")) return; var d=document.createElement("div"); d.className="platVer"; d.textContent=vt; d.style.cssText="text-align:center;color:#b3a9c4;font-size:10px;letter-spacing:.5px;margin:14px 0 8px"; s.appendChild(d); }); }catch(e){}
     if(location.hash==="#enter"){ W.showScreen("entryScreen"); }
   });
 })();
