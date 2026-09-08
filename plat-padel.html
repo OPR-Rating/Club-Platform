@@ -735,7 +735,7 @@
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script>
 /* ============================================================================
-   PLAT EARLY SNIPPET — plat-padel.html  VERSION: PLAT-PADEL v2026.09.08-p8 (OPR Admin member add/edit and pair re-derive routed to plat_admin / plat_admin_padel) (p7: door: tiles clear the hero, padel-ball badges; Register moved to About in the Overall Ledger) (p6: Overall pairs ladder = every club's pair rows; version tag at the foot of every screen) (p5: REGISTER screen in the Overall Ledger: every player once with club pills; General Admin behind the register PIN via plat_admin v2) (p4: Overall = read-only ledger: no ✚ Enter, no Tournaments, no admin link; door re-styled) (p3: LANDING mode ?pool=P: hero + one button per club + Overall, nothing else; club pages carry an "‹ All clubs" chip instead of the strip)
+   PLAT EARLY SNIPPET — plat-padel.html  VERSION: PLAT-PADEL v2026.09.08-p9 (fix: PostgREST-only headers stripped on redirected function calls — "Failed to fetch" on Add member / pair birth) (p8: OPR Admin member add/edit and pair re-derive routed to plat_admin / plat_admin_padel) (p7: door: tiles clear the hero, padel-ball badges; Register moved to About in the Overall Ledger) (p6: Overall pairs ladder = every club's pair rows; version tag at the foot of every screen) (p5: REGISTER screen in the Overall Ledger: every player once with club pills; General Admin behind the register PIN via plat_admin v2) (p4: Overall = read-only ledger: no ✚ Enter, no Tournaments, no admin link; door re-styled) (p3: LANDING mode ?pool=P: hero + one button per club + Overall, nothing else; club pages carry an "‹ All clubs" chip instead of the strip)
    OPR-DOUBLES v2026.09.03-56 runs UNMODIFIED below (two marked hunks: the far CLUBS map and
    the install start_url). This snippet re-points every request at the PLATFORM:
      * host far -> OSR project (plat_ prefix), anon key swapped in the headers
@@ -764,6 +764,8 @@
   var W=window; W.PLAT={cid:CID,pool:POOLQ,clubs:[],poolName:"",name:"",ready:null,landing:LANDING};
   function hdrs(h){ var o={}; if(h){ if(h.forEach) h.forEach(function(v,k){o[k]=v;}); else Object.keys(h).forEach(function(k){o[k]=h[k];}); }
     Object.keys(o).forEach(function(k){ if(/^(apikey|authorization)$/i.test(k)) delete o[k]; }); o.apikey=ANON; o.Authorization="Bearer "+ANON; return o; }
+  // headers for a FUNCTION call: PostgREST-only headers (Prefer, Range…) would fail the edge function's CORS preflight
+  function fnHdrs(h){ var o=hdrs(h); Object.keys(o).forEach(function(k){ if(/^(prefer|range|range-unit|accept-profile|content-profile)$/i.test(k)) delete o[k]; }); o["Content-Type"]="application/json"; return o; }
   function jsonResp(obj,status){ return new Response(JSON.stringify(obj),{status:status||200,headers:{"Content-Type":"application/json"}}); }
   var _fetch=W.fetch.bind(W);
   W.PLAT.ready=(function(){
@@ -806,7 +808,7 @@
           var b={}; try{ b=JSON.parse(init.body||"{}"); }catch(e){}
           var parts=String(b.name||"").split(" & ");
           if(CID===0) return jsonResp({message:"Choose a club before entering a match."},400);
-          return _fetch(PLAT+"/functions/v1/plat_submit_match",{method:"POST",headers:Object.assign(h,{"Content-Type":"application/json"}),body:JSON.stringify({action:"ensure_pair",club_id:CID,discipline:DISC,a:parts[0],b:parts[1]})})
+          return _fetch(PLAT+"/functions/v1/plat_submit_match",{method:"POST",headers:fnHdrs(init.headers),body:JSON.stringify({action:"ensure_pair",club_id:CID,discipline:DISC,a:parts[0],b:parts[1]})})
             .then(function(r){return r.json();}).then(function(o){ if(!o||!o.ok) return jsonResp({message:(o&&o.error)||"pair birth failed"},400); return jsonResp([{id:o.id,name:o.name}],201); });
         }
         if(method==="POST"&&tbl.indexOf("player_results")===0) return jsonResp([],201);
@@ -814,7 +816,7 @@
         var apin=(typeof ADMIN_PIN!=="undefined")?ADMIN_PIN:"";
         var idm=m[1].match(/[?&]id=eq\.(\d+)/); var rid=idm?Number(idm[1]):null;
         var pb={}; try{ pb=JSON.parse(init.body||"{}"); }catch(e){}
-        var call=function(fnName,payload){ return _fetch(PLAT+"/functions/v1/"+fnName,{method:"POST",headers:Object.assign(h,{"Content-Type":"application/json"}),body:JSON.stringify(payload)}).then(function(r){return r.json();}); };
+        var call=function(fnName,payload){ return _fetch(PLAT+"/functions/v1/"+fnName,{method:"POST",headers:fnHdrs(init.headers),body:JSON.stringify(payload)}).then(function(r){return r.json();}); };
         if(method==="POST"&&tbl==="individuals"){
           var target=Number(pb.club_id)||CID; if(!target) return jsonResp({message:"Choose a club to register into."},400);
           return call("plat_admin",{action:"add_member",club_id:target,admin_pin:apin,full_name:pb.full_name,gender:pb.gender,pin:pb.pin||null,seeds:{padel:(pb.seed_rating!=null&&pb.seed_rating!==""?Number(pb.seed_rating):null)}})
@@ -841,6 +843,7 @@
         if(f[1]==="submit_match"){ if(CID===0) return jsonResp({ok:false,error:"Choose a club before entering a match."},400);
           var bb={}; try{ bb=JSON.parse(init.body||"{}"); }catch(e){} bb.discipline=DISC; bb.club_id=CID; init=Object.assign({},init,{body:JSON.stringify(bb)}); }
       }
+      if(f) h=fnHdrs(init.headers);
       return _fetch(u,Object.assign({},init,{headers:h}));
     });
   };
@@ -3142,7 +3145,7 @@ const CLUB_NAME = _club.name;  // shown in the logo as "OPR · <name>"
     link.setAttribute('href', href);
   }catch(e){ /* install stays on the static manifest — no functional impact */ }
 })();
-const OPR_VERSION = "OPR-DOUBLES v2026.09.03-56 · PLAT replica p8";  // MANUAL PAIR CREATION REMOVED FROM ADMIN: Create a pair, Bulk create pairs and Re-derive all pairs are gone (they only made match-less ghost pairs, and Re-derive rewrote every stored initial club-wide). Pairs are born automatically at match entry. Current pairs list untouched; the underlying JS is left in place unreferenced, so no other code path changes. Includes v47 (set-score fix + double-tap guard) and all prior.
+const OPR_VERSION = "OPR-DOUBLES v2026.09.03-56 · PLAT replica p9";  // MANUAL PAIR CREATION REMOVED FROM ADMIN: Create a pair, Bulk create pairs and Re-derive all pairs are gone (they only made match-less ghost pairs, and Re-derive rewrote every stored initial club-wide). Pairs are born automatically at match entry. Current pairs list untouched; the underlying JS is left in place unreferenced, so no other code path changes. Includes v47 (set-score fix + double-tap guard) and all prior.
 // Explanation shown above the individual ladder. Open on load so it's read; collapsible
 // (state kept for the session) and scrolls away. Mechanics only — no outcome framing, so
 // members aren't nudged away from playing stronger opponents. Every clause maps to a real
@@ -8981,7 +8984,7 @@ async function clRemove(id, label){
     else if(W.PLAT.name&&ht){ ht.textContent="OPR · "+W.PLAT.name; document.title="OPR · "+W.PLAT.name; }
     chip();
     // version tag at the foot of every screen (OPR only prints it on Home/About)
-    try{ var vt=(typeof OPR_VERSION!=="undefined"?OPR_VERSION:"")+"  ·  shim p8"; document.querySelectorAll(".screen").forEach(function(s){ if(s.querySelector(".platVer")) return; var d=document.createElement("div"); d.className="platVer"; d.textContent=vt; d.style.cssText="text-align:center;color:#b3a9c4;font-size:10px;letter-spacing:.5px;margin:14px 0 8px"; s.appendChild(d); }); }catch(e){}
+    try{ var vt=(typeof OPR_VERSION!=="undefined"?OPR_VERSION:"")+"  ·  shim p9"; document.querySelectorAll(".screen").forEach(function(s){ if(s.querySelector(".platVer")) return; var d=document.createElement("div"); d.className="platVer"; d.textContent=vt; d.style.cssText="text-align:center;color:#b3a9c4;font-size:10px;letter-spacing:.5px;margin:14px 0 8px"; s.appendChild(d); }); }catch(e){}
     if(location.hash==="#enter"){ W.showScreen("entryScreen"); }
   });
 })();
