@@ -1,0 +1,754 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="theme-color" content="#1B3B2F">
+<script>
+/* v50: INSTALLABLE CLUB APP — web-app manifest (standalone, club green, repo icons, start page = THIS club's page) + iOS equivalents. PLAT: mobile-web-app-capable added (Chrome deprecation of the apple-only tag). */
+(function(){ try{
+  var m=(location.search||'').match(/[?&]club=(\d+)/); var cid=m?m[1]:'1';
+  var man={name:'Club Platform',short_name:'Club',start_url:'./club.html?club='+cid,scope:'./',display:'standalone',background_color:'#1B3B2F',theme_color:'#1B3B2F',
+           icons:[{src:'./icon-192.png',sizes:'192x192',type:'image/png'},{src:'./icon-512.png',sizes:'512x512',type:'image/png'}]};
+  var href='data:application/manifest+json,'+encodeURIComponent(JSON.stringify(man));
+  var l=document.querySelector('link[rel="manifest"]'); if(!l){ l=document.createElement('link'); l.rel='manifest'; document.head.appendChild(l); } l.href=href;
+  var tc=document.querySelector('meta[name="theme-color"]'); if(!tc){ tc=document.createElement('meta'); tc.name='theme-color'; document.head.appendChild(tc); } tc.content='#1B3B2F';
+  [['mobile-web-app-capable','yes'],['apple-mobile-web-app-capable','yes'],['apple-mobile-web-app-status-bar-style','black-translucent'],['apple-mobile-web-app-title','Club']].forEach(function(p){ if(!document.querySelector('meta[name="'+p[0]+'"]')){ var e=document.createElement('meta'); e.name=p[0]; e.content=p[1]; document.head.appendChild(e); } });
+  if(!document.querySelector('link[rel="apple-touch-icon"]')){ var a=document.createElement('link'); a.rel='apple-touch-icon'; a.href='./icon-192.png'; document.head.appendChild(a); }
+}catch(e){} })();
+</script>
+<title>Club Platform</title>
+<!--
+  VERSION: PLAT-FRONTDOOR v2026.09.08-1  (first platform front door — re-based from CC-FRONTDOOR v2026.09.07-58 (cc.html v58, REL g40))
+  CLUB PLATFORM (CC v2) · plug-and-play front door · PLATFORM_DESIGN_20260907.md
+  What changed from cc.html v58, and nothing else:
+    * SPORT REGISTRY (§3b): one descriptor per sport (label, family, parent, replica, colour). EVERY surface —
+      sport cards, plaques, pills, recent-match rows, engine room, register/bulk columns, directory columns,
+      overview counts, per-sport CSS — iterates the CLUB's `disciplines` list and reads the descriptor. Nothing
+      hard-codes a sport name. Adding sport #6 = one registry entry + its replica + its engine leg.
+    * POOL LAYER (§3d): the club row carries pool_id. Members = plat_memberships of THIS club; their ratings are
+      the POOL's (plat_individual_ratings). Rating belongs to the person, ranking to the club.
+    * LADDER tab (new — the two-club proof): this club's members ranked by their pool rating, per sport; a
+      member in another club of the pool shows the same number there. Replicas (step 5) carry the full apps.
+    * ADMIN: sport switches per club (plat_admin set_sport); "Add an existing pool member" (add_membership);
+      register/bulk with one seed column per switched-on sport; Engine Room per switched-on sport; Clubs
+      (master) with pool choice. PIN probe pattern unchanged.
+    * Tables -> plat_ twins; functions -> plat_admin / plat_submit_match; storage keys cc_* -> plat_*.
+    * "One club · Three disciplines" wording -> "One register · One rating home".
+  Corridor inherited verbatim: arrival/departure veils, staleness guard, name-blink fix, bfcache teardown,
+  frozen hero+tabs, scrollbar-gutter, laptop layout, Recent Matches expandable rows, handicap glimpse.
+  Lives against the OSR Supabase project ADDRESS (plat_ prefix); OSR itself, cc_* and obr_* never touched.
+-->
+<style>
+html{scrollbar-gutter:stable}   /* v37: reserve the scrollbar gutter from the first frame — kills the right-left jiggle when the page grows past the viewport on load/refresh */
+:root{
+  --club:#1B3B2F;        /* clubhouse green */
+  --club-deep:#122A21;
+  --linen:#F2EDE0;       /* cream */
+  --linen-2:#E9E1CE;
+  --brass:#C9A44C;       /* brass accent */
+  --ink:#1E2B24;
+  /* PLAT: sport colours are NOT here — each sport's descriptor in the registry carries its colour pair, and boot() injects .pill/.sport-card/.plaque rules per switched-on sport */
+  --ok:#2E7D4F; --bad:#A93226;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:-apple-system,'Segoe UI',Roboto,Arial,sans-serif;background:var(--linen);color:var(--ink);min-height:100vh}
+.serif{font-family:Georgia,'Times New Roman',serif}
+header{background:var(--club);color:var(--linen);padding:18px 16px 14px;text-align:center;border-bottom:3px solid var(--brass)}
+header h1{font-family:Georgia,serif;font-weight:700;font-size:1.45rem;letter-spacing:.5px}
+header .sub{font-size:.72rem;letter-spacing:2.5px;text-transform:uppercase;color:var(--brass);margin-top:3px}
+#ccTop{position:sticky;top:0;z-index:5}   /* v46: the whole top block (hero + tabs) stays put */
+nav{display:flex;background:var(--club-deep)}
+nav button{flex:1;background:none;border:none;color:#cfd8d2;padding:11px 2px;font-size:.8rem;cursor:pointer;border-bottom:3px solid transparent}
+nav button.on{color:var(--linen);border-bottom-color:var(--brass);font-weight:600}
+main{max-width:640px;margin:0 auto;padding:14px 12px 60px}
+.home-club-col{display:none}   /* v52: overview is a laptop panel */
+@media(min-width:900px){ main{max-width:1100px;padding:18px 24px 60px} .home-club-col{display:block} #ccHomeGrid{display:grid;grid-template-columns:340px 1fr;gap:14px;align-items:start} #ccHomeGrid .card{margin-bottom:0} .sport-grid{gap:16px} .sport-card{padding:18px 20px !important} .sport-grid .nm{font-size:1.6rem} .sport-grid .cc-l{display:inline} .sport-grid .cc-s{display:none} .sport-grid .cc-enter{font-size:.95rem;padding:11px 8px} }
+.card{background:#fff;border:1px solid var(--linen-2);border-radius:10px;padding:14px;margin-bottom:12px;box-shadow:0 1px 2px rgba(0,0,0,.05)}
+h2{font-family:Georgia,serif;font-size:1.05rem;margin-bottom:10px;color:var(--club)}
+h3{font-size:.9rem;margin:10px 0 6px;color:var(--club)}
+label{display:block;font-size:.75rem;color:#5c6b62;margin:8px 0 3px}
+select,input[type=text],input[type=number],input[type=date],input[type=password]{width:100%;padding:9px;border:1px solid #cfc7b2;border-radius:7px;font-size:.95rem;background:#fff}
+.row{display:flex;gap:8px}.row>*{flex:1}
+button.btn{width:100%;padding:12px;border:none;border-radius:8px;background:var(--club);color:var(--linen);font-size:1rem;font-weight:600;cursor:pointer;margin-top:12px}
+button.btn:disabled{opacity:.5}
+button.mini{padding:6px 10px;border:1px solid #cfc7b2;background:#fff;border-radius:6px;font-size:.78rem;cursor:pointer}
+.sport-grid{display:grid;grid-template-columns:1fr;gap:12px;margin-top:6px}
+@media(min-width:720px){.sport-grid{grid-template-columns:repeat(var(--nsports,3),1fr)} .sport-grid .cc-enter{font-size:.85rem;padding:9px 4px} .sport-grid .cc-l{display:none} .sport-grid .cc-s{display:inline} .sport-grid .nm{font-size:1.25rem}}
+.cc-s{display:none}   /* v43: in the 3-column grid the half-width pill reads "+ Score"; everywhere else the full "+ Enter Score" */   /* v41: in the 3-column grid each card is ~230px — the half-width pill must hold "+ Enter Score" at a size that fits, and can no longer grow past its half (min-width:0) */
+.sport-card{border:none;border-radius:12px;padding:20px 16px;color:#fff;cursor:pointer;text-align:left;position:relative;overflow:hidden}
+.sport-card .nm{font-family:Georgia,serif;font-size:1.35rem;font-weight:700}
+.sport-card .eng{font-size:.7rem;letter-spacing:1.5px;text-transform:uppercase;opacity:.85;margin-top:3px}
+.pill{display:inline-block;padding:2px 9px;border-radius:99px;font-size:.68rem;font-weight:700;letter-spacing:.5px;color:#fff}
+table{width:100%;border-collapse:collapse;font-size:.82rem}
+th{color:#5c6b62;font-weight:600;text-align:left;padding:6px 4px;border-bottom:2px solid var(--linen-2);font-size:.72rem;text-transform:uppercase;letter-spacing:.5px}
+td{padding:7px 4px;border-bottom:1px solid var(--linen-2)}
+tr.tap{cursor:pointer}tr.tap:active{background:var(--linen)}
+.muted{color:#8a9790;font-size:.78rem}
+.msg{padding:10px;border-radius:8px;font-size:.85rem;margin-top:10px;display:none}
+.msg.ok{display:block;background:#E3EFE7;color:#1D5433}.msg.err{display:block;background:#F5E1DE;color:#78231A}
+.board{display:grid;grid-template-columns:1fr;gap:10px;margin-top:8px}
+.plaque{border-radius:10px;padding:12px 14px;color:#fff;cursor:pointer;display:flex;justify-content:space-between;align-items:center}
+.plaque .d{font-size:.7rem;letter-spacing:1.5px;text-transform:uppercase;opacity:.85}
+.plaque .r{font-family:Georgia,serif;font-size:1.5rem;font-weight:700}
+.plaque .side{text-align:right;font-size:.78rem;line-height:1.5}
+.mv.up{color:#B9E4C4}.mv.dn{color:#F3C1B8}
+.back{background:none;border:none;color:var(--club);font-size:.85rem;cursor:pointer;padding:4px 0;margin-bottom:8px}
+.delta{font-weight:700}.delta.up{color:var(--ok)}.delta.dn{color:var(--bad)}
+.setline{font-size:.74rem;color:#8a9790}
+.gate{margin:8px 0}
+</style>
+<style>
+.lad td.r{font-family:Georgia,serif;font-weight:700;color:var(--club)}.lad .both{font-size:.62rem;color:var(--brass);letter-spacing:.5px}
+.tog{display:flex;justify-content:space-between;align-items:center;padding:9px 0;border-bottom:1px solid var(--linen-2)}
+.sw{width:44px;height:24px;border-radius:99px;border:none;cursor:pointer;position:relative;background:#cfc7b2}.sw.on{background:var(--ok)}.sw:after{content:'';position:absolute;top:3px;left:3px;width:18px;height:18px;border-radius:50%;background:#fff;transition:left .15s}.sw.on:after{left:23px}
+</style>
+</head>
+<body>
+<script>
+/* v29 ARRIVAL VEIL: any entry carrying replica params (?member= / ?view=admin / ?r=) is a
+   RETURN journey — paint the branded green before the shell can flash, lifted by render()
+   the moment the destination view stands (8s failsafe so the page can never stay covered). */
+(function(){ try{
+  var q=location.search||"";
+  if(!(/[?&](member|view|r)=/.test(q))) return;
+  var cid=(q.match(/[?&]club=(\d+)/)||[])[1]||"1";
+  var cn=""; try{ cn=localStorage.getItem("plat_name_"+cid)||""; }catch(e){}
+  var esc=function(x){ return String(x).replace(/&/g,"&amp;").replace(/</g,"&lt;"); };
+  var v=document.createElement("div"); v.id="ccArriveVeil";
+  v.style.cssText="position:fixed;inset:0;z-index:99999;background:#1B3B2F;display:flex;align-items:center;justify-content:center";
+  v.innerHTML='<div style="text-align:center;color:#F2EDE0;font-family:Georgia,\'Times New Roman\',serif">'
+    +'<div style="font-size:27px;font-weight:700;letter-spacing:.5px;margin-bottom:6px">'+esc(cn||"Club")+'</div>'
+    +'<div style="font-size:11px;letter-spacing:3px;color:#C9A44C;text-transform:uppercase;margin-bottom:22px">One register · One rating home</div>'
+    +'<div style="width:26px;height:26px;margin:0 auto;border:3px solid rgba(201,164,76,.25);border-top-color:#C9A44C;border-radius:50%;animation:ccspin .9s linear infinite"></div></div>';
+  var st=document.createElement("style"); st.textContent="@keyframes ccspin{to{transform:rotate(360deg)}}";
+  v.appendChild(st); document.body.appendChild(v);
+  document.documentElement.style.overflow="hidden";
+  setTimeout(function(){ var e=document.getElementById("ccArriveVeil"); if(e){ e.remove(); document.documentElement.style.overflow=""; } }, 8000);
+}catch(e){} })();
+</script>
+<div id="ccTop"><!-- v46: hero + tab bar frozen together; content scrolls beneath -->
+<header>
+  <h1 id="clubName" class="serif">Club</h1>
+  <div class="sub" id="clubSub">One register · One rating home</div>
+</header>
+<nav id="nav">
+  <button data-v="home" class="on">Home</button>
+  <button data-v="ladder">Ladder</button>
+  <button data-v="profile">Members</button>
+  <button data-v="admin">Admin</button>
+</nav>
+</div>
+<main id="main"></main>
+<footer style="text-align:center;font-size:.62rem;color:#7a917f;letter-spacing:1px;padding:6px 0 18px">v2026.09.08-1</footer>
+<script>
+(function(){ function m(){ var t=document.getElementById("ccTop"); if(t) document.documentElement.style.setProperty("--cc-top",t.offsetHeight+"px"); } m(); window.addEventListener("resize",m); window.addEventListener("load",m); })();
+</script>
+
+<script>
+"use strict";
+/* ================= CONFIG (the platform lives at the OSR project ADDRESS, plat_ prefix) ============ */
+var SB_URL="https://djmbnvikrdgnomjhtkgf.supabase.co";
+var SB_ANON="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRqbWJudmlrcmRnbm9tamh0a2dmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODUzOTE0MzEsImV4cCI6MjEwMDk2NzQzMX0.vR8xlVFjV6jXW-pAclGjM74HqmWSKVpsacFjM-dCIJI";
+var CID=(function(){ var m=(location.search||"").match(/[?&]club=(\d+)/); return m?parseInt(m[1],10):1; })();
+var REL="p1";                 // replica release stamp — bump with each replica build
+var VSTAMP="v2026.09.08-1";   // build stamp — MUST match the footer and the VERSION header every build
+
+/* ================= SPORT REGISTRY (§3b) — the ONLY place a sport is described ================= */
+var SPORTS={
+  padel : { label:"Padel",          family:"pairrail",  parent:"OPR", engine:"OPR engine", replica:"plat-padel.html",  side:2, grammar:"sets",  colour:"#174D8C", deep:"#0E3058" },
+  mdr   : { label:"Masters Squash", family:"pairrail",  parent:"MDR", engine:"MDR engine", replica:"plat-mdr.html",    side:2, grammar:"sets",  colour:"#5B2C6F", deep:"#3B1C48" },
+  tennis: { label:"Tennis",         family:"slots",     parent:"OTR", engine:"OTR engine", replica:"plat-tennis.html", side:2, grammar:"sets",  colour:"#185A33", deep:"#0F381E" },
+  squash: { label:"Squash",         family:"slots",     parent:"OSR", engine:"OSR engine", replica:"plat-squash.html", side:2, grammar:"sets",  colour:"#A33E06", deep:"#6A2900" },
+  bowls : { label:"Bowls",          family:"multislot", parent:"OBR", engine:"OBR engine", replica:"plat-bowls.html",  side:4, grammar:"shots", colour:"#2E5E3A", deep:"#1B3B24" }
+};
+var DISCS=[];   // THIS club's switched-on sports, in the club's order — filled by boot() from plat_clubs.disciplines
+function SP(d){ return SPORTS[d]||{label:d,family:"slots",engine:"",replica:"plat-"+d+".html",colour:"#1B3B2F",deep:"#122A21",grammar:"sets"}; }
+function injectSportCSS(){
+  var css=""; Object.keys(SPORTS).forEach(function(d){ var s=SPORTS[d];
+    css+=".pill."+d+"{background:"+s.colour+"}.sport-card."+d+",.plaque."+d+"{background:linear-gradient(135deg,"+s.colour+","+s.deep+")}\n"; });
+  var st=document.createElement("style"); st.textContent=css; document.head.appendChild(st);
+  document.documentElement.style.setProperty("--nsports", String(Math.max(1,Math.min(3,DISCS.length||1))));
+}
+
+/* g19 STALENESS GUARD (verbatim) */
+(function(){
+  try{
+    fetch(location.pathname+"?probe="+Date.now(),{cache:"no-store"})
+      .then(function(r){ return r.ok ? r.text() : ""; })
+      .then(function(t){
+        var m=t.match(/var VSTAMP="([^"]+)"/);
+        if(!m || m[1]===VSTAMP) return;
+        if(sessionStorage.getItem("plat_reloaded_to")===m[1]) return;
+        sessionStorage.setItem("plat_reloaded_to", m[1]);
+        var u=new URL(location.href); u.searchParams.set("r", m[1]);
+        location.replace(u.toString());
+      }).catch(function(){});
+  }catch(e){}
+})();
+
+/* ================= DATA HELPERS ================= */
+function rest(path){ return fetch(SB_URL+"/rest/v1/"+path,{headers:{apikey:SB_ANON,Authorization:"Bearer "+SB_ANON}}).then(function(r){return r.json();}); }
+function fn(name,body){ return fetch(SB_URL+"/functions/v1/"+name,{method:"POST",headers:{apikey:SB_ANON,Authorization:"Bearer "+SB_ANON,"Content-Type":"application/json"},body:JSON.stringify(body)}).then(function(r){return r.json();}); }
+function esc(s){ return String(s==null?"":s).replace(/[&<>"']/g,function(c){return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c];}); }
+function lvl(r){ return (r==null)?"–":(Math.round(r/200*10)/10).toFixed(1); }
+function mv(cur,init){ if(cur==null||init==null)return null; return Math.round(cur-init); }
+function mvHtml(m){ if(m==null)return '<span class="muted">–</span>'; var s=m>=0?"+":""; return '<span class="mv '+(m>=0?"up":"dn")+'">'+s+m+'</span>'; }
+function cap(d){ return d.charAt(0).toUpperCase()+d.slice(1); }
+
+/* ================= STATE ================= */
+var S={view:"home",members:[],ratings:{},poolClubs:[],pool:null,club:null,profName:null,ladDisc:null,adminPin:"",adminOpen:false,adminClub:null,adminMaster:false,adminClubs:[],pools:[]};
+// S.members  = THIS club's members [{id,full_name,gender}] (via plat_memberships)
+// S.ratings  = {individual_id: {disc: {seed,current_rating}}} for the whole POOL
+// S.poolClubs= every club in the pool [{id,name}] ; S.memberClubs = {individual_id:[club names]}
+
+/* ================= BOOT ================= */
+var MEMBER_PARAM=(function(){ var m=(location.search||"").match(/[?&]member=([^&]+)/); return m?decodeURIComponent(m[1]):null; })();
+var ADMIN_RETURN=/[?&]view=admin(&|$)/.test(location.search||"");
+function boot(){
+  try{ var _cn=localStorage.getItem("plat_name_"+CID); if(_cn){ document.getElementById("clubName").textContent=_cn; sessionStorage.setItem("plat_club_name",_cn); } }catch(e){}
+  document.getElementById("main").innerHTML='<div class="card"><div class="muted">Opening…</div></div>';
+  rest("plat_clubs?id=eq."+CID+"&select=id,pool_id,name,disciplines").then(function(rows){
+    S.club=(rows&&rows[0])||null;
+    if(!S.club){ document.getElementById("clubName").textContent="Club "+CID+" not found"; document.getElementById("main").innerHTML='<div class="card"><div class="muted">No club with id '+CID+'.</div></div>'; ccArriveLift(); return; }
+    document.getElementById("clubName").textContent=S.club.name;
+    try{ sessionStorage.setItem("plat_club_name", S.club.name); localStorage.setItem("plat_name_"+CID, S.club.name); }catch(e){}
+    DISCS=(Array.isArray(S.club.disciplines)?S.club.disciplines:[]).filter(function(d){ return !!SPORTS[d]; });
+    injectSportCSS();
+    return Promise.all([
+      rest("plat_pools?id=eq."+S.club.pool_id+"&select=id,name"),
+      rest("plat_clubs?pool_id=eq."+S.club.pool_id+"&select=id,name&order=id"),
+      loadRoster()
+    ]).then(function(res){
+      S.pool=(res[0]&&res[0][0])||null; S.poolClubs=res[1]||[];
+      var sub=document.getElementById("clubSub");
+      if(sub){ sub.textContent = DISCS.length ? (DISCS.map(function(d){return SP(d).label;}).join(" · ")+" · One rating home") : "No sports switched on yet"; }
+      if(ADMIN_RETURN){
+        S.view="admin"; navOn("admin");
+        var op=null; try{ op=sessionStorage.getItem("plat_office_pin"); }catch(e){}
+        if(op){ S._silentUnlock=true;
+          document.getElementById("main").innerHTML='<div class="card" style="text-align:center;padding:38px 16px"><div style="width:26px;height:26px;margin:0 auto 14px;border:3px solid rgba(201,164,76,.35);border-top-color:#C9A44C;border-radius:50%;animation:ccspin .9s linear infinite"></div><div class="muted">Opening admin…</div><style>@keyframes ccspin{to{transform:rotate(360deg)}}</style></div>';
+          aUnlock(op); setTimeout(function(){ if(S._silentUnlock && !S.adminOpen){ S._silentUnlock=false; render(); } }, 8000); return; }
+      } else if(MEMBER_PARAM && S.members.some(function(x){return x.full_name===MEMBER_PARAM;})){ S.view="profile"; S.profName=MEMBER_PARAM; navOn("profile"); }
+      render();
+    });
+  }).catch(function(){ document.getElementById("main").innerHTML='<div class="card"><div class="muted">Could not reach the club register.</div></div>'; ccArriveLift(); });
+}
+function navOn(v){ Array.prototype.forEach.call(document.querySelectorAll("#nav button"),function(x){x.classList.toggle("on",x.getAttribute("data-v")===v);}); }
+/* PLAT: the club's members are its MEMBERSHIPS; ratings are the POOL's, one row per (person, sport). */
+function loadRoster(){
+  var pid=S.club.pool_id;
+  return Promise.all([
+    rest("plat_memberships?club_id=eq."+CID+"&select=individual_id"),
+    rest("plat_individuals?pool_id=eq."+pid+"&select=id,full_name,gender&order=full_name"),
+    rest("plat_individual_ratings?pool_id=eq."+pid+"&select=individual_id,discipline,seed,current_rating"),
+    rest("plat_memberships?select=individual_id,club_id")
+  ]).then(function(res){
+    var mine={}; (res[0]||[]).forEach(function(r){ mine[r.individual_id]=1; });
+    S.poolMembers=res[1]||[];
+    S.members=S.poolMembers.filter(function(i){ return mine[i.id]; });
+    S.ratings={}; (res[2]||[]).forEach(function(r){ (S.ratings[r.individual_id]=S.ratings[r.individual_id]||{})[r.discipline]={seed:r.seed!=null?+r.seed:null,current_rating:r.current_rating!=null?+r.current_rating:null}; });
+    S.memberClubIds={}; (res[3]||[]).forEach(function(r){ (S.memberClubIds[r.individual_id]=S.memberClubIds[r.individual_id]||[]).push(r.club_id); });
+  });
+}
+function ratingOf(iid,d){ var r=(S.ratings[iid]||{})[d]; if(!r) return {cur:null,seed:null}; return {cur:(r.current_rating!=null?r.current_rating:r.seed), seed:r.seed}; }
+function clubNameOf(id){ var c=(S.poolClubs||[]).find(function(x){return x.id===id;}); return c?c.name:("Club #"+id); }
+document.getElementById("nav").addEventListener("click",function(e){
+  var b=e.target.closest("button"); if(!b)return;
+  S.view=b.getAttribute("data-v"); S.profName=null;
+  navOn(S.view); render();
+});
+
+/* ================= RENDER ROUTER ================= */
+function ccArriveLift(){ try{ var e=document.getElementById("ccArriveVeil"); if(e) e.remove(); document.documentElement.style.overflow=""; }catch(x){} }
+function render(){
+  var m=document.getElementById("main");
+  if(!S.club){ ccArriveLift(); return; }
+  if(S.view==="home"){ vHome(m); ccArriveLift(); return; }
+  if(S.view==="ladder"){ vLadder(m); ccArriveLift(); return; }
+  if(S.view==="profile"){ vProfile(m); ccArriveLift(); return; }
+  if(S.view==="admin"){ vAdmin(m); ccArriveLift(); return; }
+}
+
+/* ================= HOME — the sport picker (iterates DISCS) ================= */
+function vHome(m){
+  var h='<div class="card"><h2>Select your sport</h2>';
+  if(!DISCS.length){ h+='<div class="muted">No sports switched on for this club yet — Admin → Sports.</div></div>'; }
+  else {
+    h+='<div class="sport-grid">';
+    DISCS.forEach(function(d){ var s=SP(d);
+      h+='<div class="sport-card '+d+'" style="cursor:default;padding:14px 16px">'
+        +'<div style="display:flex;align-items:center;gap:10px">'
+        +'<div style="flex:1 1 0;min-width:0"><div class="nm">'+esc(s.label)+'</div><div class="eng" style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+esc(s.engine)+'</div></div>'
+        +'<button onclick="goEnter(event,\''+d+'\')" class="cc-enter" style="flex:0 0 calc(50% - 5px);min-width:0;overflow:hidden;background:rgba(255,255,255,.92);color:#1B3B2F;border:none;padding:10px 6px;border-radius:9px;font-size:.85rem;font-weight:800;cursor:pointer;white-space:nowrap;text-align:center"><span class="cc-l">+ Enter Score</span><span class="cc-s">+ Score</span></button>'
+        +'</div>'
+        +'<div style="display:flex;gap:10px;margin-top:10px">'
+        +'<button onclick="goView(\''+d+'\',\'ratings\')" style="flex:1;background:rgba(255,255,255,.14);color:#fff;border:1px solid rgba(255,255,255,.5);padding:10px 2px;border-radius:9px;font-size:.76rem;font-weight:600;cursor:pointer;white-space:nowrap">Ratings</button>'
+        +'<button onclick="goView(\''+d+'\',\'tournaments\')" style="flex:1;background:rgba(255,255,255,.14);color:#fff;border:1px solid rgba(255,255,255,.5);padding:10px 2px;border-radius:9px;font-size:.76rem;font-weight:600;cursor:pointer;white-space:nowrap">Tournaments</button>'
+        +'</div></div>';
+    });
+    h+='</div></div>';
+  }
+  h+='<div id="ccHomeGrid">'
+    +'<div class="card home-club-col"><div style="background:linear-gradient(135deg,var(--club),var(--club-deep));color:var(--linen);font-weight:700;padding:10px 14px;border-radius:8px 8px 0 0;margin:-14px -14px 0">Club Overview</div>'
+    +'<div id="ccOverview"><div class="muted" style="padding:10px 0">Loading…</div></div>'
+    +'<div style="text-align:center;padding:10px 0 2px;border-top:1px solid var(--linen-2);margin-top:8px"><a href="https://opr-online.com" target="_blank" rel="noopener" style="color:var(--club);font-weight:700;font-size:.82rem;text-decoration:none">Powered by OPR · opr-online.com ›</a></div></div>'
+    +'<div>'
+    +'<div class="card"><h2>Recent Matches</h2><div id="ccRecent"><div class="muted">Loading…</div></div></div>'
+    +'<div class="card" style="margin-top:12px;border:1px solid #F1C40F55"><button onclick="ccToggleHc()" style="width:100%;background:none;border:none;padding:0;display:flex;justify-content:space-between;align-items:center;cursor:pointer;font:inherit;color:var(--ink)"><h2 style="margin:0">🎯 Recent Handicap Results</h2><span id="ccHcCaret" class="muted">▸</span></button>'
+    +'<div id="ccHc" style="display:none;margin-top:10px"><div class="muted">Loading…</div></div></div>'
+    +'</div></div>';
+  var poolNote=(S.poolClubs.length>1)?(' This club shares its register with '+esc(S.poolClubs.filter(function(c){return c.id!==CID;}).map(function(c){return c.name;}).join(", "))+' — one rating per person, ranked at each club.'):'';
+  h+='<div class="card"><div class="muted">Register once, play everything. Every member holds one profile across the club\'s sports — open <b>Members</b> for the honour board, <b>Ladder</b> for this club\'s ranking.'+poolNote+'</div></div>';
+  m.innerHTML=h;
+  loadRecentMatches();
+  loadOverview();
+}
+var _hcLoaded=false;
+function ccToggleHc(){
+  var box=document.getElementById("ccHc"), car=document.getElementById("ccHcCaret"); if(!box) return;
+  var open = box.style.display!=="none";
+  box.style.display = open ? "none" : "block"; if(car) car.textContent = open ? "▸" : "▾";
+  if(!open && !_hcLoaded) loadRecentHandicap();
+}
+function loadRecentHandicap(){
+  var box=document.getElementById("ccHc"); if(!box) return;
+  var jobs = DISCS.map(function(d){
+    return rest("plat_"+d+"_tournaments?club_id=eq."+CID+"&handicap=eq.true&select=name").then(function(tours){
+      if(!Array.isArray(tours)) return [];   // sport without tournament twins yet
+      return Promise.all(tours.map(function(t){
+        return rest("plat_"+d+"_tournament_fixtures?club_id=eq."+CID+"&tournament=eq."+encodeURIComponent(t.name)+"&sets_a=not.is.null&select=id,tournament,division,seed_a,seed_b,sets_a,sets_b,games_a,games_b&order=id.desc&limit=5")
+          .then(function(fx){ return (Array.isArray(fx)?fx:[]).map(function(f){ f._d=d; return f; }); });
+      })).then(function(a){ return [].concat.apply([],a); });
+    }).catch(function(){ return []; });
+  });
+  Promise.all(jobs).then(function(per){
+    var fx=[].concat.apply([],per); _hcLoaded=true;
+    if(!fx.length){ box.innerHTML='<div class="muted">No handicap results yet — handicap events are just for fun and never touch ratings.</div>'; return; }
+    fx.sort(function(a,b){ return b.id-a.id; }); fx=fx.slice(0,8);
+    var cache={};
+    function names(f){ var key=f._d+'|'+f.tournament+'|'+f.division;
+      if(!cache[key]) cache[key]=rest("plat_"+f._d+"_tournament_entries?club_id=eq."+CID+"&tournament=eq."+encodeURIComponent(f.tournament)+"&category=eq."+encodeURIComponent(f.division)+"&select=seed,p1,p2").then(function(ents){ var m={}; (ents||[]).forEach(function(e){ m[e.seed]= e.p2 ? (e.p1+' / '+e.p2) : e.p1; }); return m; }).catch(function(){ return {}; });
+      return cache[key]; }
+    Promise.all(fx.map(names)).then(function(maps){
+      var h='';
+      fx.forEach(function(f,i){ var m=maps[i]; var a=m[f.seed_a]||('Seed '+f.seed_a), b=m[f.seed_b]||('Seed '+f.seed_b); var aWin=f.sets_a>f.sets_b; var dc=SP(f._d).colour;
+        h+='<div style="padding:8px 12px;margin:8px 0;background:#fff;border:1px solid var(--linen-2);border-left:4px solid '+dc+';border-right:4px solid '+dc+';border-radius:10px">'
+          +'<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;font-size:.72rem"><span class="pill '+f._d+'">'+esc(SP(f._d).label)+'</span><span class="muted">'+esc(f.tournament)+' · '+esc(f.division)+'</span><span style="background:#8a6d1a;color:#fff;font-size:.6rem;font-weight:700;padding:1px 5px;border-radius:4px">H</span></div>'
+          +'<div style="margin-top:3px"><b style="color:'+(aWin?'var(--club)':'#555')+'">'+esc(a)+(aWin?' ✓':'')+'</b> <span class="muted">vs</span> <b style="color:'+(!aWin?'var(--club)':'#555')+'">'+esc(b)+(!aWin?' ✓':'')+'</b>'
+          +' <span style="color:var(--brass);font-weight:700">'+f.sets_a+'–'+f.sets_b+'</span> <span class="muted">('+(f.games_a||0)+'–'+(f.games_b||0)+')</span></div></div>';
+      });
+      box.innerHTML=h+'<div class="muted" style="text-align:center;font-size:.7rem;margin-top:6px">Handicap results — just for fun, no effect on ratings.</div>';
+    });
+  });
+}
+/* v52 CLUB OVERVIEW (laptop) — club, pool, members, matches per switched-on sport */
+function loadOverview(){
+  var box=document.getElementById("ccOverview"); if(!box) return;
+  function row(k,v){ return '<div style="display:flex;justify-content:space-between;align-items:center;padding:9px 0;border-bottom:1px solid var(--linen-2)"><span class="muted" style="font-size:.85rem">'+k+'</span><span style="color:var(--club);font-weight:700">'+v+'</span></div>'; }
+  rest("plat_matches?club_id=eq."+CID+"&select=discipline").then(function(rows){
+    var n={}; DISCS.forEach(function(d){ n[d]=0; }); (rows||[]).forEach(function(r){ if(n[r.discipline]!=null) n[r.discipline]++; });
+    var h=row('Club',esc((S.club&&S.club.name)||'—'))+row('Members',S.members.length||'—');
+    if(S.pool && S.poolClubs.length>1) h+=row('Shared register',esc(S.pool.name)+' <span class="muted">('+S.poolClubs.length+' clubs)</span>');
+    DISCS.forEach(function(d){ h+=row(esc(SP(d).label)+' matches','<span class="pill '+d+'" style="min-width:34px;text-align:center">'+n[d]+'</span>'); });
+    h+=row('Matches played here',(rows||[]).length);
+    box.innerHTML=h;
+  }).catch(function(){ box.innerHTML='<div class="muted" style="padding:10px 0">Overview unavailable.</div>'; });
+}
+/* RECENT MATCHES — the family's expandable rows (verbatim), club = where played; each sport supplies its row renderer (§5). */
+function loadRecentMatches(){
+  var box=document.getElementById("ccRecent"); if(!box) return;
+  if(S._recent){ box.innerHTML=recentHTML(S._recent); return; }
+  rest("plat_matches?club_id=eq."+CID+"&select=discipline,match_date,match_type,event,t1p1,t1p2,t1p3,t1p4,t2p1,t2p2,t2p3,t2p4,t1_sets,t2_sets,t1_games,t2_games,set_scores,ends,peel,display_t1,display_t2&order=match_date.desc,id.desc&limit=10")
+    .then(function(rows){ S._recent=Array.isArray(rows)?rows:[]; var b=document.getElementById("ccRecent"); if(b) b.innerHTML=recentHTML(S._recent); })
+    .catch(function(){ var b=document.getElementById("ccRecent"); if(b) b.innerHTML='<div class="muted">Could not load recent matches.</div>'; });
+}
+/* row renderers by family: racquet = "A & B 1–0 C & D"; bowls = names 21–14 names · N ends */
+function sideNames(r,t){ var out=[]; [1,2,3,4].forEach(function(i){ var v=r["t"+t+"p"+i]; if(v!=null && String(v).trim()!=="") out.push(String(v).trim()); }); return out; }
+function rowLine(r){
+  var s=SP(r.discipline);
+  var a=r.display_t1?esc(r.display_t1):esc(sideNames(r,1).join(" & "));
+  var b=r.display_t2?esc(r.display_t2):esc(sideNames(r,2).join(" & "));
+  if(s.grammar==="shots"){
+    return a+' <span style="color:#B8860B;font-weight:800">'+(r.t1_games||0)+'\u2013'+(r.t2_games||0)+'</span> '+b
+      +(r.ends?' <span class="muted" style="font-size:.7rem">· '+r.ends+' ends</span>':'')+(r.peel?' <span style="background:#8a6d1a;color:#fff;font-size:.6rem;font-weight:700;padding:1px 5px;border-radius:4px">PEEL</span>':'');
+  }
+  return a+' <span style="color:#B8860B;font-weight:800">'+(r.t1_sets||0)+'\u2013'+(r.t2_sets||0)+'</span> '+b;
+}
+function recentHTML(rows){
+  if(!rows.length) return '<div class="muted">No matches yet — the first result will appear here.</div>';
+  var h='';
+  rows.forEach(function(r,idx){
+    var ev=(r.event||'').trim().toLowerCase();
+    var tag = ev==='ladder match' ? '<span style="background:#c4e000;color:#2a3000;font-size:.6rem;font-weight:700;padding:1px 5px;border-radius:4px">L</span>'
+            : (ev && ev!=='social') ? '<span style="background:#6c3483;color:#fff;font-size:.6rem;font-weight:700;padding:1px 5px;border-radius:4px">T</span>'
+            : '<span style="background:#ccc;color:#333;font-size:.6rem;font-weight:700;padding:1px 5px;border-radius:4px">S</span>';
+    var dc=SP(r.discipline).colour;
+    h+='<div onclick="ccToggleRecent('+idx+')" style="cursor:pointer;padding:9px 12px 9px 12px;margin:8px 0;background:#fff;border:1px solid var(--linen-2);border-left:4px solid '+dc+';border-right:4px solid '+dc+';border-radius:10px">'
+      +'<div style="display:flex;align-items:center;gap:8px">'
+      +'<span class="pill '+esc(r.discipline)+'">'+esc(SP(r.discipline).label)+'</span>'
+      +'<span class="muted" style="font-size:.7rem">'+esc(r.match_date||'')+'</span>'
+      +'<span class="muted" style="font-size:.7rem">'+esc(r.match_type||'')+'</span>'+tag
+      +'<span id="ccRcaret'+idx+'" style="margin-left:auto;color:#B8860B;font-size:.7rem">\u25bc</span></div>'
+      +'<div style="font-size:.84rem;font-weight:600;color:#233b30;margin-top:3px">'+rowLine(r)+'</div>'
+      +'<div id="ccRdetail'+idx+'" style="display:none;margin-top:6px;padding-top:6px;border-top:1px dashed var(--linen-2);text-align:center"></div>'
+      +'</div>';
+  });
+  return h;
+}
+function ccToggleRecent(idx){
+  var d=document.getElementById("ccRdetail"+idx), c=document.getElementById("ccRcaret"+idx);
+  if(!d) return;
+  if(d.style.display==="none"){
+    var r=(S._recent||[])[idx]||{};
+    var col=SP(r.discipline).colour;
+    var ss=(r.set_scores||"").trim(), pills="";
+    if(ss){
+      pills=ss.split(",").map(function(x){return x.trim();}).filter(function(x){return x;})
+        .map(function(sc){ return '<span style="background:'+col+';color:#fff;border-radius:4px;padding:3px 10px;margin:0 3px;font-size:.78rem;font-weight:700;display:inline-block">'+esc(sc.replace("-","/"))+'</span>'; }).join('');
+    }
+    var line=(SP(r.discipline).grammar==="shots") ? ('Shots: '+(r.t1_games||0)+'\u2013'+(r.t2_games||0)+(r.ends?('  \u00b7  Ends: '+r.ends):''))
+                                                 : ('Sets: '+(r.t1_sets||0)+'\u2013'+(r.t2_sets||0)+'  \u00b7  Games: '+(r.t1_games||0)+'\u2013'+(r.t2_games||0));
+    d.innerHTML=(pills||'<span class="muted" style="font-size:.72rem">Game scores not recorded for this match</span>')
+      +'<div class="muted" style="font-size:.7rem;margin-top:5px">'+line+'</div>';
+    d.style.display="block"; if(c) c.textContent="\u25b2";
+  } else { d.style.display="none"; if(c) c.textContent="\u25bc"; }
+}
+/* DEPARTURE VEIL + bfcache teardown (verbatim) */
+window.addEventListener('pageshow',function(e){ if(!e.persisted) return; try{
+  document.querySelectorAll('body>div').forEach(function(d){ if(d.style&&d.style.position==='fixed'&&/ccspin/.test(d.innerHTML)) d.remove(); });
+  document.documentElement.style.overflow='';
+}catch(_e){} });
+function ccDepart(dest,href){
+  try{
+    var cn=(S.club&&S.club.name)||"Club";
+    var v=document.createElement("div");
+    v.style.cssText="position:fixed;inset:0;z-index:99998;background:#1B3B2F;display:flex;align-items:center;justify-content:center";
+    v.innerHTML='<div style="text-align:center;color:#F2EDE0;font-family:Georgia,\'Times New Roman\',serif">'
+      +'<div style="font-size:27px;font-weight:700;letter-spacing:.5px;margin-bottom:6px">'+esc(cn)+'</div>'
+      +'<div style="font-size:11px;letter-spacing:3px;color:#C9A44C;text-transform:uppercase;margin-bottom:22px">One register · One rating home</div>'
+      +'<div style="width:26px;height:26px;margin:0 auto 14px;border:3px solid rgba(201,164,76,.25);border-top-color:#C9A44C;border-radius:50%;animation:ccspin .9s linear infinite"></div>'
+      +'<div style="font:600 13px -apple-system,Segoe UI,Roboto,Arial,sans-serif;letter-spacing:1px;opacity:.85">Opening '+esc(dest)+'…</div></div>';
+    var st=document.createElement("style"); st.textContent="@keyframes ccspin{to{transform:rotate(360deg)}}";
+    v.appendChild(st); document.body.appendChild(v);
+    document.documentElement.style.overflow="hidden";
+  }catch(e){}
+  setTimeout(function(){ location.href=href; }, 30);
+}
+/* replica deep links carry club AND pool (§6b step 5) */
+function repl(d){ return SP(d).replica+"?club="+CID+"&pool="+(S.club?S.club.pool_id:"")+"&r="+REL; }
+function goView(d,vw){ ccDepart(vw==="ratings"?"Ratings":"Tournaments", repl(d)+"&view="+vw); }
+function goControl(d){
+  try{ sessionStorage.setItem("plat_cr_pin", S.adminPin||""); sessionStorage.setItem("plat_office_pin", S.adminPin||""); }catch(e){}
+  ccDepart("Control Room", repl(d)+"&view=admin");
+}
+function goEnter(ev,d){ ev.stopPropagation(); ccDepart("Score entry", repl(d)+"&view=enter"); }
+function goProfile(d){
+  var me=S.members.find(function(x){return x.full_name===S.profName;})||{};
+  ccDepart(S.profName, repl(d)+"&player="+encodeURIComponent(S.profName)+"&gender="+encodeURIComponent(me.gender||"M"));
+}
+function val(id){ var e=document.getElementById(id); return e?e.value.trim():""; }
+
+/* ================= LADDER — this club's members ranked by their POOL rating (§3d) ================= */
+function vLadder(m){
+  if(!DISCS.length){ m.innerHTML='<div class="card"><h2>Ladder</h2><div class="muted">No sports switched on yet.</div></div>'; return; }
+  if(!S.ladDisc || DISCS.indexOf(S.ladDisc)<0) S.ladDisc=DISCS[0];
+  var d=S.ladDisc, s=SP(d);
+  var h='<div class="card"><h2>Club ladder</h2>';
+  if(DISCS.length>1){ h+='<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px">'; DISCS.forEach(function(x){ h+='<button class="mini" onclick="S.ladDisc=\''+x+'\';render()" style="'+(x===d?('background:'+SP(x).colour+';color:#fff;border-color:'+SP(x).colour):'')+'">'+esc(SP(x).label)+'</button>'; }); h+='</div>'; }
+  // pool-wide ranking first (one number, ranked everywhere), then this club's slice
+  var pool=(S.poolMembers||[]).map(function(i){ var r=ratingOf(i.id,d); return {id:i.id,name:i.full_name,gender:i.gender,cur:r.cur,seed:r.seed}; }).filter(function(x){ return x.cur!=null; }).sort(function(a,b){ return b.cur-a.cur; });
+  var poolRank={}; pool.forEach(function(x,i){ poolRank[x.id]=i+1; });
+  var mine={}; S.members.forEach(function(i){ mine[i.id]=1; });
+  var rows=pool.filter(function(x){ return mine[x.id]; });
+  if(!rows.length){ h+='<div class="muted">No rated members for '+esc(s.label)+' yet.</div></div>'; m.innerHTML=h; return; }
+  var shared=S.poolClubs.length>1;
+  h+='<div class="muted" style="margin-bottom:6px">'+rows.length+' members · rating is the person\'s one '+esc(s.label)+' rating'+(shared?(' across '+esc(S.pool?S.pool.name:'the shared register')+'; rank is theirs at '+esc(S.club.name)):'')+'.</div>';
+  h+='<table class="lad"><tr><th>#</th><th>Member</th><th style="text-align:right">Rating</th><th style="text-align:right">Move</th>'+(shared?'<th style="text-align:right">Pool</th>':'')+'</tr>';
+  rows.forEach(function(x,i){
+    var others=(S.memberClubIds[x.id]||[]).filter(function(c){return c!==CID;});
+    h+='<tr class="tap" onclick="openProfile(\''+esc(x.name).replace(/'/g,"\\'")+'\')"><td class="muted">'+(i+1)+'</td><td>'+esc(x.name)
+      +(others.length?'<div class="both">also '+esc(others.map(clubNameOf).join(", "))+'</div>':'')+'</td>'
+      +'<td class="r" style="text-align:right">'+Math.round(x.cur)+'<div class="muted" style="font-size:.66rem">level '+lvl(x.cur)+'</div></td>'
+      +'<td style="text-align:right">'+mvHtml(mv(x.cur,x.seed))+'</td>'
+      +(shared?'<td class="muted" style="text-align:right">'+poolRank[x.id]+' / '+pool.length+'</td>':'')+'</tr>';
+  });
+  h+='</table></div>';
+  m.innerHTML=h;
+}
+
+/* ================= MEMBERS — the honour board (one plaque per switched-on sport) ================= */
+function vProfile(m){
+  if(S.profName)return vProfileBoard(m);
+  var h='<div class="card"><h2>Member profiles</h2>';
+  if(!S.members.length){ h+='<div class="muted">No members registered yet — Admin → Register.</div></div>'; m.innerHTML=h; return; }
+  h+='<div style="position:sticky;top:var(--cc-top,46px);background:#fff;padding:4px 0 8px;z-index:3"><label>Search members</label><input type="text" id="pSearch" placeholder="Start typing a name…" oninput="filterProfiles()" autocomplete="off"></div>';
+  h+='<div id="pList"></div></div>';
+  m.innerHTML=h; filterProfiles();
+}
+function filterProfiles(){
+  var q=(val("pSearch")||"").toLowerCase();
+  var rows=S.members.filter(function(r){ return !q || r.full_name.toLowerCase().indexOf(q)>=0; });
+  var el=document.getElementById("pList"); if(!el)return;
+  if(!rows.length){ el.innerHTML='<div class="muted" style="margin-top:8px">No members match.</div>'; return; }
+  var h='<table><tr><th>Member</th><th></th></tr>';
+  rows.forEach(function(r){ h+='<tr class="tap" onclick="openProfile(\''+esc(r.full_name).replace(/'/g,"\\'")+'\')"><td>'+esc(r.full_name)+'</td><td class="muted">view ›</td></tr>'; });
+  el.innerHTML=h+'</table>';
+}
+function openProfile(nm){ S.profName=nm; S.view="profile"; navOn("profile"); render(); }
+function backToList(){ S.profName=null; render(); }
+/* PLAT: every plaque reads the engine-written plat_individual_ratings row (current), unplayed = seed, move 0.
+   Rank = among THIS club's members; pool rank shown when the register is shared. No client-side replay needed. */
+function vProfileBoard(m){
+  var nm=S.profName;
+  var me=S.members.find(function(x){return x.full_name===nm;})||(S.poolMembers||[]).find(function(x){return x.full_name===nm;})||{};
+  var others=(S.memberClubIds[me.id]||[]).filter(function(c){return c!==CID;});
+  var h='<button onclick="backToList()" style="background:var(--club);color:var(--linen);border:1px solid var(--brass);padding:8px 16px;border-radius:99px;font-size:.85rem;font-weight:600;cursor:pointer;margin-bottom:10px">‹ All members</button>'
+    +'<div class="card"><h2 class="serif">'+esc(nm)+'</h2><div class="muted">The honour board — one member, '+(DISCS.length===1?'one sport':DISCS.length+' sports')+'. Tap a plaque to open that sport\'s full app.'
+    +(others.length?(' Also a member at '+esc(others.map(clubNameOf).join(", "))+' — same rating there.'):'')+'</div><div class="board">';
+  DISCS.forEach(function(d){
+    var r=ratingOf(me.id,d); var cur=r.cur;
+    var mine={}; S.members.forEach(function(i){ mine[i.id]=1; });
+    var list=S.members.map(function(i){ return {id:i.id,cur:ratingOf(i.id,d).cur}; }).filter(function(x){return x.cur!=null;}).sort(function(a,b){return b.cur-a.cur;});
+    var rank=null; list.forEach(function(x,i){ if(x.id===me.id) rank=i+1; });
+    var rk=(rank!=null)?("rank "+rank+" / "+list.length):"unranked";
+    h+='<div class="plaque '+d+'" onclick="goProfile(\''+d+'\')">'
+      +'<div><div class="d">'+esc(SP(d).label)+'</div><div class="r">'+(cur!=null?Math.round(cur):"–")+'</div></div>'
+      +'<div class="side">level '+lvl(cur)+'<br>move '+mvHtml(mv(cur,r.seed))+'<br>'+rk+' ›</div></div>';
+  });
+  if(!DISCS.length) h+='<div class="muted">No sports switched on.</div>';
+  m.innerHTML=h+'</div></div>';
+}
+
+/* ================= ADMIN ================= */
+function vAdmin(m){
+  if(!S.adminOpen){
+    m.innerHTML='<div class="card"><h2>Admin</h2>'
+      +'<label>Admin PIN</label><input type="password" id="aPin" inputmode="numeric">'
+      +'<button class="btn" onclick="aUnlock()">Open admin</button>'
+      +'<div class="muted" style="margin-top:6px">Your club code opens your club\'s admin. The master code opens every club.</div>'
+      +'<div class="msg" id="aGateMsg"></div></div>';
+    return;
+  }
+  var here=S.adminClub?S.adminClub.name:"";
+  var h='<div class="card"><h2>Admin — '+esc(here)+'</h2>'
+    +'<div class="row"><div class="muted">'+(S.adminMaster?"Master access":"Club admin access")+(S.pool?(' · register: '+esc(S.pool.name)):'')+'</div>'
+    +'<div style="text-align:right"><button class="mini" onclick="aLock()">Close admin</button></div></div>';
+  if(S.adminMaster && S.adminClubs.length>1){
+    h+='<label>Administering club</label><select id="aClubSel" onchange="aSwitchClub()">';
+    S.adminClubs.forEach(function(c){ h+='<option value="'+c.id+'"'+((S.adminClub&&S.adminClub.id===c.id)?" selected":"")+'>'+esc(c.name)+' (#'+c.id+')</option>'; });
+    h+='</select>';
+  }
+  h+='</div>';
+  /* SPORTS — the one toggle (§3a). ON appends + seeds every member's ratings row; OFF hides; data never deleted. */
+  h+='<div class="card"><h3>Sports</h3><div class="muted">Switch a sport on and its card, plaque, ladder and engine appear for this club. Switching off hides it — nothing is deleted.</div><div style="margin-top:6px">';
+  Object.keys(SPORTS).forEach(function(d){ var on=DISCS.indexOf(d)>=0;
+    h+='<div class="tog"><div><b>'+esc(SPORTS[d].label)+'</b> <span class="muted">'+esc(SPORTS[d].engine)+'</span></div><button class="sw'+(on?' on':'')+'" onclick="aToggleSport(\''+d+'\','+(on?'false':'true')+')" aria-label="'+(on?'off':'on')+'"></button></div>'; });
+  h+='</div><div class="msg" id="aMsgS"></div></div>';
+  if(DISCS.length){
+    h+='<div class="card"><h3>Sport control rooms</h3>'
+      +'<div class="muted">Pairs, tournaments and match corrections live inside each sport\'s own Control Room (its Admin tab) — the same proven admin as the standalone apps.</div>'
+      +'<div class="row" style="margin-top:8px;flex-wrap:wrap">';
+    DISCS.forEach(function(d){ h+='<button class="mini" style="padding:10px" onclick="goControl(\''+d+'\')">'+esc(SP(d).label)+'</button>'; });
+    h+='</div></div>';
+  }
+  h+='<div class="card"><h3>Register one member</h3>'
+    +'<div class="muted">One person, one starting rating per sport. Choosing the gender fills the player defaults (1500 M / 1300 F) — type over any of them. Clear a sport\'s box if they don\'t play it: they start at the non-player default (1300 M / 1200 F).</div>'
+    +'<div class="row" style="margin-top:8px;gap:8px;flex-wrap:wrap">'
+    +'<input id="aRegName" placeholder="Full name" style="flex:2;min-width:160px">'
+    +'<select id="aRegG" onchange="aRegDefaults()" style="flex:0 0 70px"><option value="M">M</option><option value="F">F</option></select>';
+  DISCS.forEach(function(d){ h+='<input id="aReg_'+d+'" type="number" placeholder="'+esc(SP(d).label)+'" style="flex:1;min-width:80px">'; });
+  h+='<input id="aRegPin" type="text" inputmode="numeric" placeholder="PIN (optional)" style="flex:1;min-width:90px">'
+    +'</div><button class="btn" onclick="aRegOne()">Register member</button><div class="msg" id="aMsgR"></div></div>';
+  if(S.poolClubs.length>1){
+    var elsewhere=(S.poolMembers||[]).filter(function(i){ return !S.members.some(function(x){return x.id===i.id;}); });
+    h+='<div class="card"><h3>Add an existing member of '+esc(S.pool?S.pool.name:"the shared register")+'</h3>'
+      +'<div class="muted">People already registered at '+esc(S.poolClubs.filter(function(c){return c.id!==CID;}).map(function(c){return c.name;}).join(", "))+'. Linking them here adds them to this club\'s ladder with the rating they already hold — no second registration, no second rating.</div>'
+      +'<select id="aLink"><option value="">— choose —</option>';
+    elsewhere.forEach(function(i){ h+='<option value="'+i.id+'">'+esc(i.full_name)+'</option>'; });
+    h+='</select><button class="btn" onclick="aLinkMember()">Add to '+esc(S.club.name)+'</button><div class="msg" id="aMsgL"></div></div>';
+  }
+  if(DISCS.length){
+    h+='<div class="card"><h3>Engine room</h3>'
+      +'<div class="muted">Replays every match from the current bases and rewrites that sport\'s ratings for the whole register. Run after seed changes or restores.</div>'
+      +'<div class="row" style="margin-top:8px;gap:8px;flex-wrap:wrap">';
+    DISCS.forEach(function(d){ h+='<button class="btn" onclick="aRecompute(\''+d+'\')">Recompute '+esc(SP(d).label)+'</button>'; });
+    if(DISCS.length>1) h+='<button class="btn" onclick="aRecomputeAll()">Recompute all</button>';
+    h+='</div><div id="aMsgEng" style="margin-top:6px"></div></div>';
+  }
+  h+='<div class="card"><h3>Bulk add members (paste from Excel)</h3>'
+    +'<div class="muted">One member per line: Name, Gender'+DISCS.map(function(d){return ', '+SP(d).label;}).join('')+' (comma or tab separated). Gender M or F required. A filled rating is used as typed; a BLANK sport = doesn\'t play it — starts at 1300 M / 1200 F.</div>'
+    +'<textarea id="aBulk" style="width:100%;min-height:140px;font-family:monospace;font-size:12px;border:1px solid #cfc7b2;border-radius:7px;padding:9px;margin-top:8px" placeholder="John Smith, M'+DISCS.map(function(){return ', 1500';}).join('')+'"></textarea>'
+    +'<button class="btn" onclick="aBulkAdd()">Add all pasted members</button><div class="msg" id="aMsgB"></div></div>';
+  h+='<div class="card"><h3>Member directory ('+S.members.length+')</h3>'
+    +'<div class="muted">This club\'s register: seed → current per sport. Edits live in the sport Control Rooms.</div>'
+    +'<input type="text" id="aDirSearch" placeholder="Search name…" oninput="aDirFilter()" autocomplete="off" style="margin-top:8px">'
+    +'<div id="aDir" style="max-height:340px;overflow:auto;margin-top:8px"></div></div>';
+  setTimeout(aDirFilter,0);
+  if(S.adminMaster){
+    h+='<div class="card"><h3>Clubs (master)</h3>'
+      +'<label>Register (pool)</label><select id="aCpool"><option value="__new__">— new register —</option>';
+    (S.pools||[]).forEach(function(p){ h+='<option value="'+p.id+'"'+((S.club&&p.id===S.club.pool_id)?' selected':'')+'>'+esc(p.name)+'</option>'; });
+    h+='</select><label>New register name (only if new)</label><input type="text" id="aPn">'
+      +'<label>New club name</label><input type="text" id="aCn">'
+      +'<label>Its admin PIN</label><input type="text" id="aCp">'
+      +'<button class="btn" onclick="aAddClub()">Create club</button>'
+      +'<div class="muted" style="margin-top:6px">A club that shares a register with another (e.g. two padel clubs whose members play at both) gives its members ONE rating, ranked at each club. A club on its own register stands alone.</div>'
+      +'<div class="msg" id="aMsg4"></div></div>';
+  }
+  m.innerHTML=h;
+}
+function apin(){ return S.adminPin; }
+function aUnlock(pinArg){
+  var p=pinArg||val("aPin");
+  var msg=document.getElementById("aGateMsg")||{className:"",textContent:""};
+  if(!p){ msg.className="msg err"; msg.textContent="Enter a PIN."; return; }
+  msg.className="msg ok"; msg.textContent="Checking…";
+  fn("plat_admin",{action:"list_clubs"}).then(function(r){
+    var clubs=(r&&r.clubs)||[];
+    var probeIds=[CID].concat(clubs.map(function(c){return c.id;}).filter(function(i){return i!==CID;}));
+    var i=0;
+    function tryNext(){
+      if(i>=probeIds.length){ msg.className="msg err"; msg.textContent="PIN not recognised."; return; }
+      var id=probeIds[i++];
+      fn("plat_admin",{action:"edit_member",club_id:id,admin_pin:p,full_name:"__pin_probe__"}).then(function(rr){
+        var e=(rr&&rr.error)||"";
+        if(e==="Admin PIN required."){ tryNext(); return; }
+        S.adminPin=p; S.adminOpen=true; S.adminClubs=clubs;
+        S.adminClub=clubs.find(function(c){return c.id===id;})||{id:id,name:"Club #"+id};
+        var other=clubs.find(function(c){return c.id!==id;});
+        var fin=function(){ fn("plat_admin",{action:"list_pools"}).then(function(pr){ S.pools=(pr&&pr.pools)||[]; afterUnlock(); }); };
+        if(other){
+          fn("plat_admin",{action:"edit_member",club_id:other.id,admin_pin:p,full_name:"__pin_probe__"}).then(function(r2){
+            S.adminMaster=((r2&&r2.error)||"")!=="Admin PIN required.";
+            if(!S.adminMaster){ S.adminClubs=[S.adminClub]; }
+            fin();
+          });
+        } else { S.adminMaster=true; fin(); }
+      });
+    }
+    tryNext();
+  });
+}
+function afterUnlock(){
+  S._silentUnlock=false;
+  if(S.adminClub && S.adminClub.id!==CID){ location.search="?club="+S.adminClub.id; return; }
+  render();
+}
+function aSwitchClub(){ var id=parseInt(val("aClubSel"),10); if(id && (!S.adminClub||id!==S.adminClub.id)){ location.search="?club="+id; } }
+function aLock(){ S.adminOpen=false; S.adminPin=""; S.adminMaster=false; render(); }
+function aToggleSport(d,on){
+  var msg=document.getElementById("aMsgS"); msg.className="msg ok"; msg.textContent=(on?"Switching on ":"Switching off ")+SP(d).label+"…";
+  fn("plat_admin",{action:"set_sport",club_id:CID,admin_pin:apin(),discipline:d,on:on}).then(function(r){
+    if(r&&r.ok){ S.club.disciplines=r.disciplines; DISCS=r.disciplines.filter(function(x){return !!SPORTS[x];}); document.documentElement.style.setProperty("--nsports",String(Math.max(1,Math.min(3,DISCS.length||1)))); S._recent=null;
+      var sub=document.getElementById("clubSub"); if(sub) sub.textContent=DISCS.length?(DISCS.map(function(x){return SP(x).label;}).join(" · ")+" · One rating home"):"No sports switched on yet";
+      loadRoster().then(render); }
+    else { msg.className="msg err"; msg.textContent=(r&&r.error)||"Failed."; }
+  });
+}
+function aEngLine(d,txt,ok){
+  var box=document.getElementById("aMsgEng"); if(!box) return;
+  box.style.display="block";
+  var ln=document.getElementById("aEng_"+d);
+  if(!ln){ ln=document.createElement("div"); ln.id="aEng_"+d; box.appendChild(ln); }
+  ln.className="msg "+(ok===null?"ok":(ok?"ok":"err")); ln.style.display="block"; ln.textContent=txt;
+}
+function aRecompute(d){
+  aEngLine(d, SP(d).label+": recomputing…", null);
+  return fn("plat_admin",{action:"recompute",discipline:d,club_id:CID,admin_pin:apin()}).then(function(r){
+    var ok=!!(r&&r.ok);
+    var detail=(ok&&r.engine&&r.engine.players!=null)?(" ("+r.engine.players+" players, "+(r.engine.moves||0)+" matches)"):"";
+    aEngLine(d, SP(d).label+": "+(ok?("recomputed"+detail+"."):((r&&r.error)||"failed.")), ok);
+    if(ok) loadRoster();
+    return ok;
+  }).catch(function(){ aEngLine(d, SP(d).label+": failed (network).", false); return false; });
+}
+function aRecomputeAll(){
+  var box=document.getElementById("aMsgEng"); if(box) box.innerHTML="";
+  var n=0, i=0;
+  function next(){ if(i>=DISCS.length){ aEngLine("all",(n===DISCS.length)?"All sports recomputed.":("Done — "+n+" of "+DISCS.length+" succeeded — the failed sport's line shows why."), n===DISCS.length); return; }
+    aRecompute(DISCS[i++]).then(function(ok){ if(ok)n++; next(); }); }
+  next();
+}
+function aRegDefaults(){
+  var g=val("aRegG")||"M", d=(g==="F")?1300:1500;
+  DISCS.forEach(function(x){ var e=document.getElementById("aReg_"+x); if(e) e.value=d; });
+}
+function aRegOne(){
+  var msg=document.getElementById("aMsgR"); msg.className="msg";
+  var name=(val("aRegName")||"").trim(), g=val("aRegG")||"M";
+  if(!name){ msg.className="msg err"; msg.textContent="Name required."; return; }
+  var seeds={}; DISCS.forEach(function(d){ var v=val("aReg_"+d); seeds[d]=(v===""?null:Number(v)); });
+  msg.className="msg ok"; msg.textContent="Registering…";
+  fn("plat_admin",{action:"add_member",club_id:CID,admin_pin:apin(),full_name:name,gender:g,pin:val("aRegPin")||null,seeds:seeds}).then(function(r){
+    if(r&&r.ok){ msg.className="msg ok"; msg.textContent="Registered "+name+"."; document.getElementById("aRegName").value=""; loadRoster().then(render); }
+    else { msg.className="msg err"; msg.textContent=(r&&r.error)||"Failed."; }
+  });
+}
+function aLinkMember(){
+  var msg=document.getElementById("aMsgL"); var iid=parseInt(val("aLink"),10);
+  if(!iid){ msg.className="msg err"; msg.textContent="Choose a member."; return; }
+  msg.className="msg ok"; msg.textContent="Linking…";
+  fn("plat_admin",{action:"add_membership",club_id:CID,admin_pin:apin(),individual_id:iid}).then(function(r){
+    if(r&&r.ok){ msg.className="msg ok"; msg.textContent="Added."; loadRoster().then(render); }
+    else { msg.className="msg err"; msg.textContent=(r&&r.error)||"Failed."; }
+  });
+}
+function aBulkAdd(){
+  var msg=document.getElementById("aMsgB"); msg.className="msg";
+  var raw=val("aBulk");
+  var lines=raw.split("\n").map(function(l){return l.trim();}).filter(function(l){return l.length;});
+  if(!lines.length){ msg.className="msg err"; msg.textContent="Nothing to add — paste some rows first."; return; }
+  var rows=[], errs=[];
+  lines.forEach(function(ln,i){
+    var parts=ln.split(/\t|,/).map(function(p){return p.trim();});
+    while(parts.length && parts[parts.length-1]==="") parts.pop();
+    if(parts.length<2 || !parts[0]){ errs.push("Line "+(i+1)+": need at least Name, Gender."); return; }
+    var name=parts[0], gender=(parts[1]||"").toUpperCase().charAt(0);
+    if(gender!=="M"&&gender!=="F"){ errs.push("Line "+(i+1)+" ("+name+"): gender must be M or F."); return; }
+    var seeds={}; DISCS.forEach(function(d,k){ seeds[d]=parts[2+k]||null; });
+    rows.push({ full_name:name, gender:gender, seeds:seeds });
+  });
+  if(errs.length){ msg.className="msg err"; msg.innerHTML=errs.map(esc).join("<br>"); return; }
+  msg.className="msg ok"; msg.textContent="Adding "+rows.length+" members…";
+  fn("plat_admin",{action:"bulk_add_members",club_id:CID,admin_pin:apin(),rows:rows}).then(function(r){
+    if(r&&r.ok){
+      var t="Added "+r.added+" member"+(r.added===1?"":"s")+".";
+      if(r.failed&&r.failed.length){ msg.className="msg err"; msg.textContent=t+" Failed: "+r.failed.join(", "); }
+      else { msg.className="msg ok"; msg.textContent=t; document.getElementById("aBulk").value=""; }
+      loadRoster().then(render);
+    } else { msg.className="msg err"; msg.textContent=(r&&r.error)||"Failed."; }
+  });
+}
+function aDirFilter(){
+  var q=(val("aDirSearch")||"").toLowerCase();
+  var rows=S.members.filter(function(r){ return !q || r.full_name.toLowerCase().indexOf(q)>=0; });
+  var el=document.getElementById("aDir"); if(!el)return;
+  if(!rows.length){ el.innerHTML='<span class="muted">No members match.</span>'; return; }
+  var h='<table><tr><th>Name</th><th>G</th>'+DISCS.map(function(d){return '<th>'+esc(SP(d).label)+'</th>';}).join('')+'</tr>';
+  rows.forEach(function(r){
+    h+='<tr><td>'+esc(r.full_name)+'</td><td>'+esc(r.gender||"")+'</td>';
+    DISCS.forEach(function(d){ var x=ratingOf(r.id,d); h+='<td>'+(x.seed!=null?Math.round(x.seed):"–")+(x.cur!=null&&x.seed!=null&&Math.round(x.cur)!==Math.round(x.seed)?' <span class="muted">→ '+Math.round(x.cur)+'</span>':'')+'</td>'; });
+    h+='</tr>';
+  });
+  el.innerHTML=h+'</table>';
+}
+function aAddClub(){
+  var msg=document.getElementById("aMsg4"); msg.className="msg ok"; msg.textContent="Working…";
+  var sel=val("aCpool"), name=val("aCn"), cpin=val("aCp");
+  var go=function(pool_id){
+    fn("plat_admin",{action:"add_club",admin_pin:apin(),pool_id:pool_id,name:name,club_admin_pin:cpin}).then(function(r){
+      if(r&&r.ok){ msg.className="msg ok"; msg.textContent="Created club #"+r.club.id+" — open with ?club="+r.club.id+" and switch its sports on."; }
+      else { msg.className="msg err"; msg.textContent=(r&&r.error)||"Failed."; }
+    });
+  };
+  if(sel==="__new__"){
+    var pn=val("aPn"); if(!pn){ msg.className="msg err"; msg.textContent="Name the new register."; return; }
+    fn("plat_admin",{action:"add_pool",admin_pin:apin(),name:pn}).then(function(r){ if(r&&r.ok) go(r.pool.id); else { msg.className="msg err"; msg.textContent=(r&&r.error)||"Failed."; } });
+  } else go(parseInt(sel,10));
+}
+
+boot();
+</script>
+</body>
+</html>
