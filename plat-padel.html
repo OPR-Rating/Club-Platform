@@ -735,7 +735,7 @@
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script>
 /* ============================================================================
-   PLAT EARLY SNIPPET — plat-padel.html  VERSION: PLAT-PADEL v2026.09.09-p13 (fix: About sits AFTER the .home-lower grid instead of inside it — desktop ledger was splitting into two ragged columns) (p12: ledger: charcoal theme, "Overall Profile", club pills on profiles and recent matches, About below Recent; club pills colour-coded; "All clubs" chip centred under the hero; no duplicate version tag on Home, tag on the door) (p11: fix: 204 answers carry no body — "Failed to construct Response" after a delete; General Admin gets Delete) (p10: OPR Admin delete of a member/pair routed to delete_member — unlink from this club, drop from the register when no club remains) (p9: fix: PostgREST-only headers stripped on redirected function calls — "Failed to fetch" on Add member / pair birth) (p8: OPR Admin member add/edit and pair re-derive routed to plat_admin / plat_admin_padel) (p7: door: tiles clear the hero, padel-ball badges; Register moved to About in the Overall Ledger) (p6: Overall pairs ladder = every club's pair rows; version tag at the foot of every screen) (p5: REGISTER screen in the Overall Ledger: every player once with club pills; General Admin behind the register PIN via plat_admin v2) (p4: Overall = read-only ledger: no ✚ Enter, no Tournaments, no admin link; door re-styled) (p3: LANDING mode ?pool=P: hero + one button per club + Overall, nothing else; club pages carry an "‹ All clubs" chip instead of the strip)
+   PLAT EARLY SNIPPET — plat-padel.html  VERSION: PLAT-PADEL v2026.09.09-p15 (remove_club now reports how many stranded members left the register with it) (p14: General Admin moved to the TOP of the Register; club colour is stored on the club (swatch picker); New club and Remove club; Recompute all ratings) (p13: fix: About sits AFTER the .home-lower grid instead of inside it — desktop ledger was splitting into two ragged columns) (p12: ledger: charcoal theme, "Overall Profile", club pills on profiles and recent matches, About below Recent; club pills colour-coded; "All clubs" chip centred under the hero; no duplicate version tag on Home, tag on the door) (p11: fix: 204 answers carry no body — "Failed to construct Response" after a delete; General Admin gets Delete) (p10: OPR Admin delete of a member/pair routed to delete_member — unlink from this club, drop from the register when no club remains) (p9: fix: PostgREST-only headers stripped on redirected function calls — "Failed to fetch" on Add member / pair birth) (p8: OPR Admin member add/edit and pair re-derive routed to plat_admin / plat_admin_padel) (p7: door: tiles clear the hero, padel-ball badges; Register moved to About in the Overall Ledger) (p6: Overall pairs ladder = every club's pair rows; version tag at the foot of every screen) (p5: REGISTER screen in the Overall Ledger: every player once with club pills; General Admin behind the register PIN via plat_admin v2) (p4: Overall = read-only ledger: no ✚ Enter, no Tournaments, no admin link; door re-styled) (p3: LANDING mode ?pool=P: hero + one button per club + Overall, nothing else; club pages carry an "‹ All clubs" chip instead of the strip)
    OPR-DOUBLES v2026.09.03-56 runs UNMODIFIED below (two marked hunks: the far CLUBS map and
    the install start_url). This snippet re-points every request at the PLATFORM:
      * host far -> OSR project (plat_ prefix), anon key swapped in the headers
@@ -772,7 +772,7 @@
     var p = CID ? _fetch(PLAT+"/rest/v1/plat_clubs?id=eq."+CID+"&select=id,pool_id,name",{headers:hdrs()}).then(function(r){return r.json();}).then(function(rows){ var c=rows&&rows[0]; if(c){ W.PLAT.pool=c.pool_id; W.PLAT.name=c.name; try{ sessionStorage.setItem("plat_padel_name_"+CID,c.name); }catch(e){} } })
                 : Promise.resolve();
     return p.then(function(){ if(!W.PLAT.pool) return; return Promise.all([
-        _fetch(PLAT+"/rest/v1/plat_clubs?pool_id=eq."+W.PLAT.pool+"&select=id,name&order=id",{headers:hdrs()}).then(function(r){return r.json();}).then(function(rows){ W.PLAT.clubs=Array.isArray(rows)?rows:[]; }),
+        _fetch(PLAT+"/rest/v1/plat_clubs?pool_id=eq."+W.PLAT.pool+"&select=id,name,colour&order=id",{headers:hdrs()}).then(function(r){return r.json();}).then(function(rows){ W.PLAT.clubs=Array.isArray(rows)?rows:[]; }),
         _fetch(PLAT+"/rest/v1/plat_pools?id=eq."+W.PLAT.pool+"&select=name",{headers:hdrs()}).then(function(r){return r.json();}).then(function(rows){ W.PLAT.poolName=(rows&&rows[0]&&rows[0].name)||""; })
       ]); }).catch(function(){});
   })();
@@ -3151,7 +3151,7 @@ const CLUB_NAME = _club.name;  // shown in the logo as "OPR · <name>"
     link.setAttribute('href', href);
   }catch(e){ /* install stays on the static manifest — no functional impact */ }
 })();
-const OPR_VERSION = "OPR-DOUBLES v2026.09.03-56 · PLAT replica p13";  // MANUAL PAIR CREATION REMOVED FROM ADMIN: Create a pair, Bulk create pairs and Re-derive all pairs are gone (they only made match-less ghost pairs, and Re-derive rewrote every stored initial club-wide). Pairs are born automatically at match entry. Current pairs list untouched; the underlying JS is left in place unreferenced, so no other code path changes. Includes v47 (set-score fix + double-tap guard) and all prior.
+const OPR_VERSION = "OPR-DOUBLES v2026.09.03-56 · PLAT replica p15";  // MANUAL PAIR CREATION REMOVED FROM ADMIN: Create a pair, Bulk create pairs and Re-derive all pairs are gone (they only made match-less ghost pairs, and Re-derive rewrote every stored initial club-wide). Pairs are born automatically at match entry. Current pairs list untouched; the underlying JS is left in place unreferenced, so no other code path changes. Includes v47 (set-score fix + double-tap guard) and all prior.
 // Explanation shown above the individual ladder. Open on load so it's read; collapsible
 // (state kept for the session) and scrolls away. Mechanics only — no outcome framing, so
 // members aren't nudged away from playing stronger opponents. Every clause maps to a real
@@ -8847,7 +8847,14 @@ async function clRemove(id, label){
   /* p3 LANDING: hero + one button per club (+ Overall); the rest of the home screen is hidden. */
   var PAL=[["#6c3483","#3a1d6e"],["#1f7a8c","#0f4c5c"],["#b5651d","#7a3e0a"],["#2e7d32","#1b4d1e"],["#c2185b","#7b1040"],["#455a64","#263238"],["#8e24aa","#4a148c"]];
   var LEDGER=["#1a1a1a","#3d3d3d"];
-  function clubPal(id){ var i=(W.PLAT.clubs||[]).findIndex(function(c){return c.id===id;}); return i<0?LEDGER:PAL[i%PAL.length]; }
+  function darken(hex,f){ try{ var n=parseInt(hex.slice(1),16), r=(n>>16)&255,gg=(n>>8)&255,b=n&255;
+    var d=function(x){ return Math.max(0,Math.round(x*(1-f))); };
+    return "#"+[d(r),d(gg),d(b)].map(function(x){return ("0"+x.toString(16)).slice(-2);}).join(""); }catch(e){ return hex; } }
+  function clubPal(id){ var cs=W.PLAT.clubs||[]; var i=cs.findIndex(function(c){return c.id===id;});
+    if(i<0) return LEDGER;
+    var col=cs[i].colour; if(col && /^#[0-9a-fA-F]{6}$/.test(col)) return [col, darken(col,0.42)];
+    return PAL[i%PAL.length]; }
+  var SWATCH=["#6c3483","#1f7a8c","#b5651d","#2e7d32","#c2185b","#455a64","#8e24aa","#00695c","#ad1457","#4e342e","#283593","#827717"];
   function clubPill(c,small){ var p=clubPal(c.id); return '<span style="display:inline-block;background:'+p[0]+';color:#fff;border-radius:99px;padding:'+(small?'1px 7px':'2px 9px')+';font-size:'+(small?'9.5px':'11px')+';font-weight:700;margin:2px 3px 0 0;white-space:nowrap;vertical-align:middle">'+esc(c.name)+'</span>'; }
   var BALL='<svg viewBox="0 0 100 100" width="30" height="30" xmlns="http://www.w3.org/2000/svg" style="filter:drop-shadow(0 0 6px rgba(196,224,0,.5))"><circle cx="50" cy="50" r="46" fill="url(#bg1)" stroke="#7da300" stroke-width="1"/><path d="M18 18 Q50 50 18 82" fill="none" stroke="#fbfff0" stroke-width="4" stroke-linecap="round"/><path d="M82 18 Q50 50 82 82" fill="none" stroke="#fbfff0" stroke-width="4" stroke-linecap="round"/><ellipse cx="40" cy="32" rx="14" ry="9" fill="rgba(255,255,255,0.35)"/></svg>';
   function landing(){
@@ -8867,7 +8874,7 @@ async function clRemove(id, label){
     d.innerHTML=cs.map(function(c,i){ return card(c.id,c.name,"Ratings · pairs · scores · tournaments",PAL[i%PAL.length],BALL); }).join("")
       +card(0,"Overall Ledger","Every player across the clubs — one rating each · ladders and stats only",LEDGER,BALL)
       +'<div style="text-align:center;font-size:12px;color:#7a6f8a;margin:8px 0 14px;line-height:1.5">One register · one rating per player<br>Each club keeps its own pairs, matches, tournaments and stats</div>'
-      +'<div style="text-align:center;color:#b3a9c4;font-size:10px;letter-spacing:.5px;margin:0 0 10px">'+esc((typeof OPR_VERSION!=="undefined"?OPR_VERSION:"")+"  ·  shim p13")+'</div>';
+      +'<div style="text-align:center;color:#b3a9c4;font-size:10px;letter-spacing:.5px;margin:0 0 10px">'+esc((typeof OPR_VERSION!=="undefined"?OPR_VERSION:"")+"  ·  shim p15")+'</div>';
     host.insertBefore(d,host.firstChild);
   }
   /* OVERALL: read-only ledger — no score entry, no tournaments, no admin link */
@@ -8954,7 +8961,8 @@ async function clRemove(id, label){
     var q=(REG.q||"").toLowerCase();
     var rows=REG.players.filter(function(p){ return !q || p.full_name.toLowerCase().indexOf(q)>=0; });
     rows.sort(REG.sort==="rating" ? function(a,c){ return (c.current_rating||0)-(a.current_rating||0); } : function(a,c){ return a.full_name.localeCompare(c.full_name); });
-    var h='<div style="display:flex;gap:8px;align-items:center;margin:10px 0"><input id="platRegQ" placeholder="Find a player…" value="'+esc(REG.q)+'" oninput="window.platRegQ(this.value)" style="flex:1;padding:10px 12px;border:1.5px solid #ddd;border-radius:10px;font-size:14px">'
+    var h=adminPanel()
+      +'<div style="display:flex;gap:8px;align-items:center;margin:10px 0"><input id="platRegQ" placeholder="Find a player…" value="'+esc(REG.q)+'" oninput="window.platRegQ(this.value)" style="flex:1;padding:10px 12px;border:1.5px solid #ddd;border-radius:10px;font-size:14px">'
       +'<button class="menu-btn" style="min-height:40px;padding:8px 12px" onclick="window.platRegSort()">'+(REG.sort==="rating"?"Sort: rating":"Sort: name")+'</button></div>'
       +'<div style="font-size:12px;color:#666;margin-bottom:8px">'+rows.length+' players · '+REG.clubs.length+' clubs · one rating each</div>';
     rows.forEach(function(p){
@@ -8963,20 +8971,88 @@ async function clRemove(id, label){
         +'<div style="text-align:right"><div style="font-weight:800;font-size:18px;color:#6c3483">'+(p.current_rating!=null?Math.round(p.current_rating):"–")+'</div><div style="font-size:10px;color:#999">seed '+(p.seed!=null?Math.round(p.seed):"–")+'</div></div>'
         +(REG.role?'<div style="display:flex;flex-direction:column;gap:4px"><button class="menu-btn" style="min-height:30px;padding:4px 10px;font-size:12px" onclick="window.platRegEdit('+p.id+')">Edit</button><button style="min-height:30px;padding:4px 10px;font-size:12px;border:1px solid #c62828;color:#c62828;background:#fff;border-radius:8px;cursor:pointer" onclick="window.platRegDelete('+p.id+')">Delete</button></div>':'')+'</div>';
     });
-    h+='<div style="margin:18px 0 8px;padding:12px;border:1px dashed #cbbfd8;border-radius:12px">';
-    if(!REG.role){
-      h+='<div style="font-weight:700;color:#6c3483;margin-bottom:6px">General Admin</div><div style="font-size:12px;color:#666;margin-bottom:8px">The register PIN (or master) opens the admin over every club: register a player, link to a club, correct a seed.</div>'
-        +'<div style="display:flex;gap:8px"><input id="platRegPin" type="password" inputmode="numeric" placeholder="Register PIN" style="flex:1;padding:10px 12px;border:1.5px solid #ddd;border-radius:10px;font-size:14px"><button class="menu-btn" style="min-height:40px" onclick="window.platRegUnlock()">Open</button></div><div id="platRegMsg" style="font-size:12px;color:#c00;margin-top:6px"></div>';
-    } else {
-      var opts=REG.clubs.map(function(c){ return '<label style="display:inline-flex;align-items:center;gap:5px;margin:4px 10px 4px 0;font-size:13px"><input type="checkbox" class="platRegC" value="'+c.id+'"> '+esc(c.name)+'</label>'; }).join("");
-      h+='<div style="display:flex;justify-content:space-between;align-items:center"><div style="font-weight:700;color:#6c3483">General Admin · '+(REG.role==="master"?"master":"register")+'</div><button class="menu-btn" style="min-height:32px;padding:4px 10px;font-size:12px" onclick="window.platRegLock()">Close</button></div>'
-        +'<div style="font-size:12px;color:#666;margin:6px 0 8px">Register a new player once; tick the club(s) they belong to. Blank seed = 1500 M / 1300 F.</div>'
-        +'<div style="display:flex;gap:8px;flex-wrap:wrap"><input id="platRegName" placeholder="Full name" style="flex:2;min-width:160px;padding:10px 12px;border:1.5px solid #ddd;border-radius:10px"><select id="platRegG" style="flex:0 0 70px;padding:10px;border:1.5px solid #ddd;border-radius:10px"><option value="M">M</option><option value="F">F</option></select><input id="platRegSeed" type="number" placeholder="Seed" style="flex:1;min-width:90px;padding:10px 12px;border:1.5px solid #ddd;border-radius:10px"></div>'
-        +'<div style="margin-top:6px">'+opts+'</div><button class="menu-btn" style="margin-top:8px;width:100%" onclick="window.platRegAdd()">Register player</button><div id="platRegMsg" style="font-size:12px;margin-top:6px"></div></div>';
-    }
-    h+='</div>';
     b.innerHTML=h;
   }
+  function adminPanel(){
+    var h='<div style="margin:10px 0 14px;padding:12px;border:1px dashed #cbbfd8;border-radius:12px;background:#faf7fc">';
+    if(!REG.role){
+      h+='<div style="font-weight:800;color:#6c3483;margin-bottom:6px">General Admin</div>'
+        +'<div style="font-size:12px;color:#666;margin-bottom:8px">The register PIN (or master) opens the admin over every club: add or remove a club, set its colour, register a player, correct a seed, recompute.</div>'
+        +'<div style="display:flex;gap:8px"><input id="platRegPin" type="password" inputmode="numeric" placeholder="Register PIN" style="flex:1;padding:10px 12px;border:1.5px solid #ddd;border-radius:10px;font-size:14px"><button class="menu-btn" style="min-height:40px" onclick="window.platRegUnlock()">Open</button></div><div id="platRegMsg" style="font-size:12px;color:#c00;margin-top:6px"></div>';
+      return h+'</div>';
+    }
+    h+='<div style="display:flex;justify-content:space-between;align-items:center"><div style="font-weight:800;color:#6c3483">General Admin · '+(REG.role==="master"?"master":"register")+'</div><button class="menu-btn" style="min-height:32px;padding:4px 10px;font-size:12px" onclick="window.platRegLock()">Close</button></div>';
+    // clubs: colour + remove
+    h+='<div style="margin-top:10px;font-weight:700;font-size:13px;color:#444">Clubs</div>';
+    (REG.clubs||[]).forEach(function(c){
+      var p=clubPal(c.id);
+      h+='<div style="display:flex;align-items:center;gap:8px;padding:7px 0;border-bottom:1px solid #eee">'
+        +'<span style="width:16px;height:16px;border-radius:50%;background:'+p[0]+';flex:0 0 16px"></span>'
+        +'<span style="flex:1;font-weight:600">'+esc(c.name)+'</span>'
+        +'<button class="menu-btn" style="min-height:30px;padding:4px 10px;font-size:12px" onclick="window.platClubColour('+c.id+')">Colour</button>'
+        +'<button style="min-height:30px;padding:4px 10px;font-size:12px;border:1px solid #c62828;color:#c62828;background:#fff;border-radius:8px;cursor:pointer" onclick="window.platClubRemove('+c.id+')">Remove</button></div>';
+    });
+    h+='<div id="platSwatch"></div>';
+    // new club
+    h+='<div style="margin-top:12px;font-weight:700;font-size:13px;color:#444">New club</div>'
+      +'<div style="font-size:12px;color:#666;margin:4px 0 6px">A new group in this register: its own admin PIN, ladders, pairs and tournaments; one rating per person across all of them.</div>'
+      +'<div style="display:flex;gap:8px;flex-wrap:wrap"><input id="platNewName" placeholder="Club name" style="flex:2;min-width:150px;padding:10px 12px;border:1.5px solid #ddd;border-radius:10px"><input id="platNewPin" inputmode="numeric" placeholder="Admin PIN" style="flex:1;min-width:100px;padding:10px 12px;border:1.5px solid #ddd;border-radius:10px"></div>'
+      +'<div style="margin-top:8px;font-size:12px;color:#666">Colour</div><div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:4px">'
+      +SWATCH.map(function(s,i){ return '<button onclick="window.platPickNew(\''+s+'\')" id="platNewSw'+i+'" style="width:26px;height:26px;border-radius:50%;background:'+s+';border:2px solid '+(i===0?'#333':'transparent')+';cursor:pointer"></button>'; }).join('')
+      +'</div><button class="menu-btn" style="margin-top:10px;width:100%" onclick="window.platNewClub()">Create club</button>';
+    // recompute
+    h+='<div style="margin-top:14px;font-weight:700;font-size:13px;color:#444">Engine</div>'
+      +'<div style="font-size:12px;color:#666;margin:4px 0 6px">Replays every match in the register and rewrites all ratings. Needed after seed changes made in SQL; normal score entry recomputes by itself.</div>'
+      +'<button class="menu-btn" style="width:100%" onclick="window.platRecompute()">Recompute all ratings</button>';
+    h+='<div id="platRegMsg" style="font-size:12px;margin-top:8px"></div>';
+    return h+'</div>';
+  }
+  var NEWCOL=SWATCH[0];
+  W.platPickNew=function(c){ NEWCOL=c; SWATCH.forEach(function(s,i){ var e=document.getElementById("platNewSw"+i); if(e) e.style.borderColor=(s===c)?"#333":"transparent"; }); };
+  W.platNewClub=function(){
+    var m=document.getElementById("platRegMsg"); var name=(document.getElementById("platNewName").value||"").trim(), pin=(document.getElementById("platNewPin").value||"").trim();
+    if(!name){ m.style.color="#c00"; m.textContent="Club name required."; return; }
+    m.style.color="#666"; m.textContent="Creating…";
+    acall({action:"add_club",admin_pin:REG.pin,pool_id:W.PLAT.pool,name:name,club_admin_pin:pin,disciplines:["padel"],colour:NEWCOL}).then(function(r){
+      if(!r||!r.ok){ m.style.color="#c00"; m.textContent=(r&&r.error)||"Failed."; return; }
+      m.style.color="#2e7d32"; m.textContent="Created "+name+" (club #"+r.club.id+"). Its admin PIN opens its own app.";
+      W.PLAT.clubs.push({id:r.club.id,name:r.club.name,colour:NEWCOL}); regLoad();
+    });
+  };
+  W.platClubColour=function(id){
+    var box=document.getElementById("platSwatch"); if(!box) return;
+    box.innerHTML='<div style="padding:8px 0;font-size:12px;color:#666">Colour for '+esc((REG.clubs.find(function(c){return c.id===id;})||{}).name)+'</div><div style="display:flex;flex-wrap:wrap;gap:6px">'
+      +SWATCH.map(function(s){ return '<button onclick="window.platSetColour('+id+',\''+s+'\')" style="width:26px;height:26px;border-radius:50%;background:'+s+';border:2px solid transparent;cursor:pointer"></button>'; }).join('')+'</div>';
+  };
+  W.platSetColour=function(id,col){
+    var m=document.getElementById("platRegMsg"); m.style.color="#666"; m.textContent="Saving colour…";
+    acall({action:"set_club_colour",club_id:id,admin_pin:REG.pin,colour:col}).then(function(r){
+      if(!r||!r.ok){ m.style.color="#c00"; m.textContent=(r&&r.error)||"Failed."; return; }
+      var c=(W.PLAT.clubs||[]).find(function(x){return x.id===id;}); if(c) c.colour=col;
+      var c2=(REG.clubs||[]).find(function(x){return x.id===id;}); if(c2) c2.colour=col;
+      m.style.color="#2e7d32"; m.textContent="Colour saved."; regRender();
+    });
+  };
+  W.platClubRemove=function(id){
+    var c=(REG.clubs||[]).find(function(x){return x.id===id;}); if(!c) return;
+    var typed=prompt("Remove "+c.name+" from the register?\n\nA club with recorded matches cannot be removed — delete its matches first.\n\nMembers who belong to another club, or who appear in any pair, are kept. Anyone left with no club and no history is removed from the register too.\n\nType the club name exactly to confirm:","");
+    if(typed==null) return;
+    var m=document.getElementById("platRegMsg"); m.style.color="#666"; m.textContent="Removing…";
+    acall({action:"remove_club",club_id:id,admin_pin:REG.pin,confirm_name:typed}).then(function(r){
+      if(!r||!r.ok){ m.style.color="#c00"; m.textContent=(r&&r.error)||"Failed."; return; }
+      m.style.color="#2e7d32"; m.textContent="Removed "+r.removed+(r.people_removed?(" · "+r.people_removed+" member"+(r.people_removed===1?"":"s")+" left the register"):" · no members were left stranded")+".";
+      W.PLAT.clubs=(W.PLAT.clubs||[]).filter(function(x){return x.id!==id;}); regLoad();
+    });
+  };
+  W.platRecompute=function(){
+    var m=document.getElementById("platRegMsg"); m.style.color="#666"; m.textContent="Recomputing the whole register — this can take a few seconds…";
+    var cid=((REG.clubs||[])[0]||{}).id;
+    acall({action:"recompute",discipline:"padel",club_id:cid,admin_pin:REG.pin}).then(function(r){
+      if(!r||!r.ok){ m.style.color="#c00"; m.textContent=(r&&r.error)||"Failed."; return; }
+      var e=r.engine||{}; m.style.color="#2e7d32"; m.textContent="Recomputed: "+(e.players||0)+" players, "+(e.moves||0)+" matches.";
+      REGMAP=null; regLoad();
+    });
+  };
   W.platRegQ=function(v){ REG.q=v; var el=document.getElementById("platRegQ"); var pos=el?el.selectionStart:null; regRender(); var e2=document.getElementById("platRegQ"); if(e2){ e2.focus(); if(pos!=null) e2.setSelectionRange(pos,pos); } };
   W.platRegSort=function(){ REG.sort=(REG.sort==="rating")?"name":"rating"; regRender(); };
   W.platRegUnlock=function(){ var p=(document.getElementById("platRegPin")||{}).value||""; var m=document.getElementById("platRegMsg");
@@ -9045,7 +9121,7 @@ async function clRemove(id, label){
     else if(W.PLAT.name&&ht){ ht.textContent="OPR · "+W.PLAT.name; document.title="OPR · "+W.PLAT.name; }
     chip();
     // version tag at the foot of every screen (OPR only prints it on Home/About)
-    try{ var vt=(typeof OPR_VERSION!=="undefined"?OPR_VERSION:"")+"  ·  shim p13"; document.querySelectorAll(".screen").forEach(function(s){ if(s.id==="homeScreen"||s.querySelector(".platVer")) return; var d=document.createElement("div"); d.className="platVer"; d.textContent=vt; d.style.cssText="text-align:center;color:#b3a9c4;font-size:10px;letter-spacing:.5px;margin:14px 0 8px"; s.appendChild(d); }); }catch(e){}
+    try{ var vt=(typeof OPR_VERSION!=="undefined"?OPR_VERSION:"")+"  ·  shim p15"; document.querySelectorAll(".screen").forEach(function(s){ if(s.id==="homeScreen"||s.querySelector(".platVer")) return; var d=document.createElement("div"); d.className="platVer"; d.textContent=vt; d.style.cssText="text-align:center;color:#b3a9c4;font-size:10px;letter-spacing:.5px;margin:14px 0 8px"; s.appendChild(d); }); }catch(e){}
     if(location.hash==="#enter"){ W.showScreen("entryScreen"); }
   });
 })();
