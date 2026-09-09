@@ -735,7 +735,7 @@
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script>
 /* ============================================================================
-   PLAT EARLY SNIPPET — plat-padel.html  VERSION: PLAT-PADEL v2026.09.09-p12 (ledger: charcoal theme, "Overall Profile", club pills on profiles and recent matches, About below Recent; club pills colour-coded; "All clubs" chip centred under the hero; no duplicate version tag on Home, tag on the door) (p11: fix: 204 answers carry no body — "Failed to construct Response" after a delete; General Admin gets Delete) (p10: OPR Admin delete of a member/pair routed to delete_member — unlink from this club, drop from the register when no club remains) (p9: fix: PostgREST-only headers stripped on redirected function calls — "Failed to fetch" on Add member / pair birth) (p8: OPR Admin member add/edit and pair re-derive routed to plat_admin / plat_admin_padel) (p7: door: tiles clear the hero, padel-ball badges; Register moved to About in the Overall Ledger) (p6: Overall pairs ladder = every club's pair rows; version tag at the foot of every screen) (p5: REGISTER screen in the Overall Ledger: every player once with club pills; General Admin behind the register PIN via plat_admin v2) (p4: Overall = read-only ledger: no ✚ Enter, no Tournaments, no admin link; door re-styled) (p3: LANDING mode ?pool=P: hero + one button per club + Overall, nothing else; club pages carry an "‹ All clubs" chip instead of the strip)
+   PLAT EARLY SNIPPET — plat-padel.html  VERSION: PLAT-PADEL v2026.09.09-p13 (fix: About sits AFTER the .home-lower grid instead of inside it — desktop ledger was splitting into two ragged columns) (p12: ledger: charcoal theme, "Overall Profile", club pills on profiles and recent matches, About below Recent; club pills colour-coded; "All clubs" chip centred under the hero; no duplicate version tag on Home, tag on the door) (p11: fix: 204 answers carry no body — "Failed to construct Response" after a delete; General Admin gets Delete) (p10: OPR Admin delete of a member/pair routed to delete_member — unlink from this club, drop from the register when no club remains) (p9: fix: PostgREST-only headers stripped on redirected function calls — "Failed to fetch" on Add member / pair birth) (p8: OPR Admin member add/edit and pair re-derive routed to plat_admin / plat_admin_padel) (p7: door: tiles clear the hero, padel-ball badges; Register moved to About in the Overall Ledger) (p6: Overall pairs ladder = every club's pair rows; version tag at the foot of every screen) (p5: REGISTER screen in the Overall Ledger: every player once with club pills; General Admin behind the register PIN via plat_admin v2) (p4: Overall = read-only ledger: no ✚ Enter, no Tournaments, no admin link; door re-styled) (p3: LANDING mode ?pool=P: hero + one button per club + Overall, nothing else; club pages carry an "‹ All clubs" chip instead of the strip)
    OPR-DOUBLES v2026.09.03-56 runs UNMODIFIED below (two marked hunks: the far CLUBS map and
    the install start_url). This snippet re-points every request at the PLATFORM:
      * host far -> OSR project (plat_ prefix), anon key swapped in the headers
@@ -3151,7 +3151,7 @@ const CLUB_NAME = _club.name;  // shown in the logo as "OPR · <name>"
     link.setAttribute('href', href);
   }catch(e){ /* install stays on the static manifest — no functional impact */ }
 })();
-const OPR_VERSION = "OPR-DOUBLES v2026.09.03-56 · PLAT replica p12";  // MANUAL PAIR CREATION REMOVED FROM ADMIN: Create a pair, Bulk create pairs and Re-derive all pairs are gone (they only made match-less ghost pairs, and Re-derive rewrote every stored initial club-wide). Pairs are born automatically at match entry. Current pairs list untouched; the underlying JS is left in place unreferenced, so no other code path changes. Includes v47 (set-score fix + double-tap guard) and all prior.
+const OPR_VERSION = "OPR-DOUBLES v2026.09.03-56 · PLAT replica p13";  // MANUAL PAIR CREATION REMOVED FROM ADMIN: Create a pair, Bulk create pairs and Re-derive all pairs are gone (they only made match-less ghost pairs, and Re-derive rewrote every stored initial club-wide). Pairs are born automatically at match entry. Current pairs list untouched; the underlying JS is left in place unreferenced, so no other code path changes. Includes v47 (set-score fix + double-tap guard) and all prior.
 // Explanation shown above the individual ladder. Open on load so it's read; collapsible
 // (state kept for the session) and scrolls away. Mechanics only — no outcome framing, so
 // members aren't nudged away from playing stronger opponents. Every clause maps to a real
@@ -8867,7 +8867,7 @@ async function clRemove(id, label){
     d.innerHTML=cs.map(function(c,i){ return card(c.id,c.name,"Ratings · pairs · scores · tournaments",PAL[i%PAL.length],BALL); }).join("")
       +card(0,"Overall Ledger","Every player across the clubs — one rating each · ladders and stats only",LEDGER,BALL)
       +'<div style="text-align:center;font-size:12px;color:#7a6f8a;margin:8px 0 14px;line-height:1.5">One register · one rating per player<br>Each club keeps its own pairs, matches, tournaments and stats</div>'
-      +'<div style="text-align:center;color:#b3a9c4;font-size:10px;letter-spacing:.5px;margin:0 0 10px">'+esc((typeof OPR_VERSION!=="undefined"?OPR_VERSION:"")+"  ·  shim p12")+'</div>';
+      +'<div style="text-align:center;color:#b3a9c4;font-size:10px;letter-spacing:.5px;margin:0 0 10px">'+esc((typeof OPR_VERSION!=="undefined"?OPR_VERSION:"")+"  ·  shim p13")+'</div>';
     host.insertBefore(d,host.firstChild);
   }
   /* OVERALL: read-only ledger — no score entry, no tournaments, no admin link */
@@ -8882,10 +8882,22 @@ async function clRemove(id, label){
     document.querySelectorAll("#homeScreen .menu-btn").forEach(function(b){ if(/showProfileSearch/.test(b.getAttribute("onclick")||"")) b.textContent="Overall Profile"; });
     var h1=document.querySelector("#profileSearchScreen .header h1"); if(h1) h1.textContent="Overall Profile";
   }
+  /* p13: About moves AFTER the whole lower block (it is a CSS grid on desktop — appending into it made
+     About a grid cell and pushed Recent into column 2). Wrapper goes after .home-lower, full width. */
   function ledgerLayout(){
     var about=null; document.querySelectorAll("#homeScreen .menu-btn").forEach(function(b){ if(/aboutScreen/.test(b.getAttribute("onclick")||"")) about=b; });
-    var lower=document.querySelector("#homeScreen .home-lower")||document.querySelector("#homeScreen .home-content");
-    if(about&&lower){ var wrap=document.createElement("div"); wrap.style.cssText="text-align:center;margin:16px 0 6px"; about.style.cssText="display:inline-flex;min-height:40px;padding:8px 18px;font-size:13px;opacity:.85"; wrap.appendChild(about); lower.appendChild(wrap); }
+    if(!about) return;
+    var lower=document.querySelector("#homeScreen .home-lower");
+    var host=document.querySelector("#homeScreen .home-content"); if(!host) return;
+    var wrap=document.createElement("div"); wrap.id="platAboutWrap";
+    wrap.style.cssText="text-align:center;margin:18px auto 10px;max-width:1000px;width:100%;clear:both";
+    about.style.cssText="display:inline-flex;min-height:40px;padding:8px 18px;font-size:13px;opacity:.85";
+    wrap.appendChild(about);
+    if(lower&&lower.parentNode) lower.parentNode.insertBefore(wrap, lower.nextSibling); else host.appendChild(wrap);
+    // single remaining tile pair stays centred; on desktop the club panel + recent grid is untouched
+    var st=document.createElement("style"); st.id="platLedgerLayout";
+    st.textContent="#homeScreen .menu-grid{max-width:1000px;margin-left:auto;margin-right:auto}";
+    document.head.appendChild(st);
   }
   var REGMAP=null;
   function regMap(){ if(REGMAP) return Promise.resolve(REGMAP); return acall({action:"list_register",pool_id:W.PLAT.pool,discipline:"padel"}).then(function(r){ REGMAP={}; ((r&&r.players)||[]).forEach(function(p){ REGMAP[p.full_name]=p.clubs||[]; }); return REGMAP; }).catch(function(){ return {}; }); }
@@ -9033,7 +9045,7 @@ async function clRemove(id, label){
     else if(W.PLAT.name&&ht){ ht.textContent="OPR · "+W.PLAT.name; document.title="OPR · "+W.PLAT.name; }
     chip();
     // version tag at the foot of every screen (OPR only prints it on Home/About)
-    try{ var vt=(typeof OPR_VERSION!=="undefined"?OPR_VERSION:"")+"  ·  shim p12"; document.querySelectorAll(".screen").forEach(function(s){ if(s.id==="homeScreen"||s.querySelector(".platVer")) return; var d=document.createElement("div"); d.className="platVer"; d.textContent=vt; d.style.cssText="text-align:center;color:#b3a9c4;font-size:10px;letter-spacing:.5px;margin:14px 0 8px"; s.appendChild(d); }); }catch(e){}
+    try{ var vt=(typeof OPR_VERSION!=="undefined"?OPR_VERSION:"")+"  ·  shim p13"; document.querySelectorAll(".screen").forEach(function(s){ if(s.id==="homeScreen"||s.querySelector(".platVer")) return; var d=document.createElement("div"); d.className="platVer"; d.textContent=vt; d.style.cssText="text-align:center;color:#b3a9c4;font-size:10px;letter-spacing:.5px;margin:14px 0 8px"; s.appendChild(d); }); }catch(e){}
     if(location.hash==="#enter"){ W.showScreen("entryScreen"); }
   });
 })();
