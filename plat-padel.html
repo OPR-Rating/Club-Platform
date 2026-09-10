@@ -735,7 +735,7 @@
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script>
 /* ============================================================================
-   PLAT EARLY SNIPPET — plat-padel.html  VERSION: PLAT-PADEL v2026.09.10-p27 (inside an organisation the club-scoped individuals read resolves to the ORG register, so org-registered people are pickable and their pairing rating shows) (p26: ledger profile list: the initial is an outlined circle in the club colour instead of a solid disc — less congested, same information) (p25: a group inside an ORGANISATION knows it: the chip under the hero goes back to the club door, not to a register that has no door) (p24: no "Club 1" flash: the register name is remembered and seeded into the key OPR paints from, and on a first visit the title is held back until it is known) (p23: fixes: no stale club-name flash when opening the door or ledger; manifest carries an explicit id so each register installs as its OWN app instead of "already installed") (p22: teardown: a standing backup warning on the panel and a "have you backed up?" line in every confirm) (p21: General Admin: a club "Delete…" opens the three-step teardown — matches, then members, then the club — each counted, each gated on the one before, each confirmed by typing the club name) (p20: every screen names its REGISTER: door "OPR · <register>", ledger "OPR · <register> · Ledger", club pages carry the register in the strapline, install names match — two registers open side by side can never be confused) (p19: empty register: the door explains where to create the first club; Recompute says so instead of firing with no club; door tiles use the stored club colour) (p18: install manifest rewritten once the club name is known — an installed icon reads "OPR · Kloof Padel Ballies", not "Club 2"; the door installs as "OPR · Clubs", the ledger as "OPR · Overall Ledger") (p17: ledger list: gender line dropped, club pill sits on its own line under the name) (p16: ledger only: profile avatars and the profile banner wear the club colour, with the club pill on the banner) (p15: remove_club now reports how many stranded members left the register with it) (p14: General Admin moved to the TOP of the Register; club colour is stored on the club (swatch picker); New club and Remove club; Recompute all ratings) (p13: fix: About sits AFTER the .home-lower grid instead of inside it — desktop ledger was splitting into two ragged columns) (p12: ledger: charcoal theme, "Overall Profile", club pills on profiles and recent matches, About below Recent; club pills colour-coded; "All clubs" chip centred under the hero; no duplicate version tag on Home, tag on the door) (p11: fix: 204 answers carry no body — "Failed to construct Response" after a delete; General Admin gets Delete) (p10: OPR Admin delete of a member/pair routed to delete_member — unlink from this club, drop from the register when no club remains) (p9: fix: PostgREST-only headers stripped on redirected function calls — "Failed to fetch" on Add member / pair birth) (p8: OPR Admin member add/edit and pair re-derive routed to plat_admin / plat_admin_padel) (p7: door: tiles clear the hero, padel-ball badges; Register moved to About in the Overall Ledger) (p6: Overall pairs ladder = every club's pair rows; version tag at the foot of every screen) (p5: REGISTER screen in the Overall Ledger: every player once with club pills; General Admin behind the register PIN via plat_admin v2) (p4: Overall = read-only ledger: no ✚ Enter, no Tournaments, no admin link; door re-styled) (p3: LANDING mode ?pool=P: hero + one button per club + Overall, nothing else; club pages carry an "‹ All clubs" chip instead of the strip)
+   PLAT EARLY SNIPPET — plat-padel.html  VERSION: PLAT-PADEL v2026.09.10-p29 (ledger profiles: each partnership shows the GROUP it belongs to, in that group's colour, instead of a generic category pill) (p28: the pairing-rating cache reads the whole register: one rating per person, so a partner from another group shows their rating instead of hiding the line) (p27: inside an organisation the club-scoped individuals read resolves to the ORG register, so org-registered people are pickable and their pairing rating shows) (p26: ledger profile list: the initial is an outlined circle in the club colour instead of a solid disc — less congested, same information) (p25: a group inside an ORGANISATION knows it: the chip under the hero goes back to the club door, not to a register that has no door) (p24: no "Club 1" flash: the register name is remembered and seeded into the key OPR paints from, and on a first visit the title is held back until it is known) (p23: fixes: no stale club-name flash when opening the door or ledger; manifest carries an explicit id so each register installs as its OWN app instead of "already installed") (p22: teardown: a standing backup warning on the panel and a "have you backed up?" line in every confirm) (p21: General Admin: a club "Delete…" opens the three-step teardown — matches, then members, then the club — each counted, each gated on the one before, each confirmed by typing the club name) (p20: every screen names its REGISTER: door "OPR · <register>", ledger "OPR · <register> · Ledger", club pages carry the register in the strapline, install names match — two registers open side by side can never be confused) (p19: empty register: the door explains where to create the first club; Recompute says so instead of firing with no club; door tiles use the stored club colour) (p18: install manifest rewritten once the club name is known — an installed icon reads "OPR · Kloof Padel Ballies", not "Club 2"; the door installs as "OPR · Clubs", the ledger as "OPR · Overall Ledger") (p17: ledger list: gender line dropped, club pill sits on its own line under the name) (p16: ledger only: profile avatars and the profile banner wear the club colour, with the club pill on the banner) (p15: remove_club now reports how many stranded members left the register with it) (p14: General Admin moved to the TOP of the Register; club colour is stored on the club (swatch picker); New club and Remove club; Recompute all ratings) (p13: fix: About sits AFTER the .home-lower grid instead of inside it — desktop ledger was splitting into two ragged columns) (p12: ledger: charcoal theme, "Overall Profile", club pills on profiles and recent matches, About below Recent; club pills colour-coded; "All clubs" chip centred under the hero; no duplicate version tag on Home, tag on the door) (p11: fix: 204 answers carry no body — "Failed to construct Response" after a delete; General Admin gets Delete) (p10: OPR Admin delete of a member/pair routed to delete_member — unlink from this club, drop from the register when no club remains) (p9: fix: PostgREST-only headers stripped on redirected function calls — "Failed to fetch" on Add member / pair birth) (p8: OPR Admin member add/edit and pair re-derive routed to plat_admin / plat_admin_padel) (p7: door: tiles clear the hero, padel-ball badges; Register moved to About in the Overall Ledger) (p6: Overall pairs ladder = every club's pair rows; version tag at the foot of every screen) (p5: REGISTER screen in the Overall Ledger: every player once with club pills; General Admin behind the register PIN via plat_admin v2) (p4: Overall = read-only ledger: no ✚ Enter, no Tournaments, no admin link; door re-styled) (p3: LANDING mode ?pool=P: hero + one button per club + Overall, nothing else; club pages carry an "‹ All clubs" chip instead of the strip)
    OPR-DOUBLES v2026.09.03-56 runs UNMODIFIED below (two marked hunks: the far CLUBS map and
    the install start_url). This snippet re-points every request at the PLATFORM:
      * host far -> OSR project (plat_ prefix), anon key swapped in the headers
@@ -802,6 +802,11 @@
     if(tbl==="clubs"){ if(pool) return {synthetic:[{id:0,name:(LANDING?(W.PLAT.poolName||"Clubs"):((W.PLAT.poolName?W.PLAT.poolName+" · ":"")+"Ledger")),admin_pin:null}]}; return "plat_clubs?"+qs; }
     if(tbl==="individuals"){
       var register=/select=id,full_name,gender,seed_rating(&|$)/.test(qs);
+      // p28: the RATING CACHE (select=id,full_name,seed_rating) must see the whole register, not one group.
+      // A person may play in several groups of the sport and carries ONE rating; scoping this to the group
+      // left a partner from another group with no rating, so the "New pairing · nnnn" line hid itself.
+      // The group's own member/profile list (…,gender,seed_rating,current_rating) stays group-scoped.
+      if(/select=id,full_name,seed_rating(&|$)/.test(qs)) register=true;
       // p27: inside an ORGANISATION the register lives above the group, so "this club's individuals" IS the
       // org register — that is the population you can pick in a match, and what the engine cache must see for
       // the pairing-rating line. Pools with no org (Kloof–Sun Fun, Sandbox) keep the club-scoped view.
@@ -3173,7 +3178,7 @@ const CLUB_NAME = _club.name;  // shown in the logo as "OPR · <name>"
     link.setAttribute('href', href);
   }catch(e){ /* install stays on the static manifest — no functional impact */ }
 })();
-const OPR_VERSION = "OPR-DOUBLES v2026.09.03-56 · PLAT replica p27";  // MANUAL PAIR CREATION REMOVED FROM ADMIN: Create a pair, Bulk create pairs and Re-derive all pairs are gone (they only made match-less ghost pairs, and Re-derive rewrote every stored initial club-wide). Pairs are born automatically at match entry. Current pairs list untouched; the underlying JS is left in place unreferenced, so no other code path changes. Includes v47 (set-score fix + double-tap guard) and all prior.
+const OPR_VERSION = "OPR-DOUBLES v2026.09.03-56 · PLAT replica p29";  // MANUAL PAIR CREATION REMOVED FROM ADMIN: Create a pair, Bulk create pairs and Re-derive all pairs are gone (they only made match-less ghost pairs, and Re-derive rewrote every stored initial club-wide). Pairs are born automatically at match entry. Current pairs list untouched; the underlying JS is left in place unreferenced, so no other code path changes. Includes v47 (set-score fix + double-tap guard) and all prior.
 // Explanation shown above the individual ladder. Open on load so it's read; collapsible
 // (state kept for the session) and scrolls away. Mechanics only — no outcome framing, so
 // members aren't nudged away from playing stronger opponents. Every clause maps to a real
@@ -8897,7 +8902,7 @@ async function clRemove(id, label){
       +cs.map(function(c,i){ return card(c.id,c.name,"Ratings · pairs · scores · tournaments",clubPal(c.id),BALL); }).join("")
       +card(0,"Overall Ledger","Every player across the clubs — one rating each · ladders and stats only",LEDGER,BALL)
       +'<div style="text-align:center;font-size:12px;color:#7a6f8a;margin:8px 0 14px;line-height:1.5">One register · one rating per player<br>Each club keeps its own pairs, matches, tournaments and stats</div>'
-      +'<div style="text-align:center;color:#b3a9c4;font-size:10px;letter-spacing:.5px;margin:0 0 10px">'+esc((typeof OPR_VERSION!=="undefined"?OPR_VERSION:"")+"  ·  shim p27")+'</div>';
+      +'<div style="text-align:center;color:#b3a9c4;font-size:10px;letter-spacing:.5px;margin:0 0 10px">'+esc((typeof OPR_VERSION!=="undefined"?OPR_VERSION:"")+"  ·  shim p29")+'</div>';
     host.insertBefore(d,host.firstChild);
   }
   /* OVERALL: read-only ledger — no score entry, no tournaments, no admin link */
@@ -8948,6 +8953,35 @@ async function clRemove(id, label){
     }); }); };
     new MutationObserver(paint).observe(list,{childList:true}); paint();
   }
+  /* p29 (ledger only): on a profile's Partnerships list, the category pill becomes the GROUP the pair
+     belongs to, in that group's colour — so a player who plays at two groups can see at a glance which
+     partnership belongs where. The pair is a group row, so the answer is simply its club_id. */
+  var PAIRCLUB=null;
+  function pairClubs(){
+    if(PAIRCLUB) return Promise.resolve(PAIRCLUB);
+    return fetch("https://djmbnvikrdgnomjhtkgf.supabase.co/rest/v1/plat_players?pool_id=eq."+W.PLAT.pool+"&discipline=eq.padel&select=name,club_id")
+      .then(function(r){return r.json();}).then(function(rows){ PAIRCLUB={};
+        (Array.isArray(rows)?rows:[]).forEach(function(p){ PAIRCLUB[p.name]=p.club_id; }); return PAIRCLUB; })
+      .catch(function(){ return {}; });
+  }
+  function partnershipPills(){
+    var card=document.getElementById("partnershipsCard"); if(!card) return;
+    var paint=function(){
+      var pills=card.querySelectorAll(".odr-cat-pill:not([data-plat])"); if(!pills.length) return;
+      pairClubs().then(function(map){
+        card.querySelectorAll(".odr-cat-pill:not([data-plat])").forEach(function(pill){
+          var head=pill.parentElement; if(!head) return;
+          var nameEl=head.querySelector("span"); if(!nameEl) return;
+          var cid=map[nameEl.textContent.trim()]; if(cid==null) return;
+          var c=(W.PLAT.clubs||[]).find(function(x){return x.id===cid;}); if(!c) return;
+          var col=clubPal(cid)[0];
+          pill.dataset.plat="1"; pill.textContent=c.name;
+          pill.style.cssText="background:"+col+";color:#fff;border-radius:99px;padding:2px 10px;font-size:11px;font-weight:700;white-space:nowrap";
+        });
+      });
+    };
+    new MutationObserver(paint).observe(card,{childList:true,subtree:true}); paint();
+  }
   /* p16 (ledger only): the profile banner takes the club's colour, darkened for white-text contrast */
   function profileHero(){
     var card=document.getElementById("partnershipsCard"); if(!card) return;
@@ -8978,7 +9012,7 @@ async function clRemove(id, label){
     Array.prototype.forEach.call(document.querySelectorAll("#homeScreen .menu-btn"),function(b){ if(/tournamentScreen/.test(b.getAttribute("onclick")||"")) b.style.display="none"; });
     Array.prototype.forEach.call(document.querySelectorAll("button[onclick='openAdmin()']"),function(b){ b.style.display="none"; });
     var st=document.createElement("style"); st.textContent="#homeScreen .menu-grid{grid-template-columns:1fr 1fr !important}"; document.head.appendChild(st);
-    ledgerTheme(); ledgerLayout(); recentColours(); profilePills(); profileHero();
+    ledgerTheme(); ledgerLayout(); recentColours(); profilePills(); profileHero(); partnershipPills();
   }
   /* ===== REGISTER (Overall Ledger only): every player once, rating + club pills; General Admin behind the register PIN ===== */
   var REG={players:[],clubs:[],pin:"",role:"",sort:"name",q:""};
@@ -9248,7 +9282,7 @@ async function clRemove(id, label){
       if(sb && W.PLAT.poolName) sb.textContent=W.PLAT.poolName+" · Open Padel Ratings System"; }
     chip();
     // version tag at the foot of every screen (OPR only prints it on Home/About)
-    try{ var vt=(typeof OPR_VERSION!=="undefined"?OPR_VERSION:"")+"  ·  shim p27"; document.querySelectorAll(".screen").forEach(function(s){ if(s.id==="homeScreen"||s.querySelector(".platVer")) return; var d=document.createElement("div"); d.className="platVer"; d.textContent=vt; d.style.cssText="text-align:center;color:#b3a9c4;font-size:10px;letter-spacing:.5px;margin:14px 0 8px"; s.appendChild(d); }); }catch(e){}
+    try{ var vt=(typeof OPR_VERSION!=="undefined"?OPR_VERSION:"")+"  ·  shim p29"; document.querySelectorAll(".screen").forEach(function(s){ if(s.id==="homeScreen"||s.querySelector(".platVer")) return; var d=document.createElement("div"); d.className="platVer"; d.textContent=vt; d.style.cssText="text-align:center;color:#b3a9c4;font-size:10px;letter-spacing:.5px;margin:14px 0 8px"; s.appendChild(d); }); }catch(e){}
     if(location.hash==="#enter"){ W.showScreen("entryScreen"); }
   });
 })();
