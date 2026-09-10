@@ -13,6 +13,9 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 <!--
+  VERSION: PLAT-HUB v2026.09.10-h2  (register does the whole job in one place: name, gender, which groups
+  they join, and their starting rating in each sport that implies — instead of leaving them on the non-player
+  default. Colour is a swatch, not a hex to type.)
   VERSION: PLAT-HUB v2026.09.10-h1
   THE ORGANISATION DOOR.  organisation → discipline → group
     ORGANISATION (this page)  the customer: one register of people, discipline toggles, group creation.
@@ -95,6 +98,14 @@ input,select{width:100%;padding:10px 11px;border:1px solid var(--line);border-ra
 .pill{display:inline-block;background:var(--pcol,#ddd);color:#fff;border-radius:99px;padding:2px 8px;
       font-size:10.5px;font-weight:700;margin:2px 3px 0 0;white-space:nowrap}
 .rate{font-size:11.5px;color:var(--ink-soft)}
+.sws{display:flex;flex-wrap:wrap;gap:7px;margin:2px 0 4px}
+.swb{width:28px;height:28px;border-radius:50%;border:2px solid transparent;cursor:pointer;padding:0}
+.swb[aria-pressed="true"]{border-color:var(--ink)}
+.chk{display:flex;align-items:center;gap:8px;padding:7px 0;border-bottom:1px solid var(--line-2);font-size:14px}
+.chk input{width:auto}
+.seed{display:flex;align-items:center;gap:8px;margin:6px 0}
+.seed span{flex:1;font-size:13px}
+.seed input{width:110px}
 .foot{margin-top:22px;font-size:11px;color:var(--ink-soft);letter-spacing:.02em;text-align:center}
 @media (prefers-reduced-motion:reduce){*{transition:none!important}}
 </style>
@@ -109,7 +120,7 @@ input,select{width:100%;padding:10px 11px;border:1px solid var(--line);border-ra
   <div class="plaques" id="plaques"></div>
   <section class="board"><div class="btitle">Around the club</div><div id="rows"></div></section>
   <section id="adminBox"></section>
-  <div class="foot" id="ver">PLAT-HUB h1</div>
+  <div class="foot" id="ver">PLAT-HUB h2</div>
 </div>
 
 <script>
@@ -126,7 +137,8 @@ var SPORTS={
   bowls :{label:"Bowls",  initials:"BW", colour:"var(--bowls)",  parent:"OBR", replica:null},
   mdr   :{label:"Masters Squash", initials:"MS", colour:"var(--mdr)", parent:"MDR", replica:null}
 };
-var S={org:null,shape:[],all:[],rows:[],pools:{},admin:"",role:"",people:[],groups:[]};
+var PALETTE=["#6c3483","#1f7a8c","#b5651d","#2e7d32","#c2185b","#455a64","#8e24aa","#00695c","#ad1457","#4e342e","#283593","#827717"];
+var S={newCol:"#6c3483",org:null,shape:[],all:[],rows:[],pools:{},admin:"",role:"",people:[],groups:[]};
 
 function esc(s){ return String(s==null?"":s).replace(/[&<>"']/g,function(c){return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c];}); }
 function fn(body){ return fetch(SB+"/functions/v1/plat_admin",{method:"POST",headers:{"Content-Type":"application/json",apikey:ANON,Authorization:"Bearer "+ANON},body:JSON.stringify(body)}).then(function(r){return r.json();}); }
@@ -238,12 +250,19 @@ function renderAdmin(){
   h+='<div class="label">New group</div><div class="ahint" style="margin:0 0 6px">A group runs itself — its own code, colour, ladder and tournaments — and shares the sport\'s ratings with the other groups.</div>'
     +'<div class="field"><select id="gDisc">'+S.shape.map(function(x){ return '<option value="'+x.discipline+'">'+esc(SP(x.discipline).label)+'</option>'; }).join("")+'</select></div>'
     +'<div class="row2"><div class="field"><input id="gName" placeholder="Group name"></div><div class="field"><input id="gPin" inputmode="numeric" placeholder="Its code"></div></div>'
-    +'<div class="field"><input id="gCol" placeholder="Colour (e.g. #c2185b)"></div>'
+    +'<div class="label" style="margin-top:6px">Group colour</div><div class="sws" id="gSws">'
+    +PALETTE.map(function(c,i){ return '<button class="swb" style="background:'+c+'" aria-pressed="'+(i===0)+'" onclick="pickCol(\''+c+'\')"></button>'; }).join("")+'</div>'
     +'<button class="btn" onclick="newGroup()">Create group</button>';
-  h+='<div class="label">Register a member</div><div class="ahint" style="margin:0 0 6px">Registered once for the whole club. They appear in a sport only when you add them to one of its groups.</div>'
+  var allG=[]; S.shape.forEach(function(x){ (x.groups||[]).forEach(function(g){ allG.push({id:g.id,name:g.name,d:x.discipline,colour:g.colour}); }); });
+  h+='<div class="label">Register a member</div><div class="ahint" style="margin:0 0 6px">Registered once for the whole club. Tick the groups they play in — that is what gives them a rating in that sport. Leave all unticked to register them now and add them later.</div>'
     +'<div class="row2"><div class="field"><input id="mName" placeholder="Full name"></div>'
-    +'<div class="field"><select id="mSex"><option value="M">Male</option><option value="F">Female</option></select></div></div>'
-    +'<button class="btn" onclick="newMember()">Register</button>';
+    +'<div class="field"><select id="mSex" onchange="seedDefaults()"><option value="M">Male</option><option value="F">Female</option></select></div></div>';
+  if(allG.length){
+    h+='<div class="label" style="margin-top:4px">Groups</div>'
+      +allG.map(function(g){ return '<label class="chk"><input type="checkbox" class="mg" value="'+g.id+'" data-d="'+g.d+'" onchange="seedRows()"><span style="flex:1">'+esc(g.name)+' <span class="rate">'+esc(SP(g.d).label)+'</span></span></label>'; }).join("")
+      +'<div id="seedRows"></div>';
+  } else { h+='<div class="ahint">No groups yet — create one above and they can join it.</div>'; }
+  h+='<button class="btn" onclick="newMember()">Register</button>';
   h+='<div class="label">Members ('+S.people.length+')</div><div id="people" class="people"></div>';
   h+='<div class="msg" id="aMsg"></div></div>';
   box.innerHTML=h;
@@ -286,20 +305,50 @@ function toggleSport(d,on){
     refreshShape().then(function(){ renderAdmin(); say(SP(d).label+(on?" is on.":" is off — its history is kept."),true); });
   });
 }
+function pickCol(c){ S.newCol=c; Array.prototype.forEach.call(document.querySelectorAll("#gSws .swb"),function(b){ b.setAttribute("aria-pressed", b.style.backgroundColor===hexToRgb(c) || b.style.background===c); }); }
+function hexToRgb(h){ var n=parseInt(h.slice(1),16); return "rgb("+((n>>16)&255)+", "+((n>>8)&255)+", "+(n&255)+")"; }
 function newGroup(){
   var d=val("gDisc"), n=val("gName"); if(!n) return say("Group name required.",false);
   say("Creating…",true);
-  fn({action:"add_group",org_id:ORG,admin_pin:S.admin,discipline:d,name:n,admin_pin_new:val("gPin"),colour:val("gCol")}).then(function(r){
+  fn({action:"add_group",org_id:ORG,admin_pin:S.admin,discipline:d,name:n,admin_pin_new:val("gPin"),colour:S.newCol}).then(function(r){
     if(!r||!r.ok) return say((r&&r.error)||"Failed.",false);
     refreshShape().then(function(){ renderAdmin(); say("Created "+n+".",true); });
   });
 }
+/* the ticked groups decide which sports need a starting rating; one box per sport, prefilled by gender */
+function tickedGroups(){ return Array.prototype.map.call(document.querySelectorAll(".mg:checked"),function(c){ return {id:parseInt(c.value,10), d:c.getAttribute("data-d")}; }); }
+function seedRows(){
+  var box=document.getElementById("seedRows"); if(!box) return;
+  var ds=[]; tickedGroups().forEach(function(g){ if(ds.indexOf(g.d)<0) ds.push(g.d); });
+  var g=val("mSex")==="F"?1300:1500;
+  box.innerHTML = ds.length ? ('<div class="label" style="margin-top:6px">Starting rating</div>'
+    +ds.map(function(d){ var cur=document.getElementById("sd_"+d); var v=cur?cur.value:g;
+        return '<div class="seed"><span>'+esc(SP(d).label)+'</span><input id="sd_'+d+'" type="number" value="'+v+'"></div>'; }).join("")) : "";
+}
+function seedDefaults(){
+  var g=val("mSex")==="F"?1300:1500;
+  Array.prototype.forEach.call(document.querySelectorAll('[id^="sd_"]'),function(i){ i.value=g; });
+}
 function newMember(){
   var n=val("mName"); if(!n) return say("Name required.",false);
+  var gs=tickedGroups();
   say("Registering…",true);
   fn({action:"add_org_member",org_id:ORG,admin_pin:S.admin,full_name:n,gender:val("mSex")}).then(function(r){
     if(!r||!r.ok) return say((r&&r.error)||"Failed.",false);
-    loadPeople().then(function(){ renderAdmin(); say(r.linked?(n+" was already registered."):("Registered "+n+"."),true); });
+    var iid=r.member.id, was=r.linked;
+    if(!gs.length) return loadPeople().then(function(){ renderAdmin(); say(was?(n+" was already registered."):("Registered "+n+" — add them to a group when they start playing."),true); });
+    var jobs=gs.map(function(g){ return fn({action:"add_membership",club_id:g.id,admin_pin:S.admin,individual_id:iid}); });
+    Promise.all(jobs).then(function(){
+      var ds=[]; gs.forEach(function(g){ if(ds.indexOf(g.d)<0) ds.push(g.d); });
+      var seeds={}; ds.forEach(function(d){ var e=document.getElementById("sd_"+d); if(e&&e.value!=="") seeds[d]=Number(e.value); });
+      var anyClub=gs[0].id;
+      return Object.keys(seeds).length
+        ? fn({action:"edit_member",club_id:anyClub,admin_pin:S.admin,individual_id:iid,seeds:seeds})
+        : true;
+    }).then(function(){
+      loadPeople().then(function(){ renderAdmin();
+        say((was?n+" linked to ":"Registered "+n+" into ")+gs.length+" group"+(gs.length===1?"":"s")+".",true); });
+    });
   });
 }
 function addToGroup(iid){
