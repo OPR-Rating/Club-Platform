@@ -13,6 +13,8 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 <!--
+  VERSION: PLAT-HUB v2026.09.10-h5  (Around the club: rows open like the group boards do — set-score pills and
+  totals — the group is a coloured pill, and the names no longer run into the date.)
   VERSION: PLAT-HUB v2026.09.10-h4  (a score is entered inside the group, as everywhere else — the front page
   no longer offers it. The ledger button says what it is.)
   VERSION: PLAT-HUB v2026.09.10-h3  (register works like the rest of the family: ONE entry — name, gender,
@@ -78,8 +80,13 @@ header{padding:30px 0 18px}
 .btitle{font-family:var(--display);font-weight:700;font-size:15px;letter-spacing:-.01em;margin-bottom:9px}
 .row{display:flex;align-items:center;gap:11px;padding:10px 12px;background:var(--panel);
      border:1px solid var(--line);border-left:3px solid var(--sport);border-radius:var(--radius);margin-bottom:7px}
-.rwho{font-size:13.5px;font-weight:500;line-height:1.35}
-.rwhen{font-size:11.5px;color:var(--ink-soft);margin-top:2px}
+.rwho{display:block;font-size:13.5px;font-weight:500;line-height:1.35}
+.rwhen{display:block;font-size:11.5px;color:var(--ink-soft);margin-top:3px}
+.gpill{display:inline-block;background:var(--sport);color:#fff;border-radius:99px;padding:1px 8px;font-size:10.5px;font-weight:700;margin-right:6px;vertical-align:middle}
+.rcar{margin-left:8px;color:var(--ink-soft);font-size:11px}
+.rdet{display:none;margin-top:8px;padding-top:8px;border-top:1px dashed var(--line);text-align:center}
+.spill{display:inline-block;background:var(--sport);color:#fff;border-radius:var(--radius);padding:3px 10px;margin:0 3px;font-size:12.5px;font-weight:700}
+.rtot{font-size:11.5px;color:var(--ink-soft);margin-top:5px}
 .rscore{margin-left:auto;font-weight:700;font-size:14px;color:var(--sport);white-space:nowrap}
 .adm{margin-top:26px;border:1px solid var(--line);border-radius:var(--radius);background:var(--panel);padding:14px}
 .atitle{font-family:var(--display);font-weight:700;font-size:15px;margin-bottom:4px}
@@ -125,7 +132,7 @@ input,select{width:100%;padding:10px 11px;border:1px solid var(--line);border-ra
   <div class="plaques" id="plaques"></div>
   <section class="board"><div class="btitle">Around the club</div><div id="rows"></div></section>
   <section id="adminBox"></section>
-  <div class="foot" id="ver">PLAT-HUB h4</div>
+  <div class="foot" id="ver">PLAT-HUB h5</div>
 </div>
 
 <script>
@@ -205,22 +212,44 @@ function loadRows(){
   var ids=Object.keys(S.pools); var host=document.getElementById("rows");
   if(!ids.length){ host.innerHTML='<div class="empty" style="padding:0">Nothing played yet.</div>'; return; }
   Promise.all([
-    rest("plat_matches?pool_id=in.("+ids.join(",")+")&select=club_id,discipline,match_date,match_type,t1p1,t1p2,t2p1,t2p2,t1_sets,t2_sets,t1_games,t2_games,ends,display_t1,display_t2&order=match_date.desc,id.desc&limit=8"),
+    rest("plat_matches?pool_id=in.("+ids.join(",")+")&select=id,club_id,discipline,match_date,match_type,event,t1p1,t1p2,t2p1,t2p2,t1_sets,t2_sets,t1_games,t2_games,ends,peel,set_scores,display_t1,display_t2&order=match_date.desc,id.desc&limit=10"),
     rest("plat_clubs?pool_id=in.("+ids.join(",")+")&select=id,name,colour")
   ]).then(function(res){
     var ms=Array.isArray(res[0])?res[0]:[], gs=Array.isArray(res[1])?res[1]:[];
     var gById={}; gs.forEach(function(g){ gById[g.id]=g; });
     if(!ms.length){ host.innerHTML='<div class="empty" style="padding:0">Nothing played yet.</div>'; return; }
-    host.innerHTML=ms.map(function(m){
+    S.rows=ms; S.gById=gById;
+    host.innerHTML=ms.map(function(m,i){
       var s=SP(m.discipline), g=gById[m.club_id]||{name:"",colour:s.colour};
       var side=function(a,b){ var out=[a,b].filter(function(v){ return v && String(v).toLowerCase()!=="null"; }); return esc(out.join(" & ")); };
       var who=(m.display_t1?esc(m.display_t1):side(m.t1p1,m.t1p2))+' <span style="color:var(--ink-soft)">v</span> '+(m.display_t2?esc(m.display_t2):side(m.t2p1,m.t2p2));
       var score=(m.discipline==="bowls") ? ((m.t1_games||0)+"–"+(m.t2_games||0)) : ((m.t1_sets||0)+"–"+(m.t2_sets||0));
-      return '<div class="row" style="--sport:'+(g.colour||s.colour)+'"><span><span class="rwho">'+who+'</span>'
-        +'<span class="rwhen">'+esc(g.name)+' · '+esc(s.label)+' · '+esc(m.match_date||"")+'</span></span>'
-        +'<span class="rscore">'+score+'</span></div>';
+      var ev=(m.event||"").trim(); var tag=(ev&&ev.toLowerCase()!=="social")?(' · '+esc(ev)):"";
+      return '<div class="row" style="--sport:'+(g.colour||s.colour)+';cursor:pointer;display:block" onclick="toggleRow('+i+')">'
+        +'<div style="display:flex;align-items:flex-start;gap:11px"><span style="flex:1;min-width:0">'
+        +'<span class="rwho">'+who+'</span>'
+        +'<span class="rwhen"><span class="gpill">'+esc(g.name)+'</span>'+esc(s.label)+' · '+esc(m.match_date||"")+tag
+        +'<span class="rcar" id="rc'+i+'">\u25bc</span></span></span>'
+        +'<span class="rscore">'+score+'</span></div>'
+        +'<div class="rdet" id="rd'+i+'"></div></div>';
     }).join("");
   }).catch(function(){ host.innerHTML='<div class="empty" style="padding:0">Could not load recent matches.</div>'; });
+}
+
+function toggleRow(i){
+  var d=document.getElementById("rd"+i), c=document.getElementById("rc"+i), m=(S.rows||[])[i];
+  if(!d||!m) return;
+  if(d.style.display==="block"){ d.style.display="none"; if(c) c.textContent="\u25bc"; return; }
+  var s=SP(m.discipline);
+  var ss=(m.set_scores||"").trim();
+  var pills=ss ? ss.split(",").map(function(x){return x.trim();}).filter(Boolean)
+                   .map(function(sc){ return '<span class="spill">'+esc(sc.replace("-","/"))+'</span>'; }).join("")
+               : '<span class="rtot">Game scores not recorded for this match</span>';
+  var line=(m.discipline==="bowls")
+    ? ("Shots: "+(m.t1_games||0)+"\u2013"+(m.t2_games||0)+(m.ends?("  \u00b7  Ends: "+m.ends):"")+(m.peel?"  \u00b7  peel":""))
+    : ("Sets: "+(m.t1_sets||0)+"\u2013"+(m.t2_sets||0)+"  \u00b7  Games: "+(m.t1_games||0)+"\u2013"+(m.t2_games||0));
+  d.innerHTML=pills+'<div class="rtot">'+esc(m.match_type||"")+(m.match_type?"  \u00b7  ":"")+line+'</div>';
+  d.style.display="block"; if(c) c.textContent="\u25b2";
 }
 
 /* ── club admin ───────────────────────────────────────────── */
