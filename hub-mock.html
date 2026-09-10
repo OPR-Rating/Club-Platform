@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Belfore Athletic — door mock</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;600&family=Archivo:wght@500;600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+/* ── MOCK ONLY. No data, no links. Two themes; the switch at the foot is not part of the design. ──
+   Levels:  ORGANISATION (this page's dress)  →  DISCIPLINE (the passage)  →  GROUP (opens OPR/OTR/OBR, their own brand) */
+:root{
+  --padel:#174D8C; --tennis:#185A33; --bowls:#2E5E3A; --squash:#A33E06;
+  --ease:cubic-bezier(.2,.7,.3,1);
+}
+/* A — HONOUR BOARD */
+body[data-t="a"]{
+  --ground:#12211C; --ground-2:#0C1713; --panel:#182C25; --line:#2A473C;
+  --ink:#EFE9DA; --ink-soft:#A9B7AE; --accent:#C9A44C; --plaque:#1D3329;
+  --display:'Cinzel',Georgia,serif; --body:'Inter',system-ui,sans-serif;
+  --disp-weight:600; --disp-track:.06em; --disp-size:29px; --radius:3px;
+}
+/* B — FIXTURE CARD */
+body[data-t="b"]{
+  --ground:#FBFAF7; --ground-2:#F2EFE9; --panel:#FFFFFF; --line:#DCD6C9;
+  --ink:#16243D; --ink-soft:#6C7789; --accent:#16243D; --plaque:#FFFFFF;
+  --display:'Archivo',system-ui,sans-serif; --body:'Inter',system-ui,sans-serif;
+  --disp-weight:700; --disp-track:-.02em; --disp-size:34px; --radius:2px;
+}
+*{box-sizing:border-box}
+html,body{margin:0}
+body{background:var(--ground);color:var(--ink);font-family:var(--body);-webkit-font-smoothing:antialiased;
+     padding:0 0 40px;transition:background .3s var(--ease),color .3s var(--ease)}
+.wrap{max-width:520px;margin:0 auto;padding:0 18px}
+
+/* ── masthead ─────────────────────────────────────────────── */
+header{padding:34px 0 22px;position:relative}
+body[data-t="a"] header{background:
+  radial-gradient(120% 80% at 50% 0%,#1B3129 0%,var(--ground) 60%)}
+.club{font-family:var(--display);font-weight:var(--disp-weight);letter-spacing:var(--disp-track);
+      font-size:var(--disp-size);line-height:1.1;margin:0}
+body[data-t="a"] .club{color:var(--accent);text-shadow:0 1px 0 rgba(0,0,0,.5)}
+.since{font-size:12.5px;color:var(--ink-soft);margin-top:7px;letter-spacing:.01em}
+.rule{height:1px;background:var(--line);margin:18px 0 0}
+body[data-t="b"] .rule{height:3px;background:var(--ink)}
+
+/* ── discipline plaques ───────────────────────────────────── */
+.plaques{margin-top:20px;display:flex;flex-direction:column;gap:12px}
+.plaque{background:var(--plaque);border:1px solid var(--line);border-radius:var(--radius);
+        border-left:5px solid var(--sport);overflow:hidden}
+body[data-t="a"] .plaque{box-shadow:inset 0 1px 0 rgba(255,255,255,.05),0 6px 18px rgba(0,0,0,.35)}
+body[data-t="b"] .plaque{box-shadow:none}
+.plaque > button{all:unset;display:flex;align-items:center;gap:14px;width:100%;
+        padding:16px 16px;cursor:pointer;box-sizing:border-box}
+.plaque > button:focus-visible{outline:2px solid var(--accent);outline-offset:-3px}
+.badge{width:38px;height:38px;flex:0 0 38px;border-radius:50%;background:var(--sport);
+       display:flex;align-items:center;justify-content:center;color:#fff;font-weight:700;font-size:13px}
+body[data-t="b"] .badge{border-radius:var(--radius)}
+.pname{font-family:var(--display);font-weight:var(--disp-weight);font-size:19px;letter-spacing:.01em;line-height:1.15}
+body[data-t="a"] .pname{color:var(--ink)}
+.pmeta{font-size:12.5px;color:var(--ink-soft);margin-top:3px}
+.chev{margin-left:auto;color:var(--ink-soft);font-size:20px;transition:transform .25s var(--ease)}
+.plaque.open .chev{transform:rotate(90deg)}
+
+/* ── the passage: groups under a discipline ───────────────── */
+.passage{display:grid;grid-template-rows:0fr;transition:grid-template-rows .28s var(--ease)}
+.plaque.open .passage{grid-template-rows:1fr}
+.passage > div{overflow:hidden}
+.pinner{border-top:1px solid var(--line);padding:4px 0 10px}
+.grp{display:flex;align-items:center;gap:12px;padding:11px 16px;cursor:pointer;border-bottom:1px solid var(--line)}
+.grp:last-of-type{border-bottom:none}
+.grp:hover{background:var(--ground-2)}
+.tick{width:8px;height:8px;border-radius:50%;background:var(--sport);flex:0 0 8px;opacity:.85}
+.gname{font-weight:600;font-size:15px}
+.gmeta{font-size:12px;color:var(--ink-soft);margin-top:2px}
+.gopen{margin-left:auto;font-size:12.5px;color:var(--ink-soft)}
+.ptools{display:flex;gap:10px;padding:12px 16px 4px}
+.tool{flex:1;text-align:center;padding:11px 8px;border:1px solid var(--line);border-radius:var(--radius);
+      font-size:13.5px;font-weight:600;cursor:pointer;background:transparent;color:var(--ink);font-family:var(--body)}
+.tool.primary{background:var(--sport);border-color:var(--sport);color:#fff}
+.tool:hover{border-color:var(--ink-soft)}
+
+/* ── board strip ──────────────────────────────────────────── */
+.board{margin-top:26px}
+.bhead{display:flex;align-items:baseline;justify-content:space-between;margin-bottom:10px}
+.btitle{font-family:var(--display);font-weight:var(--disp-weight);font-size:15px;letter-spacing:.02em}
+.ball{font-size:12.5px;color:var(--ink-soft);cursor:pointer}
+.row{display:flex;align-items:center;gap:12px;padding:10px 12px;border-left:3px solid var(--sport);
+     background:var(--panel);border-radius:var(--radius);margin-bottom:7px;border:1px solid var(--line);border-left-width:3px}
+.rwho{font-size:13.5px;font-weight:500}
+.rwhen{font-size:11.5px;color:var(--ink-soft);margin-top:2px}
+.rscore{margin-left:auto;font-weight:700;font-size:14px;color:var(--sport)}
+body[data-t="a"] .rscore{color:var(--accent)}
+.foot{margin-top:26px;font-size:12px;color:var(--ink-soft);line-height:1.6}
+
+/* ── theme switch (mock furniture, not design) ────────────── */
+.sw{position:fixed;left:0;right:0;bottom:0;background:var(--panel);border-top:1px solid var(--line);
+    display:flex;gap:8px;justify-content:center;padding:9px}
+.sw button{font:600 12px var(--body);padding:7px 14px;border-radius:99px;border:1px solid var(--line);
+    background:transparent;color:var(--ink);cursor:pointer}
+.sw button[aria-pressed="true"]{background:var(--ink);color:var(--ground);border-color:var(--ink)}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+</head>
+<body data-t="a">
+<div class="wrap">
+
+  <header>
+    <h1 class="club">Belfore Athletic</h1>
+    <div class="since">Padel · Tennis · Bowls — one register, one rating per sport</div>
+    <div class="rule"></div>
+  </header>
+
+  <div class="plaques" id="plaques"></div>
+
+  <section class="board">
+    <div class="bhead"><div class="btitle">Around the club</div><div class="ball">All groups</div></div>
+    <div id="rows"></div>
+  </section>
+
+  <p class="foot">Mock only — nothing here is wired to data.<br>
+     Tap a sport to see its groups; a group opens its own app, which keeps its own colours.</p>
+</div>
+
+<div class="sw">
+  <button id="ta" aria-pressed="true">Honour board</button>
+  <button id="tb" aria-pressed="false">Fixture card</button>
+</div>
+
+<script>
+const SPORTS = [
+  { key:'padel',  name:'Padel',  colour:'var(--padel)',  initials:'PD', app:'OPR',
+    groups:[ {n:'Tuesday Ladies', m:'18 members · played Tuesday'},
+             {n:'Belfore Ballies', m:'24 members · played yesterday'},
+             {n:'Belfore Sun Fun', m:'20 members · played Sunday'} ] },
+  { key:'tennis', name:'Tennis', colour:'var(--tennis)', initials:'TN', app:'OTR',
+    groups:[ {n:'Saturday Serve', m:'31 members · played Saturday'},
+             {n:'Monday Smash',   m:'16 members · played Monday'} ] },
+  { key:'bowls',  name:'Bowls',  colour:'var(--bowls)',  initials:'BW', app:'OBR',
+    groups:[ {n:"Wednesday 2's", m:'22 members · played Wednesday'},
+             {n:'Thursday Trips', m:'19 members · no games yet'} ] }
+];
+const ROWS = [
+  { s:'padel',  who:'Bella Nkosi & Dawn Sharp beat Iris Owen & Ruby Gray', when:'Tuesday Ladies · yesterday', sc:'2–1' },
+  { s:'bowls',  who:"Kruger, Naidoo, Botha  v  Smit, Peters, Lourens",     when:"Wednesday 2's · Wednesday", sc:'21–14' },
+  { s:'tennis', who:'Marc Tostee beat Grant Verster',                      when:'Saturday Serve · Saturday', sc:'6–3 6–4' }
+];
+
+const esc = s => String(s).replace(/[&<>]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]));
+
+document.getElementById('plaques').innerHTML = SPORTS.map((s,i) => `
+  <div class="plaque${i===0?' open':''}" style="--sport:${s.colour}">
+    <button aria-expanded="${i===0}">
+      <span class="badge">${s.initials}</span>
+      <span>
+        <span class="pname">${s.name}</span>
+        <span class="pmeta">${s.groups.length} groups · rated by ${s.app}</span>
+      </span>
+      <span class="chev">›</span>
+    </button>
+    <div class="passage"><div><div class="pinner">
+      ${s.groups.map(g => `
+        <div class="grp">
+          <span class="tick"></span>
+          <span><span class="gname">${esc(g.n)}</span><span class="gmeta">${esc(g.m)}</span></span>
+          <span class="gopen">Open ›</span>
+        </div>`).join('')}
+      <div class="ptools">
+        <button class="tool primary">Enter a score</button>
+        <button class="tool">${s.name} ledger</button>
+      </div>
+    </div></div></div>
+  </div>`).join('');
+
+document.getElementById('rows').innerHTML = ROWS.map(r => {
+  const s = SPORTS.find(x => x.key === r.s);
+  return `<div class="row" style="--sport:${s.colour}">
+    <span><span class="rwho">${esc(r.who)}</span><span class="rwhen">${esc(r.when)}</span></span>
+    <span class="rscore">${r.sc}</span></div>`;
+}).join('');
+
+document.querySelectorAll('.plaque > button').forEach(b => b.addEventListener('click', () => {
+  const p = b.parentElement, open = p.classList.toggle('open');
+  b.setAttribute('aria-expanded', open);
+}));
+
+const setT = t => {
+  document.body.dataset.t = t;
+  ta.setAttribute('aria-pressed', t === 'a'); tb.setAttribute('aria-pressed', t === 'b');
+};
+ta.onclick = () => setT('a'); tb.onclick = () => setT('b');
+</script>
+</body>
+</html>
