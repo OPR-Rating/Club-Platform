@@ -13,6 +13,7 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 <!--
+  VERSION: PLAT-HUB v2026.09.10-h7  (tennis is wired: its groups open plat-tennis.html and its ledger works)
   VERSION: PLAT-HUB v2026.09.10-h6  (nothing opens itself: every sport starts closed, and Club admin sits behind
   a quiet link with a short explanation of what the code opens.)
   VERSION: PLAT-HUB v2026.09.10-h5  (Around the club: rows open like the group boards do — set-score pills and
@@ -134,7 +135,7 @@ input,select{width:100%;padding:10px 11px;border:1px solid var(--line);border-ra
   <div class="plaques" id="plaques"></div>
   <section class="board"><div class="btitle">Around the club</div><div id="rows"></div></section>
   <section id="adminBox"></section>
-  <div class="foot" id="ver">PLAT-HUB h6</div>
+  <div class="foot" id="ver">PLAT-HUB h7</div>
 </div>
 
 <script>
@@ -146,7 +147,7 @@ var ORG=(function(){ var m=(location.search||"").match(/[?&]org=(\d+)/); return 
 /* SPORT REGISTRY — the only place a sport is described. A sport with no replica yet says so plainly. */
 var SPORTS={
   padel :{label:"Padel",  initials:"PD", colour:"var(--padel)",  parent:"OPR", replica:"plat-padel.html"},
-  tennis:{label:"Tennis", initials:"TN", colour:"var(--tennis)", parent:"OTR", replica:null},
+  tennis:{label:"Tennis", initials:"TN", colour:"var(--tennis)", parent:"OTR", replica:"plat-tennis.html"},
   squash:{label:"Squash", initials:"SQ", colour:"var(--squash)", parent:"OSR", replica:null},
   bowls :{label:"Bowls",  initials:"BW", colour:"var(--bowls)",  parent:"OBR", replica:null},
   mdr   :{label:"Masters Squash", initials:"MS", colour:"var(--mdr)", parent:"MDR", replica:null}
