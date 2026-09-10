@@ -13,6 +13,8 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 <!--
+  VERSION: PLAT-HUB v2026.09.10-h6  (nothing opens itself: every sport starts closed, and Club admin sits behind
+  a quiet link with a short explanation of what the code opens.)
   VERSION: PLAT-HUB v2026.09.10-h5  (Around the club: rows open like the group boards do — set-score pills and
   totals — the group is a coloured pill, and the names no longer run into the date.)
   VERSION: PLAT-HUB v2026.09.10-h4  (a score is entered inside the group, as everywhere else — the front page
@@ -132,7 +134,7 @@ input,select{width:100%;padding:10px 11px;border:1px solid var(--line);border-ra
   <div class="plaques" id="plaques"></div>
   <section class="board"><div class="btitle">Around the club</div><div id="rows"></div></section>
   <section id="adminBox"></section>
-  <div class="foot" id="ver">PLAT-HUB h5</div>
+  <div class="foot" id="ver">PLAT-HUB h6</div>
 </div>
 
 <script>
@@ -150,7 +152,7 @@ var SPORTS={
   mdr   :{label:"Masters Squash", initials:"MS", colour:"var(--mdr)", parent:"MDR", replica:null}
 };
 var PALETTE=["#6c3483","#1f7a8c","#b5651d","#2e7d32","#c2185b","#455a64","#8e24aa","#00695c","#ad1457","#4e342e","#283593","#827717"];
-var S={newCol:"#6c3483",org:null,shape:[],all:[],rows:[],pools:{},admin:"",role:"",people:[],groups:[]};
+var S={adminOpen:false,newCol:"#6c3483",org:null,shape:[],all:[],rows:[],pools:{},admin:"",role:"",people:[],groups:[]};
 
 function esc(s){ return String(s==null?"":s).replace(/[&<>"']/g,function(c){return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c];}); }
 function fn(body){ return fetch(SB+"/functions/v1/plat_admin",{method:"POST",headers:{"Content-Type":"application/json",apikey:ANON,Authorization:"Bearer "+ANON},body:JSON.stringify(body)}).then(function(r){return r.json();}); }
@@ -187,8 +189,8 @@ function renderPlaques(){
           +'<span class="gmeta">'+(s.replica?("its own "+s.parent+" board"):(s.parent+" leg not wired yet"))+'</span></span>'
           +'<span class="gopen">Open ›</span></div>'; }).join("")
       : '<div class="empty">No groups yet. Create the first in Club admin below.</div>';
-    return '<div class="plaque'+(i===0?" open":"")+'" style="--sport:'+s.colour+'">'
-      +'<button class="phead" aria-expanded="'+(i===0)+'"><span class="badge">'+s.initials+'</span>'
+    return '<div class="plaque" style="--sport:'+s.colour+'">'
+      +'<button class="phead" aria-expanded="false"><span class="badge">'+s.initials+'</span>'
       +'<span><span class="pname">'+esc(s.label)+'</span><span class="pmeta">'+gs.length+' group'+(gs.length===1?"":"s")+' · rated by '+s.parent+'</span></span>'
       +'<span class="chev">›</span></button>'
       +'<div class="passage"><div><div class="pinner">'+groups
@@ -255,9 +257,19 @@ function toggleRow(i){
 /* ── club admin ───────────────────────────────────────────── */
 function renderAdmin(){
   var box=document.getElementById("adminBox");
+  if(!S.adminOpen){
+    box.innerHTML='<div style="text-align:center;margin:22px 0 6px">'
+      +'<button class="btn ghost" style="width:auto;padding:9px 18px;font-size:13px;opacity:.85" onclick="showAdmin()">Club admin</button></div>';
+    return;
+  }
   if(!S.role){
-    box.innerHTML='<div class="adm"><div class="atitle">Club admin</div>'
-      +'<div class="ahint">The club code opens the organisation: switch sports on, create groups, register members. Each group keeps its own code for its own board.</div>'
+    box.innerHTML='<div class="adm"><div style="display:flex;justify-content:space-between;align-items:center"><div class="atitle">Club admin</div>'
+      +'<button class="btn ghost" style="width:auto;margin:0;padding:6px 12px;font-size:12px" onclick="hideAdmin()">Close</button></div>'
+      +'<div class="ahint">This is the club\'s own admin, above the individual groups. With the club code you can:'
+      +'<br>· switch a sport on or off for the whole club'
+      +'<br>· create a group inside a sport, with its own code and colour'
+      +'<br>· register a member once — they appear in a sport the first time they play it'
+      +'<br><br>Each group also has its own code, which opens only that group\'s board. The club code opens the club, and the ledger for any of its sports.</div>'
       +'<div class="field"><input id="aPin" type="password" inputmode="numeric" placeholder="Club code"></div>'
       +'<button class="btn" onclick="unlock()">Open admin</button><div class="msg" id="aMsg"></div></div>';
     return;
@@ -316,6 +328,8 @@ function unlock(){
   });
 }
 function lock(){ S.admin=""; S.role=""; renderAdmin(); }
+function showAdmin(){ S.adminOpen=true; renderAdmin(); var b=document.getElementById("adminBox"); if(b) b.scrollIntoView({behavior:"smooth",block:"start"}); }
+function hideAdmin(){ S.adminOpen=false; S.admin=""; S.role=""; renderAdmin(); }
 function loadPeople(){
   return fn({action:"org_register",org_id:ORG}).then(function(r){
     S.people=(r&&r.players)||[]; S.groups=(r&&r.groups)||[]; return true;
