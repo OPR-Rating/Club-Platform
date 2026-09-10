@@ -13,6 +13,9 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 <!--
+  VERSION: PLAT-HUB v2026.09.10-h3  (register works like the rest of the family: ONE entry — name, gender,
+  rating, optional PIN — plus a bulk paste. No group ticking: a person joins a group by PLAYING there, and
+  their rating for that sport is created from the one they were registered with.)
   VERSION: PLAT-HUB v2026.09.10-h2  (register does the whole job in one place: name, gender, which groups
   they join, and their starting rating in each sport that implies — instead of leaving them on the non-player
   default. Colour is a swatch, not a hex to type.)
@@ -120,7 +123,7 @@ input,select{width:100%;padding:10px 11px;border:1px solid var(--line);border-ra
   <div class="plaques" id="plaques"></div>
   <section class="board"><div class="btitle">Around the club</div><div id="rows"></div></section>
   <section id="adminBox"></section>
-  <div class="foot" id="ver">PLAT-HUB h2</div>
+  <div class="foot" id="ver">PLAT-HUB h3</div>
 </div>
 
 <script>
@@ -253,16 +256,16 @@ function renderAdmin(){
     +'<div class="label" style="margin-top:6px">Group colour</div><div class="sws" id="gSws">'
     +PALETTE.map(function(c,i){ return '<button class="swb" style="background:'+c+'" aria-pressed="'+(i===0)+'" onclick="pickCol(\''+c+'\')"></button>'; }).join("")+'</div>'
     +'<button class="btn" onclick="newGroup()">Create group</button>';
-  var allG=[]; S.shape.forEach(function(x){ (x.groups||[]).forEach(function(g){ allG.push({id:g.id,name:g.name,d:x.discipline,colour:g.colour}); }); });
-  h+='<div class="label">Register a member</div><div class="ahint" style="margin:0 0 6px">Registered once for the whole club. Tick the groups they play in — that is what gives them a rating in that sport. Leave all unticked to register them now and add them later.</div>'
-    +'<div class="row2"><div class="field"><input id="mName" placeholder="Full name"></div>'
-    +'<div class="field"><select id="mSex" onchange="seedDefaults()"><option value="M">Male</option><option value="F">Female</option></select></div></div>';
-  if(allG.length){
-    h+='<div class="label" style="margin-top:4px">Groups</div>'
-      +allG.map(function(g){ return '<label class="chk"><input type="checkbox" class="mg" value="'+g.id+'" data-d="'+g.d+'" onchange="seedRows()"><span style="flex:1">'+esc(g.name)+' <span class="rate">'+esc(SP(g.d).label)+'</span></span></label>'; }).join("")
-      +'<div id="seedRows"></div>';
-  } else { h+='<div class="ahint">No groups yet — create one above and they can join it.</div>'; }
-  h+='<button class="btn" onclick="newMember()">Register</button>';
+  h+='<div class="label">Add an individual</div><div class="ahint" style="margin:0 0 6px">One entry for the whole club. They appear in a sport the first time they play it, and start there on this rating.</div>'
+    +'<div class="field"><input id="mName" placeholder="Full name"></div>'
+    +'<div class="row2"><div class="field"><select id="mSex"><option value="M">Male</option><option value="F">Female</option></select></div>'
+    +'<div class="field"><input id="mSeed" type="number" placeholder="Rating (blank = 1500 / 1300)"></div></div>'
+    +'<div class="field"><input id="mPin" inputmode="numeric" placeholder="PIN (optional — not needed to enter scores)"></div>'
+    +'<button class="btn" onclick="newMember()">Add member</button>';
+  h+='<div class="label">Bulk add (paste from Excel)</div>'
+    +'<div class="ahint" style="margin:0 0 6px">One per line: <b>Name, Gender, Rating</b> — tabs or commas. Gender M or F. Rating optional; blank uses 1500 (M) / 1300 (F).</div>'
+    +'<textarea id="mBulk" style="width:100%;min-height:120px;font-family:ui-monospace,monospace;font-size:12.5px;padding:9px;border:1px solid var(--line);border-radius:var(--radius)" placeholder="John Smith, M, 1350&#10;Sarah Jones, F, 1180&#10;Mike Brown\tM\t1420"></textarea>'
+    +'<button class="btn" onclick="bulkMembers()">Add all pasted members</button>';
   h+='<div class="label">Members ('+S.people.length+')</div><div id="people" class="people"></div>';
   h+='<div class="msg" id="aMsg"></div></div>';
   box.innerHTML=h;
@@ -274,6 +277,7 @@ function renderPeople(){
   el.innerHTML=S.people.map(function(p){
     var pills=(p.groups||[]).map(function(g){ return '<span class="pill" style="--pcol:'+(g.colour||SP(g.discipline).colour)+'">'+esc(g.name)+'</span>'; }).join("");
     var rats=Object.keys(p.ratings||{}).map(function(d){ var r=p.ratings[d]; return SP(d).label+" "+Math.round(r.current_rating!=null?r.current_rating:r.seed); }).join(" · ");
+    if(!rats && p.default_seed!=null) rats="starts on "+Math.round(p.default_seed);
     return '<div class="prow"><div style="flex:1;min-width:0"><div style="font-weight:600;font-size:14px">'+esc(p.full_name)+'</div>'
       +'<div>'+(pills||'<span class="rate">no group yet</span>')+'</div>'
       +(rats?'<div class="rate" style="margin-top:3px">'+esc(rats)+'</div>':'')+'</div>'
@@ -315,40 +319,33 @@ function newGroup(){
     refreshShape().then(function(){ renderAdmin(); say("Created "+n+".",true); });
   });
 }
-/* the ticked groups decide which sports need a starting rating; one box per sport, prefilled by gender */
-function tickedGroups(){ return Array.prototype.map.call(document.querySelectorAll(".mg:checked"),function(c){ return {id:parseInt(c.value,10), d:c.getAttribute("data-d")}; }); }
-function seedRows(){
-  var box=document.getElementById("seedRows"); if(!box) return;
-  var ds=[]; tickedGroups().forEach(function(g){ if(ds.indexOf(g.d)<0) ds.push(g.d); });
-  var g=val("mSex")==="F"?1300:1500;
-  box.innerHTML = ds.length ? ('<div class="label" style="margin-top:6px">Starting rating</div>'
-    +ds.map(function(d){ var cur=document.getElementById("sd_"+d); var v=cur?cur.value:g;
-        return '<div class="seed"><span>'+esc(SP(d).label)+'</span><input id="sd_'+d+'" type="number" value="'+v+'"></div>'; }).join("")) : "";
-}
-function seedDefaults(){
-  var g=val("mSex")==="F"?1300:1500;
-  Array.prototype.forEach.call(document.querySelectorAll('[id^="sd_"]'),function(i){ i.value=g; });
-}
 function newMember(){
   var n=val("mName"); if(!n) return say("Name required.",false);
-  var gs=tickedGroups();
-  say("Registering…",true);
-  fn({action:"add_org_member",org_id:ORG,admin_pin:S.admin,full_name:n,gender:val("mSex")}).then(function(r){
+  say("Adding…",true);
+  fn({action:"add_org_member",org_id:ORG,admin_pin:S.admin,full_name:n,gender:val("mSex"),seed:val("mSeed"),pin:val("mPin")}).then(function(r){
     if(!r||!r.ok) return say((r&&r.error)||"Failed.",false);
-    var iid=r.member.id, was=r.linked;
-    if(!gs.length) return loadPeople().then(function(){ renderAdmin(); say(was?(n+" was already registered."):("Registered "+n+" — add them to a group when they start playing."),true); });
-    var jobs=gs.map(function(g){ return fn({action:"add_membership",club_id:g.id,admin_pin:S.admin,individual_id:iid}); });
-    Promise.all(jobs).then(function(){
-      var ds=[]; gs.forEach(function(g){ if(ds.indexOf(g.d)<0) ds.push(g.d); });
-      var seeds={}; ds.forEach(function(d){ var e=document.getElementById("sd_"+d); if(e&&e.value!=="") seeds[d]=Number(e.value); });
-      var anyClub=gs[0].id;
-      return Object.keys(seeds).length
-        ? fn({action:"edit_member",club_id:anyClub,admin_pin:S.admin,individual_id:iid,seeds:seeds})
-        : true;
-    }).then(function(){
-      loadPeople().then(function(){ renderAdmin();
-        say((was?n+" linked to ":"Registered "+n+" into ")+gs.length+" group"+(gs.length===1?"":"s")+".",true); });
-    });
+    loadPeople().then(function(){ renderAdmin();
+      say(r.linked ? (n+" is already in the register.") : ("Added "+n+" — they join a group the first time they play."), true); });
+  });
+}
+function bulkMembers(){
+  var raw=(document.getElementById("mBulk")||{}).value||"";
+  var lines=raw.split("\n").map(function(l){return l.trim();}).filter(function(l){return l.length;});
+  if(!lines.length) return say("Paste some rows first.",false);
+  var rows=[], bad=[];
+  lines.forEach(function(l,i){
+    var p=l.split(/\t|,/).map(function(x){return x.trim();});
+    var name=p[0], g=(p[1]||"").toUpperCase().charAt(0), rate=p[2];
+    if(!name||(g!=="M"&&g!=="F")){ bad.push("Line "+(i+1)+": need Name, Gender (M/F)"); return; }
+    rows.push({full_name:name,gender:g,rating:rate});
+  });
+  if(bad.length) return say(bad[0],false);
+  say("Adding "+rows.length+"…",true);
+  fn({action:"bulk_add_org_members",org_id:ORG,admin_pin:S.admin,rows:rows}).then(function(r){
+    if(!r||!r.ok) return say((r&&r.error)||"Failed.",false);
+    document.getElementById("mBulk").value="";
+    loadPeople().then(function(){ renderAdmin();
+      say("Added "+r.added+(r.already_there?(" · "+r.already_there+" already in the register"):"")+((r.failed&&r.failed.length)?(" · skipped "+r.failed.join(", ")):""), true); });
   });
 }
 function addToGroup(iid){
