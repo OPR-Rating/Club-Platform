@@ -13,6 +13,8 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 <!--
+  VERSION: PLAT-HUB v2026.09.10-h4  (a score is entered inside the group, as everywhere else — the front page
+  no longer offers it. The ledger button says what it is.)
   VERSION: PLAT-HUB v2026.09.10-h3  (register works like the rest of the family: ONE entry — name, gender,
   rating, optional PIN — plus a bulk paste. No group ticking: a person joins a group by PLAYING there, and
   their rating for that sport is created from the one they were registered with.)
@@ -123,7 +125,7 @@ input,select{width:100%;padding:10px 11px;border:1px solid var(--line);border-ra
   <div class="plaques" id="plaques"></div>
   <section class="board"><div class="btitle">Around the club</div><div id="rows"></div></section>
   <section id="adminBox"></section>
-  <div class="foot" id="ver">PLAT-HUB h3</div>
+  <div class="foot" id="ver">PLAT-HUB h4</div>
 </div>
 
 <script>
@@ -184,8 +186,7 @@ function renderPlaques(){
       +'<span class="chev">›</span></button>'
       +'<div class="passage"><div><div class="pinner">'+groups
       +'<div class="ptools">'
-      +'<button class="tool primary" '+(s.replica&&gs.length?'':'disabled ')+'onclick="enterScore(\''+x.discipline+'\')">Enter a score</button>'
-      +'<button class="tool" '+(s.replica&&x.pool_id?'':'disabled ')+'onclick="openLedger(\''+x.discipline+'\','+(x.pool_id||0)+')">'+esc(s.label)+' ledger</button>'
+      +'<button class="tool" '+(s.replica&&x.pool_id?'':'disabled ')+'onclick="openLedger(\''+x.discipline+'\','+(x.pool_id||0)+')">'+esc(s.label)+' ledger — every group, one rating each</button>'
       +'</div></div></div></div></div>';
   }).join("");
   Array.prototype.forEach.call(document.querySelectorAll(".phead"),function(b){
@@ -199,15 +200,6 @@ function openGroup(d,gid){
   location.href=s.replica+"?club="+gid;
 }
 function openLedger(d,poolId){ var s=SP(d); if(!s.replica||!poolId) return; location.href=s.replica+"?club=0&pool="+poolId; }
-function enterScore(d){
-  var gs=groupsOf(d); if(!gs.length) return;
-  if(gs.length===1) return openGroup(d,gs[0].id);
-  var names=gs.map(function(g,i){ return (i+1)+"  "+g.name; }).join("\n");
-  var pick=prompt("Which group is this match for?\n\n"+names+"\n\nType the number:","1");
-  var n=parseInt(pick,10); if(!n||n<1||n>gs.length) return;
-  openGroup(d,gs[n-1].id);
-}
-
 /* ── around the club: every group of every switched-on sport ─ */
 function loadRows(){
   var ids=Object.keys(S.pools); var host=document.getElementById("rows");
