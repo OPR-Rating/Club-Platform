@@ -550,7 +550,9 @@
 </style>
 <script>
 /* ============================================================================
-   PLAT EARLY SNIPPET — plat-tennis.html  VERSION: PLAT-TENNIS v2026.09.11-t6  (the remaining padel dress ported in one go: Recent Matches edged and
+   PLAT EARLY SNIPPET — plat-tennis.html  VERSION: PLAT-TENNIS v2026.09.11-t7  (pills and header badge use the padel spec exactly; a group's Member
+   Profile lists that group's players rather than the whole register)
+   VERSION: PLAT-TENNIS v2026.09.11-t6  (the remaining padel dress ported in one go: Recent Matches edged and
    pilled by group, the profile card in the group's colour, and the overall-move breakdown for anyone who
    plays at more than one group)
    VERSION: PLAT-TENNIS v2026.09.11-t5  (the ledger member list wears the same dress as padel: outlined initials in the group colour, a group pill, no gender line)
@@ -8166,9 +8168,10 @@ async function clRemove(id, label){
       if(h.querySelector(".platWhere")||h.closest("#homeScreen")) return;
       h.style.position=h.style.position||"relative";
       var b=document.createElement("span"); b.className="platWhere"; b.textContent=label;
-      b.style.cssText="margin-left:auto;background:"+col+";color:#fff;border:1px solid rgba(255,255,255,.5);"
-        +"border-radius:99px;padding:5px 13px;font-size:12.5px;font-weight:700;white-space:nowrap;max-width:50%;"
-        +"overflow:hidden;text-overflow:ellipsis;align-self:center;text-shadow:none;box-shadow:0 1px 3px rgba(0,0,0,.18)";
+      // t7: byte-for-byte the padel spec, so the two legs cannot drift apart visually
+      b.style.cssText="margin-left:auto;background:"+col+";color:#fff;border:1.5px solid rgba(255,255,255,.6);"
+        +"border-radius:99px;padding:8px 18px;font-size:14.5px;font-weight:800;letter-spacing:.3px;white-space:nowrap;max-width:54%;"
+        +"overflow:hidden;text-overflow:ellipsis;align-self:center;text-shadow:none;box-shadow:0 2px 6px rgba(0,0,0,.25)";
       h.appendChild(b);
     });
   }
@@ -8221,9 +8224,7 @@ async function clRemove(id, label){
           var el=li.querySelector(".player-name"); if(!el||el.querySelector(".platCp")) return;
           var gs=map[el.textContent.trim()]||[]; if(!gs.length) return;
           var s=document.createElement("span"); s.className="platCp"; s.style.cssText="display:block;margin:3px 0 0";
-          s.innerHTML=gs.map(function(c){
-            return '<span style="display:inline-block;background:'+(c.colour||"#185A33")+';color:#fff;border-radius:99px;'
-              +'padding:1px 7px;font-size:9.5px;font-weight:700;margin:2px 3px 0 0;white-space:nowrap">'+esc(c.name)+'</span>'; }).join("");
+          s.innerHTML=gs.map(function(c){ return clubPill(c,true); }).join("");
           el.appendChild(s);
           var av=li.querySelector(".player-avatar");
           if(av){ var col=gs[0].colour||"#185A33"; av.style.background="transparent"; av.style.color=col;
@@ -8236,6 +8237,10 @@ async function clRemove(id, label){
   /* ---- t6: the rest of the padel dress, ported in one go ---------------------------------------- */
   function REST(p){ return "https://djmbnvikrdgnomjhtkgf.supabase.co/rest/v1/"+p; }
   function clubOf(id){ return (W.PLAT.clubs||[]).find(function(c){return c.id===id;}); }
+  // the padel spec, copied exactly: small = a row or a name; large = standing on its own
+  function clubPill(c,small){ var p=(c&&c.colour)||"#185A33";
+    return '<span style="display:inline-block;background:'+p+';color:#fff;border-radius:99px;padding:'+(small?'1px 7px':'2px 9px')
+      +';font-size:'+(small?'9.5px':'11px')+';font-weight:700;margin:2px 3px 0 0;white-space:nowrap;vertical-align:middle">'+esc(c.name)+'</span>'; }
   function colOf(id){ var c=clubOf(id); return (c&&c.colour)||"#185A33"; }
 
   /* Recent Matches: each row edged in the group's colour, with the group named on a pill.
@@ -8255,7 +8260,7 @@ async function clRemove(id, label){
         el.style.borderLeft="4px solid "+col; el.style.borderRight="4px solid "+col;
         var hd=el.querySelector(".match-header"); if(!hd) return;
         var s=document.createElement("span"); s.className="platCp";
-        s.innerHTML='<span style="display:inline-block;background:'+col+';color:#fff;border-radius:99px;padding:1px 8px;font-size:10px;font-weight:700">'+esc(c.name)+'</span>';
+        s.innerHTML=clubPill(c,true);
         hd.insertBefore(s,hd.firstChild);
       });
     }
@@ -8319,14 +8324,34 @@ async function clRemove(id, label){
     new MutationObserver(paint).observe(scr,{childList:true,subtree:true}); paint();
   }
 
+  /* t7: the pickers and a group's Member Profile ask for players_public with the SAME query, so the shim
+     cannot tell them apart — the picker must offer the whole register, the member list must not. So the list
+     is trimmed here instead: anyone with no result at THIS group is dropped from it. */
+  function groupMemberList(){
+    if(W.PLAT.cid===0 || !W.PLAT.cid) return;
+    var list=document.getElementById("playerList"); if(!list) return;
+    var mine=null;
+    fetch(REST("plat_player_results?club_id=eq."+W.PLAT.cid+"&discipline=eq.tennis&select=name"))
+      .then(function(r){return r.json();})
+      .then(function(rows){ mine={}; (Array.isArray(rows)?rows:[]).forEach(function(r){ mine[r.name]=1; }); trim();
+        new MutationObserver(trim).observe(list,{childList:true}); })
+      .catch(function(){});
+    function trim(){
+      if(!mine) return;
+      list.querySelectorAll("li.player-item").forEach(function(li){
+        var nm=(li.querySelector(".player-name")||{}).textContent;
+        if(nm && !mine[nm.trim()]) li.style.display="none";
+      });
+    }
+  }
   W.PLAT.ready.then(function(){
-    fixManifest(); chip(); try{ headerBadges(); memberList(); recentColours(); profileExtras(); }catch(e){}
+    fixManifest(); chip(); try{ headerBadges(); memberList(); groupMemberList(); recentColours(); profileExtras(); }catch(e){}
     var t=document.getElementById("heroTitle")||document.querySelector("#homeScreen h1");
     if(t){ if(W.PLAT.cid===0) t.textContent="OTR · "+(W.PLAT.poolName||"Tennis")+" · Ledger";
            else if(W.PLAT.name) t.textContent="OTR · "+W.PLAT.name; }
     document.title=(t?t.textContent:"OTR");
     try{ document.querySelectorAll(".screen").forEach(function(s){ if(s.id==="homeScreen"||s.querySelector(".platVer")) return;
-      var d=document.createElement("div"); d.className="platVer"; d.textContent="OTR v37 · PLAT replica t6 · shim t6";
+      var d=document.createElement("div"); d.className="platVer"; d.textContent="OTR v37 · PLAT replica t7 · shim t7";
       d.style.cssText="text-align:center;color:#9aa39c;font-size:10px;letter-spacing:.5px;margin:14px 0 8px"; s.appendChild(d); }); }catch(e){}
   });
 })();
