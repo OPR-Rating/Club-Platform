@@ -550,7 +550,8 @@
 </style>
 <script>
 /* ============================================================================
-   PLAT EARLY SNIPPET — plat-tennis.html  VERSION: PLAT-TENNIS v2026.09.11-t2  (the ledger now wears the ledger: read-only dress decided in <head>,
+   PLAT EARLY SNIPPET — plat-tennis.html  VERSION: PLAT-TENNIS v2026.09.11-t3  (the ledger lists players, not the whole register)
+   VERSION: PLAT-TENNIS v2026.09.11-t2  (the ledger now wears the ledger: read-only dress decided in <head>,
    no score entry, no tournaments, no admin link; and every sheet names the group it belongs to.)
    VERSION: PLAT-TENNIS v2026.09.10-t1
    OTR v37 runs UNMODIFIED below (two marked hunks: the OTR club map and the install start_url).
@@ -640,7 +641,12 @@
       return "plat_clubs?"+qs;
     }
     // the PICKER and the rating cache: the register of this pool/organisation, presented as players_public
-    if(tbl==="players_public"){ swapClub("pool_id=eq."+P); return "plat_tennis_v_pool_individuals?"+qs; }
+    if(tbl==="players_public"){
+      swapClub("pool_id=eq."+P);
+      // t3: on a GROUP board this is the picker and must offer the whole register; in the LEDGER it is the
+      // member list, which should show the people who have actually played tennis.
+      return (ledger ? "plat_tennis_v_pool_active?" : "plat_tennis_v_pool_individuals?")+qs;
+    }
     if(DISC_TABLES[tbl]){
       if(ledger) swapClub("pool_id=eq."+P+((tbl==="player_results"||tbl==="doubles_results")?"&club_id=is.null":""));
       return "plat_"+tbl+"?"+qs+(qs?"&":"")+"discipline=eq."+DISC;
@@ -8168,7 +8174,7 @@ async function clRemove(id, label){
            else if(W.PLAT.name) t.textContent="OTR · "+W.PLAT.name; }
     document.title=(t?t.textContent:"OTR");
     try{ document.querySelectorAll(".screen").forEach(function(s){ if(s.id==="homeScreen"||s.querySelector(".platVer")) return;
-      var d=document.createElement("div"); d.className="platVer"; d.textContent="OTR v37 · PLAT replica t2 · shim t2";
+      var d=document.createElement("div"); d.className="platVer"; d.textContent="OTR v37 · PLAT replica t3 · shim t3";
       d.style.cssText="text-align:center;color:#9aa39c;font-size:10px;letter-spacing:.5px;margin:14px 0 8px"; s.appendChild(d); }); }catch(e){}
   });
 })();
