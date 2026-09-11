@@ -795,7 +795,11 @@
         + "#playerList .player-gender{display:none}#playerList .player-name{line-height:1.25}"
         + ".home-hero{background-image:none!important;background:linear-gradient(135deg,#1a1a1a,#3d3d3d)!important}"
       : "";
-    st0.textContent += ".hero-logo-panel{padding-bottom:56px!important}";   // room for the chip, so nothing moves when it appears
+        // the club explains itself ONCE, on the club door — a board repeating it on every screen is noise.
+    // The three that remain sit in one row; Admin moves to a pill under Recent Matches, where it is findable.
+    st0.textContent += "#homeScreen .menu-btn[onclick*='aboutScreen']{display:none!important}"
+                     + "#homeScreen .menu-grid{grid-template-columns:repeat(3,1fr)!important}";
+st0.textContent += ".hero-logo-panel{padding-bottom:56px!important}";   // room for the chip, so nothing moves when it appears
     (document.head||document.documentElement).appendChild(st0);
   }catch(e){}
   if(CID===0){
@@ -3227,7 +3231,7 @@ const CLUB_NAME = _club.name;  // shown in the logo as "OPR · <name>"
     link.setAttribute('href', href);
   }catch(e){ /* install stays on the static manifest — no functional impact */ }
 })();
-const OPR_VERSION = "OPR-DOUBLES v2026.09.03-56 · PLAT replica p57";  // MANUAL PAIR CREATION REMOVED FROM ADMIN: Create a pair, Bulk create pairs and Re-derive all pairs are gone (they only made match-less ghost pairs, and Re-derive rewrote every stored initial club-wide). Pairs are born automatically at match entry. Current pairs list untouched; the underlying JS is left in place unreferenced, so no other code path changes. Includes v47 (set-score fix + double-tap guard) and all prior.
+const OPR_VERSION = "OPR-DOUBLES v2026.09.03-56 · PLAT replica p58";  // MANUAL PAIR CREATION REMOVED FROM ADMIN: Create a pair, Bulk create pairs and Re-derive all pairs are gone (they only made match-less ghost pairs, and Re-derive rewrote every stored initial club-wide). Pairs are born automatically at match entry. Current pairs list untouched; the underlying JS is left in place unreferenced, so no other code path changes. Includes v47 (set-score fix + double-tap guard) and all prior.
 // Explanation shown above the individual ladder. Open on load so it's read; collapsible
 // (state kept for the session) and scrolls away. Mechanics only — no outcome framing, so
 // members aren't nudged away from playing stronger opponents. Every clause maps to a real
@@ -8951,7 +8955,7 @@ async function clRemove(id, label){
       +cs.map(function(c,i){ return card(c.id,c.name,"Ratings · pairs · scores · tournaments",clubPal(c.id),BALL); }).join("")
       +card(0,"Overall Ledger","Every player across the clubs — one rating each · ladders and stats only",LEDGER,BALL)
       +'<div style="text-align:center;font-size:12px;color:#7a6f8a;margin:8px 0 14px;line-height:1.5">One register · one rating per player<br>Each club keeps its own pairs, matches, tournaments and stats</div>'
-      +'<div style="text-align:center;color:#b3a9c4;font-size:10px;letter-spacing:.5px;margin:0 0 10px">'+esc((typeof OPR_VERSION!=="undefined"?OPR_VERSION:"")+"  ·  shim p57")+'</div>';
+      +'<div style="text-align:center;color:#b3a9c4;font-size:10px;letter-spacing:.5px;margin:0 0 10px">'+esc((typeof OPR_VERSION!=="undefined"?OPR_VERSION:"")+"  ·  shim p58")+'</div>';
     host.insertBefore(d,host.firstChild);
   }
   /* OVERALL: read-only ledger — no score entry, no tournaments, no admin link */
@@ -9547,6 +9551,26 @@ async function clRemove(id, label){
   // last visit whether this pool has an organisation, so the first frame is already right; a first-ever
   // visit resolves it below, before anything is drawn.
   try{ if(W.PLAT.cid===0 && !W.PLAT.landing){ ledgerTheme(); ledgerLayout(); if(!W.PLAT.orgCached) regTile(); } if(!W.PLAT.landing) chip(); }catch(e){}
+  /* The Admin pill: OPR hides its admin link on the About screen, which a board no longer shows. This puts
+     it under Recent Matches, where an organiser will look for it — and only on a group board, never on a
+     ledger, which is read-only. */
+  function adminPill(){
+    if(W.PLAT.cid===0 || document.getElementById("platAdminPill")) return;
+    var lower=document.querySelector("#homeScreen .home-lower")
+           || document.getElementById("homeRecentList")
+           || document.querySelector("#homeScreen .home-content");
+    if(!lower) return;
+    var host=(lower.id==="homeRecentList") ? lower.parentElement : lower;
+    var wrap=document.createElement("div"); wrap.id="platAdminPill";
+    wrap.style.cssText="text-align:center;margin:16px auto 8px;max-width:1000px;width:100%";
+    var b=document.createElement("button");
+    b.textContent="Admin";
+    b.style.cssText="display:inline-flex;align-items:center;gap:7px;background:transparent;border:1.5px solid "+clubPal(W.PLAT.cid)[0]+
+      ";color:"+clubPal(W.PLAT.cid)[0]+";border-radius:99px;padding:9px 22px;font-size:13.5px;font-weight:700;cursor:pointer";
+    b.onclick=function(){ if(typeof openAdmin==="function") openAdmin(); };
+    wrap.appendChild(b);
+    if(host && host.parentNode) host.parentNode.insertBefore(wrap, host.nextSibling);
+  }
   W.PLAT.ready.then(function(){
     elsewhereLine();
     // p24: name known — reveal the title and remember it for the next visit's first frame
@@ -9562,6 +9586,7 @@ async function clRemove(id, label){
     }catch(e){}
     try{ var ch=document.getElementById("platChip"); if(ch) ch.textContent=(W.PLAT.orgId?"‹ Club":"‹ All clubs"); }catch(e){}
     try{ headerBadges(); }catch(e){}
+    try{ adminPill(); }catch(e){}
     fixManifest();
     var ht=document.getElementById("heroTitle");
     if(W.PLAT.landing){ var t1="OPR · "+(W.PLAT.poolName||"Clubs"); if(ht) ht.textContent=t1; document.title=t1; landing(); return; }
@@ -9570,7 +9595,7 @@ async function clRemove(id, label){
       var sb=document.querySelector("#homeScreen .hero-logo-panel .sub, #homeScreen .sub");
       if(sb && W.PLAT.poolName) sb.textContent=W.PLAT.poolName+" · Open Padel Ratings System"; }
     // version tag at the foot of every screen (OPR only prints it on Home/About)
-    try{ var vt=(typeof OPR_VERSION!=="undefined"?OPR_VERSION:"")+"  ·  shim p57"; document.querySelectorAll(".screen").forEach(function(s){ if(s.querySelector(".platVer")) return; var d=document.createElement("div"); d.className="platVer"; d.textContent=vt; d.style.cssText="text-align:center;color:#b3a9c4;font-size:10px;letter-spacing:.5px;margin:14px 0 8px"; s.appendChild(d); }); }catch(e){}
+    try{ var vt=(typeof OPR_VERSION!=="undefined"?OPR_VERSION:"")+"  ·  shim p58"; document.querySelectorAll(".screen").forEach(function(s){ if(s.querySelector(".platVer")) return; var d=document.createElement("div"); d.className="platVer"; d.textContent=vt; d.style.cssText="text-align:center;color:#b3a9c4;font-size:10px;letter-spacing:.5px;margin:14px 0 8px"; s.appendChild(d); }); }catch(e){}
     if(location.hash==="#enter"){ W.showScreen("entryScreen"); }
   });
 })();

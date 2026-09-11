@@ -149,6 +149,14 @@ input,select{width:100%;padding:10px 11px;border:1px solid var(--line);border-ra
   <section class="board"><div class="btitle">Around the club</div><div id="rows"></div></section>
   <section id="adminBox"></section>
 </div>
+<div id="aboutScreen" style="display:none;position:fixed;inset:0;background:var(--ground);overflow:auto;z-index:50">
+  <div style="background:var(--ink);color:var(--ground);padding:16px 18px;display:flex;align-items:center;gap:14px;position:sticky;top:0;z-index:2">
+    <button onclick="hideAbout()" style="all:unset;cursor:pointer;font-size:20px;line-height:1">&#8592;</button>
+    <div style="font-family:var(--display);font-weight:700;font-size:19px;letter-spacing:-.01em">About</div>
+    <div id="aboutWhere" style="margin-left:auto;background:rgba(255,255,255,.16);border:1px solid rgba(255,255,255,.35);border-radius:99px;padding:5px 13px;font-size:12.5px;font-weight:700"></div>
+  </div>
+  <div class="wrap" id="aboutBody" style="padding-top:16px;padding-bottom:40px"></div>
+</div>
 <div id="adminScreen" style="display:none;position:fixed;inset:0;background:var(--ground);overflow:auto;z-index:50">
   <div style="background:var(--ink);color:var(--ground);padding:16px 18px;display:flex;align-items:center;gap:14px;position:sticky;top:0;z-index:2">
     <button onclick="hideAdmin()" style="all:unset;cursor:pointer;font-size:20px;line-height:1">&#8592;</button>
@@ -158,6 +166,9 @@ input,select{width:100%;padding:10px 11px;border:1px solid var(--line);border-ra
   <div class="wrap" id="adminBody" style="padding-top:14px;padding-bottom:40px"></div>
 </div>
 <div style="display:none">
+  <div style="text-align:center;margin:18px 0 4px">
+    <button class="btn ghost" style="width:auto;padding:9px 18px;font-size:13px;opacity:.85" onclick="showAbout()">About this club</button>
+  </div>
   <div class="foot" id="ver">PLAT-HUB h14 · hub</div>
 </div>
 
@@ -207,12 +218,14 @@ function renderPlaques(){
   if(!S.shape.length){ host.innerHTML=""; return; }
   host.innerHTML=S.shape.map(function(x,i){
     var s=SP(x.discipline), gs=x.groups||[];
-    var groups=gs.length ? gs.map(function(g){
+    var ordered=gs.slice().sort(function(a,b){ return (b.is_general?1:0)-(a.is_general?1:0); });
+    var groups=ordered.length ? ordered.map(function(g){
         return '<div class="grp" style="--gcol:'+(g.colour||s.colour)+'" onclick="openGroup(\''+x.discipline+'\','+g.id+')">'
           +'<span class="tick"></span><span><span class="gname">'+esc(g.name)+'</span>'
-          +'<span class="gmeta">'+(s.replica?("its own "+s.parent+" board"):(s.parent+" leg not wired yet"))+'</span></span>'
+          +'<span class="gmeta">'+(g.is_general ? ("where "+esc(s.label)+" starts \u2014 open to the whole club")
+                                                : (s.replica?("its own "+s.parent+" board"):(s.parent+" leg not wired yet")))+'</span></span>'
           +'<span class="gopen">Open ›</span></div>'; }).join("")
-      : '<div class="empty">No groups yet. Create the first in Club admin below.</div>';
+      : '<div class="empty">No groups yet — switch the sport on in Club admin and it starts with a Club group.</div>';
     return '<div class="plaque" style="--sport:'+s.colour+'">'
       +'<button class="phead" aria-expanded="false"><span class="badge">'+s.initials+'</span>'
       +'<span><span class="pname">'+esc(s.label)+'</span><span class="pmeta">'+gs.length+' group'+(gs.length===1?"":"s")+' · rated by '+s.parent+'</span></span>'
@@ -497,6 +510,35 @@ function unlock(){
   });
 }
 function lock(){ S.admin=""; S.role=""; renderAdmin(); }
+/* One explanation, at club level. The group boards no longer each carry their own. */
+function showAbout(){
+  var org=(S.org&&S.org.name)||"This club";
+  document.getElementById("aboutWhere").textContent=org;
+  var live=(S.shape||[]).map(function(x){ return SP(x.discipline); });
+  document.getElementById("aboutBody").innerHTML=
+    '<div class="adm"><div class="atitle">'+esc(org)+'</div>'
+    +'<div class="ahint">One club, one register of members, and a separate rating for each sport.</div>'
+    +'<div class="label">How it fits together</div>'
+    +'<div class="ahint"><b>The club</b> holds the register: a member is entered once, whatever they play.<br><br>'
+    +'<b>A sport</b> is where ratings live. One rating per person per sport — play in any group and the same number moves.<br><br>'
+    +'<b>A group</b> is a set of people who play together: a morning, a league, a section. Each runs itself, with its own board, ladder and tournaments. Every sport begins with a <b>Club group</b>, open to the whole club, and the other groups grow out of it.</div>'
+    +'<div class="label">What rates the matches</div>'
+    +'<div class="ahint">Each sport is rated by the engine built for it, unchanged:</div>'
+    +live.map(function(s){ return '<div class="tog"><div><b>'+esc(s.label)+'</b></div>'
+        +'<span class="pill" style="--pcol:'+s.colour+'">'+esc(s.parent)+'</span></div>'; }).join("")
+    +'<div class="ahint" style="margin-top:8px">A rating moves on who you beat and by how much, not on wins alone: beating a stronger side moves it further than beating a weaker one, and a close loss costs less than a heavy one. Every result in the sport is replayed from the start, so a rating is the whole record rather than the last match.</div>'
+    +'<div class="label">Where to look</div>'
+    +'<div class="ahint"><b>A group</b> — its own board: its ladders, its pairs, its matches.<br>'
+    +'<b>The ledger</b> — the sport across every group: one rating each, and everyone who has played.<br>'
+    +'<b>Club admin</b> — the register, the groups and the club\'s settings.</div>'
+    +'<div class="ahint" style="margin-top:12px;opacity:.7">Powered by OPR · opr-online.com</div></div>';
+  document.getElementById("aboutScreen").style.display="block";
+  document.documentElement.style.overflow="hidden"; window.scrollTo(0,0);
+}
+function hideAbout(){
+  document.getElementById("aboutScreen").style.display="none";
+  document.documentElement.style.overflow="";
+}
 function showAdmin(){
   S.adminOpen=true; renderAdmin();
   document.getElementById("adminScreen").style.display="block";

@@ -630,7 +630,11 @@
     // two by two as padel does.
     st0.textContent += "#homeScreen .home-content{max-width:1100px;margin-left:auto!important;margin-right:auto!important}"
                      + "#homeScreen .menu-grid{grid-template-columns:1fr 1fr!important;max-width:1000px;margin-left:auto;margin-right:auto}";
-    st0.textContent += ".hero-logo-panel{padding-bottom:52px!important}";
+        // the club explains itself ONCE, on the club door — a board repeating it on every screen is noise.
+    // The three that remain sit in one row; Admin moves to a pill under Recent Matches, where it is findable.
+    st0.textContent += "#homeScreen .menu-btn[onclick*='aboutScreen']{display:none!important}"
+                     + "#homeScreen .menu-grid{grid-template-columns:repeat(3,1fr)!important}";
+st0.textContent += ".hero-logo-panel{padding-bottom:52px!important}";
     (document.head||document.documentElement).appendChild(st0);
   }catch(e){}
   // the ledger paints from a cached name so the first frame is never wrong (padel p24 lesson)
@@ -1901,7 +1905,7 @@ const _club = CLUBS[_clubParam] || (/^\d+$/.test(_clubParam) ? {id:Number(_clubP
 const CLUB_ID = _club.id;
 document.title = 'OTR · ' + _club.name;
 const CLUB_NAME = _club.name;  // shown in the logo as "OPR · <name>"
-const OPR_VERSION = "OTR-LAPTOP v2026.09.03-37 · PLAT replica t11";   // PLAT MARKED HUNK: the build stamp everywhere the parent prints its own  // DOUBLES ROW OPENS THE TEAM PROFILE (parity with OPR/OSR/ODR, ported from the proven CC g38/g39 glue): tapping a pair in the doubles rating table opens its full profile page — the screen is SHOWN first, because OTR’s loadTeamProfile fills the profile screen without switching to it (this is why earlier attempts appeared to do nothing); Back returns to the same table. The ▼ chevron still expands the inline history. Supersedes the withdrawn v34–v36. Includes all prior work.
+const OPR_VERSION = "OTR-LAPTOP v2026.09.03-37 · PLAT replica t12";   // PLAT MARKED HUNK: the build stamp everywhere the parent prints its own  // DOUBLES ROW OPENS THE TEAM PROFILE (parity with OPR/OSR/ODR, ported from the proven CC g38/g39 glue): tapping a pair in the doubles rating table opens its full profile page — the screen is SHOWN first, because OTR’s loadTeamProfile fills the profile screen without switching to it (this is why earlier attempts appeared to do nothing); Back returns to the same table. The ▼ chevron still expands the inline history. Supersedes the withdrawn v34–v36. Includes all prior work.
 // Explanation shown above the individual ladder. Open on load so it's read; collapsible
 // (state kept for the session) and scrolls away. Mechanics only — no outcome framing, so
 // members aren't nudged away from playing stronger opponents. Every clause maps to a real
@@ -8361,14 +8365,34 @@ async function clRemove(id, label){
       });
     }
   }
+  /* The Admin pill: OPR hides its admin link on the About screen, which a board no longer shows. This puts
+     it under Recent Matches, where an organiser will look for it — and only on a group board, never on a
+     ledger, which is read-only. */
+  function adminPill(){
+    if(W.PLAT.cid===0 || document.getElementById("platAdminPill")) return;
+    var lower=document.querySelector("#homeScreen .home-lower")
+           || document.getElementById("homeRecentList")
+           || document.querySelector("#homeScreen .home-content");
+    if(!lower) return;
+    var host=(lower.id==="homeRecentList") ? lower.parentElement : lower;
+    var wrap=document.createElement("div"); wrap.id="platAdminPill";
+    wrap.style.cssText="text-align:center;margin:16px auto 8px;max-width:1000px;width:100%";
+    var b=document.createElement("button");
+    b.textContent="Admin";
+    b.style.cssText="display:inline-flex;align-items:center;gap:7px;background:transparent;border:1.5px solid "+(((W.PLAT.clubs||[]).find(function(c){return c.id===W.PLAT.cid;})||{}).colour||"#185A33")+
+      ";color:"+(((W.PLAT.clubs||[]).find(function(c){return c.id===W.PLAT.cid;})||{}).colour||"#185A33")+";border-radius:99px;padding:9px 22px;font-size:13.5px;font-weight:700;cursor:pointer";
+    b.onclick=function(){ if(typeof openAdmin==="function") openAdmin(); };
+    wrap.appendChild(b);
+    if(host && host.parentNode) host.parentNode.insertBefore(wrap, host.nextSibling);
+  }
   W.PLAT.ready.then(function(){
-    fixManifest(); chip(); try{ headerBadges(); memberList(); groupMemberList(); recentColours(); profileExtras(); }catch(e){}
+    fixManifest(); chip(); try{ headerBadges(); memberList(); groupMemberList(); recentColours(); profileExtras(); adminPill(); }catch(e){}
     var t=document.getElementById("heroTitle")||document.querySelector("#homeScreen h1");
     if(t){ if(W.PLAT.cid===0) t.textContent="OTR · "+(W.PLAT.poolName||"Tennis")+" · Ledger";
            else if(W.PLAT.name) t.textContent="OTR · "+W.PLAT.name; }
     document.title=(t?t.textContent:"OTR");
     try{ document.querySelectorAll(".screen").forEach(function(s){ if(s.querySelector(".platVer")) return;
-      var d=document.createElement("div"); d.className="platVer"; d.textContent="OTR v37 · PLAT replica t11 · shim t11";
+      var d=document.createElement("div"); d.className="platVer"; d.textContent="OTR v37 · PLAT replica t12 · shim t12";
       d.style.cssText="text-align:center;color:#9aa39c;font-size:10px;letter-spacing:.5px;margin:14px 0 8px"; s.appendChild(d); }); }catch(e){}
   });
 })();
