@@ -13,6 +13,8 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 <!--
+  VERSION: PLAT-HUB v2026.09.11-h12  (Club admin gains the Engine — recompute a sport's ratings — which the
+  standalone register's admin already had. The two admins now offer the same things.)
   VERSION: PLAT-HUB v2026.09.11-h11  (each group can be edited in place — name, colour, its own code —
   instead of only being deletable.)
   VERSION: PLAT-HUB v2026.09.11-h10  (the build shows on the front page, so it is obvious which version is live)
@@ -153,7 +155,7 @@ input,select{width:100%;padding:10px 11px;border:1px solid var(--line);border-ra
   <div class="wrap" id="adminBody" style="padding-top:14px;padding-bottom:40px"></div>
 </div>
 <div style="display:none">
-  <div class="foot" id="ver">PLAT-HUB h11 · hub</div>
+  <div class="foot" id="ver">PLAT-HUB h12 · hub</div>
 </div>
 
 <script>
@@ -332,6 +334,14 @@ function renderAdmin(){
         +'<div id="ed'+g.id+'"></div><div id="td'+g.id+'"></div>';
     });
   }
+  // the engine, as the standalone register's admin has
+  h+='<div class="label">Engine</div>'
+    +'<div class="ahint" style="margin:0 0 6px">Replays every match of a sport and rewrites its ratings. Entering a score recomputes by itself — this is for after a seed change or a restore.</div>';
+  S.shape.forEach(function(x){
+    var first=(x.groups||[])[0];
+    h+='<button class="btn ghost" style="margin-bottom:6px" '+(first?'':'disabled ')+'onclick="recompute(\''+x.discipline+'\','+(first?first.id:0)+')">Recompute '+esc(SP(x.discipline).label)+(first?'':' — no group yet')+'</button>';
+  });
+  h+='<div id="engMsg" class="msg"></div>';
   h+='<div class="label">Safety net</div>'
     +'<div class="ahint" style="margin:0 0 6px">A snapshot of a group is taken automatically just before its matches, its members or the group itself are removed — so a mistake can be put back even if nobody backed anything up.</div>'
     +'<button class="btn ghost" onclick="showBackups()">Show snapshots</button><div id="bkList"></div>';
@@ -352,6 +362,16 @@ function renderPeople(){
       +(rats?'<div class="rate" style="margin-top:3px">'+esc(rats)+'</div>':'')+'</div>'
       +'<button class="btn ghost" style="width:auto;margin:0;padding:6px 10px;font-size:12px" onclick="addToGroup('+p.id+')">Add to group</button></div>';
   }).join("");
+}
+function recompute(disc,clubId){
+  var m=document.getElementById("engMsg"); if(!clubId){ m.style.color="var(--bad)"; m.textContent="Create a group first."; return; }
+  m.style.color="var(--ink-soft)"; m.textContent="Recomputing "+SP(disc).label+" — this can take a few seconds…";
+  fn({action:"recompute",discipline:disc,club_id:clubId,admin_pin:S.admin}).then(function(r){
+    if(!r||!r.ok){ m.style.color="var(--bad)"; m.textContent=(r&&r.error)||"Failed."; return; }
+    var e=r.engine||{};
+    m.style.color="var(--ok)"; m.textContent=SP(disc).label+" recomputed — "+(e.players||0)+" players, "+(e.moves||0)+" matches.";
+    loadPeople().then(renderAdmin);
+  });
 }
 /* ---- edit a group in place: its name, its colour, its own code ---- */
 var PALETTE=["#6c3483","#1f7a8c","#b5651d","#2e7d32","#c2185b","#455a64","#8e24aa","#00695c","#ad1457","#4e342e","#283593","#827717"];
