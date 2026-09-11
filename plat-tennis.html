@@ -550,7 +550,11 @@
 </style>
 <script>
 /* ============================================================================
-   PLAT EARLY SNIPPET — plat-tennis.html  VERSION: PLAT-TENNIS v2026.09.11-t4  (ledger home laid out like padel's: two tiles, About beneath Recent Matches)
+   PLAT EARLY SNIPPET — plat-tennis.html  VERSION: PLAT-TENNIS v2026.09.11-t6  (the remaining padel dress ported in one go: Recent Matches edged and
+   pilled by group, the profile card in the group's colour, and the overall-move breakdown for anyone who
+   plays at more than one group)
+   VERSION: PLAT-TENNIS v2026.09.11-t5  (the ledger member list wears the same dress as padel: outlined initials in the group colour, a group pill, no gender line)
+   VERSION: PLAT-TENNIS v2026.09.11-t4  (ledger home laid out like padel's: two tiles, About beneath Recent Matches)
    VERSION: PLAT-TENNIS v2026.09.11-t3  (the ledger lists players, not the whole register)
    VERSION: PLAT-TENNIS v2026.09.11-t2  (the ledger now wears the ledger: read-only dress decided in <head>,
    no score entry, no tournaments, no admin link; and every sheet names the group it belongs to.)
@@ -8187,14 +8191,142 @@ async function clRemove(id, label){
     document.head.appendChild(st);
   }
   try{ ledgerLayout(); }catch(e){}
+  /* t5: the ledger's member list, dressed like padel's — the initial is an OUTLINE in the group's colour
+     rather than a solid disc, the group is named on a pill, and the Men's/Ladies line goes (the pill is the
+     distinction). Group boards keep OTR's own list untouched. Tennis is the slots family, so a person's
+     groups come from their memberships, not from pairs. */
+  var TREG=null;
+  function tennisGroups(){
+    if(TREG) return Promise.resolve(TREG);
+    return fetch(PLATR("plat_admin"),{method:"POST",headers:{"Content-Type":"application/json"},
+        body:JSON.stringify({action:"org_register",org_id:W.PLAT.orgId})})
+      .then(function(r){return r.json();})
+      .then(function(r){ TREG={};
+        ((r&&r.players)||[]).forEach(function(p){
+          TREG[p.full_name]=(p.groups||[]).filter(function(x){ return x.discipline==="tennis"; }); });
+        return TREG; })
+      .catch(function(){ return {}; });
+  }
+  function PLATR(fn){ return "https://djmbnvikrdgnomjhtkgf.supabase.co/functions/v1/"+fn; }
+  function memberList(){
+    if(W.PLAT.cid!==0 || !W.PLAT.orgId) return;          // ledger of an organisation only
+    var list=document.getElementById("playerList"); if(!list) return;
+    var st=document.createElement("style");
+    st.textContent="#playerList .player-gender{display:none}#playerList .player-name{line-height:1.25}";
+    document.head.appendChild(st);
+    var paint=function(){
+      if(!list.querySelector("li.player-item .player-name")) return;
+      tennisGroups().then(function(map){
+        list.querySelectorAll("li.player-item").forEach(function(li){
+          var el=li.querySelector(".player-name"); if(!el||el.querySelector(".platCp")) return;
+          var gs=map[el.textContent.trim()]||[]; if(!gs.length) return;
+          var s=document.createElement("span"); s.className="platCp"; s.style.cssText="display:block;margin:3px 0 0";
+          s.innerHTML=gs.map(function(c){
+            return '<span style="display:inline-block;background:'+(c.colour||"#185A33")+';color:#fff;border-radius:99px;'
+              +'padding:1px 7px;font-size:9.5px;font-weight:700;margin:2px 3px 0 0;white-space:nowrap">'+esc(c.name)+'</span>'; }).join("");
+          el.appendChild(s);
+          var av=li.querySelector(".player-avatar");
+          if(av){ var col=gs[0].colour||"#185A33"; av.style.background="transparent"; av.style.color=col;
+                  av.style.border="1.5px solid "+col; av.style.fontWeight="700"; }
+        });
+      });
+    };
+    new MutationObserver(paint).observe(list,{childList:true}); paint();
+  }
+  /* ---- t6: the rest of the padel dress, ported in one go ---------------------------------------- */
+  function REST(p){ return "https://djmbnvikrdgnomjhtkgf.supabase.co/rest/v1/"+p; }
+  function clubOf(id){ return (W.PLAT.clubs||[]).find(function(c){return c.id===id;}); }
+  function colOf(id){ var c=clubOf(id); return (c&&c.colour)||"#185A33"; }
+
+  /* Recent Matches: each row edged in the group's colour, with the group named on a pill.
+     Tennis stores PEOPLE in the match, so the group is simply the match's club_id. */
+  function recentColours(){
+    var list=document.getElementById("homeRecentList"); if(!list||!W.PLAT.pool) return;
+    var order=null;
+    fetch(REST("plat_matches?pool_id=eq."+W.PLAT.pool+"&discipline=eq.tennis&select=id,club_id&order=match_date.desc,id.desc&limit=15"))
+      .then(function(r){return r.json();}).then(function(rows){ order=Array.isArray(rows)?rows:[]; paint();
+        new MutationObserver(paint).observe(list,{childList:true}); }).catch(function(){});
+    function paint(){
+      if(!order) return;
+      list.querySelectorAll(".recent-item").forEach(function(el,i){
+        var m=order[i]; if(!m||el.querySelector(".platCp")) return;
+        var c=clubOf(m.club_id); if(!c) return;
+        var col=colOf(m.club_id);
+        el.style.borderLeft="4px solid "+col; el.style.borderRight="4px solid "+col;
+        var hd=el.querySelector(".match-header"); if(!hd) return;
+        var s=document.createElement("span"); s.className="platCp";
+        s.innerHTML='<span style="display:inline-block;background:'+col+';color:#fff;border-radius:99px;padding:1px 8px;font-size:10px;font-weight:700">'+esc(c.name)+'</span>';
+        hd.insertBefore(s,hd.firstChild);
+      });
+    }
+  }
+
+  /* A person's movement, by group. Tennis needs no pair lookup: the name stands in the match itself. */
+  var TDELTA=null;
+  function deltas(){
+    if(TDELTA) return Promise.resolve(TDELTA);
+    return fetch(REST("plat_matches?pool_id=eq."+W.PLAT.pool+"&discipline=eq.tennis&select=club_id,t1p1,t1p2,t2p1,t2p2,rating_delta"))
+      .then(function(r){return r.json();}).then(function(ms){
+        var d={};
+        (Array.isArray(ms)?ms:[]).forEach(function(m){
+          if(m.rating_delta==null) return;
+          [[m.t1p1,1],[m.t1p2,1],[m.t2p1,-1],[m.t2p2,-1]].forEach(function(side){
+            var nm=side[0]; if(!nm||String(nm).toLowerCase()==="null") return;
+            (d[nm]=d[nm]||{})[m.club_id]=(d[nm][m.club_id]||0)+side[1]*Number(m.rating_delta);
+          });
+        });
+        TDELTA=d; return d;
+      }).catch(function(){ return {}; });
+  }
+
+  /* On a GROUP board: the hero states the person's TOTAL movement (the same figure everywhere), and a line
+     under it breaks it down by group. On the ledger it is not needed — that screen already shows everything. */
+  function profileExtras(){
+    var scr=document.getElementById("profileScreen"); if(!scr) return;
+    var paint=function(){
+      var card=scr.querySelector(".profile-card"); if(!card||card.dataset.plat) return;
+      var nameEl=card.querySelector(".profile-name"); if(!nameEl) return;
+      var nm=nameEl.textContent.trim(); card.dataset.plat="1";
+      deltas().then(function(d){
+        var mine=d[nm]||{}, all=[], total=0, elsewhereCount=0;
+        Object.keys(mine).forEach(function(cid){
+          if(Math.abs(mine[cid])<0.05) return;
+          var c=clubOf(Number(cid)); if(!c) return;
+          total+=mine[cid];
+          if(Number(cid)!==W.PLAT.cid) elsewhereCount++;
+          all.push({id:Number(cid),name:c.name,colour:colOf(Number(cid)),mv:Math.round(mine[cid]*10)/10,here:(Number(cid)===W.PLAT.cid)});
+        });
+        // the group's own colour on the card, as padel does
+        if(W.PLAT.cid!==0){ var col=colOf(W.PLAT.cid);
+          card.style.background="linear-gradient(135deg,"+col+","+col+"cc)"; }
+        if(W.PLAT.cid===0 || !elsewhereCount) return;
+        all.sort(function(a,b){ return (b.here?1:0)-(a.here?1:0); });
+        // restate the hero's move as the total across the register
+        var rank=card.querySelector(".profile-rank");
+        if(rank){ var sp=rank.querySelector("span");
+          if(sp){ var t=Math.round(total); sp.textContent=(t>0?"+":"")+t; } }
+        var el=document.createElement("div");
+        el.style.cssText="margin:14px 0 6px;font-size:13px;text-align:left";
+        el.innerHTML='<span style="color:#7a8a80;margin-right:8px;font-weight:600">Overall move</span>'
+          +all.map(function(o){ return '<span title="'+esc(o.name)+'" style="display:inline-block;background:'+o.colour+';color:#fff;'
+            +'border-radius:99px;padding:3px 12px;font-weight:800;font-size:13px;margin:0 6px 4px 0">'+(o.mv>0?"+":"")+o.mv+'</span>'; }).join("")
+          +'<div style="margin-top:3px;font-size:12px;color:#7a8a80">'
+          +all.map(function(o){ return '<span style="display:inline-block;margin-right:10px"><span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:'+o.colour+';margin-right:5px"></span>'+esc(o.name)+'</span>'; }).join("")
+          +'</div><div style="margin-top:2px;font-size:12px;color:#7a8a80">See all matches in the ledger.</div>';
+        if(card.parentNode) card.parentNode.insertBefore(el, card.nextSibling);
+      });
+    };
+    new MutationObserver(paint).observe(scr,{childList:true,subtree:true}); paint();
+  }
+
   W.PLAT.ready.then(function(){
-    fixManifest(); chip(); try{ headerBadges(); }catch(e){}
+    fixManifest(); chip(); try{ headerBadges(); memberList(); recentColours(); profileExtras(); }catch(e){}
     var t=document.getElementById("heroTitle")||document.querySelector("#homeScreen h1");
     if(t){ if(W.PLAT.cid===0) t.textContent="OTR · "+(W.PLAT.poolName||"Tennis")+" · Ledger";
            else if(W.PLAT.name) t.textContent="OTR · "+W.PLAT.name; }
     document.title=(t?t.textContent:"OTR");
     try{ document.querySelectorAll(".screen").forEach(function(s){ if(s.id==="homeScreen"||s.querySelector(".platVer")) return;
-      var d=document.createElement("div"); d.className="platVer"; d.textContent="OTR v37 · PLAT replica t4 · shim t4";
+      var d=document.createElement("div"); d.className="platVer"; d.textContent="OTR v37 · PLAT replica t6 · shim t6";
       d.style.cssText="text-align:center;color:#9aa39c;font-size:10px;letter-spacing:.5px;margin:14px 0 8px"; s.appendChild(d); }); }catch(e){}
   });
 })();
