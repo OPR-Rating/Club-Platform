@@ -550,7 +550,8 @@
 </style>
 <script>
 /* ============================================================================
-   PLAT EARLY SNIPPET — plat-tennis.html  VERSION: PLAT-TENNIS v2026.09.11-t3  (the ledger lists players, not the whole register)
+   PLAT EARLY SNIPPET — plat-tennis.html  VERSION: PLAT-TENNIS v2026.09.11-t4  (ledger home laid out like padel's: two tiles, About beneath Recent Matches)
+   VERSION: PLAT-TENNIS v2026.09.11-t3  (the ledger lists players, not the whole register)
    VERSION: PLAT-TENNIS v2026.09.11-t2  (the ledger now wears the ledger: read-only dress decided in <head>,
    no score entry, no tournaments, no admin link; and every sheet names the group it belongs to.)
    VERSION: PLAT-TENNIS v2026.09.10-t1
@@ -8167,6 +8168,25 @@ async function clRemove(id, label){
       h.appendChild(b);
     });
   }
+  /* t4: the ledger reads as a ledger — About sits under Recent Matches, as it does in padel, rather than
+     competing with the two screens people actually want. Done here, before the data lands, so nothing moves. */
+  function ledgerLayout(){
+    if(W.PLAT.cid!==0) return;
+    var about=null;
+    document.querySelectorAll("#homeScreen .menu-btn").forEach(function(b){ if(/aboutScreen/.test(b.getAttribute("onclick")||"")) about=b; });
+    if(!about) return;
+    var lower=document.querySelector("#homeScreen .home-lower");
+    var host=document.querySelector("#homeScreen .home-content")||document.getElementById("homeScreen");
+    var wrap=document.createElement("div"); wrap.id="platAboutWrap";
+    wrap.style.cssText="text-align:center;margin:18px auto 10px;max-width:1000px;width:100%";
+    about.style.cssText="display:inline-flex;min-height:40px;padding:8px 18px;font-size:13px;opacity:.85";
+    wrap.appendChild(about);
+    if(lower&&lower.parentNode) lower.parentNode.insertBefore(wrap, lower.nextSibling); else host.appendChild(wrap);
+    var st=document.createElement("style");
+    st.textContent="#homeScreen .menu-grid{grid-template-columns:1fr 1fr!important;max-width:1000px;margin-left:auto;margin-right:auto}";
+    document.head.appendChild(st);
+  }
+  try{ ledgerLayout(); }catch(e){}
   W.PLAT.ready.then(function(){
     fixManifest(); chip(); try{ headerBadges(); }catch(e){}
     var t=document.getElementById("heroTitle")||document.querySelector("#homeScreen h1");
@@ -8174,7 +8194,7 @@ async function clRemove(id, label){
            else if(W.PLAT.name) t.textContent="OTR · "+W.PLAT.name; }
     document.title=(t?t.textContent:"OTR");
     try{ document.querySelectorAll(".screen").forEach(function(s){ if(s.id==="homeScreen"||s.querySelector(".platVer")) return;
-      var d=document.createElement("div"); d.className="platVer"; d.textContent="OTR v37 · PLAT replica t3 · shim t3";
+      var d=document.createElement("div"); d.className="platVer"; d.textContent="OTR v37 · PLAT replica t4 · shim t4";
       d.style.cssText="text-align:center;color:#9aa39c;font-size:10px;letter-spacing:.5px;margin:14px 0 8px"; s.appendChild(d); }); }catch(e){}
   });
 })();
