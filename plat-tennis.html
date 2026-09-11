@@ -550,7 +550,9 @@
 </style>
 <script>
 /* ============================================================================
-   PLAT EARLY SNIPPET — plat-tennis.html  VERSION: PLAT-TENNIS v2026.09.10-t1
+   PLAT EARLY SNIPPET — plat-tennis.html  VERSION: PLAT-TENNIS v2026.09.11-t2  (the ledger now wears the ledger: read-only dress decided in <head>,
+   no score entry, no tournaments, no admin link; and every sheet names the group it belongs to.)
+   VERSION: PLAT-TENNIS v2026.09.10-t1
    OTR v37 runs UNMODIFIED below (two marked hunks: the OTR club map and the install start_url).
    The shim is the CC tennis adapter (slots family: table map + discipline attach + physical twins +
    function map) MERGED with the platform routing already proven in plat-padel:
@@ -592,6 +594,22 @@
     return new Response(JSON.stringify(obj),{status:status,headers:{"Content-Type":"application/json"}}); }
   var _fetch=W.fetch.bind(W);
 
+  // t2: the layout the URL already implies is set HERE, in <head>, before first paint — the ledger is a
+  // read-only view, so its score button, tournaments and admin link never appear rather than vanishing late.
+  try{
+    var st0=document.createElement("style"); st0.id="platLayout";
+    st0.textContent = (CID===0)
+      ? "#homeScreen .btn-enter{display:none!important}"
+        + "#homeScreen .menu-btn[onclick*='tournamentScreen']{display:none!important}"
+        + "button[onclick='openAdmin()']{display:none!important}"
+        + ".hero,.home-hero,.screen .header{background:linear-gradient(135deg,#1a1a1a,#3d3d3d)!important}"
+        + ".ladder-table th,#tournamentSheetContent th{background:#3d3d3d!important}"
+        + ".club-panel>div:first-child,.club-panel-head,.club-panel h3{background:linear-gradient(135deg,#1a1a1a,#3d3d3d)!important}"
+        + "#homeScreen .menu-btn{border-color:#1a1a1a!important;color:#1a1a1a!important}"
+      : "";
+    st0.textContent += ".hero-logo-panel{padding-bottom:52px!important}";
+    (document.head||document.documentElement).appendChild(st0);
+  }catch(e){}
   // the ledger paints from a cached name so the first frame is never wrong (padel p24 lesson)
   if(CID===0){ try{
       var ck="plat_tennis_reg_"+(POOLQ||0), cached=localStorage.getItem(ck);
@@ -8127,14 +8145,30 @@ async function clRemove(id, label){
       l.href="data:application/manifest+json,"+encodeURIComponent(JSON.stringify(mf));
     }catch(e){}
   }
+  /* t2: every sheet says where you are — the boards are identical across groups otherwise. */
+  function headerBadges(){
+    var label = (W.PLAT.cid===0) ? ((W.PLAT.poolName||"Register")+" · Ledger") : (W.PLAT.name||"");
+    if(!label) return;
+    var c=(W.PLAT.clubs||[]).find(function(x){return x.id===W.PLAT.cid;});
+    var col = (W.PLAT.cid===0) ? "rgba(255,255,255,.22)" : ((c&&c.colour)||"#185A33");
+    document.querySelectorAll(".screen .header").forEach(function(h){
+      if(h.querySelector(".platWhere")||h.closest("#homeScreen")) return;
+      h.style.position=h.style.position||"relative";
+      var b=document.createElement("span"); b.className="platWhere"; b.textContent=label;
+      b.style.cssText="margin-left:auto;background:"+col+";color:#fff;border:1px solid rgba(255,255,255,.5);"
+        +"border-radius:99px;padding:5px 13px;font-size:12.5px;font-weight:700;white-space:nowrap;max-width:50%;"
+        +"overflow:hidden;text-overflow:ellipsis;align-self:center;text-shadow:none;box-shadow:0 1px 3px rgba(0,0,0,.18)";
+      h.appendChild(b);
+    });
+  }
   W.PLAT.ready.then(function(){
-    fixManifest(); chip();
+    fixManifest(); chip(); try{ headerBadges(); }catch(e){}
     var t=document.getElementById("heroTitle")||document.querySelector("#homeScreen h1");
     if(t){ if(W.PLAT.cid===0) t.textContent="OTR · "+(W.PLAT.poolName||"Tennis")+" · Ledger";
            else if(W.PLAT.name) t.textContent="OTR · "+W.PLAT.name; }
     document.title=(t?t.textContent:"OTR");
     try{ document.querySelectorAll(".screen").forEach(function(s){ if(s.id==="homeScreen"||s.querySelector(".platVer")) return;
-      var d=document.createElement("div"); d.className="platVer"; d.textContent="OTR v37 · PLAT replica t1 · shim t1";
+      var d=document.createElement("div"); d.className="platVer"; d.textContent="OTR v37 · PLAT replica t2 · shim t2";
       d.style.cssText="text-align:center;color:#9aa39c;font-size:10px;letter-spacing:.5px;margin:14px 0 8px"; s.appendChild(d); }); }catch(e){}
   });
 })();
