@@ -13,6 +13,14 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 <!--
+  VERSION: PLAT-HUB v2026.09.11-h19  (a plaque opens that sport's ledger AT the member, not just at the ledger)
+  VERSION: PLAT-HUB v2026.09.11-h18
+  MEMBERS — the honour board: one member, a plaque per sport in that sport's colour, with rating, level,
+  movement and rank. It all comes from org_register, so nothing new is asked of the database: level is
+  rating/200, movement is current less the rating they started on, rank is their place among the people who
+  have played that sport. Tapping a plaque opens that sport's ledger.
+  h17: the build is pinned to the corner of every screen. h16: a wider group palette. h15: the CLUB GROUP
+  leads each sport and the club explains itself once, in About.
   VERSION: PLAT-HUB v2026.09.11-h14  (installable alongside the sport apps: each app is scoped to its own
   page, so Chrome stops reporting "already installed" for every page in the folder)
   VERSION: PLAT-HUB v2026.09.11-h13  (squash is wired: its groups open plat-squash.html and its ledger works)
@@ -149,6 +157,14 @@ input,select{width:100%;padding:10px 11px;border:1px solid var(--line);border-ra
   <section class="board"><div class="btitle">Around the club</div><div id="rows"></div></section>
   <section id="adminBox"></section>
 </div>
+<div id="membersScreen" style="display:none;position:fixed;inset:0;background:var(--ground);overflow:auto;z-index:50">
+  <div style="background:var(--ink);color:var(--ground);padding:16px 18px;display:flex;align-items:center;gap:14px;position:sticky;top:0;z-index:2">
+    <button onclick="hideMembers()" style="all:unset;cursor:pointer;font-size:20px;line-height:1">&#8592;</button>
+    <div id="membersTitle" style="font-family:var(--display);font-weight:700;font-size:19px;letter-spacing:-.01em">Members</div>
+    <div id="membersWhere" style="margin-left:auto;background:rgba(255,255,255,.16);border:1px solid rgba(255,255,255,.35);border-radius:99px;padding:5px 13px;font-size:12.5px;font-weight:700"></div>
+  </div>
+  <div class="wrap" id="membersBody" style="padding-top:14px;padding-bottom:40px"></div>
+</div>
 <div id="aboutScreen" style="display:none;position:fixed;inset:0;background:var(--ground);overflow:auto;z-index:50">
   <div style="background:var(--ink);color:var(--ground);padding:16px 18px;display:flex;align-items:center;gap:14px;position:sticky;top:0;z-index:2">
     <button onclick="hideAbout()" style="all:unset;cursor:pointer;font-size:20px;line-height:1">&#8592;</button>
@@ -167,9 +183,10 @@ input,select{width:100%;padding:10px 11px;border:1px solid var(--line);border-ra
 </div>
 <div style="display:none">
   <div style="text-align:center;margin:18px 0 4px">
+    <button class="btn ghost" style="width:auto;padding:9px 18px;font-size:13px" onclick="showMembers()">Members</button>
     <button class="btn ghost" style="width:auto;padding:9px 18px;font-size:13px;opacity:.85" onclick="showAbout()">About this club</button>
   </div>
-  <div class="foot" id="ver">PLAT-HUB h14 · hub</div>
+  <div class="foot" id="ver">PLAT-HUB h19 · hub</div>
 </div>
 
 <script>
@@ -244,6 +261,11 @@ function openGroup(d,gid){
   var s=SP(d);
   if(!s.replica){ alert(s.label+" is switched on, but its app is not wired yet. Padel is live today; the others follow."); return; }
   location.href=s.replica+"?club="+gid;
+}
+// a plaque opens the sport's ledger AT that member, using the parent's own profile screen
+function openPlayer(d,poolId,name,gender){
+  var s=SP(d); if(!s.replica||!poolId) return;
+  location.href=s.replica+"?club=0&pool="+poolId+"&player="+encodeURIComponent(name)+"&g="+(gender||"M");
 }
 function openLedger(d,poolId){ var s=SP(d); if(!s.replica||!poolId) return; location.href=s.replica+"?club=0&pool="+poolId; }
 /* ── around the club: every group of every switched-on sport ─ */
@@ -511,6 +533,80 @@ function unlock(){
 }
 function lock(){ S.admin=""; S.role=""; renderAdmin(); }
 /* One explanation, at club level. The group boards no longer each carry their own. */
+/* ---- the honour board: one member, a plaque per sport ---------------------------------------------- */
+var MEM=null, RANKS=null;
+function loadMembers(){
+  if(MEM) return Promise.resolve(MEM);
+  return fn({action:"org_register",org_id:ORG}).then(function(r){
+    MEM=((r&&r.players)||[]).slice().sort(function(a,b){ return a.full_name.localeCompare(b.full_name); });
+    RANKS={};
+    (S.shape||[]).forEach(function(x){
+      var d=x.discipline;
+      var played=MEM.filter(function(p){ return p.ratings && p.ratings[d] && p.ratings[d].current_rating!=null; })
+                    .sort(function(a,b){ return b.ratings[d].current_rating-a.ratings[d].current_rating; });
+      RANKS[d]={ total:played.length, of:{} };
+      played.forEach(function(p,i){ RANKS[d].of[p.id]=i+1; });
+    });
+    return MEM;
+  }).catch(function(){ MEM=[]; RANKS={}; return MEM; });
+}
+function showMembers(){
+  document.getElementById("membersWhere").textContent=(S.org&&S.org.name)||"";
+  document.getElementById("membersTitle").textContent="Members";
+  document.getElementById("membersScreen").style.display="block";
+  document.documentElement.style.overflow="hidden"; window.scrollTo(0,0);
+  document.getElementById("membersBody").innerHTML='<div class="ahint">Loading…</div>';
+  loadMembers().then(function(){ renderMemberList(""); });
+}
+function hideMembers(){
+  document.getElementById("membersScreen").style.display="none";
+  document.documentElement.style.overflow="";
+}
+function renderMemberList(q){
+  var b=document.getElementById("membersBody");
+  var list=MEM.filter(function(p){ return !q || p.full_name.toLowerCase().indexOf(q.toLowerCase())>=0; });
+  b.innerHTML='<div class="field"><input id="memQ" placeholder="Search a name…" value="'+esc(q)+'" oninput="renderMemberList(this.value)"></div>'
+    +'<div class="ahint">'+list.length+' member'+(list.length===1?"":"s")+' · tap a name for their record across the club</div>'
+    +list.map(function(p){
+        var played=(S.shape||[]).filter(function(x){ return p.ratings && p.ratings[x.discipline] && p.ratings[x.discipline].current_rating!=null; });
+        return '<div class="prow" onclick="showMember('+p.id+')" style="cursor:pointer">'
+          +'<div style="flex:1;min-width:0"><div style="font-weight:600;font-size:14px">'+esc(p.full_name)+'</div>'
+          +'<div>'+(played.length
+              ? played.map(function(x){ var s=SP(x.discipline);
+                  return '<span class="pill" style="--pcol:'+s.colour+'">'+esc(s.label)+' '+Math.round(p.ratings[x.discipline].current_rating)+'</span>'; }).join("")
+              : '<span class="rate">not played yet</span>')+'</div></div>'
+          +'<span class="rate">&rsaquo;</span></div>';
+      }).join("");
+  var i=document.getElementById("memQ"); if(i && q){ i.focus(); try{ i.setSelectionRange(q.length,q.length); }catch(e){} }
+}
+function showMember(id){
+  var p=MEM.find(function(x){ return x.id===id; }); if(!p) return;
+  document.getElementById("membersTitle").textContent=p.full_name;
+  var plaques=(S.shape||[]).map(function(x){
+    var d=x.discipline, s=SP(d), r=(p.ratings||{})[d];
+    if(!r || r.current_rating==null) return '';
+    var cur=Math.round(r.current_rating), seed=(r.seed!=null?Number(r.seed):null);
+    var mv=(seed!=null)?Math.round(r.current_rating-seed):null;
+    var rk=(RANKS[d]&&RANKS[d].of[p.id])||null, tot=(RANKS[d]&&RANKS[d].total)||0;
+    var groups=(p.groups||[]).filter(function(g){ return g.discipline===d; });
+    return '<div onclick="openPlayer(\''+d+'\','+(x.pool_id||0)+',\''+esc(p.full_name).replace(/'/g,"\\'")+'\',\''+(p.gender||"M")+'\')" style="cursor:pointer;background:linear-gradient(135deg,'+s.colour+','+s.colour+'dd);'
+      +'color:#fff;border-radius:var(--radius);padding:16px 18px;margin-bottom:12px;display:flex;align-items:center;gap:12px">'
+      +'<div style="flex:1;min-width:0"><div style="font-size:12px;letter-spacing:.14em;opacity:.85">'+esc(s.label.toUpperCase())+'</div>'
+      +'<div style="font-family:var(--display);font-weight:700;font-size:30px;line-height:1.1">'+cur+'</div>'
+      +'<div style="margin-top:4px">'+groups.map(function(g){ return '<span style="display:inline-block;background:'+(g.colour||"rgba(255,255,255,.2)")+';border:1.5px solid rgba(255,255,255,.85);border-radius:99px;padding:1px 8px;font-size:10px;font-weight:700;margin:2px 4px 0 0">'+esc(g.name)+'</span>'; }).join("")+'</div></div>'
+      +'<div style="text-align:right;font-size:13px;line-height:1.7;white-space:nowrap">'
+      +'<div>level '+(Math.round(cur/200*10)/10).toFixed(1)+'</div>'
+      +(mv!=null?('<div>move <b style="color:'+(mv>=0?"#c4e000":"#ffb4a2")+'">'+(mv>0?"+":"")+mv+'</b></div>'):'')
+      +(rk?('<div>rank '+rk+' / '+tot+' &rsaquo;</div>'):'')
+      +'</div></div>';
+  }).join("");
+  document.getElementById("membersBody").innerHTML=
+    '<button class="btn ghost" style="width:auto;padding:7px 14px;font-size:12.5px;margin-bottom:12px" onclick="showMembers()">&lsaquo; All members</button>'
+    +'<div class="adm"><div class="atitle">'+esc(p.full_name)+'</div>'
+    +'<div class="ahint">One member, a plaque for each sport they play. Tap a plaque for that sport\'s ledger.</div>'
+    +(plaques||'<div class="ahint">No matches yet — they appear here the first time they play.</div>')+'</div>';
+  window.scrollTo(0,0);
+}
 function showAbout(){
   var org=(S.org&&S.org.name)||"This club";
   document.getElementById("aboutWhere").textContent=org;
@@ -630,7 +726,7 @@ function addToGroup(iid){
   l.href="data:application/manifest+json,"+encodeURIComponent(JSON.stringify(mf));
   document.head.appendChild(l);
 }catch(e){} })();
-(function(){ var t=document.createElement("div"); t.textContent="HUB h17";
+(function(){ var t=document.createElement("div"); t.textContent="HUB h19";
   t.style.cssText="position:fixed;top:0;right:0;z-index:99999;background:rgba(0,0,0,.62);color:#fff;font:700 10px/1.4 system-ui,sans-serif;letter-spacing:.4px;padding:3px 8px;border-bottom-left-radius:8px;pointer-events:none";
   document.body.appendChild(t); })();
 boot();
