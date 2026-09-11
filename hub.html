@@ -13,6 +13,9 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 <!--
+  VERSION: PLAT-HUB v2026.09.11-h8  (Club admin gains what the ledger already had: the three-step teardown
+  for a group — matches, then members, then the group — each counted and confirmed, and the SAFETY NET:
+  snapshots taken automatically before anything is removed, with Download and Put back.)
   VERSION: PLAT-HUB v2026.09.10-h7  (tennis is wired: its groups open plat-tennis.html and its ledger works)
   VERSION: PLAT-HUB v2026.09.10-h6  (nothing opens itself: every sport starts closed, and Club admin sits behind
   a quiet link with a short explanation of what the code opens.)
@@ -135,7 +138,7 @@ input,select{width:100%;padding:10px 11px;border:1px solid var(--line);border-ra
   <div class="plaques" id="plaques"></div>
   <section class="board"><div class="btitle">Around the club</div><div id="rows"></div></section>
   <section id="adminBox"></section>
-  <div class="foot" id="ver">PLAT-HUB h7</div>
+  <div class="foot" id="ver">PLAT-HUB h8</div>
 </div>
 
 <script>
@@ -300,6 +303,21 @@ function renderAdmin(){
     +'<div class="ahint" style="margin:0 0 6px">One per line: <b>Name, Gender, Rating</b> — tabs or commas. Gender M or F. Rating optional; blank uses 1500 (M) / 1300 (F).</div>'
     +'<textarea id="mBulk" style="width:100%;min-height:120px;font-family:ui-monospace,monospace;font-size:12.5px;padding:9px;border:1px solid var(--line);border-radius:var(--radius)" placeholder="John Smith, M, 1350&#10;Sarah Jones, F, 1180&#10;Mike Brown\tM\t1420"></textarea>'
     +'<button class="btn" onclick="bulkMembers()">Add all pasted members</button>';
+  // groups: colour and the three-step teardown
+  var allG2=[]; S.shape.forEach(function(x){ (x.groups||[]).forEach(function(g){ allG2.push({id:g.id,name:g.name,colour:g.colour,d:x.discipline}); }); });
+  if(allG2.length){
+    h+='<div class="label">Groups</div>';
+    allG2.forEach(function(g){
+      h+='<div style="display:flex;align-items:center;gap:8px;padding:8px 0;border-bottom:1px solid var(--line-2)">'
+        +'<span style="width:14px;height:14px;border-radius:50%;background:'+(g.colour||SP(g.d).colour)+';flex:0 0 14px"></span>'
+        +'<span style="flex:1;min-width:0"><b>'+esc(g.name)+'</b> <span class="rate">'+esc(SP(g.d).label)+'</span></span>'
+        +'<button class="btn ghost" style="width:auto;margin:0;padding:6px 10px;font-size:12px;border-color:var(--bad);color:var(--bad)" onclick="tearDown('+g.id+')">Delete…</button></div>'
+        +'<div id="td'+g.id+'"></div>';
+    });
+  }
+  h+='<div class="label">Safety net</div>'
+    +'<div class="ahint" style="margin:0 0 6px">A snapshot of a group is taken automatically just before its matches, its members or the group itself are removed — so a mistake can be put back even if nobody backed anything up.</div>'
+    +'<button class="btn ghost" onclick="showBackups()">Show snapshots</button><div id="bkList"></div>';
   h+='<div class="label">Members ('+S.people.length+')</div><div id="people" class="people"></div>';
   h+='<div class="msg" id="aMsg"></div></div>';
   box.innerHTML=h;
@@ -317,6 +335,81 @@ function renderPeople(){
       +(rats?'<div class="rate" style="margin-top:3px">'+esc(rats)+'</div>':'')+'</div>'
       +'<button class="btn ghost" style="width:auto;margin:0;padding:6px 10px;font-size:12px" onclick="addToGroup('+p.id+')">Add to group</button></div>';
   }).join("");
+}
+/* ---- three-step teardown, same ladder and same gating as the ledger ---- */
+function tearDown(id){
+  var host=document.getElementById("td"+id); if(!host) return;
+  if(host.innerHTML){ host.innerHTML=""; return; }
+  host.innerHTML='<div class="ahint">Loading…</div>';
+  fn({action:"club_counts",club_id:id,admin_pin:S.admin}).then(function(r){
+    if(!r||!r.ok){ host.innerHTML='<div class="ahint" style="color:var(--bad)">'+esc((r&&r.error)||"Could not read the group.")+'</div>'; return; }
+    var step=function(n,label,sub,on){ return '<div style="display:flex;align-items:center;gap:8px;padding:6px 0">'
+      +'<span style="width:20px;height:20px;border-radius:50%;background:'+(on?"var(--bad)":"#ddd")+';color:#fff;font-size:11px;font-weight:800;display:flex;align-items:center;justify-content:center;flex:0 0 20px">'+n+'</span>'
+      +'<span style="flex:1"><span style="font-weight:600;font-size:13px;color:'+(on?"var(--ink)":"#999")+'">'+label+'</span><br><span class="rate">'+sub+'</span></span>'
+      +'<button '+(on?'':'disabled ')+'class="btn ghost" style="width:auto;margin:0;padding:5px 10px;font-size:12px;border-color:'+(on?"var(--bad)":"#ddd")+';color:'+(on?"var(--bad)":"#bbb")+'" '
+      +(on?'onclick="tdStep('+id+','+n+')"':'')+'>Delete</button></div>'; };
+    host.innerHTML='<div style="margin:6px 0 10px;padding:10px 12px;background:#fff;border:1px solid #f0d6d6;border-radius:var(--radius)">'
+      +'<div class="ahint" style="color:#8a6d1a;background:#fff8e1;border:1px solid #f0e0a8;border-radius:8px;padding:7px 9px;margin:0 0 8px">⚠ A snapshot is taken first, so this can be put back — but check the numbers before you go on.</div>'
+      +step(1,"Matches ("+r.matches+")","every match played here, and the pairs they created", r.matches>0)
+      +step(2,"Members ("+r.members+")","unlinks everyone; people with no other group and no history leave the register", r.matches===0&&r.members>0)
+      +step(3,"The group itself","ladders, tournaments and the group row", r.matches===0&&r.members===0)
+      +'<div id="tdMsg'+id+'" class="msg"></div></div>';
+  });
+}
+function tdStep(id,n){
+  var g=null; S.shape.forEach(function(x){ (x.groups||[]).forEach(function(y){ if(y.id===id) g=y; }); }); if(!g) return;
+  var typed=prompt("Delete "+(n===1?("every match at "+g.name):(n===2?("every membership of "+g.name):(g.name+" itself")))+"?\n\nA snapshot is kept, so this can be put back.\n\nType the group name exactly to confirm:","");
+  if(typed==null) return;
+  var m=document.getElementById("tdMsg"+id); m.style.color="var(--ink-soft)"; m.textContent="Working…";
+  var act=(n===1?"clear_club_matches":(n===2?"clear_club_members":"remove_club"));
+  fn({action:act,club_id:id,admin_pin:S.admin,confirm_name:typed}).then(function(r){
+    if(!r||!r.ok){ m.style.color="var(--bad)"; m.textContent=(r&&r.error)||"Failed."; return; }
+    var note=(n===1)?("Removed "+r.matches_removed+" matches and "+r.pairs_removed+" pairs.")
+            :(n===2)?("Unlinked "+r.unlinked+"; "+r.people_removed+" left the register.")
+            :("Removed "+r.removed+".");
+    refreshShape().then(function(){ loadPeople().then(function(){ renderAdmin();
+      var mm=document.getElementById("aMsg"); if(mm){ mm.style.color="var(--ok)"; mm.textContent=note; } }); });
+  });
+}
+/* ---- the safety net ---- */
+function showBackups(){
+  var host=document.getElementById("bkList"); if(!host) return;
+  if(host.innerHTML){ host.innerHTML=""; return; }
+  host.innerHTML='<div class="ahint">Loading…</div>';
+  var pools=(S.shape||[]).map(function(x){return x.pool_id;}).filter(Boolean);
+  if(!pools.length){ host.innerHTML='<div class="ahint">No snapshots yet.</div>'; return; }
+  Promise.all(pools.map(function(p){ return fn({action:"list_backups",pool_id:p,admin_pin:S.admin}); })).then(function(rs){
+    var bs=[]; rs.forEach(function(r){ if(r&&r.ok) bs=bs.concat(r.backups||[]); });
+    bs.sort(function(a,b){ return String(b.created_at).localeCompare(String(a.created_at)); });
+    if(!bs.length){ host.innerHTML='<div class="ahint">No snapshots yet — one is taken the first time something is removed.</div>'; return; }
+    host.innerHTML=bs.map(function(b){ var c=b.counts||{};
+      return '<div style="display:flex;align-items:center;gap:8px;padding:8px 0;border-bottom:1px solid var(--line-2)">'
+        +'<div style="flex:1;min-width:0"><div style="font-weight:600;font-size:13px">'+esc(b.club_name||"")+'</div>'
+        +'<div class="rate">'+esc(b.reason||"")+' · '+esc(String(b.created_at||"").slice(0,16).replace("T"," "))+'</div>'
+        +'<div class="rate">'+(c.members||0)+' members · '+(c.pairs||0)+' pairs · '+(c.matches||0)+' matches</div></div>'
+        +'<button class="btn ghost" style="width:auto;margin:0;padding:5px 10px;font-size:12px" onclick="bkDownload('+b.id+')">Download</button>'
+        +'<button class="btn ghost" style="width:auto;margin:0;padding:5px 10px;font-size:12px;border-color:var(--ok);color:var(--ok)" onclick="bkRestore('+b.id+',\''+esc(b.club_name||"").replace(/'/g,"\\'")+'\')">Put back</button></div>'; }).join("");
+  });
+}
+function bkDownload(id){
+  say("Fetching…",true);
+  fn({action:"get_backup",backup_id:id,admin_pin:S.admin}).then(function(r){
+    if(!r||!r.ok) return say((r&&r.error)||"Failed.",false);
+    try{ var blob=new Blob([JSON.stringify(r.backup,null,2)],{type:"application/json"});
+      var a=document.createElement("a"); a.href=URL.createObjectURL(blob);
+      a.download=(r.backup.club_name||"group").replace(/[^a-z0-9]+/gi,"-").toLowerCase()+"-"+String(r.backup.created_at||"").slice(0,10)+".json";
+      document.body.appendChild(a); a.click(); a.remove(); say("Downloaded — keep it somewhere safe.",true);
+    }catch(e){ say("Could not save the file.",false); }
+  });
+}
+function bkRestore(id,name){
+  if(!confirm("Put "+name+" back from this snapshot?\n\nNothing is deleted — anything missing is added back, then ratings are recomputed.")) return;
+  say("Restoring…",true);
+  fn({action:"restore_backup",backup_id:id,admin_pin:S.admin}).then(function(r){
+    if(!r||!r.ok) return say((r&&r.error)||"Failed.",false);
+    refreshShape().then(function(){ loadPeople().then(function(){ renderAdmin();
+      say("Put back "+r.club+" — "+r.members+" members, "+r.pairs_restored+" pairs, "+r.matches_restored+" matches.",true); }); });
+  });
 }
 function val(id){ var e=document.getElementById(id); return e?e.value.trim():""; }
 function say(t,good){ var m=document.getElementById("aMsg"); if(!m) return; m.style.color=good?"var(--ok)":"var(--bad)"; m.textContent=t; }
