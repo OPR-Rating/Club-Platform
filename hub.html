@@ -13,6 +13,8 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 <!--
+  VERSION: PLAT-HUB v2026.09.11-h11  (each group can be edited in place — name, colour, its own code —
+  instead of only being deletable.)
   VERSION: PLAT-HUB v2026.09.11-h10  (the build shows on the front page, so it is obvious which version is live)
   VERSION: PLAT-HUB v2026.09.11-h9  (Club admin opens on its OWN screen with a back arrow, instead of
   unfolding down the front page. The front page stays what a member sees: the club, its sports, its groups.)
@@ -151,7 +153,7 @@ input,select{width:100%;padding:10px 11px;border:1px solid var(--line);border-ra
   <div class="wrap" id="adminBody" style="padding-top:14px;padding-bottom:40px"></div>
 </div>
 <div style="display:none">
-  <div class="foot" id="ver">PLAT-HUB h10 · hub</div>
+  <div class="foot" id="ver">PLAT-HUB h11 · hub</div>
 </div>
 
 <script>
@@ -325,8 +327,9 @@ function renderAdmin(){
       h+='<div style="display:flex;align-items:center;gap:8px;padding:8px 0;border-bottom:1px solid var(--line-2)">'
         +'<span style="width:14px;height:14px;border-radius:50%;background:'+(g.colour||SP(g.d).colour)+';flex:0 0 14px"></span>'
         +'<span style="flex:1;min-width:0"><b>'+esc(g.name)+'</b> <span class="rate">'+esc(SP(g.d).label)+'</span></span>'
+        +'<button class="btn ghost" style="width:auto;margin:0;padding:6px 10px;font-size:12px" onclick="editGroup('+g.id+')">Edit</button>'
         +'<button class="btn ghost" style="width:auto;margin:0;padding:6px 10px;font-size:12px;border-color:var(--bad);color:var(--bad)" onclick="tearDown('+g.id+')">Delete…</button></div>'
-        +'<div id="td'+g.id+'"></div>';
+        +'<div id="ed'+g.id+'"></div><div id="td'+g.id+'"></div>';
     });
   }
   h+='<div class="label">Safety net</div>'
@@ -349,6 +352,41 @@ function renderPeople(){
       +(rats?'<div class="rate" style="margin-top:3px">'+esc(rats)+'</div>':'')+'</div>'
       +'<button class="btn ghost" style="width:auto;margin:0;padding:6px 10px;font-size:12px" onclick="addToGroup('+p.id+')">Add to group</button></div>';
   }).join("");
+}
+/* ---- edit a group in place: its name, its colour, its own code ---- */
+var PALETTE=["#6c3483","#1f7a8c","#b5651d","#2e7d32","#c2185b","#455a64","#8e24aa","#00695c","#ad1457","#4e342e","#283593","#827717"];
+var EDCOL={};
+function editGroup(id){
+  var host=document.getElementById("ed"+id); if(!host) return;
+  if(host.innerHTML){ host.innerHTML=""; return; }
+  var g=null; S.shape.forEach(function(x){ (x.groups||[]).forEach(function(y){ if(y.id===id) g=y; }); }); if(!g) return;
+  EDCOL[id]=g.colour||PALETTE[0];
+  host.innerHTML='<div style="margin:6px 0 10px;padding:10px 12px;background:#fff;border:1px solid var(--line);border-radius:var(--radius)">'
+    +'<div class="label" style="margin-top:0">Name</div><div class="field"><input id="edN'+id+'" value="'+esc(g.name)+'"></div>'
+    +'<div class="label">Its code</div><div class="field"><input id="edP'+id+'" inputmode="numeric" placeholder="leave blank to keep the current code"></div>'
+    +'<div class="label">Colour</div><div class="sws" id="edS'+id+'">'
+    +PALETTE.map(function(c){ return '<button class="swb" style="background:'+c+'" aria-pressed="'+(c===EDCOL[id])+'" onclick="pickEdit('+id+',\''+c+'\')"></button>'; }).join("")
+    +'</div><button class="btn" onclick="saveGroup('+id+')">Save</button><div class="msg" id="edM'+id+'"></div></div>';
+}
+function pickEdit(id,c){
+  EDCOL[id]=c;
+  Array.prototype.forEach.call(document.querySelectorAll("#edS"+id+" .swb"),function(b){
+    b.setAttribute("aria-pressed", b.style.backgroundColor===hexToRgb(c)||b.style.background===c); });
+}
+function saveGroup(id){
+  var m=document.getElementById("edM"+id);
+  var name=(document.getElementById("edN"+id).value||"").trim();
+  var pin=(document.getElementById("edP"+id).value||"").trim();
+  if(!name){ m.style.color="var(--bad)"; m.textContent="Name required."; return; }
+  m.style.color="var(--ink-soft)"; m.textContent="Saving…";
+  var jobs=[ fn({action:"rename_club",club_id:id,admin_pin:S.admin,name:name}),
+             fn({action:"set_club_colour",club_id:id,admin_pin:S.admin,colour:EDCOL[id]}) ];
+  if(pin) jobs.push(fn({action:"set_club_pin",club_id:id,admin_pin:S.admin,new_pin:pin}));
+  Promise.all(jobs).then(function(rs){
+    var bad=rs.find(function(r){ return !r||!r.ok; });
+    if(bad){ m.style.color="var(--bad)"; m.textContent=(bad&&bad.error)||"Failed."; return; }
+    refreshShape().then(function(){ renderAdmin(); say("Saved "+name+".",true); });
+  });
 }
 /* ---- three-step teardown, same ladder and same gating as the ledger ---- */
 function tearDown(id){
