@@ -13,6 +13,10 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 <!--
+  VERSION: PLAT-HUB v2026.09.11-h24  (About names the systems and their author, and carries the copyright,
+  as About OPR does; group links carry &org so a board is dressed correctly on its first frame)
+  VERSION: PLAT-HUB v2026.09.11-h23  (group pills stacked and all the same width — Club group first, the
+  rest A-Z — instead of a ragged row sized to the words)
   VERSION: PLAT-HUB v2026.09.11-h22  (a sport opens to its groups as PILLS in their own colours, the way
   groups read everywhere else — the thin list was small and easy to confuse)
   VERSION: PLAT-HUB v2026.09.11-h21  (the corner build tag appears only with ?build=1)
@@ -193,7 +197,7 @@ input,select{width:100%;padding:10px 11px;border:1px solid var(--line);border-ra
   </div>
   <div class="wrap" id="adminBody" style="padding-top:14px;padding-bottom:40px"></div>
 </div>
-<div class="wrap"><div class="foot" id="ver">PLAT-HUB h22 · hub</div></div>
+<div class="wrap"><div class="foot" id="ver">PLAT-HUB h24 · hub</div></div>
 
 <script>
 "use strict";
@@ -241,21 +245,25 @@ function renderPlaques(){
   if(!S.shape.length){ host.innerHTML=""; return; }
   host.innerHTML=S.shape.map(function(x,i){
     var s=SP(x.discipline), gs=x.groups||[];
-    var ordered=gs.slice().sort(function(a,b){ return (b.is_general?1:0)-(a.is_general?1:0); });
-    // groups are PILLS, in their own colours, the way they appear everywhere else in the platform — a row
-    // of taps rather than a list of thin rows, which was hard to read and harder to hit.
-    var groups = ordered.length ? '<div style="padding:12px 15px 4px;display:flex;flex-wrap:wrap;gap:8px">'
+    // Club group first, then the rest A-Z. Pills are stacked one above the other and all the SAME width:
+    // a row of pills sized to their words made the front page look ragged and hard to scan.
+    var ordered=gs.slice().sort(function(a,b){
+      if(a.is_general!==b.is_general) return a.is_general ? -1 : 1;
+      return String(a.name).localeCompare(String(b.name));
+    });
+    var groups = ordered.length ? '<div style="padding:12px 15px 6px;display:flex;flex-direction:column;gap:8px">'
       + ordered.map(function(g){
           var col=g.colour||s.colour;
-          return '<button onclick="openGroup(\''+x.discipline+'\','+g.id+')" style="background:'+col+';color:#fff;border:none;'
-            +'border-radius:99px;padding:9px 16px;font:700 13.5px var(--body);cursor:pointer;display:inline-flex;align-items:center;gap:7px;'
-            +'box-shadow:0 1px 3px rgba(0,0,0,.18)">'
-            + (g.is_general ? '<span style="width:7px;height:7px;border-radius:50%;background:rgba(255,255,255,.9)"></span>' : '')
+          return '<button onclick="openGroup(\''+x.discipline+'\','+g.id+')" style="display:flex;align-items:center;justify-content:center;gap:8px;'
+            +'width:100%;background:'+col+';color:#fff;border:none;border-radius:99px;padding:11px 18px;'
+            +'font:700 14px var(--body);cursor:pointer;box-shadow:0 1px 3px rgba(0,0,0,.18)">'
+            + (g.is_general ? '<span style="width:7px;height:7px;border-radius:50%;background:rgba(255,255,255,.92)"></span>' : '')
             + esc(g.name) + '</button>';
         }).join("")
-      + '</div><div style="padding:2px 16px 0;font-size:11.5px;color:var(--ink-soft)">'
-      + (ordered[0] && ordered[0].is_general ? ('\u25cf '+esc(ordered[0].name)+' is open to the whole club') : '')
       + '</div>'
+      + (ordered[0] && ordered[0].is_general
+          ? '<div style="padding:0 16px 2px;font-size:11.5px;color:var(--ink-soft)">\u25cf '+esc(ordered[0].name)+' is open to the whole club</div>'
+          : '')
       : '<div class="empty">No groups yet — switch the sport on in Club admin and it starts with a Club group.</div>';
     return '<div class="plaque" style="--sport:'+s.colour+'">'
       +'<button class="phead" aria-expanded="false"><span class="badge">'+s.initials+'</span>'
@@ -274,14 +282,15 @@ function groupsOf(d){ var x=S.shape.find(function(y){return y.discipline===d;});
 function openGroup(d,gid){
   var s=SP(d);
   if(!s.replica){ alert(s.label+" is switched on, but its app is not wired yet. Padel is live today; the others follow."); return; }
-  location.href=s.replica+"?club="+gid;
+  // &org= tells the board immediately that it belongs to an organisation, so its first frame is right
+  location.href=s.replica+"?club="+gid+"&org="+ORG;
 }
 // a plaque opens the sport's ledger AT that member, using the parent's own profile screen
 function openPlayer(d,poolId,name,gender){
   var s=SP(d); if(!s.replica||!poolId) return;
-  location.href=s.replica+"?club=0&pool="+poolId+"&player="+encodeURIComponent(name)+"&g="+(gender||"M");
+  location.href=s.replica+"?club=0&pool="+poolId+"&org="+ORG+"&player="+encodeURIComponent(name)+"&g="+(gender||"M");
 }
-function openLedger(d,poolId){ var s=SP(d); if(!s.replica||!poolId) return; location.href=s.replica+"?club=0&pool="+poolId; }
+function openLedger(d,poolId){ var s=SP(d); if(!s.replica||!poolId) return; location.href=s.replica+"?club=0&pool="+poolId+"&org="+ORG; }
 /* ── around the club: every group of every switched-on sport ─ */
 function loadRows(){
   var ids=Object.keys(S.pools); var host=document.getElementById("rows");
@@ -641,7 +650,17 @@ function showAbout(){
     +'<div class="ahint"><b>A group</b> — its own board: its ladders, its pairs, its matches.<br>'
     +'<b>The ledger</b> — the sport across every group: one rating each, and everyone who has played.<br>'
     +'<b>Club admin</b> — the register, the groups and the club\'s settings.</div>'
-    +'<div class="ahint" style="margin-top:12px;opacity:.7">Powered by OPR · opr-online.com</div></div>';
+    +'<div class="label">The rating systems</div>'
+    +'<div class="ahint">OPR (padel), OTR (tennis), OSR (squash) and OBR (bowls) are rating systems designed and built by '
+    +'<b>Andre Farrell</b>, developed over several years of club play and refined against real results. This club runs on '
+    +'them unchanged — the same engine a single-sport club uses, with one register and one rating per person across the '
+    +'whole club.</div>'
+    +'<div class="ahint" style="margin-top:10px">'
+    +'<b>&copy; 2026 Andre Farrell. All rights reserved.</b><br>'
+    +'OPR · OTR · OSR · OBR and the rating engines behind them remain his property. Club data belongs to the club.'
+    +'</div>'
+    +'<div class="ahint" style="margin-top:10px;opacity:.75">Powered by OPR &middot; <a href="https://opr-online.com" style="color:inherit">opr-online.com</a></div>'
+    +'<div class="ahint" style="margin-top:6px;opacity:.6">'+esc(document.getElementById("ver")?document.getElementById("ver").textContent:"")+'</div></div>';
   document.getElementById("aboutScreen").style.display="block";
   document.documentElement.style.overflow="hidden"; window.scrollTo(0,0);
 }
@@ -741,7 +760,7 @@ function addToGroup(iid){
   document.head.appendChild(l);
 }catch(e){} })();
 (function(){ if(!/[?&]build=1/.test(location.search)) return;   // a debugging aid, not something a member should see
-  var t=document.createElement("div"); t.textContent="HUB h22";
+  var t=document.createElement("div"); t.textContent="HUB h24";
   t.style.cssText="position:fixed;top:0;right:0;z-index:99999;background:rgba(0,0,0,.62);color:#fff;font:700 10px/1.4 system-ui,sans-serif;letter-spacing:.4px;padding:3px 8px;border-bottom-left-radius:8px;pointer-events:none";
   document.body.appendChild(t); })();
 boot();
