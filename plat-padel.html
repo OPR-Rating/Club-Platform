@@ -3241,7 +3241,7 @@ const CLUB_NAME = _club.name;  // shown in the logo as "OPR · <name>"
     link.setAttribute('href', href);
   }catch(e){ /* install stays on the static manifest — no functional impact */ }
 })();
-const OPR_VERSION = "OPR-DOUBLES v2026.09.03-56 · PLAT replica p83";  // MANUAL PAIR CREATION REMOVED FROM ADMIN: Create a pair, Bulk create pairs and Re-derive all pairs are gone (they only made match-less ghost pairs, and Re-derive rewrote every stored initial club-wide). Pairs are born automatically at match entry. Current pairs list untouched; the underlying JS is left in place unreferenced, so no other code path changes. Includes v47 (set-score fix + double-tap guard) and all prior.
+const OPR_VERSION = "OPR-DOUBLES v2026.09.03-56 · PLAT replica p85";  // MANUAL PAIR CREATION REMOVED FROM ADMIN: Create a pair, Bulk create pairs and Re-derive all pairs are gone (they only made match-less ghost pairs, and Re-derive rewrote every stored initial club-wide). Pairs are born automatically at match entry. Current pairs list untouched; the underlying JS is left in place unreferenced, so no other code path changes. Includes v47 (set-score fix + double-tap guard) and all prior.
 // Explanation shown above the individual ladder. Open on load so it's read; collapsible
 // (state kept for the session) and scrolls away. Mechanics only — no outcome framing, so
 // members aren't nudged away from playing stronger opponents. Every clause maps to a real
@@ -8969,7 +8969,7 @@ async function clRemove(id, label){
       +cs.map(function(c,i){ return card(c.id,c.name,"Ratings · pairs · scores · tournaments",clubPal(c.id),BALL); }).join("")
       +card(0,"Overall Ledger","Every player across the clubs — one rating each · ladders and stats only",LEDGER,BALL)
       +'<div style="text-align:center;font-size:12px;color:#7a6f8a;margin:8px 0 14px;line-height:1.5">One register · one rating per player<br>Each club keeps its own pairs, matches, tournaments and stats</div>'
-      +'<div style="text-align:center;color:#b3a9c4;font-size:10px;letter-spacing:.5px;margin:0 0 10px">'+esc((typeof OPR_VERSION!=="undefined"?OPR_VERSION:"")+"  ·  shim p83")+'</div>';
+      +'<div style="text-align:center;color:#b3a9c4;font-size:10px;letter-spacing:.5px;margin:0 0 10px">'+esc((typeof OPR_VERSION!=="undefined"?OPR_VERSION:"")+"  ·  shim p85")+'</div>';
     host.insertBefore(d,host.firstChild);
   }
   /* OVERALL: read-only ledger — no score entry, no tournaments, no admin link */
@@ -9620,7 +9620,7 @@ async function clRemove(id, label){
     }catch(e){}
   }
   // the build tag is a debugging aid, not something a member should see: it appears only with ?build=1
-  try{ if(/[?&]build=1/.test(location.search)) buildTag("PLAT p83"); }catch(e){}
+  try{ if(/[?&]build=1/.test(location.search)) buildTag("PLAT p85"); }catch(e){}
   /* A plaque on the club's honour board opens that sport's ledger AT the person: ?player=<name> calls the
      parent's own loadProfile, so nothing in the parent changes. If the name is not recognised the ledger
      simply opens as it always did. */
@@ -9643,7 +9643,7 @@ async function clRemove(id, label){
   /* The one place a group's colour belongs on a board: the profile card, where the member's name and
      ranking sit. Everything else — hero, headers, tables — stays the parent's own scheme. */
   function profileCardTint(){
-    if(W.PLAT.cid===0 || !W.PLAT.orgId) return;
+    if(W.PLAT.cid===0) return;   // any group board — an organisation's or a standalone register's
     var col=(W.PLAT.colour||clubPal(W.PLAT.cid)[0]), deep=darken(col,0.45);
     var st=document.getElementById("platCardTint")||document.createElement("style");
     st.id="platCardTint";
@@ -9654,7 +9654,7 @@ async function clRemove(id, label){
      Club group carries the sport's own colour, so its board looks exactly like the parent product.
      Nothing else on the board changes: hero, headers and tables stay as the parent drew them. */
   function groupAvatars(){
-    if(W.PLAT.cid===0 || !W.PLAT.orgId) return;
+    if(W.PLAT.cid===0) return;   // any group board — an organisation's or a standalone register's
     var col=(W.PLAT.colour||clubPal(W.PLAT.cid)[0]);
     var st=document.getElementById("platAvatarTint")||document.createElement("style");
     st.id="platAvatarTint";
@@ -9665,7 +9665,7 @@ async function clRemove(id, label){
      Earlier attempts used a CSS selector, but the parent's profile card is a plain div with an inline
      gradient and no class, so nothing ever matched. This finds that div, exactly as the ledger does. */
   function boardProfileTint(){
-    if(W.PLAT.cid===0 || !W.PLAT.orgId) return;        // organisation boards; a standalone register is untouched
+    if(W.PLAT.cid===0) return;   // any group board — an organisation's or a standalone register's        // organisation boards; a standalone register is untouched
     // Watch the PAGE: each parent puts the profile card on a different screen under a different id, and
     // picking one is how earlier passes kept missing whichever screen was open.
     var card=document.body; if(!card) return;
@@ -9731,14 +9731,35 @@ async function clRemove(id, label){
      hue, sorted into gradients, pale washes, faint outlines, accent text and secondary text. Near-black
      text, greys and semantic colours (warning golds, win/loss reds and greens) are deliberately excluded
      so only the product's chrome follows the group. */
-    function repaint(root, col){
+    /* A style the browser has already touched comes back NORMALISED — "#fdf3ec" becomes "rgb(253, 243, 236)"
+     and "rgba(211,84,0,.18)" becomes "rgba(211, 84, 0, 0.18)" — so matching the parent's literal text alone
+     misses any element another pass has styled. Each token is matched in both forms. */
+  function colourVariants(c){
+    var out=[c];
+    try{
+      if(c.charAt(0)==="#"){
+        var n=parseInt(c.slice(1),16), r=(n>>16)&255, g=(n>>8)&255, b=n&255;
+        out.push("rgb("+r+", "+g+", "+b+")", "rgb("+r+","+g+","+b+")");
+      } else if(/^rgba?\(/i.test(c)){
+        var p=c.replace(/[^0-9.,]/g,"").split(",").filter(function(x){return x!=="";});
+        if(p.length>=3){
+          var a=(p.length>3? String(Number(p[3])) : null);
+          out.push("rgb("+p[0]+", "+p[1]+", "+p[2]+")");
+          if(a!=null) out.push("rgba("+p[0]+", "+p[1]+", "+p[2]+", "+a+")");
+        }
+      }
+    }catch(e){}
+    return out;
+  }
+  function escRe(x){ return x.replace(/[.*+?^${}()|[\]\\]/g,"\\$&"); }
+  function repaint(root, col){
     if(!root||!col) return;
     var deep=darken(col,0.42), mid=darken(col,0.25), soft=darken(col,0.12);
     var rgb=(function(h){ try{ var n=parseInt(h.slice(1),16); return ((n>>16)&255)+","+((n>>8)&255)+","+(n&255); }catch(e){ return "0,0,0"; } })(col);
     var els=root.querySelectorAll("[style]");
     for(var i=0;i<els.length;i++){
       var el=els[i];
-      if(el.dataset.platPaint==="1") continue;
+      
       if(el.dataset.platKeep==="1" || (el.closest && el.closest('[data-plat-keep="1"]'))) continue;   // platform-drawn: leave it
       var st=el.getAttribute("style")||"", out=st, hit=false;
       PARENT_INK.grad.forEach(function(pair){
@@ -9746,22 +9767,30 @@ async function clRemove(id, label){
         if(re.test(out)){ out=out.replace(re,"linear-gradient(135deg,"+col+","+deep+")"); hit=true; }
       });
       PARENT_INK.wash.forEach(function(c){
-        var re=new RegExp(c.replace(/[().]/g,"\\$&"),"ig");
-        if(re.test(out)){ out=out.replace(re,"rgba("+rgb+",.10)"); hit=true; }
+        colourVariants(c).forEach(function(v){
+          var re=new RegExp(escRe(v),"ig");
+          if(re.test(out)){ out=out.replace(re,"rgba("+rgb+",.10)"); hit=true; }
+        });
       });
       (PARENT_INK.line||[]).forEach(function(c){
-        var re=new RegExp(c.replace(/[().]/g,"\\$&"),"ig");
-        if(re.test(out)){ out=out.replace(re,"rgba("+rgb+",.30)"); hit=true; }
+        colourVariants(c).forEach(function(v){
+          var re=new RegExp(escRe(v),"ig");
+          if(re.test(out)){ out=out.replace(re,"rgba("+rgb+",.30)"); hit=true; }
+        });
       });
       // an accent hex is swapped WHEREVER it appears — as text, as a solid button background, or in a
       // border — otherwise a brand-coloured button survives on a group's page.
       PARENT_INK.strong.forEach(function(c){
-        var re=new RegExp(c.replace(/[().]/g,"\\$&"),"ig");
-        if(re.test(out)){ out=out.replace(re, /color:\s*$/.test(out.split(c)[0]) ? mid : col); hit=true; }
+        colourVariants(c).forEach(function(v){
+          var re=new RegExp(escRe(v),"ig");
+          if(re.test(out)){ out=out.replace(re, /color:\s*$/.test(out.split(v)[0]) ? mid : col); hit=true; }
+        });
       });
       PARENT_INK.muted.forEach(function(c){
-        var re=new RegExp("color:\\s*"+c,"ig");
-        if(re.test(out)){ out=out.replace(re,"color:"+soft); hit=true; }
+        colourVariants(c).forEach(function(v){
+          var re=new RegExp("color:\\s*"+escRe(v),"ig");
+          if(re.test(out)){ out=out.replace(re,"color:"+soft); hit=true; }
+        });
       });
       if(hit){ el.setAttribute("style", out); el.dataset.platPaint="1"; }
     }
@@ -9789,7 +9818,7 @@ async function clRemove(id, label){
     try{ var ch=document.getElementById("platChip"); if(ch) ch.textContent=(W.PLAT.orgId?"‹ Club":"‹ All clubs"); }catch(e){}
     try{ headerBadges(); }catch(e){}
     try{ adminPill(); profileCardTint(); boardProfileTint(); groupAvatars(); openNamedPlayer(); }catch(e){}
-    try{ if(W.PLAT.cid!==0 && W.PLAT.orgId) watchAndPaint(function(){ return (W.PLAT.colour||""); }); }catch(e){}
+    try{ if(W.PLAT.cid!==0) watchAndPaint(function(){ return (W.PLAT.colour||""); }); }catch(e){}
     try{ if(W.PLAT.cid) localStorage.setItem("plat_org_of_club_"+W.PLAT.cid, W.PLAT.orgId ? "1" : "0"); }catch(e){}
     fixManifest();
     var ht=document.getElementById("heroTitle");
