@@ -3064,7 +3064,7 @@ const _club = CLUBS[_clubParam] || (/^\d+$/.test(_clubParam) ? {id:Number(_clubP
 const CLUB_ID = _club.id;
 document.title = 'OSR · ' + _club.name;
 const CLUB_NAME = _club.name;  // shown in the logo as "OPR · <name>"
-const OPR_VERSION = "OSR-LAPTOP v2026.09.03-44 · PLAT replica s20";   // PLAT MARKED HUNK: the build stamp everywhere the parent prints its own  // TABLE BOTTOM SPACING: every scrolling screen now has proper padding at the foot (plus the phone’s safe-area inset), so the last row of ratings/ladder/form tables no longer sits flush against the bottom edge. CSS only. Includes all prior work.
+const OPR_VERSION = "OSR-LAPTOP v2026.09.03-44 · PLAT replica s23";   // PLAT MARKED HUNK: the build stamp everywhere the parent prints its own  // TABLE BOTTOM SPACING: every scrolling screen now has proper padding at the foot (plus the phone’s safe-area inset), so the last row of ratings/ladder/form tables no longer sits flush against the bottom edge. CSS only. Includes all prior work.
 // Explanation shown above the individual ladder. Open on load so it's read; collapsible
 // (state kept for the session) and scrolls away. Mechanics only — no outcome framing, so
 // members aren't nudged away from playing stronger opponents. Every clause maps to a real
@@ -9062,7 +9062,7 @@ async function clRemove(id, label){
       +cs.map(function(c,i){ return card(c.id,c.name,"Ratings · pairs · scores · tournaments",clubPal(c.id),BALL); }).join("")
       +card(0,"Overall Ledger","Every player across the clubs — one rating each · ladders and stats only",LEDGER,BALL)
       +'<div style="text-align:center;font-size:12px;color:#7a6f8a;margin:8px 0 14px;line-height:1.5">One register · one rating per player<br>Each club keeps its own pairs, matches, tournaments and stats</div>'
-      +'<div style="text-align:center;color:#b3a9c4;font-size:10px;letter-spacing:.5px;margin:0 0 10px">'+esc((typeof OPR_VERSION!=="undefined"?OPR_VERSION:"")+"  ·  shim s20")+'</div>';
+      +'<div style="text-align:center;color:#b3a9c4;font-size:10px;letter-spacing:.5px;margin:0 0 10px">'+esc((typeof OPR_VERSION!=="undefined"?OPR_VERSION:"")+"  ·  shim s23")+'</div>';
     host.insertBefore(d,host.firstChild);
   }
   /* OVERALL: read-only ledger — no score entry, no tournaments, no admin link */
@@ -9268,6 +9268,7 @@ async function clRemove(id, label){
         var p=clubPal(cs[0].id);
         box.style.background="linear-gradient(135deg,"+darken(p[0],0.12)+","+darken(p[0],0.55)+")";
         box.dataset.platCol="1";
+        tintTiles(card, p[0]);
         // p70: the pale tiles and the snapshot bar under the card were still OPR's purple wash, so a teal
         // card sat on a purple page. They take a faint wash of the SAME colour, and their figures take it too.
         try{
@@ -9707,7 +9708,7 @@ async function clRemove(id, label){
     }catch(e){}
   }
   // the build tag is a debugging aid, not something a member should see: it appears only with ?build=1
-  try{ if(/[?&]build=1/.test(location.search)) buildTag("PLAT s20"); }catch(e){}
+  try{ if(/[?&]build=1/.test(location.search)) buildTag("PLAT s23"); }catch(e){}
   /* A plaque on the club's honour board opens that sport's ledger AT the person: ?player=<name> calls the
      parent's own loadProfile, so nothing in the parent changes. If the name is not recognised the ledger
      simply opens as it always did. */
@@ -9748,6 +9749,49 @@ async function clRemove(id, label){
     st.textContent="#playerList .player-avatar,.player-avatar{background:"+col+" !important;color:#fff !important;border:none !important}";
     if(!st.parentNode) document.head.appendChild(st);
   }
+  /* THE GROUP'S COLOUR ON ITS OWN BOARD — the card with the member's name, and the soft tiles under it.
+     Earlier attempts used a CSS selector, but the parent's profile card is a plain div with an inline
+     gradient and no class, so nothing ever matched. This finds that div, exactly as the ledger does. */
+  function boardProfileTint(){
+    if(W.PLAT.cid===0 || !W.PLAT.orgId) return;        // organisation boards; a standalone register is untouched
+    // OSR and OTR draw the profile card with a class inside profileScreen; OPR uses a classless div in
+    // partnershipsCard. Cover both, so one rule holds for every leg.
+    var card=document.getElementById("partnershipsCard")||document.getElementById("profileScreen"); if(!card) return;
+    var col=(W.PLAT.colour||clubPal(W.PLAT.cid)[0]), deep=darken(col,0.42);
+    var rgb=(function(h){ try{ var n=parseInt(h.slice(1),16); return ((n>>16)&255)+","+((n>>8)&255)+","+(n&255); }catch(e){ return "108,52,131"; } })(col);
+    var st=document.getElementById("platBoardWash")||document.createElement("style");
+    st.id="platBoardWash";
+    st.textContent=".stat-card{background:rgba("+rgb+",.12) !important}"
+      +".stat-value{color:"+darken(col,0.25)+" !important}"
+      +"#chartSnap,[onclick*='chartSnap']{background:rgba("+rgb+",.10) !important;color:"+darken(col,0.30)+" !important}"
+      +".profile-card,.indiv-card{background:linear-gradient(135deg,"+col+","+deep+") !important}";
+    if(!st.parentNode) document.head.appendChild(st);
+    var paint=function(){
+      var box=card.querySelector('div[style*="linear-gradient"]');
+      if(box && box.dataset.platBoard!=="1"){ box.style.background="linear-gradient(135deg,"+col+","+deep+")"; box.dataset.platBoard="1"; }
+      tintTiles(card, col);
+    };
+    new MutationObserver(paint).observe(card,{childList:true,subtree:true}); paint();
+  }
+  /* The stat tiles on a profile card are INLINE-styled divs with no class, so no stylesheet can reach them —
+     which is why they stayed purple through several attempts. They are tinted here, in the DOM, with the
+     same colour as the card above them. */
+  function tintTiles(root, col){
+    try{
+      var rgb=(function(h){ var n=parseInt(h.slice(1),16); return ((n>>16)&255)+","+((n>>8)&255)+","+(n&255); })(col);
+      var deep=darken(col,0.25);
+      root.querySelectorAll('div[style*="border-radius:10px"]').forEach(function(t){
+        var st=t.getAttribute("style")||"";
+        if(!/background:#/.test(st) || t.dataset.platTile==="1") return;
+        t.dataset.platTile="1";
+        t.style.background="rgba("+rgb+",.12)";
+        var v=t.firstElementChild; if(v) v.style.color=deep;
+      });
+      root.querySelectorAll('div[style*="background:#f5eef8"],div[style*="background:#f7f3fa"]').forEach(function(t){
+        if(t.dataset.platTile==="1") return; t.dataset.platTile="1"; t.style.background="rgba("+rgb+",.10)";
+      });
+    }catch(e){}
+  }
   W.PLAT.ready.then(function(){
     elsewhereLine();
     // p24: name known — reveal the title and remember it for the next visit's first frame
@@ -9763,7 +9807,7 @@ async function clRemove(id, label){
     }catch(e){}
     try{ var ch=document.getElementById("platChip"); if(ch) ch.textContent=(W.PLAT.orgId?"‹ Club":"‹ All clubs"); }catch(e){}
     try{ headerBadges(); }catch(e){}
-    try{ adminPill(); profileCardTint(); groupAvatars(); openNamedPlayer(); }catch(e){}
+    try{ adminPill(); profileCardTint(); boardProfileTint(); groupAvatars(); openNamedPlayer(); }catch(e){}
     try{ if(W.PLAT.cid) localStorage.setItem("plat_org_of_club_"+W.PLAT.cid, W.PLAT.orgId ? "1" : "0"); }catch(e){}
     fixManifest();
     var ht=document.getElementById("heroTitle");

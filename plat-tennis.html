@@ -1915,7 +1915,7 @@ const _club = CLUBS[_clubParam] || (/^\d+$/.test(_clubParam) ? {id:Number(_clubP
 const CLUB_ID = _club.id;
 document.title = 'OTR · ' + _club.name;
 const CLUB_NAME = _club.name;  // shown in the logo as "OPR · <name>"
-const OPR_VERSION = "OTR-LAPTOP v2026.09.03-37 · PLAT replica t21";   // PLAT MARKED HUNK: the build stamp everywhere the parent prints its own  // DOUBLES ROW OPENS THE TEAM PROFILE (parity with OPR/OSR/ODR, ported from the proven CC g38/g39 glue): tapping a pair in the doubles rating table opens its full profile page — the screen is SHOWN first, because OTR’s loadTeamProfile fills the profile screen without switching to it (this is why earlier attempts appeared to do nothing); Back returns to the same table. The ▼ chevron still expands the inline history. Supersedes the withdrawn v34–v36. Includes all prior work.
+const OPR_VERSION = "OTR-LAPTOP v2026.09.03-37 · PLAT replica t24";   // PLAT MARKED HUNK: the build stamp everywhere the parent prints its own  // DOUBLES ROW OPENS THE TEAM PROFILE (parity with OPR/OSR/ODR, ported from the proven CC g38/g39 glue): tapping a pair in the doubles rating table opens its full profile page — the screen is SHOWN first, because OTR’s loadTeamProfile fills the profile screen without switching to it (this is why earlier attempts appeared to do nothing); Back returns to the same table. The ▼ chevron still expands the inline history. Supersedes the withdrawn v34–v36. Includes all prior work.
 // Explanation shown above the individual ladder. Open on load so it's read; collapsible
 // (state kept for the session) and scrolls away. Mechanics only — no outcome framing, so
 // members aren't nudged away from playing stronger opponents. Every clause maps to a real
@@ -8405,7 +8405,7 @@ async function clRemove(id, label){
     }catch(e){}
   }
   // the build tag is a debugging aid, not something a member should see: it appears only with ?build=1
-  try{ if(/[?&]build=1/.test(location.search)) buildTag("PLAT t21"); }catch(e){}
+  try{ if(/[?&]build=1/.test(location.search)) buildTag("PLAT t24"); }catch(e){}
   /* A plaque on the club's honour board opens that sport's ledger AT the person: ?player=<name> calls the
      parent's own loadProfile, so nothing in the parent changes. If the name is not recognised the ledger
      simply opens as it always did. */
@@ -8448,9 +8448,52 @@ async function clRemove(id, label){
     st.textContent="#playerList .player-avatar,.player-avatar{background:"+col+" !important;color:#fff !important;border:none !important}";
     if(!st.parentNode) document.head.appendChild(st);
   }
+  /* THE GROUP'S COLOUR ON ITS OWN BOARD — the card with the member's name, and the soft tiles under it.
+     Earlier attempts used a CSS selector, but the parent's profile card is a plain div with an inline
+     gradient and no class, so nothing ever matched. This finds that div, exactly as the ledger does. */
+  function boardProfileTint(){
+    if(W.PLAT.cid===0 || !W.PLAT.orgId) return;        // organisation boards; a standalone register is untouched
+    // OSR and OTR draw the profile card with a class inside profileScreen; OPR uses a classless div in
+    // partnershipsCard. Cover both, so one rule holds for every leg.
+    var card=document.getElementById("partnershipsCard")||document.getElementById("profileScreen"); if(!card) return;
+    var col=(W.PLAT.colour||colOf(W.PLAT.cid)), deep=tDark(col,0.42);
+    var rgb=(function(h){ try{ var n=parseInt(h.slice(1),16); return ((n>>16)&255)+","+((n>>8)&255)+","+(n&255); }catch(e){ return "108,52,131"; } })(col);
+    var st=document.getElementById("platBoardWash")||document.createElement("style");
+    st.id="platBoardWash";
+    st.textContent=".stat-card{background:rgba("+rgb+",.12) !important}"
+      +".stat-value{color:"+tDark(col,0.25)+" !important}"
+      +"#chartSnap,[onclick*='chartSnap']{background:rgba("+rgb+",.10) !important;color:"+tDark(col,0.30)+" !important}"
+      +".profile-card,.indiv-card{background:linear-gradient(135deg,"+col+","+deep+") !important}";
+    if(!st.parentNode) document.head.appendChild(st);
+    var paint=function(){
+      var box=card.querySelector('div[style*="linear-gradient"]');
+      if(box && box.dataset.platBoard!=="1"){ box.style.background="linear-gradient(135deg,"+col+","+deep+")"; box.dataset.platBoard="1"; }
+      tintTiles(card, col);
+    };
+    new MutationObserver(paint).observe(card,{childList:true,subtree:true}); paint();
+  }
+  /* The stat tiles on a profile card are INLINE-styled divs with no class, so no stylesheet can reach them —
+     which is why they stayed purple through several attempts. They are tinted here, in the DOM, with the
+     same colour as the card above them. */
+  function tintTiles(root, col){
+    try{
+      var rgb=(function(h){ var n=parseInt(h.slice(1),16); return ((n>>16)&255)+","+((n>>8)&255)+","+(n&255); })(col);
+      var deep=tDark(col,0.25);
+      root.querySelectorAll('div[style*="border-radius:10px"]').forEach(function(t){
+        var st=t.getAttribute("style")||"";
+        if(!/background:#/.test(st) || t.dataset.platTile==="1") return;
+        t.dataset.platTile="1";
+        t.style.background="rgba("+rgb+",.12)";
+        var v=t.firstElementChild; if(v) v.style.color=deep;
+      });
+      root.querySelectorAll('div[style*="background:#f5eef8"],div[style*="background:#f7f3fa"]').forEach(function(t){
+        if(t.dataset.platTile==="1") return; t.dataset.platTile="1"; t.style.background="rgba("+rgb+",.10)";
+      });
+    }catch(e){}
+  }
   W.PLAT.ready.then(function(){
     try{ if(W.PLAT.cid) localStorage.setItem("plat_org_of_club_"+W.PLAT.cid, W.PLAT.orgId ? "1" : "0"); }catch(e){}
-    fixManifest(); chip(); try{ headerBadges(); memberList(); groupMemberList(); recentColours(); profileExtras(); adminPill(); profileCardTint(); groupAvatars(); openNamedPlayer(); }catch(e){}
+    fixManifest(); chip(); try{ headerBadges(); memberList(); groupMemberList(); recentColours(); profileExtras(); adminPill(); profileCardTint(); boardProfileTint(); groupAvatars(); openNamedPlayer(); }catch(e){}
     var t=document.getElementById("heroTitle")||document.querySelector("#homeScreen h1");
     if(t){ if(W.PLAT.cid===0) t.textContent="OTR · "+(W.PLAT.poolName||"Tennis")+" · Ledger";
            else if(W.PLAT.name) t.textContent="OTR · "+W.PLAT.name; }
