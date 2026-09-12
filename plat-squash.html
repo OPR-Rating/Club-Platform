@@ -3064,7 +3064,7 @@ const _club = CLUBS[_clubParam] || (/^\d+$/.test(_clubParam) ? {id:Number(_clubP
 const CLUB_ID = _club.id;
 document.title = 'OSR · ' + _club.name;
 const CLUB_NAME = _club.name;  // shown in the logo as "OPR · <name>"
-const OPR_VERSION = "OSR-LAPTOP v2026.09.03-44 · PLAT replica s24";   // PLAT MARKED HUNK: the build stamp everywhere the parent prints its own  // TABLE BOTTOM SPACING: every scrolling screen now has proper padding at the foot (plus the phone’s safe-area inset), so the last row of ratings/ladder/form tables no longer sits flush against the bottom edge. CSS only. Includes all prior work.
+const OPR_VERSION = "OSR-LAPTOP v2026.09.03-44 · PLAT replica s28";   // PLAT MARKED HUNK: the build stamp everywhere the parent prints its own  // TABLE BOTTOM SPACING: every scrolling screen now has proper padding at the foot (plus the phone’s safe-area inset), so the last row of ratings/ladder/form tables no longer sits flush against the bottom edge. CSS only. Includes all prior work.
 // Explanation shown above the individual ladder. Open on load so it's read; collapsible
 // (state kept for the session) and scrolls away. Mechanics only — no outcome framing, so
 // members aren't nudged away from playing stronger opponents. Every clause maps to a real
@@ -9062,7 +9062,7 @@ async function clRemove(id, label){
       +cs.map(function(c,i){ return card(c.id,c.name,"Ratings · pairs · scores · tournaments",clubPal(c.id),BALL); }).join("")
       +card(0,"Overall Ledger","Every player across the clubs — one rating each · ladders and stats only",LEDGER,BALL)
       +'<div style="text-align:center;font-size:12px;color:#7a6f8a;margin:8px 0 14px;line-height:1.5">One register · one rating per player<br>Each club keeps its own pairs, matches, tournaments and stats</div>'
-      +'<div style="text-align:center;color:#b3a9c4;font-size:10px;letter-spacing:.5px;margin:0 0 10px">'+esc((typeof OPR_VERSION!=="undefined"?OPR_VERSION:"")+"  ·  shim s24")+'</div>';
+      +'<div style="text-align:center;color:#b3a9c4;font-size:10px;letter-spacing:.5px;margin:0 0 10px">'+esc((typeof OPR_VERSION!=="undefined"?OPR_VERSION:"")+"  ·  shim s28")+'</div>';
     host.insertBefore(d,host.firstChild);
   }
   /* OVERALL: read-only ledger — no score entry, no tournaments, no admin link */
@@ -9710,7 +9710,7 @@ async function clRemove(id, label){
     }catch(e){}
   }
   // the build tag is a debugging aid, not something a member should see: it appears only with ?build=1
-  try{ if(/[?&]build=1/.test(location.search)) buildTag("PLAT s24"); }catch(e){}
+  try{ if(/[?&]build=1/.test(location.search)) buildTag("PLAT s28"); }catch(e){}
   /* A plaque on the club's honour board opens that sport's ledger AT the person: ?player=<name> calls the
      parent's own loadProfile, so nothing in the parent changes. If the name is not recognised the ledger
      simply opens as it always did. */
@@ -9797,6 +9797,56 @@ async function clRemove(id, label){
       });
     }catch(e){}
   }
+  /* REPAINT BY SUBSTITUTION.
+     The parents draw their profile screens with INLINE styles — a classless gradient card, tiles with a pale
+     wash, headings in the product's accent — so no stylesheet and no single selector can reach them, and each
+     screen does it slightly differently. Rather than chase selectors screen by screen, this walks the page for
+     the parent's own colours and swaps them for the group's: gradients become the group's gradient, pale
+     washes become a faint wash of it, accent text becomes a deep shade of it. Anything it does not recognise
+     is left exactly as the parent drew it. */
+  var PARENT_INK = {grad: [["#7E3200", "#D35400"], ["#D35400", "#7E3200"], ["#D35400", "#A04000"]], wash: ["#e8d9cc", "#f0ddd0", "#fdf3ec", "#fffdf8"], line: ["rgba(211,84,0,.05)", "rgba(211,84,0,.07)", "rgba(211,84,0,.08)", "rgba(211,84,0,.10)", "rgba(211,84,0,.12)", "rgba(211,84,0,.14)", "rgba(211,84,0,.18)", "rgba(211,84,0,.22)", "rgba(211,84,0,.30)", "rgba(211,84,0,.35)", "rgba(255,160,60,.18)", "rgba(255,160,60,.22)", "rgba(255,160,60,.25)", "rgba(255,160,60,.3)", "rgba(255,160,60,.35)", "rgba(255,90,90,.08)"], strong: ["#5a4636", "#7E3200", "#8a5a3a", "#A04000", "#B8480A", "#D35400", "#a86a3a"], muted: ["#9a8578", "#b0a48a"]};
+  /* Extracted mechanically from the parent's own source: every inline colour it uses within its brand
+     hue, sorted into gradients, pale washes, faint outlines, accent text and secondary text. Near-black
+     text, greys and semantic colours (warning golds, win/loss reds and greens) are deliberately excluded
+     so only the product's chrome follows the group. */
+    function repaint(root, col){
+    if(!root||!col) return;
+    var deep=darken(col,0.42), mid=darken(col,0.25), soft=darken(col,0.12);
+    var rgb=(function(h){ try{ var n=parseInt(h.slice(1),16); return ((n>>16)&255)+","+((n>>8)&255)+","+(n&255); }catch(e){ return "0,0,0"; } })(col);
+    var els=root.querySelectorAll("[style]");
+    for(var i=0;i<els.length;i++){
+      var el=els[i]; if(el.dataset.platPaint==="1") continue;
+      var st=el.getAttribute("style")||"", out=st, hit=false;
+      PARENT_INK.grad.forEach(function(pair){
+        var re=new RegExp("linear-gradient\\(135deg,\\s*"+pair[0]+"\\s*,\\s*"+pair[1]+"\\s*\\)","ig");
+        if(re.test(out)){ out=out.replace(re,"linear-gradient(135deg,"+col+","+deep+")"); hit=true; }
+      });
+      PARENT_INK.wash.forEach(function(c){
+        var re=new RegExp(c.replace(/[().]/g,"\\$&"),"ig");
+        if(re.test(out)){ out=out.replace(re,"rgba("+rgb+",.10)"); hit=true; }
+      });
+      (PARENT_INK.line||[]).forEach(function(c){
+        var re=new RegExp(c.replace(/[().]/g,"\\$&"),"ig");
+        if(re.test(out)){ out=out.replace(re,"rgba("+rgb+",.30)"); hit=true; }
+      });
+      // an accent hex is swapped WHEREVER it appears — as text, as a solid button background, or in a
+      // border — otherwise a brand-coloured button survives on a group's page.
+      PARENT_INK.strong.forEach(function(c){
+        var re=new RegExp(c.replace(/[().]/g,"\\$&"),"ig");
+        if(re.test(out)){ out=out.replace(re, /color:\s*$/.test(out.split(c)[0]) ? mid : col); hit=true; }
+      });
+      PARENT_INK.muted.forEach(function(c){
+        var re=new RegExp("color:\\s*"+c,"ig");
+        if(re.test(out)){ out=out.replace(re,"color:"+soft); hit=true; }
+      });
+      if(hit){ el.setAttribute("style", out); el.dataset.platPaint="1"; }
+    }
+  }
+  function watchAndPaint(colFn){
+    var run=function(){ try{ var c=colFn(); if(c) repaint(document.body, c); }catch(e){} };
+    new MutationObserver(run).observe(document.body,{childList:true,subtree:true});
+    run();
+  }
   W.PLAT.ready.then(function(){
     elsewhereLine();
     // p24: name known — reveal the title and remember it for the next visit's first frame
@@ -9813,6 +9863,7 @@ async function clRemove(id, label){
     try{ var ch=document.getElementById("platChip"); if(ch) ch.textContent=(W.PLAT.orgId?"‹ Club":"‹ All clubs"); }catch(e){}
     try{ headerBadges(); }catch(e){}
     try{ adminPill(); profileCardTint(); boardProfileTint(); groupAvatars(); openNamedPlayer(); }catch(e){}
+    try{ if(W.PLAT.cid!==0 && W.PLAT.orgId) watchAndPaint(function(){ return (W.PLAT.colour||""); }); }catch(e){}
     try{ if(W.PLAT.cid) localStorage.setItem("plat_org_of_club_"+W.PLAT.cid, W.PLAT.orgId ? "1" : "0"); }catch(e){}
     fixManifest();
     var ht=document.getElementById("heroTitle");
