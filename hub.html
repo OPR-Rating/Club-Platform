@@ -13,6 +13,11 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 <!--
+  VERSION: PLAT-HUB v2026.09.11-h22  (a sport opens to its groups as PILLS in their own colours, the way
+  groups read everywhere else — the thin list was small and easy to confuse)
+  VERSION: PLAT-HUB v2026.09.11-h21  (the corner build tag appears only with ?build=1)
+  VERSION: PLAT-HUB v2026.09.11-h20  (MEMBERS is a proper entry at the top of the door, not a small link at
+  the foot — it is the thing most members open first)
   VERSION: PLAT-HUB v2026.09.11-h19  (a plaque opens that sport's ledger AT the member, not just at the ledger)
   VERSION: PLAT-HUB v2026.09.11-h18
   MEMBERS — the honour board: one member, a plaque per sport in that sport's colour, with rating, level,
@@ -152,6 +157,13 @@ input,select{width:100%;padding:10px 11px;border:1px solid var(--line);border-ra
     <h1 class="club" id="orgName">Club</h1>
     <div class="sub" id="orgSub">Opening…</div>
     <div class="rule"></div>
+    <div style="display:flex;gap:10px;margin-top:14px">
+      <button onclick="showMembers()" style="flex:1;background:var(--ink);color:var(--ground);border:none;border-radius:var(--radius);
+        padding:13px 16px;font:700 14.5px var(--body);cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px">
+        Members <span style="opacity:.7;font-weight:600">— every rating, one place</span></button>
+      <button onclick="showAbout()" style="flex:0 0 auto;background:transparent;color:var(--ink);border:1.5px solid var(--line);
+        border-radius:var(--radius);padding:13px 18px;font:600 14px var(--body);cursor:pointer">About</button>
+    </div>
   </header>
   <div class="plaques" id="plaques"></div>
   <section class="board"><div class="btitle">Around the club</div><div id="rows"></div></section>
@@ -181,13 +193,7 @@ input,select{width:100%;padding:10px 11px;border:1px solid var(--line);border-ra
   </div>
   <div class="wrap" id="adminBody" style="padding-top:14px;padding-bottom:40px"></div>
 </div>
-<div style="display:none">
-  <div style="text-align:center;margin:18px 0 4px">
-    <button class="btn ghost" style="width:auto;padding:9px 18px;font-size:13px" onclick="showMembers()">Members</button>
-    <button class="btn ghost" style="width:auto;padding:9px 18px;font-size:13px;opacity:.85" onclick="showAbout()">About this club</button>
-  </div>
-  <div class="foot" id="ver">PLAT-HUB h19 · hub</div>
-</div>
+<div class="wrap"><div class="foot" id="ver">PLAT-HUB h22 · hub</div></div>
 
 <script>
 "use strict";
@@ -236,12 +242,20 @@ function renderPlaques(){
   host.innerHTML=S.shape.map(function(x,i){
     var s=SP(x.discipline), gs=x.groups||[];
     var ordered=gs.slice().sort(function(a,b){ return (b.is_general?1:0)-(a.is_general?1:0); });
-    var groups=ordered.length ? ordered.map(function(g){
-        return '<div class="grp" style="--gcol:'+(g.colour||s.colour)+'" onclick="openGroup(\''+x.discipline+'\','+g.id+')">'
-          +'<span class="tick"></span><span><span class="gname">'+esc(g.name)+'</span>'
-          +'<span class="gmeta">'+(g.is_general ? ("where "+esc(s.label)+" starts \u2014 open to the whole club")
-                                                : (s.replica?("its own "+s.parent+" board"):(s.parent+" leg not wired yet")))+'</span></span>'
-          +'<span class="gopen">Open ›</span></div>'; }).join("")
+    // groups are PILLS, in their own colours, the way they appear everywhere else in the platform — a row
+    // of taps rather than a list of thin rows, which was hard to read and harder to hit.
+    var groups = ordered.length ? '<div style="padding:12px 15px 4px;display:flex;flex-wrap:wrap;gap:8px">'
+      + ordered.map(function(g){
+          var col=g.colour||s.colour;
+          return '<button onclick="openGroup(\''+x.discipline+'\','+g.id+')" style="background:'+col+';color:#fff;border:none;'
+            +'border-radius:99px;padding:9px 16px;font:700 13.5px var(--body);cursor:pointer;display:inline-flex;align-items:center;gap:7px;'
+            +'box-shadow:0 1px 3px rgba(0,0,0,.18)">'
+            + (g.is_general ? '<span style="width:7px;height:7px;border-radius:50%;background:rgba(255,255,255,.9)"></span>' : '')
+            + esc(g.name) + '</button>';
+        }).join("")
+      + '</div><div style="padding:2px 16px 0;font-size:11.5px;color:var(--ink-soft)">'
+      + (ordered[0] && ordered[0].is_general ? ('\u25cf '+esc(ordered[0].name)+' is open to the whole club') : '')
+      + '</div>'
       : '<div class="empty">No groups yet — switch the sport on in Club admin and it starts with a Club group.</div>';
     return '<div class="plaque" style="--sport:'+s.colour+'">'
       +'<button class="phead" aria-expanded="false"><span class="badge">'+s.initials+'</span>'
@@ -566,7 +580,7 @@ function renderMemberList(q){
   var b=document.getElementById("membersBody");
   var list=MEM.filter(function(p){ return !q || p.full_name.toLowerCase().indexOf(q.toLowerCase())>=0; });
   b.innerHTML='<div class="field"><input id="memQ" placeholder="Search a name…" value="'+esc(q)+'" oninput="renderMemberList(this.value)"></div>'
-    +'<div class="ahint">'+list.length+' member'+(list.length===1?"":"s")+' · tap a name for their record across the club</div>'
+    +'<div class="ahint">'+list.length+' member'+(list.length===1?"":"s")+' · tap a name to see their ratings</div>'
     +list.map(function(p){
         var played=(S.shape||[]).filter(function(x){ return p.ratings && p.ratings[x.discipline] && p.ratings[x.discipline].current_rating!=null; });
         return '<div class="prow" onclick="showMember('+p.id+')" style="cursor:pointer">'
@@ -603,7 +617,7 @@ function showMember(id){
   document.getElementById("membersBody").innerHTML=
     '<button class="btn ghost" style="width:auto;padding:7px 14px;font-size:12.5px;margin-bottom:12px" onclick="showMembers()">&lsaquo; All members</button>'
     +'<div class="adm"><div class="atitle">'+esc(p.full_name)+'</div>'
-    +'<div class="ahint">One member, a plaque for each sport they play. Tap a plaque for that sport\'s ledger.</div>'
+    +'<div class="ahint">Their rating in each sport they play. Tap one to open that sport and see the full record.</div>'
     +(plaques||'<div class="ahint">No matches yet — they appear here the first time they play.</div>')+'</div>';
   window.scrollTo(0,0);
 }
@@ -726,7 +740,8 @@ function addToGroup(iid){
   l.href="data:application/manifest+json,"+encodeURIComponent(JSON.stringify(mf));
   document.head.appendChild(l);
 }catch(e){} })();
-(function(){ var t=document.createElement("div"); t.textContent="HUB h19";
+(function(){ if(!/[?&]build=1/.test(location.search)) return;   // a debugging aid, not something a member should see
+  var t=document.createElement("div"); t.textContent="HUB h22";
   t.style.cssText="position:fixed;top:0;right:0;z-index:99999;background:rgba(0,0,0,.62);color:#fff;font:700 10px/1.4 system-ui,sans-serif;letter-spacing:.4px;padding:3px 8px;border-bottom-left-radius:8px;pointer-events:none";
   document.body.appendChild(t); })();
 boot();

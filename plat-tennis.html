@@ -630,10 +630,16 @@
     // two by two as padel does.
     st0.textContent += "#homeScreen .home-content{max-width:1100px;margin-left:auto!important;margin-right:auto!important}"
                      + "#homeScreen .menu-grid{grid-template-columns:1fr 1fr!important;max-width:1000px;margin-left:auto;margin-right:auto}";
-        // the club explains itself ONCE, on the club door — a board repeating it on every screen is noise.
-    // The three that remain sit in one row; Admin moves to a pill under Recent Matches, where it is findable.
-    st0.textContent += "#homeScreen .menu-btn[onclick*='aboutScreen']{display:none!important}"
-                     + "#homeScreen .menu-grid{grid-template-columns:repeat(3,1fr)!important}";
+        // ORGANISATION BOARDS ONLY. In an organisation the club explains itself once, on its own door, so a
+    // board repeating About on every screen is noise. A STANDALONE register (Kloof–Sun Fun, Sandbox) is a
+    // live site with its own members: it keeps About, its own layout and everything else exactly as it was.
+    // We know from the last visit whether this board belongs to an organisation; the first visit assumes it
+    // does not, so nothing is ever taken away from a board by surprise.
+    try{
+      var ORGCACHE = (localStorage.getItem("plat_org_of_club_"+CID)==="1") || (localStorage.getItem("plat_reg_org_"+(POOLQ||0))==="1");
+      if(ORGCACHE) st0.textContent += "#homeScreen .menu-btn[onclick*='aboutScreen']{display:none!important}"
+                                    + "#homeScreen .menu-grid{grid-template-columns:repeat(3,1fr)!important}";
+    }catch(e){}
 st0.textContent += ".hero-logo-panel{padding-bottom:52px!important}";
     (document.head||document.documentElement).appendChild(st0);
   }catch(e){}
@@ -1905,7 +1911,7 @@ const _club = CLUBS[_clubParam] || (/^\d+$/.test(_clubParam) ? {id:Number(_clubP
 const CLUB_ID = _club.id;
 document.title = 'OTR · ' + _club.name;
 const CLUB_NAME = _club.name;  // shown in the logo as "OPR · <name>"
-const OPR_VERSION = "OTR-LAPTOP v2026.09.03-37 · PLAT replica t14";   // PLAT MARKED HUNK: the build stamp everywhere the parent prints its own  // DOUBLES ROW OPENS THE TEAM PROFILE (parity with OPR/OSR/ODR, ported from the proven CC g38/g39 glue): tapping a pair in the doubles rating table opens its full profile page — the screen is SHOWN first, because OTR’s loadTeamProfile fills the profile screen without switching to it (this is why earlier attempts appeared to do nothing); Back returns to the same table. The ▼ chevron still expands the inline history. Supersedes the withdrawn v34–v36. Includes all prior work.
+const OPR_VERSION = "OTR-LAPTOP v2026.09.03-37 · PLAT replica t16";   // PLAT MARKED HUNK: the build stamp everywhere the parent prints its own  // DOUBLES ROW OPENS THE TEAM PROFILE (parity with OPR/OSR/ODR, ported from the proven CC g38/g39 glue): tapping a pair in the doubles rating table opens its full profile page — the screen is SHOWN first, because OTR’s loadTeamProfile fills the profile screen without switching to it (this is why earlier attempts appeared to do nothing); Back returns to the same table. The ▼ chevron still expands the inline history. Supersedes the withdrawn v34–v36. Includes all prior work.
 // Explanation shown above the individual ladder. Open on load so it's read; collapsible
 // (state kept for the session) and scrolls away. Mechanics only — no outcome framing, so
 // members aren't nudged away from playing stronger opponents. Every clause maps to a real
@@ -8369,7 +8375,8 @@ async function clRemove(id, label){
      it under Recent Matches, where an organiser will look for it — and only on a group board, never on a
      ledger, which is read-only. */
   function adminPill(){
-    if(W.PLAT.cid===0 || document.getElementById("platAdminPill")) return;
+    // organisation boards only: they no longer show About, which is where the parent hides its admin link.
+    if(W.PLAT.cid===0 || !W.PLAT.orgId || document.getElementById("platAdminPill")) return;
     var lower=document.querySelector("#homeScreen .home-lower")
            || document.getElementById("homeRecentList")
            || document.querySelector("#homeScreen .home-content");
@@ -8396,7 +8403,8 @@ async function clRemove(id, label){
         +"font:700 10px/1.4 system-ui,sans-serif;letter-spacing:.4px;padding:3px 8px;border-bottom-left-radius:8px;pointer-events:none";
     }catch(e){}
   }
-  try{ buildTag("PLAT t14"); }catch(e){}
+  // the build tag is a debugging aid, not something a member should see: it appears only with ?build=1
+  try{ if(/[?&]build=1/.test(location.search)) buildTag("PLAT t16"); }catch(e){}
   /* A plaque on the club's honour board opens that sport's ledger AT the person: ?player=<name> calls the
      parent's own loadProfile, so nothing in the parent changes. If the name is not recognised the ledger
      simply opens as it always did. */
@@ -8413,14 +8421,37 @@ async function clRemove(id, label){
       setTimeout(go,250);
     }catch(e){}
   }
+  function tDark(hex,f){ try{ var n=parseInt(hex.slice(1),16),r=(n>>16)&255,g=(n>>8)&255,b=n&255,d=function(x){return Math.max(0,Math.round(x*(1-f)));};
+    return "#"+[d(r),d(g),d(b)].map(function(x){return ("0"+x.toString(16)).slice(-2);}).join(""); }catch(e){ return hex; } }
+  /* GROUP THEME — one colour, everywhere on that group's board.
+     A group's colour was showing on its pills and match rows but not on its chrome, so opening a profile or
+     a ladder jumped back to the parent's own colour and looked like a different app. This paints the same
+     colour on every header, table head and panel of the board. The CLUB GROUP carries the sport's own
+     colour, so its board looks exactly like the parent product — which is the point of it. */
+  function groupTheme(){
+    if(W.PLAT.cid===0 || !W.PLAT.orgId) return;          // organisation boards; a standalone register keeps its own dress
+    var col = colOf(W.PLAT.cid), deep = tDark(col,0.42);
+    var st = document.getElementById("platGroupTheme") || document.createElement("style");
+    st.id = "platGroupTheme";
+    st.textContent =
+       ".hero,.home-hero,.screen .header{background:linear-gradient(135deg,"+col+","+deep+") !important;background-image:linear-gradient(135deg,"+col+","+deep+") !important}"
+      +".ladder-table th,#tournamentSheetContent th,table th{background:"+deep+" !important}"
+      +".club-panel>div:first-child,.club-panel-head,.club-panel h3{background:linear-gradient(135deg,"+col+","+deep+") !important}"
+      +"#homeScreen .menu-btn{border-color:"+col+" !important;color:"+col+" !important}"
+      +".profile-card,.indiv-card{background:linear-gradient(135deg,"+col+","+deep+") !important}"
+      +".odr-cat-pill.men,.odr-cat-pill.ladies,.odr-cat-pill.mixed{background:"+col+" !important;color:#fff !important}";
+    if(!st.parentNode) document.head.appendChild(st);
+    try{ localStorage.setItem("plat_club_colour_"+W.PLAT.cid, col); }catch(e){}
+  }
   W.PLAT.ready.then(function(){
-    fixManifest(); chip(); try{ headerBadges(); memberList(); groupMemberList(); recentColours(); profileExtras(); adminPill(); openNamedPlayer(); }catch(e){}
+    try{ if(W.PLAT.cid) localStorage.setItem("plat_org_of_club_"+W.PLAT.cid, W.PLAT.orgId ? "1" : "0"); }catch(e){}
+    fixManifest(); chip(); try{ headerBadges(); memberList(); groupMemberList(); recentColours(); profileExtras(); groupTheme(); adminPill(); openNamedPlayer(); }catch(e){}
     var t=document.getElementById("heroTitle")||document.querySelector("#homeScreen h1");
     if(t){ if(W.PLAT.cid===0) t.textContent="OTR · "+(W.PLAT.poolName||"Tennis")+" · Ledger";
            else if(W.PLAT.name) t.textContent="OTR · "+W.PLAT.name; }
     document.title=(t?t.textContent:"OTR");
     try{ document.querySelectorAll(".screen").forEach(function(s){ if(s.querySelector(".platVer")) return;
-      var d=document.createElement("div"); d.className="platVer"; d.textContent="OTR v37 · PLAT replica t14 · shim t14";
+      var d=document.createElement("div"); d.className="platVer"; d.textContent="OTR v37 · PLAT replica t16 · shim t16";
       d.style.cssText="text-align:center;color:#9aa39c;font-size:10px;letter-spacing:.5px;margin:14px 0 8px"; s.appendChild(d); }); }catch(e){}
   });
 })();
