@@ -3241,7 +3241,7 @@ const CLUB_NAME = _club.name;  // shown in the logo as "OPR · <name>"
     link.setAttribute('href', href);
   }catch(e){ /* install stays on the static manifest — no functional impact */ }
 })();
-const OPR_VERSION = "OPR-DOUBLES v2026.09.03-56 · PLAT replica p85";  // MANUAL PAIR CREATION REMOVED FROM ADMIN: Create a pair, Bulk create pairs and Re-derive all pairs are gone (they only made match-less ghost pairs, and Re-derive rewrote every stored initial club-wide). Pairs are born automatically at match entry. Current pairs list untouched; the underlying JS is left in place unreferenced, so no other code path changes. Includes v47 (set-score fix + double-tap guard) and all prior.
+const OPR_VERSION = "OPR-DOUBLES v2026.09.03-56 · PLAT replica p87";  // MANUAL PAIR CREATION REMOVED FROM ADMIN: Create a pair, Bulk create pairs and Re-derive all pairs are gone (they only made match-less ghost pairs, and Re-derive rewrote every stored initial club-wide). Pairs are born automatically at match entry. Current pairs list untouched; the underlying JS is left in place unreferenced, so no other code path changes. Includes v47 (set-score fix + double-tap guard) and all prior.
 // Explanation shown above the individual ladder. Open on load so it's read; collapsible
 // (state kept for the session) and scrolls away. Mechanics only — no outcome framing, so
 // members aren't nudged away from playing stronger opponents. Every clause maps to a real
@@ -8969,7 +8969,7 @@ async function clRemove(id, label){
       +cs.map(function(c,i){ return card(c.id,c.name,"Ratings · pairs · scores · tournaments",clubPal(c.id),BALL); }).join("")
       +card(0,"Overall Ledger","Every player across the clubs — one rating each · ladders and stats only",LEDGER,BALL)
       +'<div style="text-align:center;font-size:12px;color:#7a6f8a;margin:8px 0 14px;line-height:1.5">One register · one rating per player<br>Each club keeps its own pairs, matches, tournaments and stats</div>'
-      +'<div style="text-align:center;color:#b3a9c4;font-size:10px;letter-spacing:.5px;margin:0 0 10px">'+esc((typeof OPR_VERSION!=="undefined"?OPR_VERSION:"")+"  ·  shim p85")+'</div>';
+      +'<div style="text-align:center;color:#b3a9c4;font-size:10px;letter-spacing:.5px;margin:0 0 10px">'+esc((typeof OPR_VERSION!=="undefined"?OPR_VERSION:"")+"  ·  shim p87")+'</div>';
     host.insertBefore(d,host.firstChild);
   }
   /* OVERALL: read-only ledger — no score entry, no tournaments, no admin link */
@@ -9208,7 +9208,7 @@ async function clRemove(id, label){
     var list=document.getElementById("homeRecentList"); if(!list) return;
     var order=null;
     var fetchOrder=function(){ return fetch("https://djmbnvikrdgnomjhtkgf.supabase.co/rest/v1/plat_matches?pool_id=eq."+W.PLAT.pool+"&discipline=eq.padel&select=id,club_id&order=match_date.desc,id.desc&limit=15").then(function(r){return r.json();}).then(function(rows){ order=Array.isArray(rows)?rows:[]; }); };
-    var paint=function(){ if(!order) return; list.querySelectorAll(".recent-item").forEach(function(el,i){ var m=order[i]; if(!m||el.querySelector(".platCp")) return; var c=(W.PLAT.clubs||[]).find(function(x){return x.id===m.club_id;}); if(!c) return; var p=clubPal(c.id); el.style.borderLeft="4px solid "+p[0]; el.style.borderRight="4px solid "+p[0]; var hd=el.querySelector(".match-header"); if(hd){ var s=document.createElement("span"); s.className="platCp"; s.dataset.platKeep="1"; s.innerHTML=clubPill(c,true); hd.insertBefore(s,hd.firstChild); } }); };
+    var paint=function(){ if(!order) return; list.querySelectorAll(".recent-item").forEach(function(el,i){ var m=order[i]; if(!m||el.querySelector(".platCp")) return; var c=(W.PLAT.clubs||[]).find(function(x){return x.id===m.club_id;}); if(!c) return; var p=clubPal(c.id); el.style.borderLeft="4px solid "+p[0]; el.style.borderRight="4px solid "+p[0]; var hd=el.querySelector(".match-header"); if(hd){ var s=document.createElement("span"); s.className="platCp"; s.dataset.platKeep="1"; s.innerHTML='<span style="display:inline-block;background:#eee;color:#333;border-radius:99px;padding:1px 8px;font-size:10px;font-weight:700;margin-right:6px">'+esc(c.name)+'</span>'; hd.insertBefore(s,hd.firstChild); } }); };
     fetchOrder().then(function(){ paint(); new MutationObserver(paint).observe(list,{childList:true}); });
   }
   function ledgerOnly(){
@@ -9620,7 +9620,7 @@ async function clRemove(id, label){
     }catch(e){}
   }
   // the build tag is a debugging aid, not something a member should see: it appears only with ?build=1
-  try{ if(/[?&]build=1/.test(location.search)) buildTag("PLAT p85"); }catch(e){}
+  try{ if(/[?&]build=1/.test(location.search)) buildTag("PLAT p87"); }catch(e){}
   /* A plaque on the club's honour board opens that sport's ledger AT the person: ?player=<name> calls the
      parent's own loadProfile, so nothing in the parent changes. If the name is not recognised the ledger
      simply opens as it always did. */
@@ -9645,6 +9645,7 @@ async function clRemove(id, label){
   function profileCardTint(){
     if(W.PLAT.cid===0) return;   // any group board — an organisation's or a standalone register's
     var col=(W.PLAT.colour||clubPal(W.PLAT.cid)[0]), deep=darken(col,0.45);
+    if(String(col||"").toLowerCase()==="#6c3483") return;   // the product's own colour: keep the parent's exact shades
     var st=document.getElementById("platCardTint")||document.createElement("style");
     st.id="platCardTint";
     st.textContent=".profile-card,.indiv-card{background:linear-gradient(135deg,"+col+","+deep+") !important}";
@@ -9656,6 +9657,7 @@ async function clRemove(id, label){
   function groupAvatars(){
     if(W.PLAT.cid===0) return;   // any group board — an organisation's or a standalone register's
     var col=(W.PLAT.colour||clubPal(W.PLAT.cid)[0]);
+    if(String(col||"").toLowerCase()==="#6c3483") return;   // the product's own colour: keep the parent's exact shades
     var st=document.getElementById("platAvatarTint")||document.createElement("style");
     st.id="platAvatarTint";
     st.textContent="#playerList .player-avatar,.player-avatar{background:"+col+" !important;color:#fff !important;border:none !important}";
@@ -9670,6 +9672,7 @@ async function clRemove(id, label){
     // picking one is how earlier passes kept missing whichever screen was open.
     var card=document.body; if(!card) return;
     var col=(W.PLAT.colour||clubPal(W.PLAT.cid)[0]), deep=darken(col,0.42);
+    if(String(col||"").toLowerCase()==="#6c3483") return;   // the product's own colour: keep the parent's exact shades
     var rgb=(function(h){ try{ var n=parseInt(h.slice(1),16); return ((n>>16)&255)+","+((n>>8)&255)+","+(n&255); }catch(e){ return "108,52,131"; } })(col);
     var st=document.getElementById("platBoardWash")||document.createElement("style");
     st.id="platBoardWash";
@@ -9754,6 +9757,7 @@ async function clRemove(id, label){
   function escRe(x){ return x.replace(/[.*+?^${}()|[\]\\]/g,"\\$&"); }
   function repaint(root, col){
     if(!root||!col) return;
+    if(String(col).toLowerCase()==="#6c3483") return;   // the product's own colour: nothing to repaint
     var deep=darken(col,0.42), mid=darken(col,0.25), soft=darken(col,0.12);
     var rgb=(function(h){ try{ var n=parseInt(h.slice(1),16); return ((n>>16)&255)+","+((n>>8)&255)+","+(n&255); }catch(e){ return "0,0,0"; } })(col);
     var els=root.querySelectorAll("[style]");

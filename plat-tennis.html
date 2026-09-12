@@ -1915,7 +1915,7 @@ const _club = CLUBS[_clubParam] || (/^\d+$/.test(_clubParam) ? {id:Number(_clubP
 const CLUB_ID = _club.id;
 document.title = 'OTR · ' + _club.name;
 const CLUB_NAME = _club.name;  // shown in the logo as "OPR · <name>"
-const OPR_VERSION = "OTR-LAPTOP v2026.09.03-37 · PLAT replica t37";   // PLAT MARKED HUNK: the build stamp everywhere the parent prints its own  // DOUBLES ROW OPENS THE TEAM PROFILE (parity with OPR/OSR/ODR, ported from the proven CC g38/g39 glue): tapping a pair in the doubles rating table opens its full profile page — the screen is SHOWN first, because OTR’s loadTeamProfile fills the profile screen without switching to it (this is why earlier attempts appeared to do nothing); Back returns to the same table. The ▼ chevron still expands the inline history. Supersedes the withdrawn v34–v36. Includes all prior work.
+const OPR_VERSION = "OTR-LAPTOP v2026.09.03-37 · PLAT replica t39";   // PLAT MARKED HUNK: the build stamp everywhere the parent prints its own  // DOUBLES ROW OPENS THE TEAM PROFILE (parity with OPR/OSR/ODR, ported from the proven CC g38/g39 glue): tapping a pair in the doubles rating table opens its full profile page — the screen is SHOWN first, because OTR’s loadTeamProfile fills the profile screen without switching to it (this is why earlier attempts appeared to do nothing); Back returns to the same table. The ▼ chevron still expands the inline history. Supersedes the withdrawn v34–v36. Includes all prior work.
 // Explanation shown above the individual ladder. Open on load so it's read; collapsible
 // (state kept for the session) and scrolls away. Mechanics only — no outcome framing, so
 // members aren't nudged away from playing stronger opponents. Every clause maps to a real
@@ -8291,7 +8291,7 @@ async function clRemove(id, label){
         el.style.borderLeft="4px solid "+col; el.style.borderRight="4px solid "+col;
         var hd=el.querySelector(".match-header"); if(!hd) return;
         var s=document.createElement("span"); s.className="platCp"; s.dataset.platKeep="1";
-        s.innerHTML=clubPill(c,true);
+        s.innerHTML='<span style="display:inline-block;background:#eee;color:#333;border-radius:99px;padding:1px 8px;font-size:10px;font-weight:700;margin-right:6px">'+esc(c.name)+'</span>';   // the parent's own pill look
         hd.insertBefore(s,hd.firstChild);
       });
     }
@@ -8406,7 +8406,7 @@ async function clRemove(id, label){
     }catch(e){}
   }
   // the build tag is a debugging aid, not something a member should see: it appears only with ?build=1
-  try{ if(/[?&]build=1/.test(location.search)) buildTag("PLAT t37"); }catch(e){}
+  try{ if(/[?&]build=1/.test(location.search)) buildTag("PLAT t39"); }catch(e){}
   /* A plaque on the club's honour board opens that sport's ledger AT the person: ?player=<name> calls the
      parent's own loadProfile, so nothing in the parent changes. If the name is not recognised the ledger
      simply opens as it always did. */
@@ -8433,6 +8433,8 @@ async function clRemove(id, label){
   function profileCardTint(){
     if(W.PLAT.cid===0) return;   // any group board — an organisation's or a standalone register's
     var col=(W.PLAT.colour||colOf(W.PLAT.cid)), deep=tDark(col,0.45);
+    if(String(col||"").toLowerCase()==="#0F6E56") return;   // the product's own colour: keep the parent's exact shades
+    if(String(col||"").toLowerCase()==="#0F6E56") return;   // this group wears the product's own colour: leave the parent's exact shades
     var st=document.getElementById("platCardTint")||document.createElement("style");
     st.id="platCardTint";
     st.textContent=".profile-card,.indiv-card{background:linear-gradient(135deg,"+col+","+deep+") !important}";
@@ -8444,6 +8446,8 @@ async function clRemove(id, label){
   function groupAvatars(){
     if(W.PLAT.cid===0) return;   // any group board — an organisation's or a standalone register's
     var col=(W.PLAT.colour||colOf(W.PLAT.cid));
+    if(String(col||"").toLowerCase()==="#0F6E56") return;   // the product's own colour: keep the parent's exact shades
+    if(String(col||"").toLowerCase()==="#0F6E56") return;   // this group wears the product's own colour: leave the parent's exact shades
     var st=document.getElementById("platAvatarTint")||document.createElement("style");
     st.id="platAvatarTint";
     st.textContent="#playerList .player-avatar,.player-avatar{background:"+col+" !important;color:#fff !important;border:none !important}";
@@ -8460,6 +8464,8 @@ async function clRemove(id, label){
     // id, and choosing one of them is how earlier passes kept missing whichever screen you were looking at.
     var card=document.body; if(!card) return;
     var col=(W.PLAT.colour||colOf(W.PLAT.cid)), deep=tDark(col,0.42);
+    if(String(col||"").toLowerCase()==="#0F6E56") return;   // the product's own colour: keep the parent's exact shades
+    if(String(col||"").toLowerCase()==="#0F6E56") return;   // this group wears the product's own colour: leave the parent's exact shades
     var rgb=(function(h){ try{ var n=parseInt(h.slice(1),16); return ((n>>16)&255)+","+((n>>8)&255)+","+(n&255); }catch(e){ return "108,52,131"; } })(col);
     var st=document.getElementById("platBoardWash")||document.createElement("style");
     st.id="platBoardWash";
@@ -8544,6 +8550,8 @@ async function clRemove(id, label){
   function escRe(x){ return x.replace(/[.*+?^${}()|[\]\\]/g,"\\$&"); }
   function repaint(root, col){
     if(!root||!col) return;
+    if(String(col).toLowerCase()==="#0F6E56") return;   // the product's own colour: nothing to repaint
+    if(String(col).toLowerCase()==="#0F6E56") return;   // the product's own colour: nothing to repaint
     var deep=tDark(col,0.42), mid=tDark(col,0.25), soft=tDark(col,0.12);
     var rgb=(function(h){ try{ var n=parseInt(h.slice(1),16); return ((n>>16)&255)+","+((n>>8)&255)+","+(n&255); }catch(e){ return "0,0,0"; } })(col);
     var els=root.querySelectorAll("[style]");
