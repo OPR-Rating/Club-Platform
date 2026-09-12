@@ -1911,7 +1911,7 @@ const _club = CLUBS[_clubParam] || (/^\d+$/.test(_clubParam) ? {id:Number(_clubP
 const CLUB_ID = _club.id;
 document.title = 'OTR · ' + _club.name;
 const CLUB_NAME = _club.name;  // shown in the logo as "OPR · <name>"
-const OPR_VERSION = "OTR-LAPTOP v2026.09.03-37 · PLAT replica t16";   // PLAT MARKED HUNK: the build stamp everywhere the parent prints its own  // DOUBLES ROW OPENS THE TEAM PROFILE (parity with OPR/OSR/ODR, ported from the proven CC g38/g39 glue): tapping a pair in the doubles rating table opens its full profile page — the screen is SHOWN first, because OTR’s loadTeamProfile fills the profile screen without switching to it (this is why earlier attempts appeared to do nothing); Back returns to the same table. The ▼ chevron still expands the inline history. Supersedes the withdrawn v34–v36. Includes all prior work.
+const OPR_VERSION = "OTR-LAPTOP v2026.09.03-37 · PLAT replica t17";   // PLAT MARKED HUNK: the build stamp everywhere the parent prints its own  // DOUBLES ROW OPENS THE TEAM PROFILE (parity with OPR/OSR/ODR, ported from the proven CC g38/g39 glue): tapping a pair in the doubles rating table opens its full profile page — the screen is SHOWN first, because OTR’s loadTeamProfile fills the profile screen without switching to it (this is why earlier attempts appeared to do nothing); Back returns to the same table. The ▼ chevron still expands the inline history. Supersedes the withdrawn v34–v36. Includes all prior work.
 // Explanation shown above the individual ladder. Open on load so it's read; collapsible
 // (state kept for the session) and scrolls away. Mechanics only — no outcome framing, so
 // members aren't nudged away from playing stronger opponents. Every clause maps to a real
@@ -8328,9 +8328,6 @@ async function clRemove(id, label){
           if(Number(cid)!==W.PLAT.cid) elsewhereCount++;
           all.push({id:Number(cid),name:c.name,colour:colOf(Number(cid)),mv:Math.round(mine[cid]*10)/10,here:(Number(cid)===W.PLAT.cid)});
         });
-        // the group's own colour on the card, as padel does
-        if(W.PLAT.cid!==0){ var col=colOf(W.PLAT.cid);
-          card.style.background="linear-gradient(135deg,"+col+","+col+"cc)"; }
         if(W.PLAT.cid===0 || !elsewhereCount) return;
         all.sort(function(a,b){ return (b.here?1:0)-(a.here?1:0); });
         // restate the hero's move as the total across the register
@@ -8404,7 +8401,7 @@ async function clRemove(id, label){
     }catch(e){}
   }
   // the build tag is a debugging aid, not something a member should see: it appears only with ?build=1
-  try{ if(/[?&]build=1/.test(location.search)) buildTag("PLAT t16"); }catch(e){}
+  try{ if(/[?&]build=1/.test(location.search)) buildTag("PLAT t17"); }catch(e){}
   /* A plaque on the club's honour board opens that sport's ledger AT the person: ?player=<name> calls the
      parent's own loadProfile, so nothing in the parent changes. If the name is not recognised the ledger
      simply opens as it always did. */
@@ -8423,35 +8420,18 @@ async function clRemove(id, label){
   }
   function tDark(hex,f){ try{ var n=parseInt(hex.slice(1),16),r=(n>>16)&255,g=(n>>8)&255,b=n&255,d=function(x){return Math.max(0,Math.round(x*(1-f)));};
     return "#"+[d(r),d(g),d(b)].map(function(x){return ("0"+x.toString(16)).slice(-2);}).join(""); }catch(e){ return hex; } }
-  /* GROUP THEME — one colour, everywhere on that group's board.
-     A group's colour was showing on its pills and match rows but not on its chrome, so opening a profile or
-     a ladder jumped back to the parent's own colour and looked like a different app. This paints the same
-     colour on every header, table head and panel of the board. The CLUB GROUP carries the sport's own
-     colour, so its board looks exactly like the parent product — which is the point of it. */
-  function groupTheme(){
-    if(W.PLAT.cid===0 || !W.PLAT.orgId) return;          // organisation boards; a standalone register keeps its own dress
-    var col = colOf(W.PLAT.cid), deep = tDark(col,0.42);
-    var st = document.getElementById("platGroupTheme") || document.createElement("style");
-    st.id = "platGroupTheme";
-    st.textContent =
-       ".hero,.home-hero,.screen .header{background:linear-gradient(135deg,"+col+","+deep+") !important;background-image:linear-gradient(135deg,"+col+","+deep+") !important}"
-      +".ladder-table th,#tournamentSheetContent th,table th{background:"+deep+" !important}"
-      +".club-panel>div:first-child,.club-panel-head,.club-panel h3{background:linear-gradient(135deg,"+col+","+deep+") !important}"
-      +"#homeScreen .menu-btn{border-color:"+col+" !important;color:"+col+" !important}"
-      +".profile-card,.indiv-card{background:linear-gradient(135deg,"+col+","+deep+") !important}"
-      +".odr-cat-pill.men,.odr-cat-pill.ladies,.odr-cat-pill.mixed{background:"+col+" !important;color:#fff !important}";
-    if(!st.parentNode) document.head.appendChild(st);
-    try{ localStorage.setItem("plat_club_colour_"+W.PLAT.cid, col); }catch(e){}
-  }
+  /* A group is distinguished by its NAME pills and its match rows — never by repainting the board. The
+     OPR / OTR / OSR schemes are the products themselves and are left exactly as they are. (p64 themed whole
+     boards; that was wrong and is removed.) */
   W.PLAT.ready.then(function(){
     try{ if(W.PLAT.cid) localStorage.setItem("plat_org_of_club_"+W.PLAT.cid, W.PLAT.orgId ? "1" : "0"); }catch(e){}
-    fixManifest(); chip(); try{ headerBadges(); memberList(); groupMemberList(); recentColours(); profileExtras(); groupTheme(); adminPill(); openNamedPlayer(); }catch(e){}
+    fixManifest(); chip(); try{ headerBadges(); memberList(); groupMemberList(); recentColours(); profileExtras(); adminPill(); openNamedPlayer(); }catch(e){}
     var t=document.getElementById("heroTitle")||document.querySelector("#homeScreen h1");
     if(t){ if(W.PLAT.cid===0) t.textContent="OTR · "+(W.PLAT.poolName||"Tennis")+" · Ledger";
            else if(W.PLAT.name) t.textContent="OTR · "+W.PLAT.name; }
     document.title=(t?t.textContent:"OTR");
     try{ document.querySelectorAll(".screen").forEach(function(s){ if(s.querySelector(".platVer")) return;
-      var d=document.createElement("div"); d.className="platVer"; d.textContent="OTR v37 · PLAT replica t16 · shim t16";
+      var d=document.createElement("div"); d.className="platVer"; d.textContent="OTR v37 · PLAT replica t17 · shim t17";
       d.style.cssText="text-align:center;color:#9aa39c;font-size:10px;letter-spacing:.5px;margin:14px 0 8px"; s.appendChild(d); }); }catch(e){}
   });
 })();

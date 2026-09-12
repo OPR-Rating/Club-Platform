@@ -3060,7 +3060,7 @@ const _club = CLUBS[_clubParam] || (/^\d+$/.test(_clubParam) ? {id:Number(_clubP
 const CLUB_ID = _club.id;
 document.title = 'OSR · ' + _club.name;
 const CLUB_NAME = _club.name;  // shown in the logo as "OPR · <name>"
-const OPR_VERSION = "OSR-LAPTOP v2026.09.03-44 · PLAT replica s14";   // PLAT MARKED HUNK: the build stamp everywhere the parent prints its own  // TABLE BOTTOM SPACING: every scrolling screen now has proper padding at the foot (plus the phone’s safe-area inset), so the last row of ratings/ladder/form tables no longer sits flush against the bottom edge. CSS only. Includes all prior work.
+const OPR_VERSION = "OSR-LAPTOP v2026.09.03-44 · PLAT replica s15";   // PLAT MARKED HUNK: the build stamp everywhere the parent prints its own  // TABLE BOTTOM SPACING: every scrolling screen now has proper padding at the foot (plus the phone’s safe-area inset), so the last row of ratings/ladder/form tables no longer sits flush against the bottom edge. CSS only. Includes all prior work.
 // Explanation shown above the individual ladder. Open on load so it's read; collapsible
 // (state kept for the session) and scrolls away. Mechanics only — no outcome framing, so
 // members aren't nudged away from playing stronger opponents. Every clause maps to a real
@@ -9058,7 +9058,7 @@ async function clRemove(id, label){
       +cs.map(function(c,i){ return card(c.id,c.name,"Ratings · pairs · scores · tournaments",clubPal(c.id),BALL); }).join("")
       +card(0,"Overall Ledger","Every player across the clubs — one rating each · ladders and stats only",LEDGER,BALL)
       +'<div style="text-align:center;font-size:12px;color:#7a6f8a;margin:8px 0 14px;line-height:1.5">One register · one rating per player<br>Each club keeps its own pairs, matches, tournaments and stats</div>'
-      +'<div style="text-align:center;color:#b3a9c4;font-size:10px;letter-spacing:.5px;margin:0 0 10px">'+esc((typeof OPR_VERSION!=="undefined"?OPR_VERSION:"")+"  ·  shim s14")+'</div>';
+      +'<div style="text-align:center;color:#b3a9c4;font-size:10px;letter-spacing:.5px;margin:0 0 10px">'+esc((typeof OPR_VERSION!=="undefined"?OPR_VERSION:"")+"  ·  shim s15")+'</div>';
     host.insertBefore(d,host.firstChild);
   }
   /* OVERALL: read-only ledger — no score entry, no tournaments, no admin link */
@@ -9691,7 +9691,7 @@ async function clRemove(id, label){
     }catch(e){}
   }
   // the build tag is a debugging aid, not something a member should see: it appears only with ?build=1
-  try{ if(/[?&]build=1/.test(location.search)) buildTag("PLAT s14"); }catch(e){}
+  try{ if(/[?&]build=1/.test(location.search)) buildTag("PLAT s15"); }catch(e){}
   /* A plaque on the club's honour board opens that sport's ledger AT the person: ?player=<name> calls the
      parent's own loadProfile, so nothing in the parent changes. If the name is not recognised the ledger
      simply opens as it always did. */
@@ -9708,26 +9708,9 @@ async function clRemove(id, label){
       setTimeout(go,250);
     }catch(e){}
   }
-  /* GROUP THEME — one colour, everywhere on that group's board.
-     A group's colour was showing on its pills and match rows but not on its chrome, so opening a profile or
-     a ladder jumped back to the parent's own colour and looked like a different app. This paints the same
-     colour on every header, table head and panel of the board. The CLUB GROUP carries the sport's own
-     colour, so its board looks exactly like the parent product — which is the point of it. */
-  function groupTheme(){
-    if(W.PLAT.cid===0 || !W.PLAT.orgId) return;          // organisation boards; a standalone register keeps its own dress
-    var col = clubPal(W.PLAT.cid)[0], deep = darken(col, 0.42);
-    var st = document.getElementById("platGroupTheme") || document.createElement("style");
-    st.id = "platGroupTheme";
-    st.textContent =
-       ".hero,.home-hero,.screen .header{background:linear-gradient(135deg,"+col+","+deep+") !important;background-image:linear-gradient(135deg,"+col+","+deep+") !important}"
-      +".ladder-table th,#tournamentSheetContent th,table th{background:"+deep+" !important}"
-      +".club-panel>div:first-child,.club-panel-head,.club-panel h3{background:linear-gradient(135deg,"+col+","+deep+") !important}"
-      +"#homeScreen .menu-btn{border-color:"+col+" !important;color:"+col+" !important}"
-      +".profile-card,.indiv-card{background:linear-gradient(135deg,"+col+","+deep+") !important}"
-      +".odr-cat-pill.men,.odr-cat-pill.ladies,.odr-cat-pill.mixed{background:"+col+" !important;color:#fff !important}";
-    if(!st.parentNode) document.head.appendChild(st);
-    try{ localStorage.setItem("plat_club_colour_"+W.PLAT.cid, col); }catch(e){}
-  }
+  /* A group is distinguished by its NAME pills and its match rows — never by repainting the board. The
+     OPR / OTR / OSR schemes are the products themselves and are left exactly as they are. (p64 themed whole
+     boards; that was wrong and is removed.) */
   W.PLAT.ready.then(function(){
     elsewhereLine();
     // p24: name known — reveal the title and remember it for the next visit's first frame
@@ -9743,7 +9726,7 @@ async function clRemove(id, label){
     }catch(e){}
     try{ var ch=document.getElementById("platChip"); if(ch) ch.textContent=(W.PLAT.orgId?"‹ Club":"‹ All clubs"); }catch(e){}
     try{ headerBadges(); }catch(e){}
-    try{ groupTheme(); adminPill(); openNamedPlayer(); }catch(e){}
+    try{ adminPill(); openNamedPlayer(); }catch(e){}
     try{ if(W.PLAT.cid) localStorage.setItem("plat_org_of_club_"+W.PLAT.cid, W.PLAT.orgId ? "1" : "0"); }catch(e){}
     fixManifest();
     var ht=document.getElementById("heroTitle");
@@ -9753,7 +9736,7 @@ async function clRemove(id, label){
       var sb=document.querySelector("#homeScreen .hero-logo-panel .sub, #homeScreen .sub");
       if(sb && W.PLAT.poolName) sb.textContent=W.PLAT.poolName+" · Open Squash Ratings System"; }
     // version tag at the foot of every screen (OPR only prints it on Home/About)
-    try{ var vt=(typeof OPR_VERSION!=="undefined"?OPR_VERSION:"")+"  ·  shim s14"; document.querySelectorAll(".screen").forEach(function(s){ if(s.querySelector(".platVer")) return; var d=document.createElement("div"); d.className="platVer"; d.textContent=vt; d.style.cssText="text-align:center;color:#b3a9c4;font-size:10px;letter-spacing:.5px;margin:14px 0 8px"; s.appendChild(d); }); }catch(e){}
+    try{ var vt=(typeof OPR_VERSION!=="undefined"?OPR_VERSION:"")+"  ·  shim s15"; document.querySelectorAll(".screen").forEach(function(s){ if(s.querySelector(".platVer")) return; var d=document.createElement("div"); d.className="platVer"; d.textContent=vt; d.style.cssText="text-align:center;color:#b3a9c4;font-size:10px;letter-spacing:.5px;margin:14px 0 8px"; s.appendChild(d); }); }catch(e){}
     if(location.hash==="#enter"){ W.showScreen("entryScreen"); }
   });
 })();
