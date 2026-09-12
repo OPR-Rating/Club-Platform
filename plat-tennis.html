@@ -1915,7 +1915,7 @@ const _club = CLUBS[_clubParam] || (/^\d+$/.test(_clubParam) ? {id:Number(_clubP
 const CLUB_ID = _club.id;
 document.title = 'OTR · ' + _club.name;
 const CLUB_NAME = _club.name;  // shown in the logo as "OPR · <name>"
-const OPR_VERSION = "OTR-LAPTOP v2026.09.03-37 · PLAT replica t32";   // PLAT MARKED HUNK: the build stamp everywhere the parent prints its own  // DOUBLES ROW OPENS THE TEAM PROFILE (parity with OPR/OSR/ODR, ported from the proven CC g38/g39 glue): tapping a pair in the doubles rating table opens its full profile page — the screen is SHOWN first, because OTR’s loadTeamProfile fills the profile screen without switching to it (this is why earlier attempts appeared to do nothing); Back returns to the same table. The ▼ chevron still expands the inline history. Supersedes the withdrawn v34–v36. Includes all prior work.
+const OPR_VERSION = "OTR-LAPTOP v2026.09.03-37 · PLAT replica t35";   // PLAT MARKED HUNK: the build stamp everywhere the parent prints its own  // DOUBLES ROW OPENS THE TEAM PROFILE (parity with OPR/OSR/ODR, ported from the proven CC g38/g39 glue): tapping a pair in the doubles rating table opens its full profile page — the screen is SHOWN first, because OTR’s loadTeamProfile fills the profile screen without switching to it (this is why earlier attempts appeared to do nothing); Back returns to the same table. The ▼ chevron still expands the inline history. Supersedes the withdrawn v34–v36. Includes all prior work.
 // Explanation shown above the individual ladder. Open on load so it's read; collapsible
 // (state kept for the session) and scrolls away. Mechanics only — no outcome framing, so
 // members aren't nudged away from playing stronger opponents. Every clause maps to a real
@@ -8406,7 +8406,7 @@ async function clRemove(id, label){
     }catch(e){}
   }
   // the build tag is a debugging aid, not something a member should see: it appears only with ?build=1
-  try{ if(/[?&]build=1/.test(location.search)) buildTag("PLAT t32"); }catch(e){}
+  try{ if(/[?&]build=1/.test(location.search)) buildTag("PLAT t35"); }catch(e){}
   /* A plaque on the club's honour board opens that sport's ledger AT the person: ?player=<name> calls the
      parent's own loadProfile, so nothing in the parent changes. If the name is not recognised the ledger
      simply opens as it always did. */
@@ -8456,7 +8456,9 @@ async function clRemove(id, label){
     if(W.PLAT.cid===0 || !W.PLAT.orgId) return;        // organisation boards; a standalone register is untouched
     // OSR and OTR draw the profile card with a class inside profileScreen; OPR uses a classless div in
     // partnershipsCard. Cover both, so one rule holds for every leg.
-    var card=document.getElementById("partnershipsCard")||document.getElementById("profileScreen"); if(!card) return;
+    // Watch the PAGE, not one container: each parent puts this card on a different screen under a different
+    // id, and choosing one of them is how earlier passes kept missing whichever screen you were looking at.
+    var card=document.body; if(!card) return;
     var col=(W.PLAT.colour||colOf(W.PLAT.cid)), deep=tDark(col,0.42);
     var rgb=(function(h){ try{ var n=parseInt(h.slice(1),16); return ((n>>16)&255)+","+((n>>8)&255)+","+(n&255); }catch(e){ return "108,52,131"; } })(col);
     var st=document.getElementById("platBoardWash")||document.createElement("style");
@@ -8479,7 +8481,19 @@ async function clRemove(id, label){
   /* The stat tiles on a profile card are INLINE-styled divs with no class, so no stylesheet can reach them —
      which is why they stayed purple through several attempts. They are tinted here, in the DOM, with the
      same colour as the card above them. */
+  /* The five stat tiles wrap onto two rows on a phone because each carries a min-width. They are one row
+     of five in every other app, so hold them to one row and let them shrink. */
+  function oneRowTiles(root){
+    try{
+      root.querySelectorAll('div[style*="min-width:90px"]').forEach(function(t){
+        t.style.minWidth="0"; t.style.flex="1 1 0";
+        var p=t.parentElement;
+        if(p && p.dataset.platRow!=="1"){ p.dataset.platRow="1"; p.style.flexWrap="nowrap"; p.style.gap="4px"; }
+      });
+    }catch(e){}
+  }
   function tintTiles(root, col){
+    oneRowTiles(root);
     try{
       var rgb=(function(h){ var n=parseInt(h.slice(1),16); return ((n>>16)&255)+","+((n>>8)&255)+","+(n&255); })(col);
       var deep=tDark(col,0.25);
@@ -8547,6 +8561,7 @@ async function clRemove(id, label){
     new MutationObserver(run).observe(document.body,{childList:true,subtree:true});
     run();
   }
+  try{ new MutationObserver(function(){ try{ oneRowTiles(document.body); }catch(e){} }).observe(document.body,{childList:true,subtree:true}); }catch(e){}
   W.PLAT.ready.then(function(){
     try{ if(W.PLAT.cid) localStorage.setItem("plat_org_of_club_"+W.PLAT.cid, W.PLAT.orgId ? "1" : "0"); }catch(e){}
     fixManifest(); chip(); try{ headerBadges(); memberList(); groupMemberList(); recentColours(); profileExtras(); adminPill(); profileCardTint(); boardProfileTint(); groupAvatars(); openNamedPlayer(); }catch(e){}

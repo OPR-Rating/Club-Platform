@@ -3064,7 +3064,7 @@ const _club = CLUBS[_clubParam] || (/^\d+$/.test(_clubParam) ? {id:Number(_clubP
 const CLUB_ID = _club.id;
 document.title = 'OSR · ' + _club.name;
 const CLUB_NAME = _club.name;  // shown in the logo as "OPR · <name>"
-const OPR_VERSION = "OSR-LAPTOP v2026.09.03-44 · PLAT replica s31";   // PLAT MARKED HUNK: the build stamp everywhere the parent prints its own  // TABLE BOTTOM SPACING: every scrolling screen now has proper padding at the foot (plus the phone’s safe-area inset), so the last row of ratings/ladder/form tables no longer sits flush against the bottom edge. CSS only. Includes all prior work.
+const OPR_VERSION = "OSR-LAPTOP v2026.09.03-44 · PLAT replica s34";   // PLAT MARKED HUNK: the build stamp everywhere the parent prints its own  // TABLE BOTTOM SPACING: every scrolling screen now has proper padding at the foot (plus the phone’s safe-area inset), so the last row of ratings/ladder/form tables no longer sits flush against the bottom edge. CSS only. Includes all prior work.
 // Explanation shown above the individual ladder. Open on load so it's read; collapsible
 // (state kept for the session) and scrolls away. Mechanics only — no outcome framing, so
 // members aren't nudged away from playing stronger opponents. Every clause maps to a real
@@ -9062,7 +9062,7 @@ async function clRemove(id, label){
       +cs.map(function(c,i){ return card(c.id,c.name,"Ratings · pairs · scores · tournaments",clubPal(c.id),BALL); }).join("")
       +card(0,"Overall Ledger","Every player across the clubs — one rating each · ladders and stats only",LEDGER,BALL)
       +'<div style="text-align:center;font-size:12px;color:#7a6f8a;margin:8px 0 14px;line-height:1.5">One register · one rating per player<br>Each club keeps its own pairs, matches, tournaments and stats</div>'
-      +'<div style="text-align:center;color:#b3a9c4;font-size:10px;letter-spacing:.5px;margin:0 0 10px">'+esc((typeof OPR_VERSION!=="undefined"?OPR_VERSION:"")+"  ·  shim s31")+'</div>';
+      +'<div style="text-align:center;color:#b3a9c4;font-size:10px;letter-spacing:.5px;margin:0 0 10px">'+esc((typeof OPR_VERSION!=="undefined"?OPR_VERSION:"")+"  ·  shim s34")+'</div>';
     host.insertBefore(d,host.firstChild);
   }
   /* OVERALL: read-only ledger — no score entry, no tournaments, no admin link */
@@ -9711,7 +9711,7 @@ async function clRemove(id, label){
     }catch(e){}
   }
   // the build tag is a debugging aid, not something a member should see: it appears only with ?build=1
-  try{ if(/[?&]build=1/.test(location.search)) buildTag("PLAT s31"); }catch(e){}
+  try{ if(/[?&]build=1/.test(location.search)) buildTag("PLAT s34"); }catch(e){}
   /* A plaque on the club's honour board opens that sport's ledger AT the person: ?player=<name> calls the
      parent's own loadProfile, so nothing in the parent changes. If the name is not recognised the ledger
      simply opens as it always did. */
@@ -9759,7 +9759,9 @@ async function clRemove(id, label){
     if(W.PLAT.cid===0 || !W.PLAT.orgId) return;        // organisation boards; a standalone register is untouched
     // OSR and OTR draw the profile card with a class inside profileScreen; OPR uses a classless div in
     // partnershipsCard. Cover both, so one rule holds for every leg.
-    var card=document.getElementById("partnershipsCard")||document.getElementById("profileScreen"); if(!card) return;
+    // Watch the PAGE, not one container: each parent puts this card on a different screen under a different
+    // id, and choosing one of them is how earlier passes kept missing whichever screen you were looking at.
+    var card=document.body; if(!card) return;
     var col=(W.PLAT.colour||clubPal(W.PLAT.cid)[0]), deep=darken(col,0.42);
     var rgb=(function(h){ try{ var n=parseInt(h.slice(1),16); return ((n>>16)&255)+","+((n>>8)&255)+","+(n&255); }catch(e){ return "108,52,131"; } })(col);
     var st=document.getElementById("platBoardWash")||document.createElement("style");
@@ -9782,7 +9784,19 @@ async function clRemove(id, label){
   /* The stat tiles on a profile card are INLINE-styled divs with no class, so no stylesheet can reach them —
      which is why they stayed purple through several attempts. They are tinted here, in the DOM, with the
      same colour as the card above them. */
+  /* The five stat tiles wrap onto two rows on a phone because each carries a min-width. They are one row
+     of five in every other app, so hold them to one row and let them shrink. */
+  function oneRowTiles(root){
+    try{
+      root.querySelectorAll('div[style*="min-width:90px"]').forEach(function(t){
+        t.style.minWidth="0"; t.style.flex="1 1 0";
+        var p=t.parentElement;
+        if(p && p.dataset.platRow!=="1"){ p.dataset.platRow="1"; p.style.flexWrap="nowrap"; p.style.gap="4px"; }
+      });
+    }catch(e){}
+  }
   function tintTiles(root, col){
+    oneRowTiles(root);
     try{
       var rgb=(function(h){ var n=parseInt(h.slice(1),16); return ((n>>16)&255)+","+((n>>8)&255)+","+(n&255); })(col);
       var deep=darken(col,0.25);
@@ -9850,6 +9864,7 @@ async function clRemove(id, label){
     new MutationObserver(run).observe(document.body,{childList:true,subtree:true});
     run();
   }
+  try{ new MutationObserver(function(){ try{ oneRowTiles(document.body); }catch(e){} }).observe(document.body,{childList:true,subtree:true}); }catch(e){}
   W.PLAT.ready.then(function(){
     elsewhereLine();
     // p24: name known — reveal the title and remember it for the next visit's first frame
