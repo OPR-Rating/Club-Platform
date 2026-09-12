@@ -563,6 +563,8 @@
    team profiles were listing the whole register because OSR asks for them with the picker's query)
    VERSION: PLAT-SQUASH v2026.09.11-s4  (the entry picker offers the whole register: it sends the same
    query as the group admin table, which is why a new group's pickers came back empty)
+   VERSION: PLAT-SQUASH v2026.09.11-s29  (squash is the SLOTS family — no pair is born; the match carries
+   four individual names, which is what OSR reads)
    VERSION: PLAT-SQUASH v2026.09.11-s1
    OSR v44 runs UNMODIFIED below. SQUASH IS THE PAIR RAIL — v44 births a pair client-side exactly as OPR
    does — so this shim is the padel one, renamed, with one structural change: OSR already lives in the
@@ -715,13 +717,11 @@ st0.textContent += ".hero-logo-panel{padding-bottom:56px!important}";   // room 
       if(m){
         var tbl=m[1].split("?")[0];
         if(method==="POST"&&tbl==="players"){
-          // p34 SPEED: OPR only needs the pair's NAME back, and plat_submit_match (v5) births any pair the
-          // match names. So answer here with no round trip — two edge invocations per score disappear.
+          // s29: SQUASH IS SLOTS. OSR keeps a pair-birth call from its older model, but the product stores
+          // four individuals per match, so no pair is created: answer the call and let the match stand on
+          // its own four names.
           var b={}; try{ b=JSON.parse(init.body||"{}"); }catch(e){}
-          if(CID===0) return jsonResp({message:"Choose a club before entering a match."},400);
-          var nm=String(b.name||"").trim();
-          if(!nm || nm.split(" & ").length!==2) return jsonResp({message:"a pair needs two different players"},400);
-          return Promise.resolve(jsonResp([{id:0,name:nm}],201));
+          return Promise.resolve(jsonResp([{id:0,name:String(b.name||"")}],201));
         }
         if(method==="POST"&&tbl.indexOf("player_results")===0) return jsonResp([],201);
         // p8: OPR's Admin tab member writes -> platform admin actions, with the PIN the admin typed (ADMIN_PIN is OPR's global)
@@ -3064,7 +3064,7 @@ const _club = CLUBS[_clubParam] || (/^\d+$/.test(_clubParam) ? {id:Number(_clubP
 const CLUB_ID = _club.id;
 document.title = 'OSR · ' + _club.name;
 const CLUB_NAME = _club.name;  // shown in the logo as "OPR · <name>"
-const OPR_VERSION = "OSR-LAPTOP v2026.09.03-44 · PLAT replica s28";   // PLAT MARKED HUNK: the build stamp everywhere the parent prints its own  // TABLE BOTTOM SPACING: every scrolling screen now has proper padding at the foot (plus the phone’s safe-area inset), so the last row of ratings/ladder/form tables no longer sits flush against the bottom edge. CSS only. Includes all prior work.
+const OPR_VERSION = "OSR-LAPTOP v2026.09.03-44 · PLAT replica s29";   // PLAT MARKED HUNK: the build stamp everywhere the parent prints its own  // TABLE BOTTOM SPACING: every scrolling screen now has proper padding at the foot (plus the phone’s safe-area inset), so the last row of ratings/ladder/form tables no longer sits flush against the bottom edge. CSS only. Includes all prior work.
 // Explanation shown above the individual ladder. Open on load so it's read; collapsible
 // (state kept for the session) and scrolls away. Mechanics only — no outcome framing, so
 // members aren't nudged away from playing stronger opponents. Every clause maps to a real
@@ -9062,7 +9062,7 @@ async function clRemove(id, label){
       +cs.map(function(c,i){ return card(c.id,c.name,"Ratings · pairs · scores · tournaments",clubPal(c.id),BALL); }).join("")
       +card(0,"Overall Ledger","Every player across the clubs — one rating each · ladders and stats only",LEDGER,BALL)
       +'<div style="text-align:center;font-size:12px;color:#7a6f8a;margin:8px 0 14px;line-height:1.5">One register · one rating per player<br>Each club keeps its own pairs, matches, tournaments and stats</div>'
-      +'<div style="text-align:center;color:#b3a9c4;font-size:10px;letter-spacing:.5px;margin:0 0 10px">'+esc((typeof OPR_VERSION!=="undefined"?OPR_VERSION:"")+"  ·  shim s28")+'</div>';
+      +'<div style="text-align:center;color:#b3a9c4;font-size:10px;letter-spacing:.5px;margin:0 0 10px">'+esc((typeof OPR_VERSION!=="undefined"?OPR_VERSION:"")+"  ·  shim s29")+'</div>';
     host.insertBefore(d,host.firstChild);
   }
   /* OVERALL: read-only ledger — no score entry, no tournaments, no admin link */
@@ -9710,7 +9710,7 @@ async function clRemove(id, label){
     }catch(e){}
   }
   // the build tag is a debugging aid, not something a member should see: it appears only with ?build=1
-  try{ if(/[?&]build=1/.test(location.search)) buildTag("PLAT s28"); }catch(e){}
+  try{ if(/[?&]build=1/.test(location.search)) buildTag("PLAT s29"); }catch(e){}
   /* A plaque on the club's honour board opens that sport's ledger AT the person: ?player=<name> calls the
      parent's own loadProfile, so nothing in the parent changes. If the name is not recognised the ledger
      simply opens as it always did. */
