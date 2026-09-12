@@ -74,7 +74,7 @@
   --ink:#16243D; --ink-soft:#6C7789; --ok:#2e7d32; --bad:#c62828;
   --display:'Archivo',system-ui,sans-serif; --body:'Inter',system-ui,sans-serif;
   --radius:2px; --ease:cubic-bezier(.2,.7,.3,1);
-  --padel:#174D8C; --tennis:#185A33; --squash:#A33E06; --bowls:#2E5E3A; --mdr:#5B2C6F;
+  --padel:#6c3483; --tennis:#0F6E56; --squash:#D35400; --bowls:#2E5E3A; --mdr:#5B2C6F;   /* the products' own colours */
 }
 *{box-sizing:border-box}
 html,body{margin:0}
@@ -199,7 +199,7 @@ input,select{width:100%;padding:10px 11px;border:1px solid var(--line);border-ra
   </div>
   <div class="wrap" id="adminBody" style="padding-top:14px;padding-bottom:40px"></div>
 </div>
-<div class="wrap"><div class="foot" id="ver">PLAT-HUB h25 · hub</div></div>
+<div class="wrap"><div class="foot" id="ver">PLAT-HUB h26 · hub</div></div>
 
 <script>
 "use strict";
@@ -770,7 +770,7 @@ function addToGroup(iid){
   document.head.appendChild(l);
 }catch(e){} })();
 (function(){ if(!/[?&]build=1/.test(location.search)) return;   // a debugging aid, not something a member should see
-  var t=document.createElement("div"); t.textContent="HUB h25";
+  var t=document.createElement("div"); t.textContent="HUB h26";
   t.style.cssText="position:fixed;top:0;right:0;z-index:99999;background:rgba(0,0,0,.62);color:#fff;font:700 10px/1.4 system-ui,sans-serif;letter-spacing:.4px;padding:3px 8px;border-bottom-left-radius:8px;pointer-events:none";
   document.body.appendChild(t); })();
 boot();
