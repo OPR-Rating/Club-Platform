@@ -3241,7 +3241,7 @@ const CLUB_NAME = _club.name;  // shown in the logo as "OPR · <name>"
     link.setAttribute('href', href);
   }catch(e){ /* install stays on the static manifest — no functional impact */ }
 })();
-const OPR_VERSION = "OPR-DOUBLES v2026.09.03-56 · PLAT replica p77";  // MANUAL PAIR CREATION REMOVED FROM ADMIN: Create a pair, Bulk create pairs and Re-derive all pairs are gone (they only made match-less ghost pairs, and Re-derive rewrote every stored initial club-wide). Pairs are born automatically at match entry. Current pairs list untouched; the underlying JS is left in place unreferenced, so no other code path changes. Includes v47 (set-score fix + double-tap guard) and all prior.
+const OPR_VERSION = "OPR-DOUBLES v2026.09.03-56 · PLAT replica p79";  // MANUAL PAIR CREATION REMOVED FROM ADMIN: Create a pair, Bulk create pairs and Re-derive all pairs are gone (they only made match-less ghost pairs, and Re-derive rewrote every stored initial club-wide). Pairs are born automatically at match entry. Current pairs list untouched; the underlying JS is left in place unreferenced, so no other code path changes. Includes v47 (set-score fix + double-tap guard) and all prior.
 // Explanation shown above the individual ladder. Open on load so it's read; collapsible
 // (state kept for the session) and scrolls away. Mechanics only — no outcome framing, so
 // members aren't nudged away from playing stronger opponents. Every clause maps to a real
@@ -8969,7 +8969,7 @@ async function clRemove(id, label){
       +cs.map(function(c,i){ return card(c.id,c.name,"Ratings · pairs · scores · tournaments",clubPal(c.id),BALL); }).join("")
       +card(0,"Overall Ledger","Every player across the clubs — one rating each · ladders and stats only",LEDGER,BALL)
       +'<div style="text-align:center;font-size:12px;color:#7a6f8a;margin:8px 0 14px;line-height:1.5">One register · one rating per player<br>Each club keeps its own pairs, matches, tournaments and stats</div>'
-      +'<div style="text-align:center;color:#b3a9c4;font-size:10px;letter-spacing:.5px;margin:0 0 10px">'+esc((typeof OPR_VERSION!=="undefined"?OPR_VERSION:"")+"  ·  shim p77")+'</div>';
+      +'<div style="text-align:center;color:#b3a9c4;font-size:10px;letter-spacing:.5px;margin:0 0 10px">'+esc((typeof OPR_VERSION!=="undefined"?OPR_VERSION:"")+"  ·  shim p79")+'</div>';
     host.insertBefore(d,host.firstChild);
   }
   /* OVERALL: read-only ledger — no score entry, no tournaments, no admin link */
@@ -9010,7 +9010,7 @@ async function clRemove(id, label){
     var paint=function(){ regMap().then(function(map){ list.querySelectorAll("li.player-item").forEach(function(li){
       var el=li.querySelector(".player-name"); if(!el||el.querySelector(".platCp")) return;
       var cs=map[el.textContent.trim()]||[]; if(!cs.length) return;
-      var s=document.createElement("span"); s.className="platCp"; s.style.cssText="display:block;margin:3px 0 0";
+      var s=document.createElement("span"); s.className="platCp"; s.dataset.platKeep="1"; s.style.cssText="display:block;margin:3px 0 0";
       s.innerHTML=cs.map(function(c){return clubPill(c,true);}).join(""); el.appendChild(s);
       // p26: the letter is an outline, not a filled disc — the club pill already carries the colour,
       // and a page of solid circles reads as clutter.
@@ -9112,6 +9112,7 @@ async function clRemove(id, label){
         // p38: sits ABOVE the "Partnerships" heading, left-ranged, and reads as a plain statement:
         //   Move in <group>  -17.9
         var el=document.createElement("div");
+        el.dataset.platKeep="1";   // platform-drawn: the repaint must not touch it
         el.style.cssText="margin:14px 0 6px;font-size:13px;color:#5b3a6e;text-align:left";
         // p44: the movement itself IS the pill, in the group's colour — one line however many groups a
         // player has. The colour is the same one that group wears on the header badge, its ladder badges
@@ -9190,7 +9191,7 @@ async function clRemove(id, label){
             +"[onclick*='chartSnap'],#chartSnapBtn{color:"+darken(p[0],0.30)+" !important}";
           if(!st.parentNode) document.head.appendChild(st);
         }catch(e){}
-        if(!box.querySelector(".platCp")){ var s=document.createElement("div"); s.className="platCp"; s.style.cssText="margin-top:10px";
+        if(!box.querySelector(".platCp")){ var s=document.createElement("div"); s.className="platCp"; s.dataset.platKeep="1"; s.style.cssText="margin-top:10px";
           // p59: a pill naming a group wears THAT group's colour, wherever it appears. On the banner the
           // pill for the group whose colour the banner already is would disappear, so every pill keeps a
           // white outline to lift it off the background.
@@ -9205,7 +9206,7 @@ async function clRemove(id, label){
     var list=document.getElementById("homeRecentList"); if(!list) return;
     var order=null;
     var fetchOrder=function(){ return fetch("https://djmbnvikrdgnomjhtkgf.supabase.co/rest/v1/plat_matches?pool_id=eq."+W.PLAT.pool+"&discipline=eq.padel&select=id,club_id&order=match_date.desc,id.desc&limit=15").then(function(r){return r.json();}).then(function(rows){ order=Array.isArray(rows)?rows:[]; }); };
-    var paint=function(){ if(!order) return; list.querySelectorAll(".recent-item").forEach(function(el,i){ var m=order[i]; if(!m||el.querySelector(".platCp")) return; var c=(W.PLAT.clubs||[]).find(function(x){return x.id===m.club_id;}); if(!c) return; var p=clubPal(c.id); el.style.borderLeft="4px solid "+p[0]; el.style.borderRight="4px solid "+p[0]; var hd=el.querySelector(".match-header"); if(hd){ var s=document.createElement("span"); s.className="platCp"; s.innerHTML=clubPill(c,true); hd.insertBefore(s,hd.firstChild); } }); };
+    var paint=function(){ if(!order) return; list.querySelectorAll(".recent-item").forEach(function(el,i){ var m=order[i]; if(!m||el.querySelector(".platCp")) return; var c=(W.PLAT.clubs||[]).find(function(x){return x.id===m.club_id;}); if(!c) return; var p=clubPal(c.id); el.style.borderLeft="4px solid "+p[0]; el.style.borderRight="4px solid "+p[0]; var hd=el.querySelector(".match-header"); if(hd){ var s=document.createElement("span"); s.className="platCp"; s.dataset.platKeep="1"; s.innerHTML=clubPill(c,true); hd.insertBefore(s,hd.firstChild); } }); };
     fetchOrder().then(function(){ paint(); new MutationObserver(paint).observe(list,{childList:true}); });
   }
   function ledgerOnly(){
@@ -9528,7 +9529,7 @@ async function clRemove(id, label){
       if(h.querySelector(".platWhere")) return;
       if(h.closest("#homeScreen")) return;                 // home already says it in the hero
       h.style.position=h.style.position||"relative";
-      var b=document.createElement("span"); b.className="platWhere"; b.textContent=label;
+      var b=document.createElement("span"); b.className="platWhere"; b.dataset.platKeep="1"; b.textContent=label;
       b.style.cssText="margin-left:auto;background:"+col+";color:#fff;border:1.5px solid rgba(255,255,255,.6);"
         +"border-radius:99px;padding:8px 18px;font-size:14.5px;font-weight:800;letter-spacing:.3px;white-space:nowrap;max-width:54%;"
         +"overflow:hidden;text-overflow:ellipsis;align-self:center;text-shadow:none;box-shadow:0 2px 6px rgba(0,0,0,.25)";
@@ -9595,7 +9596,7 @@ async function clRemove(id, label){
            || document.querySelector("#homeScreen .home-content");
     if(!lower) return;
     var host=(lower.id==="homeRecentList") ? lower.parentElement : lower;
-    var wrap=document.createElement("div"); wrap.id="platAdminPill";
+    var wrap=document.createElement("div"); wrap.id="platAdminPill"; wrap.dataset.platKeep="1";
     wrap.style.cssText="text-align:center;margin:16px auto 8px;max-width:1000px;width:100%";
     var b=document.createElement("button");
     b.textContent="Admin";
@@ -9617,7 +9618,7 @@ async function clRemove(id, label){
     }catch(e){}
   }
   // the build tag is a debugging aid, not something a member should see: it appears only with ?build=1
-  try{ if(/[?&]build=1/.test(location.search)) buildTag("PLAT p77"); }catch(e){}
+  try{ if(/[?&]build=1/.test(location.search)) buildTag("PLAT p79"); }catch(e){}
   /* A plaque on the club's honour board opens that sport's ledger AT the person: ?player=<name> calls the
      parent's own loadProfile, so nothing in the parent changes. If the name is not recognised the ledger
      simply opens as it always did. */
@@ -9720,7 +9721,9 @@ async function clRemove(id, label){
     var rgb=(function(h){ try{ var n=parseInt(h.slice(1),16); return ((n>>16)&255)+","+((n>>8)&255)+","+(n&255); }catch(e){ return "0,0,0"; } })(col);
     var els=root.querySelectorAll("[style]");
     for(var i=0;i<els.length;i++){
-      var el=els[i]; if(el.dataset.platPaint==="1") continue;
+      var el=els[i];
+      if(el.dataset.platPaint==="1") continue;
+      if(el.dataset.platKeep==="1" || (el.closest && el.closest('[data-plat-keep="1"]'))) continue;   // platform-drawn: leave it
       var st=el.getAttribute("style")||"", out=st, hit=false;
       PARENT_INK.grad.forEach(function(pair){
         var re=new RegExp("linear-gradient\\(135deg,\\s*"+pair[0]+"\\s*,\\s*"+pair[1]+"\\s*\\)","ig");
