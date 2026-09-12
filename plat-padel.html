@@ -3241,7 +3241,7 @@ const CLUB_NAME = _club.name;  // shown in the logo as "OPR · <name>"
     link.setAttribute('href', href);
   }catch(e){ /* install stays on the static manifest — no functional impact */ }
 })();
-const OPR_VERSION = "OPR-DOUBLES v2026.09.03-56 · PLAT replica p72";  // MANUAL PAIR CREATION REMOVED FROM ADMIN: Create a pair, Bulk create pairs and Re-derive all pairs are gone (they only made match-less ghost pairs, and Re-derive rewrote every stored initial club-wide). Pairs are born automatically at match entry. Current pairs list untouched; the underlying JS is left in place unreferenced, so no other code path changes. Includes v47 (set-score fix + double-tap guard) and all prior.
+const OPR_VERSION = "OPR-DOUBLES v2026.09.03-56 · PLAT replica p73";  // MANUAL PAIR CREATION REMOVED FROM ADMIN: Create a pair, Bulk create pairs and Re-derive all pairs are gone (they only made match-less ghost pairs, and Re-derive rewrote every stored initial club-wide). Pairs are born automatically at match entry. Current pairs list untouched; the underlying JS is left in place unreferenced, so no other code path changes. Includes v47 (set-score fix + double-tap guard) and all prior.
 // Explanation shown above the individual ladder. Open on load so it's read; collapsible
 // (state kept for the session) and scrolls away. Mechanics only — no outcome framing, so
 // members aren't nudged away from playing stronger opponents. Every clause maps to a real
@@ -8969,7 +8969,7 @@ async function clRemove(id, label){
       +cs.map(function(c,i){ return card(c.id,c.name,"Ratings · pairs · scores · tournaments",clubPal(c.id),BALL); }).join("")
       +card(0,"Overall Ledger","Every player across the clubs — one rating each · ladders and stats only",LEDGER,BALL)
       +'<div style="text-align:center;font-size:12px;color:#7a6f8a;margin:8px 0 14px;line-height:1.5">One register · one rating per player<br>Each club keeps its own pairs, matches, tournaments and stats</div>'
-      +'<div style="text-align:center;color:#b3a9c4;font-size:10px;letter-spacing:.5px;margin:0 0 10px">'+esc((typeof OPR_VERSION!=="undefined"?OPR_VERSION:"")+"  ·  shim p72")+'</div>';
+      +'<div style="text-align:center;color:#b3a9c4;font-size:10px;letter-spacing:.5px;margin:0 0 10px">'+esc((typeof OPR_VERSION!=="undefined"?OPR_VERSION:"")+"  ·  shim p73")+'</div>';
     host.insertBefore(d,host.firstChild);
   }
   /* OVERALL: read-only ledger — no score entry, no tournaments, no admin link */
@@ -9176,6 +9176,8 @@ async function clRemove(id, label){
         box.style.background="linear-gradient(135deg,"+darken(p[0],0.12)+","+darken(p[0],0.55)+")";
         box.dataset.platCol="1";
         tintTiles(card, p[0]);
+        try{ card.querySelectorAll('div[style*="color:#5b3a6e"],div[style*="color:#6c3483"]').forEach(function(h){
+          if(h.dataset.platHead==="1"||h.children.length) return; h.dataset.platHead="1"; h.style.color=darken(p[0],0.2); }); }catch(e){}
         // p70: the pale tiles and the snapshot bar under the card were still OPR's purple wash, so a teal
         // card sat on a purple page. They take a faint wash of the SAME colour, and their figures take it too.
         try{
@@ -9615,7 +9617,7 @@ async function clRemove(id, label){
     }catch(e){}
   }
   // the build tag is a debugging aid, not something a member should see: it appears only with ?build=1
-  try{ if(/[?&]build=1/.test(location.search)) buildTag("PLAT p72"); }catch(e){}
+  try{ if(/[?&]build=1/.test(location.search)) buildTag("PLAT p73"); }catch(e){}
   /* A plaque on the club's honour board opens that sport's ledger AT the person: ?player=<name> calls the
      parent's own loadProfile, so nothing in the parent changes. If the name is not recognised the ledger
      simply opens as it always did. */
@@ -9675,6 +9677,9 @@ async function clRemove(id, label){
       var box=card.querySelector('div[style*="linear-gradient"]');
       if(box && box.dataset.platBoard!=="1"){ box.style.background="linear-gradient(135deg,"+col+","+deep+")"; box.dataset.platBoard="1"; }
       tintTiles(card, col);
+      // the section headings on the card ("Partnerships") are inline-styled in the parent's purple
+      try{ card.querySelectorAll('div[style*="color:#5b3a6e"],div[style*="color:#6c3483"]').forEach(function(h){
+        if(h.dataset.platHead==="1"||h.children.length) return; h.dataset.platHead="1"; h.style.color=darken(col,0.2); }); }catch(e){}
     };
     new MutationObserver(paint).observe(card,{childList:true,subtree:true}); paint();
   }

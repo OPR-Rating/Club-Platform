@@ -13,6 +13,8 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 <!--
+  VERSION: PLAT-HUB v2026.09.11-h25  (the Club group leads at full width; the groups that grew out of it sit
+  under a Groups heading, two to a row)
   VERSION: PLAT-HUB v2026.09.11-h24  (About names the systems and their author, and carries the copyright,
   as About OPR does; group links carry &org so a board is dressed correctly on its first frame)
   VERSION: PLAT-HUB v2026.09.11-h23  (group pills stacked and all the same width — Club group first, the
@@ -197,7 +199,7 @@ input,select{width:100%;padding:10px 11px;border:1px solid var(--line);border-ra
   </div>
   <div class="wrap" id="adminBody" style="padding-top:14px;padding-bottom:40px"></div>
 </div>
-<div class="wrap"><div class="foot" id="ver">PLAT-HUB h24 · hub</div></div>
+<div class="wrap"><div class="foot" id="ver">PLAT-HUB h25 · hub</div></div>
 
 <script>
 "use strict";
@@ -251,19 +253,27 @@ function renderPlaques(){
       if(a.is_general!==b.is_general) return a.is_general ? -1 : 1;
       return String(a.name).localeCompare(String(b.name));
     });
-    var groups = ordered.length ? '<div style="padding:12px 15px 6px;display:flex;flex-direction:column;gap:8px">'
-      + ordered.map(function(g){
-          var col=g.colour||s.colour;
-          return '<button onclick="openGroup(\''+x.discipline+'\','+g.id+')" style="display:flex;align-items:center;justify-content:center;gap:8px;'
-            +'width:100%;background:'+col+';color:#fff;border:none;border-radius:99px;padding:11px 18px;'
-            +'font:700 14px var(--body);cursor:pointer;box-shadow:0 1px 3px rgba(0,0,0,.18)">'
-            + (g.is_general ? '<span style="width:7px;height:7px;border-radius:50%;background:rgba(255,255,255,.92)"></span>' : '')
-            + esc(g.name) + '</button>';
-        }).join("")
-      + '</div>'
-      + (ordered[0] && ordered[0].is_general
-          ? '<div style="padding:0 16px 2px;font-size:11.5px;color:var(--ink-soft)">\u25cf '+esc(ordered[0].name)+' is open to the whole club</div>'
-          : '')
+    // The club's own group leads at full width — it is the sport's home and should read that way. The groups
+    // that grew out of it sit under a "Groups" heading, two to a row at half the width.
+    var lead = ordered.filter(function(g){ return g.is_general; });
+    var rest = ordered.filter(function(g){ return !g.is_general; });
+    var pill = function(g,full){
+      var col=g.colour||s.colour;
+      return '<button onclick="openGroup(\''+x.discipline+'\','+g.id+')" style="'+(full?'width:100%':'flex:1 1 calc(50% - 4px);min-width:0')+';'
+        +'display:flex;align-items:center;justify-content:center;gap:7px;background:'+col+';color:#fff;border:none;border-radius:99px;'
+        +'padding:'+(full?'12px 18px':'10px 14px')+';font:700 '+(full?'14.5px':'13px')+' var(--body);cursor:pointer;'
+        +'box-shadow:0 1px 3px rgba(0,0,0,.18);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'
+        + (full ? '<span style="width:7px;height:7px;border-radius:50%;background:rgba(255,255,255,.92)"></span>' : '')
+        + esc(g.name) + '</button>';
+    };
+    var groups = (ordered.length)
+      ? '<div style="padding:12px 15px 8px">'
+        + lead.map(function(g){ return pill(g,true); }).join("")
+        + (rest.length
+            ? '<div style="margin:12px 0 6px;font-size:11.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-soft)">Groups</div>'
+              +'<div style="display:flex;flex-wrap:wrap;gap:8px">'+rest.map(function(g){ return pill(g,false); }).join("")+'</div>'
+            : '')
+        + '</div>'
       : '<div class="empty">No groups yet — switch the sport on in Club admin and it starts with a Club group.</div>';
     return '<div class="plaque" style="--sport:'+s.colour+'">'
       +'<button class="phead" aria-expanded="false"><span class="badge">'+s.initials+'</span>'
@@ -760,7 +770,7 @@ function addToGroup(iid){
   document.head.appendChild(l);
 }catch(e){} })();
 (function(){ if(!/[?&]build=1/.test(location.search)) return;   // a debugging aid, not something a member should see
-  var t=document.createElement("div"); t.textContent="HUB h24";
+  var t=document.createElement("div"); t.textContent="HUB h25";
   t.style.cssText="position:fixed;top:0;right:0;z-index:99999;background:rgba(0,0,0,.62);color:#fff;font:700 10px/1.4 system-ui,sans-serif;letter-spacing:.4px;padding:3px 8px;border-bottom-left-radius:8px;pointer-events:none";
   document.body.appendChild(t); })();
 boot();
