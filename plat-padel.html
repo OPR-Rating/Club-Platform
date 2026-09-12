@@ -832,7 +832,7 @@ st0.textContent += ".hero-logo-panel{padding-bottom:56px!important}";   // room 
   function jsonResp(obj,status){ status=status||200; if(status===204||status===205||status===304) return new Response(null,{status:status}); return new Response(JSON.stringify(obj),{status:status,headers:{"Content-Type":"application/json"}}); }
   var _fetch=W.fetch.bind(W);
   W.PLAT.ready=(function(){
-    var p = CID ? _fetch(PLAT+"/rest/v1/plat_clubs?id=eq."+CID+"&select=id,pool_id,name",{headers:hdrs()}).then(function(r){return r.json();}).then(function(rows){ var c=rows&&rows[0]; if(c){ W.PLAT.pool=c.pool_id; W.PLAT.name=c.name; try{ sessionStorage.setItem("plat_padel_name_"+CID,c.name); }catch(e){} } })
+    var p = CID ? _fetch(PLAT+"/rest/v1/plat_clubs?id=eq."+CID+"&select=id,pool_id,name,colour",{headers:hdrs()}).then(function(r){return r.json();}).then(function(rows){ var c=rows&&rows[0]; if(c){ W.PLAT.pool=c.pool_id; W.PLAT.name=c.name; W.PLAT.colour=c.colour||""; try{ sessionStorage.setItem("plat_padel_name_"+CID,c.name); }catch(e){} } })
                 : Promise.resolve();
     return p.then(function(){ if(!W.PLAT.pool) return; return Promise.all([
         _fetch(PLAT+"/rest/v1/plat_clubs?pool_id=eq."+W.PLAT.pool+"&select=id,name,colour&order=id",{headers:hdrs()}).then(function(r){return r.json();}).then(function(rows){ W.PLAT.clubs=Array.isArray(rows)?rows:[]; }),
@@ -3241,7 +3241,7 @@ const CLUB_NAME = _club.name;  // shown in the logo as "OPR · <name>"
     link.setAttribute('href', href);
   }catch(e){ /* install stays on the static manifest — no functional impact */ }
 })();
-const OPR_VERSION = "OPR-DOUBLES v2026.09.03-56 · PLAT replica p67";  // MANUAL PAIR CREATION REMOVED FROM ADMIN: Create a pair, Bulk create pairs and Re-derive all pairs are gone (they only made match-less ghost pairs, and Re-derive rewrote every stored initial club-wide). Pairs are born automatically at match entry. Current pairs list untouched; the underlying JS is left in place unreferenced, so no other code path changes. Includes v47 (set-score fix + double-tap guard) and all prior.
+const OPR_VERSION = "OPR-DOUBLES v2026.09.03-56 · PLAT replica p70";  // MANUAL PAIR CREATION REMOVED FROM ADMIN: Create a pair, Bulk create pairs and Re-derive all pairs are gone (they only made match-less ghost pairs, and Re-derive rewrote every stored initial club-wide). Pairs are born automatically at match entry. Current pairs list untouched; the underlying JS is left in place unreferenced, so no other code path changes. Includes v47 (set-score fix + double-tap guard) and all prior.
 // Explanation shown above the individual ladder. Open on load so it's read; collapsible
 // (state kept for the session) and scrolls away. Mechanics only — no outcome framing, so
 // members aren't nudged away from playing stronger opponents. Every clause maps to a real
@@ -8969,7 +8969,7 @@ async function clRemove(id, label){
       +cs.map(function(c,i){ return card(c.id,c.name,"Ratings · pairs · scores · tournaments",clubPal(c.id),BALL); }).join("")
       +card(0,"Overall Ledger","Every player across the clubs — one rating each · ladders and stats only",LEDGER,BALL)
       +'<div style="text-align:center;font-size:12px;color:#7a6f8a;margin:8px 0 14px;line-height:1.5">One register · one rating per player<br>Each club keeps its own pairs, matches, tournaments and stats</div>'
-      +'<div style="text-align:center;color:#b3a9c4;font-size:10px;letter-spacing:.5px;margin:0 0 10px">'+esc((typeof OPR_VERSION!=="undefined"?OPR_VERSION:"")+"  ·  shim p67")+'</div>';
+      +'<div style="text-align:center;color:#b3a9c4;font-size:10px;letter-spacing:.5px;margin:0 0 10px">'+esc((typeof OPR_VERSION!=="undefined"?OPR_VERSION:"")+"  ·  shim p70")+'</div>';
     host.insertBefore(d,host.firstChild);
   }
   /* OVERALL: read-only ledger — no score entry, no tournaments, no admin link */
@@ -9175,6 +9175,18 @@ async function clRemove(id, label){
         var p=clubPal(cs[0].id);
         box.style.background="linear-gradient(135deg,"+darken(p[0],0.12)+","+darken(p[0],0.55)+")";
         box.dataset.platCol="1";
+        // p70: the pale tiles and the snapshot bar under the card were still OPR's purple wash, so a teal
+        // card sat on a purple page. They take a faint wash of the SAME colour, and their figures take it too.
+        try{
+          var rgb=(function(h){ var n=parseInt(h.slice(1),16); return ((n>>16)&255)+","+((n>>8)&255)+","+(n&255); })(p[0]);
+          var st=document.getElementById("platProfileWash")||document.createElement("style");
+          st.id="platProfileWash";
+          st.textContent=".stat-card{background:rgba("+rgb+",.12) !important}"
+            +".stat-value{color:"+darken(p[0],0.25)+" !important}"
+            +"#chartSnapBtn,#chartSnap,[onclick*='chartSnap']{background:rgba("+rgb+",.10) !important}"
+            +"[onclick*='chartSnap'],#chartSnapBtn{color:"+darken(p[0],0.30)+" !important}";
+          if(!st.parentNode) document.head.appendChild(st);
+        }catch(e){}
         if(!box.querySelector(".platCp")){ var s=document.createElement("div"); s.className="platCp"; s.style.cssText="margin-top:10px";
           // p59: a pill naming a group wears THAT group's colour, wherever it appears. On the banner the
           // pill for the group whose colour the banner already is would disappear, so every pill keeps a
@@ -9508,7 +9520,7 @@ async function clRemove(id, label){
   function headerBadges(){
     var label = (W.PLAT.cid===0) ? ((W.PLAT.poolName||"Register")+" · Ledger") : (W.PLAT.name||"");
     if(!label) return;
-    var col = (W.PLAT.cid===0) ? "rgba(255,255,255,.22)" : clubPal(W.PLAT.cid)[0];
+    var col = (W.PLAT.cid===0) ? "rgba(255,255,255,.22)" : (W.PLAT.colour||clubPal(W.PLAT.cid)[0]);   // the board's own colour, never a fallback
     document.querySelectorAll(".screen .header").forEach(function(h){
       if(h.querySelector(".platWhere")) return;
       if(h.closest("#homeScreen")) return;                 // home already says it in the hero
@@ -9584,7 +9596,7 @@ async function clRemove(id, label){
     wrap.style.cssText="text-align:center;margin:16px auto 8px;max-width:1000px;width:100%";
     var b=document.createElement("button");
     b.textContent="Admin";
-    b.style.cssText="display:inline-flex;align-items:center;gap:7px;background:transparent;border:1.5px solid "+clubPal(W.PLAT.cid)[0]+
+    b.style.cssText="display:inline-flex;align-items:center;gap:7px;background:transparent;border:1.5px solid "+(W.PLAT.colour||clubPal(W.PLAT.cid)[0])+
       ";color:"+clubPal(W.PLAT.cid)[0]+";border-radius:99px;padding:9px 22px;font-size:13.5px;font-weight:700;cursor:pointer";
     b.onclick=function(){ if(typeof openAdmin==="function") openAdmin(); };
     wrap.appendChild(b);
@@ -9602,7 +9614,7 @@ async function clRemove(id, label){
     }catch(e){}
   }
   // the build tag is a debugging aid, not something a member should see: it appears only with ?build=1
-  try{ if(/[?&]build=1/.test(location.search)) buildTag("PLAT p67"); }catch(e){}
+  try{ if(/[?&]build=1/.test(location.search)) buildTag("PLAT p70"); }catch(e){}
   /* A plaque on the club's honour board opens that sport's ledger AT the person: ?player=<name> calls the
      parent's own loadProfile, so nothing in the parent changes. If the name is not recognised the ledger
      simply opens as it always did. */
@@ -9626,10 +9638,21 @@ async function clRemove(id, label){
      ranking sit. Everything else — hero, headers, tables — stays the parent's own scheme. */
   function profileCardTint(){
     if(W.PLAT.cid===0 || !W.PLAT.orgId) return;
-    var col=clubPal(W.PLAT.cid)[0], deep=darken(col,0.45);
+    var col=(W.PLAT.colour||clubPal(W.PLAT.cid)[0]), deep=darken(col,0.45);
     var st=document.getElementById("platCardTint")||document.createElement("style");
     st.id="platCardTint";
     st.textContent=".profile-card,.indiv-card{background:linear-gradient(135deg,"+col+","+deep+") !important}";
+    if(!st.parentNode) document.head.appendChild(st);
+  }
+  /* On a group's board the member list's initials take the GROUP's colour — the same colour as its pill.
+     Club group carries the sport's own colour, so its board looks exactly like the parent product.
+     Nothing else on the board changes: hero, headers and tables stay as the parent drew them. */
+  function groupAvatars(){
+    if(W.PLAT.cid===0 || !W.PLAT.orgId) return;
+    var col=(W.PLAT.colour||clubPal(W.PLAT.cid)[0]);
+    var st=document.getElementById("platAvatarTint")||document.createElement("style");
+    st.id="platAvatarTint";
+    st.textContent="#playerList .player-avatar,.player-avatar{background:"+col+" !important;color:#fff !important;border:none !important}";
     if(!st.parentNode) document.head.appendChild(st);
   }
   W.PLAT.ready.then(function(){
@@ -9647,7 +9670,7 @@ async function clRemove(id, label){
     }catch(e){}
     try{ var ch=document.getElementById("platChip"); if(ch) ch.textContent=(W.PLAT.orgId?"‹ Club":"‹ All clubs"); }catch(e){}
     try{ headerBadges(); }catch(e){}
-    try{ adminPill(); profileCardTint(); openNamedPlayer(); }catch(e){}
+    try{ adminPill(); profileCardTint(); groupAvatars(); openNamedPlayer(); }catch(e){}
     try{ if(W.PLAT.cid) localStorage.setItem("plat_org_of_club_"+W.PLAT.cid, W.PLAT.orgId ? "1" : "0"); }catch(e){}
     fixManifest();
     var ht=document.getElementById("heroTitle");

@@ -656,7 +656,7 @@ st0.textContent += ".hero-logo-panel{padding-bottom:52px!important}";
   W.PLAT.ready=(function(){
     var p = CID ? _fetch(PLAT+"/rest/v1/plat_clubs?id=eq."+CID+"&select=id,pool_id,name,colour",{headers:hdrs()})
                     .then(function(r){return r.json();}).then(function(rows){ var c=rows&&rows[0];
-                      if(c){ W.PLAT.pool=c.pool_id; W.PLAT.name=c.name; try{ sessionStorage.setItem("plat_tennis_name_"+CID,c.name); }catch(e){} } })
+                      if(c){ W.PLAT.pool=c.pool_id; W.PLAT.name=c.name; W.PLAT.colour=c.colour||""; try{ sessionStorage.setItem("plat_tennis_name_"+CID,c.name); }catch(e){} } })
                 : Promise.resolve();
     return p.then(function(){ if(!W.PLAT.pool) return; return Promise.all([
         _fetch(PLAT+"/rest/v1/plat_clubs?pool_id=eq."+W.PLAT.pool+"&select=id,name,colour&order=id",{headers:hdrs()})
@@ -1915,7 +1915,7 @@ const _club = CLUBS[_clubParam] || (/^\d+$/.test(_clubParam) ? {id:Number(_clubP
 const CLUB_ID = _club.id;
 document.title = 'OTR · ' + _club.name;
 const CLUB_NAME = _club.name;  // shown in the logo as "OPR · <name>"
-const OPR_VERSION = "OTR-LAPTOP v2026.09.03-37 · PLAT replica t19";   // PLAT MARKED HUNK: the build stamp everywhere the parent prints its own  // DOUBLES ROW OPENS THE TEAM PROFILE (parity with OPR/OSR/ODR, ported from the proven CC g38/g39 glue): tapping a pair in the doubles rating table opens its full profile page — the screen is SHOWN first, because OTR’s loadTeamProfile fills the profile screen without switching to it (this is why earlier attempts appeared to do nothing); Back returns to the same table. The ▼ chevron still expands the inline history. Supersedes the withdrawn v34–v36. Includes all prior work.
+const OPR_VERSION = "OTR-LAPTOP v2026.09.03-37 · PLAT replica t21";   // PLAT MARKED HUNK: the build stamp everywhere the parent prints its own  // DOUBLES ROW OPENS THE TEAM PROFILE (parity with OPR/OSR/ODR, ported from the proven CC g38/g39 glue): tapping a pair in the doubles rating table opens its full profile page — the screen is SHOWN first, because OTR’s loadTeamProfile fills the profile screen without switching to it (this is why earlier attempts appeared to do nothing); Back returns to the same table. The ▼ chevron still expands the inline history. Supersedes the withdrawn v34–v36. Includes all prior work.
 // Explanation shown above the individual ladder. Open on load so it's read; collapsible
 // (state kept for the session) and scrolls away. Mechanics only — no outcome framing, so
 // members aren't nudged away from playing stronger opponents. Every clause maps to a real
@@ -8194,7 +8194,7 @@ async function clRemove(id, label){
     var label = (W.PLAT.cid===0) ? ((W.PLAT.poolName||"Register")+" · Ledger") : (W.PLAT.name||"");
     if(!label) return;
     var c=(W.PLAT.clubs||[]).find(function(x){return x.id===W.PLAT.cid;});
-    var col = (W.PLAT.cid===0) ? "rgba(255,255,255,.22)" : ((c&&c.colour)||"#185A33");
+    var col = (W.PLAT.cid===0) ? "rgba(255,255,255,.22)" : (W.PLAT.colour||colOf(W.PLAT.cid));   // the board's own colour, never a fallback
     document.querySelectorAll(".screen .header").forEach(function(h){
       if(h.querySelector(".platWhere")||h.closest("#homeScreen")) return;
       h.style.position=h.style.position||"relative";
@@ -8405,7 +8405,7 @@ async function clRemove(id, label){
     }catch(e){}
   }
   // the build tag is a debugging aid, not something a member should see: it appears only with ?build=1
-  try{ if(/[?&]build=1/.test(location.search)) buildTag("PLAT t19"); }catch(e){}
+  try{ if(/[?&]build=1/.test(location.search)) buildTag("PLAT t21"); }catch(e){}
   /* A plaque on the club's honour board opens that sport's ledger AT the person: ?player=<name> calls the
      parent's own loadProfile, so nothing in the parent changes. If the name is not recognised the ledger
      simply opens as it always did. */
@@ -8431,15 +8431,26 @@ async function clRemove(id, label){
      ranking sit. Everything else — hero, headers, tables — stays the parent's own scheme. */
   function profileCardTint(){
     if(W.PLAT.cid===0 || !W.PLAT.orgId) return;
-    var col=colOf(W.PLAT.cid), deep=tDark(col,0.45);
+    var col=(W.PLAT.colour||colOf(W.PLAT.cid)), deep=tDark(col,0.45);
     var st=document.getElementById("platCardTint")||document.createElement("style");
     st.id="platCardTint";
     st.textContent=".profile-card,.indiv-card{background:linear-gradient(135deg,"+col+","+deep+") !important}";
     if(!st.parentNode) document.head.appendChild(st);
   }
+  /* On a group's board the member list's initials take the GROUP's colour — the same colour as its pill.
+     Club group carries the sport's own colour, so its board looks exactly like the parent product.
+     Nothing else on the board changes: hero, headers and tables stay as the parent drew them. */
+  function groupAvatars(){
+    if(W.PLAT.cid===0 || !W.PLAT.orgId) return;
+    var col=(W.PLAT.colour||colOf(W.PLAT.cid));
+    var st=document.getElementById("platAvatarTint")||document.createElement("style");
+    st.id="platAvatarTint";
+    st.textContent="#playerList .player-avatar,.player-avatar{background:"+col+" !important;color:#fff !important;border:none !important}";
+    if(!st.parentNode) document.head.appendChild(st);
+  }
   W.PLAT.ready.then(function(){
     try{ if(W.PLAT.cid) localStorage.setItem("plat_org_of_club_"+W.PLAT.cid, W.PLAT.orgId ? "1" : "0"); }catch(e){}
-    fixManifest(); chip(); try{ headerBadges(); memberList(); groupMemberList(); recentColours(); profileExtras(); adminPill(); profileCardTint(); openNamedPlayer(); }catch(e){}
+    fixManifest(); chip(); try{ headerBadges(); memberList(); groupMemberList(); recentColours(); profileExtras(); adminPill(); profileCardTint(); groupAvatars(); openNamedPlayer(); }catch(e){}
     var t=document.getElementById("heroTitle")||document.querySelector("#homeScreen h1");
     if(t){ if(W.PLAT.cid===0) t.textContent="OTR · "+(W.PLAT.poolName||"Tennis")+" · Ledger";
            else if(W.PLAT.name) t.textContent="OTR · "+W.PLAT.name; }
