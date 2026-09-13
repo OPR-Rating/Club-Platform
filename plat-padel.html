@@ -3243,7 +3243,7 @@ const CLUB_NAME = _club.name;  // shown in the logo as "OPR · <name>"
     link.setAttribute('href', href);
   }catch(e){ /* install stays on the static manifest — no functional impact */ }
 })();
-const OPR_VERSION = "OPR-DOUBLES v2026.09.03-56 · PLAT replica p89";  // MANUAL PAIR CREATION REMOVED FROM ADMIN: Create a pair, Bulk create pairs and Re-derive all pairs are gone (they only made match-less ghost pairs, and Re-derive rewrote every stored initial club-wide). Pairs are born automatically at match entry. Current pairs list untouched; the underlying JS is left in place unreferenced, so no other code path changes. Includes v47 (set-score fix + double-tap guard) and all prior.
+const OPR_VERSION = "OPR-DOUBLES v2026.09.03-56 · PLAT replica p91";  // MANUAL PAIR CREATION REMOVED FROM ADMIN: Create a pair, Bulk create pairs and Re-derive all pairs are gone (they only made match-less ghost pairs, and Re-derive rewrote every stored initial club-wide). Pairs are born automatically at match entry. Current pairs list untouched; the underlying JS is left in place unreferenced, so no other code path changes. Includes v47 (set-score fix + double-tap guard) and all prior.
 // Explanation shown above the individual ladder. Open on load so it's read; collapsible
 // (state kept for the session) and scrolls away. Mechanics only — no outcome framing, so
 // members aren't nudged away from playing stronger opponents. Every clause maps to a real
@@ -9264,7 +9264,7 @@ async function clRemove(id, label){
     var list=document.getElementById("homeRecentList"); if(!list) return;
     var order=null;
     var fetchOrder=function(){ return fetch("https://djmbnvikrdgnomjhtkgf.supabase.co/rest/v1/plat_matches?pool_id=eq."+W.PLAT.pool+"&discipline=eq.padel&select=id,club_id&order=match_date.desc,id.desc&limit=15").then(function(r){return r.json();}).then(function(rows){ order=Array.isArray(rows)?rows:[]; }); };
-    var paint=function(){ if(!order) return; list.querySelectorAll(".recent-item").forEach(function(el,i){ var m=order[i]; if(!m||el.querySelector(".platCp")) return; var c=(W.PLAT.clubs||[]).find(function(x){return x.id===m.club_id;}); if(!c) return; var p=clubPal(c.id); el.style.borderLeft="4px solid "+p[0]; el.style.borderRight="4px solid "+p[0]; var hd=el.querySelector(".match-header"); if(hd){ var s=document.createElement("span"); s.className="platCp"; s.dataset.platKeep="1"; s.innerHTML='<span style="display:inline-block;background:#eee;color:#333;border-radius:99px;padding:1px 8px;font-size:10px;font-weight:700;margin-right:6px">'+esc(c.name)+'</span>'; hd.insertBefore(s,hd.firstChild); } }); };
+    var paint=function(){ if(!order) return; list.querySelectorAll(".recent-item").forEach(function(el,i){ var m=order[i]; if(!m||el.querySelector(".platCp")) return; var c=(W.PLAT.clubs||[]).find(function(x){return x.id===m.club_id;}); if(!c) return; var p=clubPal(c.id); el.style.borderLeft="4px solid "+p[0]; el.style.borderRight="4px solid "+p[0]; var hd=el.querySelector(".match-header"); if(hd){ var s=document.createElement("span"); s.className="platCp"; s.dataset.platKeep="1"; s.innerHTML=clubPill(c,true); hd.insertBefore(s,hd.firstChild); } }); };
     fetchOrder().then(function(){ paint(); new MutationObserver(paint).observe(list,{childList:true}); });
   }
   function ledgerOnly(){
@@ -9676,7 +9676,7 @@ async function clRemove(id, label){
     }catch(e){}
   }
   // the build tag is a debugging aid, not something a member should see: it appears only with ?build=1
-  try{ if(/[?&]build=1/.test(location.search)) buildTag("PLAT p89"); }catch(e){}
+  try{ if(/[?&]build=1/.test(location.search)) buildTag("PLAT p91"); }catch(e){}
   /* A plaque on the club's honour board opens that sport's ledger AT the person: ?player=<name> calls the
      parent's own loadProfile, so nothing in the parent changes. If the name is not recognised the ledger
      simply opens as it always did. */
@@ -9745,7 +9745,7 @@ async function clRemove(id, label){
       try{ card.querySelectorAll('div[style*="color:#5b3a6e"],div[style*="color:#6c3483"]').forEach(function(h){
         if(h.dataset.platHead==="1"||h.children.length) return; h.dataset.platHead="1"; h.style.color=darken(col,0.2); }); }catch(e){}
     };
-    new MutationObserver(paint).observe(card,{childList:true,subtree:true}); paint();
+    platSchedule(paint); platRun();
   }
   /* The stat tiles on a profile card are INLINE-styled divs with no class, so no stylesheet can reach them —
      which is why they stayed purple through several attempts. They are tinted here, in the DOM, with the
@@ -9856,12 +9856,26 @@ async function clRemove(id, label){
     }
   }
   function watchAndPaint(colFn){
-    var run=function(){ try{ var c=colFn(); if(c) repaint(document.body, c); }catch(e){} };
-    new MutationObserver(run).observe(document.body,{childList:true,subtree:true});
-    run();
+    platSchedule(function(){ var c=colFn(); if(c) repaint(document.body, c); });
+    platRun();
   }
   // one row of five, on every screen and in every mode
-  try{ new MutationObserver(function(){ try{ oneRowTiles(document.body); }catch(e){} }).observe(document.body,{childList:true,subtree:true}); }catch(e){}
+  /* One batched pass per frame. Three observers used to watch the whole page and each wrote styles that
+     woke the others — the page re-laid itself out continuously, which is the stutter and the jump. */
+  var _platQueued=false, _platJobs=[];
+  function platSchedule(fn){ if(_platJobs.indexOf(fn)<0) _platJobs.push(fn); }
+  function platRun(){
+    if(_platQueued) return; _platQueued=true;
+    (W.requestAnimationFrame||setTimeout)(function(){
+      _platQueued=false;
+      for(var i=0;i<_platJobs.length;i++){ try{ _platJobs[i](); }catch(e){} }
+    }, 16);
+  }
+  try{
+    platSchedule(function(){ oneRowTiles(document.body); });
+    new MutationObserver(platRun).observe(document.body,{childList:true,subtree:true});
+    platRun();
+  }catch(e){}
   W.PLAT.ready.then(function(){
     elsewhereLine();
     // p24: name known — reveal the title and remember it for the next visit's first frame
