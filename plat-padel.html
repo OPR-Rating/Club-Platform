@@ -938,6 +938,12 @@ st0.textContent += ".hero-logo-panel{padding-bottom:56px!important}";   // room 
       var f=u.match(/\/functions\/v1\/([a-z_-]+)/);
       if(f&&FN[f[1]]){
         u=u.replace("/functions/v1/"+f[1],"/functions/v1/"+FN[f[1]]);
+        // p92: every admin call names the board it was made from, so a code is checked against THIS group —
+        // never against every group on the platform (a squash code opened squash from a padel board).
+        if(f[1]==="admin"){ var ab={}; try{ ab=JSON.parse(init.body||"{}"); }catch(e){}
+          if(ab.club_id==null && CID) ab.club_id=CID;
+          if(ab.pool_id==null && W.PLAT.pool) ab.pool_id=W.PLAT.pool;
+          init=Object.assign({},init,{body:JSON.stringify(ab)}); }
         if(f[1]==="submit_match"){ if(CID===0) return jsonResp({ok:false,error:"Choose a club before entering a match."},400);
           var bb={}; try{ bb=JSON.parse(init.body||"{}"); }catch(e){} bb.discipline=DISC; bb.club_id=CID; init=Object.assign({},init,{body:JSON.stringify(bb)}); }
       }
@@ -3243,7 +3249,7 @@ const CLUB_NAME = _club.name;  // shown in the logo as "OPR · <name>"
     link.setAttribute('href', href);
   }catch(e){ /* install stays on the static manifest — no functional impact */ }
 })();
-const OPR_VERSION = "OPR-DOUBLES v2026.09.03-56 · PLAT replica p91";  // MANUAL PAIR CREATION REMOVED FROM ADMIN: Create a pair, Bulk create pairs and Re-derive all pairs are gone (they only made match-less ghost pairs, and Re-derive rewrote every stored initial club-wide). Pairs are born automatically at match entry. Current pairs list untouched; the underlying JS is left in place unreferenced, so no other code path changes. Includes v47 (set-score fix + double-tap guard) and all prior.
+const OPR_VERSION = "OPR-DOUBLES v2026.09.03-56 · PLAT replica p92";  // MANUAL PAIR CREATION REMOVED FROM ADMIN: Create a pair, Bulk create pairs and Re-derive all pairs are gone (they only made match-less ghost pairs, and Re-derive rewrote every stored initial club-wide). Pairs are born automatically at match entry. Current pairs list untouched; the underlying JS is left in place unreferenced, so no other code path changes. Includes v47 (set-score fix + double-tap guard) and all prior.
 // Explanation shown above the individual ladder. Open on load so it's read; collapsible
 // (state kept for the session) and scrolls away. Mechanics only — no outcome framing, so
 // members aren't nudged away from playing stronger opponents. Every clause maps to a real
@@ -9676,7 +9682,7 @@ async function clRemove(id, label){
     }catch(e){}
   }
   // the build tag is a debugging aid, not something a member should see: it appears only with ?build=1
-  try{ if(/[?&]build=1/.test(location.search)) buildTag("PLAT p91"); }catch(e){}
+  try{ if(/[?&]build=1/.test(location.search)) buildTag("PLAT p92"); }catch(e){}
   /* A plaque on the club's honour board opens that sport's ledger AT the person: ?player=<name> calls the
      parent's own loadProfile, so nothing in the parent changes. If the name is not recognised the ledger
      simply opens as it always did. */
