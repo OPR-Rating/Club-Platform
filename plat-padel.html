@@ -735,7 +735,8 @@
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script>
 /* ============================================================================
-   PLAT EARLY SNIPPET — plat-padel.html  VERSION: PLAT-PADEL v2026.09.13-p94  (fix: the session picker lists the whole register, not the group's members; a group has none until someone plays there)
+   PLAT EARLY SNIPPET — plat-padel.html  VERSION: PLAT-PADEL v2026.09.13-p95  (a court carries its match type: worked out from the four people's genders, shown on the card and filled into score entry; event, sets and date stay the member's)
+   VERSION: PLAT-PADEL v2026.09.13-p94  (fix: the session picker lists the whole register, not the group's members; a group has none until someone plays there)
    VERSION: PLAT-PADEL v2026.09.13-p93  (THE SESSION CARD: on organisation boards and base-club registers the big button opens a chooser — make tonight's courts from the current ratings, courts in play, or a plain match. Glue only; the parent is untouched.)
    VERSION: PLAT-PADEL v2026.09.13-p89  (the club door reads is_general: p88 built the door but never asked
    the database for the flag, so a live register fell back to the flat tiles)
@@ -3251,7 +3252,7 @@ const CLUB_NAME = _club.name;  // shown in the logo as "OPR · <name>"
     link.setAttribute('href', href);
   }catch(e){ /* install stays on the static manifest — no functional impact */ }
 })();
-const OPR_VERSION = "OPR-DOUBLES v2026.09.03-56 · PLAT replica p94";  // MANUAL PAIR CREATION REMOVED FROM ADMIN: Create a pair, Bulk create pairs and Re-derive all pairs are gone (they only made match-less ghost pairs, and Re-derive rewrote every stored initial club-wide). Pairs are born automatically at match entry. Current pairs list untouched; the underlying JS is left in place unreferenced, so no other code path changes. Includes v47 (set-score fix + double-tap guard) and all prior.
+const OPR_VERSION = "OPR-DOUBLES v2026.09.03-56 · PLAT replica p95";  // MANUAL PAIR CREATION REMOVED FROM ADMIN: Create a pair, Bulk create pairs and Re-derive all pairs are gone (they only made match-less ghost pairs, and Re-derive rewrote every stored initial club-wide). Pairs are born automatically at match entry. Current pairs list untouched; the underlying JS is left in place unreferenced, so no other code path changes. Includes v47 (set-score fix + double-tap guard) and all prior.
 // Explanation shown above the individual ladder. Open on load so it's read; collapsible
 // (state kept for the session) and scrolls away. Mechanics only — no outcome framing, so
 // members aren't nudged away from playing stronger opponents. Every clause maps to a real
@@ -9684,7 +9685,7 @@ async function clRemove(id, label){
     }catch(e){}
   }
   // the build tag is a debugging aid, not something a member should see: it appears only with ?build=1
-  try{ if(/[?&]build=1/.test(location.search)) buildTag("PLAT p94"); }catch(e){}
+  try{ if(/[?&]build=1/.test(location.search)) buildTag("PLAT p95"); }catch(e){}
   /* A plaque on the club's honour board opens that sport's ledger AT the person: ?player=<name> calls the
      parent's own loadProfile, so nothing in the parent changes. If the name is not recognised the ledger
      simply opens as it always did. */
@@ -10025,10 +10026,21 @@ async function clRemove(id, label){
   };
   W.platSessOpen=function(){
     var b=document.getElementById("platSessBody"); b.innerHTML='<div class="loading">Loading courts\u2026</div>';
-    scall({action:"list_open",club_id:W.PLAT.cid}).then(function(r){
-      SESS.open=(r&&r.sessions)||[]; SESS.pairA=null; renderOpen();
+    Promise.all([scall({action:"list_open",club_id:W.PLAT.cid}), (SESS.members.length?Promise.resolve():loadMembers())]).then(function(res){
+      var r=res[0]; SESS.open=(r&&r.sessions)||[]; SESS.pairA=null; renderOpen();
     });
   };
+  /* The match TYPE follows from the four people: two men a side is Men's, two ladies a side is Ladies, a man and
+     a lady on each side is Mixed, and anything else is All Sorts — exactly the categories score entry offers. */
+  function genderOf(n){ var m=SESS.members.find(function(x){ return x.full_name===n; }); return (m&&m.gender)||""; }
+  function courtType(k){
+    var g=function(a,b){ return [genderOf(a),genderOf(b)].sort().join(""); };
+    var s1=g(k.t1p1,k.t1p2), s2=g(k.t2p1,k.t2p2);
+    if(s1==="MM"&&s2==="MM") return "Men's";
+    if(s1==="FF"&&s2==="FF") return "Ladies";
+    if(s1==="FM"&&s2==="FM") return "Mixed";
+    return "All Sorts";
+  }
   function renderOpen(){
     var b=document.getElementById("platSessBody"); if(!b) return;
     var open=SESS.open.filter(function(s){ return (s.courts||[]).some(function(k){return k.status==="open";}); });
@@ -10047,7 +10059,7 @@ async function clRemove(id, label){
         +'<span style="font-size:11px;color:#c0392b;cursor:pointer;text-decoration:underline" onclick="window.platSessCancelAll('+s.id+')">cancel this card</span></div>';
       matched.sort(function(a,b){ return (a.court_no||99)-(b.court_no||99); }).forEach(function(k){
         h+='<div class="team-card" style="cursor:pointer" onclick="window.platSessScore('+k.id+')">'
-          +'<div style="font-size:12px;color:#888">Court '+(k.court_no||"")+'</div>'
+          +'<div style="font-size:12px;color:#888">Court '+(k.court_no||"")+' \u00b7 <b style="color:#6c3483">'+esc(courtType(k))+'</b></div>'
           +'<div style="font-weight:700;color:#3a2348;margin-top:4px">'+pairLabel(k.t1p1,k.t1p2)+ratingPill(k.t1_rating)+'</div>'
           +'<div style="font-size:12px;color:#888">v</div>'
           +'<div style="font-weight:700;color:#3a2348">'+pairLabel(k.t2p1,k.t2p2)+ratingPill(k.t2_rating)+'</div>'
@@ -10081,8 +10093,13 @@ async function clRemove(id, label){
   W.platSessScore=function(id){
     var k=null; SESS.open.forEach(function(s){ (s.courts||[]).forEach(function(c){ if(c.id===id) k=c; }); });
     if(!k||!k.t2p1) return;
-    W.PLAT.sessionCourt={id:k.id,t1p1:k.t1p1,t1p2:k.t1p2,t2p1:k.t2p1,t2p2:k.t2p2};
+    W.PLAT.sessionCourt={id:k.id,t1p1:k.t1p1,t1p2:k.t1p2,t2p1:k.t2p1,t2p2:k.t2p2,type:courtType(k)};
     W.showScreen("entryScreen");
+    // step 1 is rendered by the parent on showScreen; the type goes in once its select exists
+    var tries=0, put=function(){ var sel=document.getElementById("matchType"); var c=W.PLAT.sessionCourt;
+      if(sel&&c){ sel.value=c.type; if(sel.value!==c.type&&tries<20){ tries++; setTimeout(put,100); } }
+      else if(tries++<20) setTimeout(put,100); };
+    setTimeout(put,50);
   };
   function sessionCard(){
     if(!sessionScope()) return;
