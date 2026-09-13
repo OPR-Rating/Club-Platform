@@ -735,7 +735,8 @@
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script>
 /* ============================================================================
-   PLAT EARLY SNIPPET — plat-padel.html  VERSION: PLAT-PADEL v2026.09.13-p93  (THE SESSION CARD: on organisation boards and base-club registers the big button opens a chooser — make tonight's courts from the current ratings, courts in play, or a plain match. Glue only; the parent is untouched.)
+   PLAT EARLY SNIPPET — plat-padel.html  VERSION: PLAT-PADEL v2026.09.13-p94  (fix: the session picker lists the whole register, not the group's members; a group has none until someone plays there)
+   VERSION: PLAT-PADEL v2026.09.13-p93  (THE SESSION CARD: on organisation boards and base-club registers the big button opens a chooser — make tonight's courts from the current ratings, courts in play, or a plain match. Glue only; the parent is untouched.)
    VERSION: PLAT-PADEL v2026.09.13-p89  (the club door reads is_general: p88 built the door but never asked
    the database for the flag, so a live register fell back to the flat tiles)
    VERSION: PLAT-PADEL v2026.09.11-p56  (people queries route on the ACTIVE SCREEN: three screens send the
@@ -3250,7 +3251,7 @@ const CLUB_NAME = _club.name;  // shown in the logo as "OPR · <name>"
     link.setAttribute('href', href);
   }catch(e){ /* install stays on the static manifest — no functional impact */ }
 })();
-const OPR_VERSION = "OPR-DOUBLES v2026.09.03-56 · PLAT replica p93";  // MANUAL PAIR CREATION REMOVED FROM ADMIN: Create a pair, Bulk create pairs and Re-derive all pairs are gone (they only made match-less ghost pairs, and Re-derive rewrote every stored initial club-wide). Pairs are born automatically at match entry. Current pairs list untouched; the underlying JS is left in place unreferenced, so no other code path changes. Includes v47 (set-score fix + double-tap guard) and all prior.
+const OPR_VERSION = "OPR-DOUBLES v2026.09.03-56 · PLAT replica p94";  // MANUAL PAIR CREATION REMOVED FROM ADMIN: Create a pair, Bulk create pairs and Re-derive all pairs are gone (they only made match-less ghost pairs, and Re-derive rewrote every stored initial club-wide). Pairs are born automatically at match entry. Current pairs list untouched; the underlying JS is left in place unreferenced, so no other code path changes. Includes v47 (set-score fix + double-tap guard) and all prior.
 // Explanation shown above the individual ladder. Open on load so it's read; collapsible
 // (state kept for the session) and scrolls away. Mechanics only — no outcome framing, so
 // members aren't nudged away from playing stronger opponents. Every clause maps to a real
@@ -9683,7 +9684,7 @@ async function clRemove(id, label){
     }catch(e){}
   }
   // the build tag is a debugging aid, not something a member should see: it appears only with ?build=1
-  try{ if(/[?&]build=1/.test(location.search)) buildTag("PLAT p93"); }catch(e){}
+  try{ if(/[?&]build=1/.test(location.search)) buildTag("PLAT p94"); }catch(e){}
   /* A plaque on the club's honour board opens that sport's ledger AT the person: ?player=<name> calls the
      parent's own loadProfile, so nothing in the parent changes. If the name is not recognised the ledger
      simply opens as it always did. */
@@ -9953,11 +9954,16 @@ async function clRemove(id, label){
   W.platSessPlain=function(){ W.PLAT.sessionCourt=null; W.showScreen("entryScreen"); };
   function loadMembers(){
     return Promise.all([
-      fetch(SBR("plat_padel_v_individuals?club_id=eq."+W.PLAT.cid+"&select=full_name,gender&order=full_name.asc")).then(function(r){return r.json();}),
+      // p94: THE WHOLE REGISTER, not the group's members: names live at the club, and a group has no members
+      // until someone plays there. plat_padel_v_ratings holds every person for every group with THIS group's
+      // club-adjusted base (the number the board replays from); OPR's own cache refines it for anyone who has played here.
+      fetch(SBR("plat_padel_v_ratings?club_id=eq."+W.PLAT.cid+"&select=full_name,gender,seed_rating&order=full_name.asc")).then(function(r){return r.json();}),
       (typeof OPR!=="undefined"&&OPR.load)?OPR.load().catch(function(){}):Promise.resolve()
     ]).then(function(res){
-      SESS.members=Array.isArray(res[0])?res[0]:[];
-      SESS.ratings={}; SESS.members.forEach(function(m){ var v=null; try{ v=OPR.indiv(m.full_name); }catch(e){} SESS.ratings[m.full_name]=(v==null?null:v); });
+      var rows=Array.isArray(res[0])?res[0]:[]; var seen={};
+      SESS.members=rows.filter(function(m){ if(!m.full_name||seen[m.full_name]) return false; seen[m.full_name]=1; return true; });
+      SESS.ratings={}; SESS.members.forEach(function(m){ var v=null; try{ v=OPR.indiv(m.full_name); }catch(e){}
+        if(v==null && m.seed_rating!=null) v=Number(m.seed_rating); SESS.ratings[m.full_name]=(v==null?null:v); });
     });
   }
   W.platSessMake=function(){
