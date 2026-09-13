@@ -735,7 +735,8 @@
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script>
 /* ============================================================================
-   PLAT EARLY SNIPPET — plat-padel.html  VERSION: PLAT-PADEL v2026.09.13-p97  (the back chip on the hero is bigger; the chooser leads with the plain \u271a Enter your match score in the button's own blue, the two card tiles beneath)
+   PLAT EARLY SNIPPET — plat-padel.html  VERSION: PLAT-PADEL v2026.09.13-p98  (the Recent Matches banner is OPR green on every board; Admin is the only pill under a board's recent matches, About OPR lives on the door; the vertical scrollbar's space is reserved from the first frame so the page never jiggles sideways)
+   VERSION: PLAT-PADEL v2026.09.13-p97  (the back chip on the hero is bigger; the chooser leads with the plain \u271a Enter your match score in the button's own blue, the two card tiles beneath)
    VERSION: PLAT-PADEL v2026.09.13-p96  (six fixes: no Club-N flash on a group board; the session chooser is caught at the button in capture phase, so it opens first time; name search matches the start of any word; the door's banner is shorter; About OPR under recent matches on the door and on group boards; groups in a base-club register get the organisation layout — About off the grid, three tiles across)
    VERSION: PLAT-PADEL v2026.09.13-p95  (a court carries its match type: worked out from the four people's genders, shown on the card and filled into score entry; event, sets and date stay the member's)
    VERSION: PLAT-PADEL v2026.09.13-p94  (fix: the session picker lists the whole register, not the group's members; a group has none until someone plays there)
@@ -817,7 +818,8 @@
       if(ORGCACHE) st0.textContent += "#homeScreen .menu-btn[onclick*='aboutScreen']{display:none!important}"
                                     + "#homeScreen .menu-grid{grid-template-columns:repeat(3,1fr)!important}";
     }catch(e){}
-st0.textContent += ".hero-logo-panel{padding-bottom:56px!important}";   // room for the chip, so nothing moves when it appears
+st0.textContent += "html{overflow-y:scroll}";   // p98: the scrollbar's space is reserved from the first frame, so the centred page never shifts sideways when content arrives
+    st0.textContent += ".hero-logo-panel{padding-bottom:56px!important}";   // room for the chip, so nothing moves when it appears
     if(LANDING) st0.textContent += "#homeScreen .hero-logo-panel{padding:22px 16px 22px!important}#homeScreen .home-content{margin-top:0!important}";   // p96: the door has no chip; a shorter banner lifts the club card
     (document.head||document.documentElement).appendChild(st0);
   }catch(e){}
@@ -3257,7 +3259,7 @@ const CLUB_NAME = _club.name;  // shown in the logo as "OPR · <name>"
     link.setAttribute('href', href);
   }catch(e){ /* install stays on the static manifest — no functional impact */ }
 })();
-const OPR_VERSION = "OPR-DOUBLES v2026.09.03-56 · PLAT replica p97";  // MANUAL PAIR CREATION REMOVED FROM ADMIN: Create a pair, Bulk create pairs and Re-derive all pairs are gone (they only made match-less ghost pairs, and Re-derive rewrote every stored initial club-wide). Pairs are born automatically at match entry. Current pairs list untouched; the underlying JS is left in place unreferenced, so no other code path changes. Includes v47 (set-score fix + double-tap guard) and all prior.
+const OPR_VERSION = "OPR-DOUBLES v2026.09.03-56 · PLAT replica p98";  // MANUAL PAIR CREATION REMOVED FROM ADMIN: Create a pair, Bulk create pairs and Re-derive all pairs are gone (they only made match-less ghost pairs, and Re-derive rewrote every stored initial club-wide). Pairs are born automatically at match entry. Current pairs list untouched; the underlying JS is left in place unreferenced, so no other code path changes. Includes v47 (set-score fix + double-tap guard) and all prior.
 // Explanation shown above the individual ladder. Open on load so it's read; collapsible
 // (state kept for the session) and scrolls away. Mechanics only — no outcome framing, so
 // members aren't nudged away from playing stronger opponents. Every clause maps to a real
@@ -9693,7 +9695,7 @@ async function clRemove(id, label){
     }catch(e){}
   }
   // the build tag is a debugging aid, not something a member should see: it appears only with ?build=1
-  try{ if(/[?&]build=1/.test(location.search)) buildTag("PLAT p97"); }catch(e){}
+  try{ if(/[?&]build=1/.test(location.search)) buildTag("PLAT p98"); }catch(e){}
   /* A plaque on the club's honour board opens that sport's ledger AT the person: ?player=<name> calls the
      parent's own loadProfile, so nothing in the parent changes. If the name is not recognised the ledger
      simply opens as it always did. */
@@ -10183,7 +10185,14 @@ async function clRemove(id, label){
     try{ adminPill(); profileCardTint(); boardProfileTint(); groupAvatars(); openNamedPlayer(); }catch(e){}
     try{ baseClubGroup(); }catch(e){}
     try{ sessionCard(); }catch(e){}
-    try{ if(W.PLAT.cid && (W.PLAT.orgId || (W.PLAT.clubs||[]).some(function(c){return c.is_general;}))) aboutPill(); }catch(e){}
+    // p98: the Recent Matches banner is the product's green on every board, whatever the group's colour
+    try{
+      var rb=document.querySelector("#homeScreen .home-recent-col > div:first-child");
+      if(rb){ rb.dataset.platKeep="1"; rb.style.background="#c4e000"; rb.style.color="#2a3000"; rb.style.borderColor="#C97E0A"; }
+      var stR=document.createElement("style"); stR.id="platRecentBanner";
+      stR.textContent="#homeScreen .home-recent-col > div:first-child{background:#c4e000!important;color:#2a3000!important;border-color:#C97E0A!important}";
+      document.head.appendChild(stR);
+    }catch(e){}
     try{ if(W.PLAT.cid!==0) watchAndPaint(function(){ return (W.PLAT.colour||""); }); }catch(e){}
     try{ if(W.PLAT.cid) localStorage.setItem("plat_org_of_club_"+W.PLAT.cid, W.PLAT.orgId ? "1" : "0"); }catch(e){}
     fixManifest();
