@@ -734,7 +734,10 @@
 </style>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script>
-/* ============================================================================
+/* ====
+   VERSION: PLAT-PADEL v2026.09.13-p89 (the admin gate: every admin call carries pool_id and club_id, so a code is checked
+   against the register you are standing in — see plat_admin_padel v3) (fix: the door never asked for is_general, so p88's club
+   door — base club, GROUPS, ledger, recent — never rendered on a live register; Club Alpha showed the old flat tiles)========================================================================
    PLAT EARLY SNIPPET — plat-padel.html  VERSION: PLAT-PADEL v2026.09.11-p56  (people queries route on the ACTIVE SCREEN: three screens send the
    same query — the picker, the admin table and the member list — and no filter tells them apart)
    VERSION: PLAT-PADEL v2026.09.11-p54  (the entry picker offers the whole register again: it sends the
@@ -832,10 +835,10 @@ st0.textContent += ".hero-logo-panel{padding-bottom:56px!important}";   // room 
   function jsonResp(obj,status){ status=status||200; if(status===204||status===205||status===304) return new Response(null,{status:status}); return new Response(JSON.stringify(obj),{status:status,headers:{"Content-Type":"application/json"}}); }
   var _fetch=W.fetch.bind(W);
   W.PLAT.ready=(function(){
-    var p = CID ? _fetch(PLAT+"/rest/v1/plat_clubs?id=eq."+CID+"&select=id,pool_id,name,colour",{headers:hdrs()}).then(function(r){return r.json();}).then(function(rows){ var c=rows&&rows[0]; if(c){ W.PLAT.pool=c.pool_id; W.PLAT.name=c.name; W.PLAT.colour=c.colour||""; try{ sessionStorage.setItem("plat_padel_name_"+CID,c.name); }catch(e){} } })
+    var p = CID ? _fetch(PLAT+"/rest/v1/plat_clubs?id=eq."+CID+"&select=id,pool_id,name,colour,is_general",{headers:hdrs()}).then(function(r){return r.json();}).then(function(rows){ var c=rows&&rows[0]; if(c){ W.PLAT.pool=c.pool_id; W.PLAT.name=c.name; W.PLAT.colour=c.colour||""; try{ sessionStorage.setItem("plat_padel_name_"+CID,c.name); }catch(e){} } })
                 : Promise.resolve();
     return p.then(function(){ if(!W.PLAT.pool) return; return Promise.all([
-        _fetch(PLAT+"/rest/v1/plat_clubs?pool_id=eq."+W.PLAT.pool+"&select=id,name,colour&order=id",{headers:hdrs()}).then(function(r){return r.json();}).then(function(rows){ W.PLAT.clubs=Array.isArray(rows)?rows:[]; }),
+        _fetch(PLAT+"/rest/v1/plat_clubs?pool_id=eq."+W.PLAT.pool+"&select=id,name,colour,is_general&order=id",{headers:hdrs()}).then(function(r){return r.json();}).then(function(rows){ W.PLAT.clubs=Array.isArray(rows)?rows:[]; }),
         _fetch(PLAT+"/rest/v1/plat_pools?id=eq."+W.PLAT.pool+"&select=name,org_id",{headers:hdrs()}).then(function(r){return r.json();}).then(function(rows){ W.PLAT.poolName=(rows&&rows[0]&&rows[0].name)||""; W.PLAT.orgId=(rows&&rows[0]&&rows[0].org_id)||0; })
       ]); }).catch(function(){});
   })();
@@ -939,6 +942,10 @@ st0.textContent += ".hero-logo-panel{padding-bottom:56px!important}";   // room 
         if(f[1]==="submit_match"){ if(CID===0) return jsonResp({ok:false,error:"Choose a club before entering a match."},400);
           var bb={}; try{ bb=JSON.parse(init.body||"{}"); }catch(e){} bb.discipline=DISC; bb.club_id=CID; init=Object.assign({},init,{body:JSON.stringify(bb)}); }
       }
+        // p89-class fix: EVERY admin call names the register it was made from, so the code typed at the gate is checked
+        // against THIS register only — never looked up across the platform (a Vantage group code opened its group from Club Alpha).
+        if(f[1]==="admin"){ var ab={}; try{ ab=JSON.parse(init.body||"{}"); }catch(e){}
+          ab.pool_id=(W.PLAT&&W.PLAT.pool)||POOLQ||ab.pool_id||0; if(ab.club_id==null&&CID) ab.club_id=CID; init=Object.assign({},init,{body:JSON.stringify(ab)}); }
       if(f) h=fnHdrs(init.headers);
       return _fetch(u,Object.assign({},init,{headers:h}));
     });
@@ -3241,7 +3248,7 @@ const CLUB_NAME = _club.name;  // shown in the logo as "OPR · <name>"
     link.setAttribute('href', href);
   }catch(e){ /* install stays on the static manifest — no functional impact */ }
 })();
-const OPR_VERSION = "OPR-DOUBLES v2026.09.03-56 · PLAT replica p88";  // MANUAL PAIR CREATION REMOVED FROM ADMIN: Create a pair, Bulk create pairs and Re-derive all pairs are gone (they only made match-less ghost pairs, and Re-derive rewrote every stored initial club-wide). Pairs are born automatically at match entry. Current pairs list untouched; the underlying JS is left in place unreferenced, so no other code path changes. Includes v47 (set-score fix + double-tap guard) and all prior.
+const OPR_VERSION = "OPR-DOUBLES v2026.09.03-56 · PLAT replica p89";  // MANUAL PAIR CREATION REMOVED FROM ADMIN: Create a pair, Bulk create pairs and Re-derive all pairs are gone (they only made match-less ghost pairs, and Re-derive rewrote every stored initial club-wide). Pairs are born automatically at match entry. Current pairs list untouched; the underlying JS is left in place unreferenced, so no other code path changes. Includes v47 (set-score fix + double-tap guard) and all prior.
 // Explanation shown above the individual ladder. Open on load so it's read; collapsible
 // (state kept for the session) and scrolls away. Mechanics only — no outcome framing, so
 // members aren't nudged away from playing stronger opponents. Every clause maps to a real
@@ -9674,7 +9681,7 @@ async function clRemove(id, label){
     }catch(e){}
   }
   // the build tag is a debugging aid, not something a member should see: it appears only with ?build=1
-  try{ if(/[?&]build=1/.test(location.search)) buildTag("PLAT p88"); }catch(e){}
+  try{ if(/[?&]build=1/.test(location.search)) buildTag("PLAT p89"); }catch(e){}
   /* A plaque on the club's honour board opens that sport's ledger AT the person: ?player=<name> calls the
      parent's own loadProfile, so nothing in the parent changes. If the name is not recognised the ledger
      simply opens as it always did. */
