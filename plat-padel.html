@@ -735,7 +735,8 @@
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script>
 /* ============================================================================
-   PLAT EARLY SNIPPET — plat-padel.html  VERSION: PLAT-PADEL v2026.09.14-p109  (a third court mode, Self selected: the organiser fills each court or pair from the ticked names; save, share, print and scoring are unchanged; needs plat_session v3)
+   PLAT EARLY SNIPPET — plat-padel.html  VERSION: PLAT-PADEL v2026.09.14-p110  (a court opened from the card offers the Live Umpire on its score sheet; the umpire returns to the sheet with the sets filled, as from a normal entry)
+   VERSION: PLAT-PADEL v2026.09.14-p109  (a third court mode, Self selected: the organiser fills each court or pair from the ticked names; save, share, print and scoring are unchanged; needs plat_session v3)
    VERSION: PLAT-PADEL v2026.09.14-p108  (the card's match type starts on \u201cSelect type...\u201d, as match entry does, and the card cannot be made without one)
    VERSION: PLAT-PADEL v2026.09.14-p107  (a saved card can leave the phone: Print the card — a sheet with a score column for the noticeboard — and Send as text for the club's WhatsApp, with the link to enter scores)
    VERSION: PLAT-PADEL v2026.09.14-p106  (the court card switched on for Kloof–Sun Fun, pool 2, by name — the two pills on page one of score entry and nothing else; their door, layout and boards are untouched)
@@ -3270,7 +3271,7 @@ const CLUB_NAME = _club.name;  // shown in the logo as "OPR · <name>"
     link.setAttribute('href', href);
   }catch(e){ /* install stays on the static manifest — no functional impact */ }
 })();
-const OPR_VERSION = "OPR-DOUBLES v2026.09.03-56 · PLAT replica p109";  // MANUAL PAIR CREATION REMOVED FROM ADMIN: Create a pair, Bulk create pairs and Re-derive all pairs are gone (they only made match-less ghost pairs, and Re-derive rewrote every stored initial club-wide). Pairs are born automatically at match entry. Current pairs list untouched; the underlying JS is left in place unreferenced, so no other code path changes. Includes v47 (set-score fix + double-tap guard) and all prior.
+const OPR_VERSION = "OPR-DOUBLES v2026.09.03-56 · PLAT replica p110";  // MANUAL PAIR CREATION REMOVED FROM ADMIN: Create a pair, Bulk create pairs and Re-derive all pairs are gone (they only made match-less ghost pairs, and Re-derive rewrote every stored initial club-wide). Pairs are born automatically at match entry. Current pairs list untouched; the underlying JS is left in place unreferenced, so no other code path changes. Includes v47 (set-score fix + double-tap guard) and all prior.
 // Explanation shown above the individual ladder. Open on load so it's read; collapsible
 // (state kept for the session) and scrolls away. Mechanics only — no outcome framing, so
 // members aren't nudged away from playing stronger opponents. Every clause maps to a real
@@ -9706,7 +9707,7 @@ async function clRemove(id, label){
     }catch(e){}
   }
   // the build tag is a debugging aid, not something a member should see: it appears only with ?build=1
-  try{ if(/[?&]build=1/.test(location.search)) buildTag("PLAT p109"); }catch(e){}
+  try{ if(/[?&]build=1/.test(location.search)) buildTag("PLAT p110"); }catch(e){}
   /* A plaque on the club's honour board opens that sport's ledger AT the person: ?player=<name> calls the
      parent's own loadProfile, so nothing in the parent changes. If the name is not recognised the ledger
      simply opens as it always did. */
@@ -10270,6 +10271,18 @@ async function clRemove(id, label){
       document.querySelectorAll(".screen").forEach(function(s){ s.classList.remove("active"); s.classList.add("hidden"); });
       var es=document.getElementById("entryScreen"); es.classList.remove("hidden"); es.classList.add("active"); W.scrollTo(0,0);
       if(typeof renderStep3==="function") renderStep3();
+      // p110: the Live Umpire, as on the names page — the four names are already in entryData, and the umpire
+      // returns to this sheet with the sets filled in, exactly as it does from a normal entry.
+      try{
+        var ec=document.getElementById("entryContent");
+        if(ec && typeof mkOpenFromEntry==="function" && !document.getElementById("platCourtUmpire")){
+          var ub=document.createElement("button"); ub.type="button"; ub.id="platCourtUmpire"; ub.className="btn"; ub.dataset.platKeep="1";
+          ub.textContent="\u25c9 Live Umpire (score this court live)";
+          ub.style.cssText="width:100%;margin-top:10px;background:linear-gradient(180deg,"+darken(sessCol(),0.15)+","+darken(sessCol(),0.55)+");color:#fff;border:1.5px solid rgba(196,224,0,.35)";
+          ub.onclick=function(){ try{ MK._pendingHc=null; }catch(e){} mkOpenFromEntry(); };
+          ec.appendChild(ub);
+        }
+      }catch(e){}
     }catch(e){ W.PLAT._keepCourt=true; W.showScreen("entryScreen"); }
   };
   function aboutPill(){
