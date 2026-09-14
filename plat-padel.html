@@ -735,7 +735,8 @@
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script>
 /* ============================================================================
-   PLAT EARLY SNIPPET — plat-padel.html  VERSION: PLAT-PADEL v2026.09.14-p99  (the session card moves off the big button onto the NAMES page: one pill above Team 1 opens it, and a tapped court comes back to the names with event, date, type and sets kept from page one; a member who never uses it sees one line)
+   PLAT EARLY SNIPPET — plat-padel.html  VERSION: PLAT-PADEL v2026.09.14-p100  (the card's list follows the first page's match type — men only, ladies only, everyone for Mixed and All Sorts; a Regulars / Everyone switch, Regulars being whoever has played at this group; the card pill is bolder)
+   VERSION: PLAT-PADEL v2026.09.14-p99  (the session card moves off the big button onto the NAMES page: one pill above Team 1 opens it, and a tapped court comes back to the names with event, date, type and sets kept from page one; a member who never uses it sees one line)
    VERSION: PLAT-PADEL v2026.09.13-p98  (the Recent Matches banner is OPR green on every board; Admin is the only pill under a board's recent matches, About OPR lives on the door; the vertical scrollbar's space is reserved from the first frame so the page never jiggles sideways)
    VERSION: PLAT-PADEL v2026.09.13-p97  (the back chip on the hero is bigger; the chooser leads with the plain \u271a Enter your match score in the button's own blue, the two card tiles beneath)
    VERSION: PLAT-PADEL v2026.09.13-p96  (six fixes: no Club-N flash on a group board; the session chooser is caught at the button in capture phase, so it opens first time; name search matches the start of any word; the door's banner is shorter; About OPR under recent matches on the door and on group boards; groups in a base-club register get the organisation layout — About off the grid, three tiles across)
@@ -3260,7 +3261,7 @@ const CLUB_NAME = _club.name;  // shown in the logo as "OPR · <name>"
     link.setAttribute('href', href);
   }catch(e){ /* install stays on the static manifest — no functional impact */ }
 })();
-const OPR_VERSION = "OPR-DOUBLES v2026.09.03-56 · PLAT replica p99";  // MANUAL PAIR CREATION REMOVED FROM ADMIN: Create a pair, Bulk create pairs and Re-derive all pairs are gone (they only made match-less ghost pairs, and Re-derive rewrote every stored initial club-wide). Pairs are born automatically at match entry. Current pairs list untouched; the underlying JS is left in place unreferenced, so no other code path changes. Includes v47 (set-score fix + double-tap guard) and all prior.
+const OPR_VERSION = "OPR-DOUBLES v2026.09.03-56 · PLAT replica p100";  // MANUAL PAIR CREATION REMOVED FROM ADMIN: Create a pair, Bulk create pairs and Re-derive all pairs are gone (they only made match-less ghost pairs, and Re-derive rewrote every stored initial club-wide). Pairs are born automatically at match entry. Current pairs list untouched; the underlying JS is left in place unreferenced, so no other code path changes. Includes v47 (set-score fix + double-tap guard) and all prior.
 // Explanation shown above the individual ladder. Open on load so it's read; collapsible
 // (state kept for the session) and scrolls away. Mechanics only — no outcome framing, so
 // members aren't nudged away from playing stronger opponents. Every clause maps to a real
@@ -9696,7 +9697,7 @@ async function clRemove(id, label){
     }catch(e){}
   }
   // the build tag is a debugging aid, not something a member should see: it appears only with ?build=1
-  try{ if(/[?&]build=1/.test(location.search)) buildTag("PLAT p99"); }catch(e){}
+  try{ if(/[?&]build=1/.test(location.search)) buildTag("PLAT p100"); }catch(e){}
   /* A plaque on the club's honour board opens that sport's ledger AT the person: ?player=<name> calls the
      parent's own loadProfile, so nothing in the parent changes. If the name is not recognised the ledger
      simply opens as it always did. */
@@ -9978,7 +9979,10 @@ async function clRemove(id, label){
       // club-adjusted base (the number the board replays from); OPR's own cache refines it for anyone who has played here.
       fetch(SBR("plat_padel_v_ratings?club_id=eq."+W.PLAT.cid+"&select=full_name,gender,seed_rating&order=full_name.asc")).then(function(r){return r.json();}),
       (typeof OPR!=="undefined"&&OPR.load)?OPR.load().catch(function(){}):Promise.resolve()
+      ,fetch(SBR("plat_padel_v_individuals?club_id=eq."+W.PLAT.cid+"&select=full_name")).then(function(r){return r.json();}).catch(function(){ return []; })
     ]).then(function(res){
+      SESS.regulars={}; (Array.isArray(res[2])?res[2]:[]).forEach(function(m){ if(m.full_name) SESS.regulars[m.full_name]=1; });
+      if(SESS.pool==null) SESS.pool = Object.keys(SESS.regulars).length>=4 ? "regulars" : "all";   // a group with no history shows everyone
       var rows=Array.isArray(res[0])?res[0]:[]; var seen={};
       SESS.members=rows.filter(function(m){ if(!m.full_name||seen[m.full_name]) return false; seen[m.full_name]=1; return true; });
       SESS.ratings={}; SESS.members.forEach(function(m){ var v=null; try{ v=OPR.indiv(m.full_name); }catch(e){}
@@ -9994,12 +9998,20 @@ async function clRemove(id, label){
     var b=document.getElementById("platSessBody"); if(!b) return;
     var q=(SESS.q||"").toLowerCase();
     var picked=Object.keys(SESS.picked).filter(function(k){return SESS.picked[k];});
+    var want=(function(){ try{ var t=(typeof entryData!=="undefined"&&entryData&&entryData.type)||""; return t==="Men's"?"M":(t==="Ladies"?"F":""); }catch(e){ return ""; } })();
+    var pool=SESS.pool||"all", nReg=Object.keys(SESS.regulars||{}).length;
     var h='<div class="team-card"><div class="team-label"><span>1</span>Courts</div>'+seg("court",[["level","Level courts"],["mixed","Mixed courts"]],SESS.court,"window.platSessCourt")
       +'<div style="font-size:12px;color:#7a6688;margin-top:-6px">Level: like plays like \u2014 for a field with a big spread. Mixed: every court gets a strong, a middling and a weaker player \u2014 for a close field.</div></div>';
     h+='<div class="team-card"><div class="team-label"><span>2</span>Who is here <span style="margin-left:auto;background:none;color:#6c3483;width:auto;height:auto;font-size:12px">'+picked.length+' picked</span></div>'
+      +(want?'<div style="font-size:12px;color:#7a6688;margin:-4px 0 8px">'+(want==="M"?"Men only":"Ladies only")+' \u2014 the match type chosen on the first page</div>':'')
+      +seg("pool",[["regulars","Regulars"+(nReg?" ("+nReg+")":"")],["all","Everyone"]],pool,"window.platSessPool")
+      +'<div style="font-size:12px;color:#7a6688;margin:-6px 0 8px">Regulars are the people who have played at this group. Everyone is the whole club.</div>'
       +'<input placeholder="Find a name\u2026" value="'+esc(SESS.q||"")+'" oninput="window.platSessQ(this.value)" style="width:100%;padding:10px 12px;border:1.5px solid #ddd;border-radius:10px;font-size:14px;margin-bottom:8px">'
       +'<div style="max-height:46vh;overflow-y:auto;-webkit-overflow-scrolling:touch">';
-    SESS.members.filter(function(m){ return !q||m.full_name.toLowerCase().split(/\s+/).some(function(w){ return w.indexOf(q)===0; }); }).forEach(function(m){
+    SESS.members.filter(function(m){
+      if(want && (m.gender||"").toUpperCase().charAt(0)!==want && !SESS.picked[m.full_name]) return false;
+      if(pool==="regulars" && !SESS.regulars[m.full_name] && !SESS.picked[m.full_name]) return false;
+      return !q||m.full_name.toLowerCase().split(/\s+/).some(function(w){ return w.indexOf(q)===0; }); }).forEach(function(m){
       var on=!!SESS.picked[m.full_name], r=SESS.ratings[m.full_name];
       h+='<label style="display:flex;align-items:center;gap:10px;padding:8px 4px;border-bottom:1px solid #f0ecf4;cursor:pointer">'
         +'<input type="checkbox" '+(on?'checked':'')+' onchange="window.platSessPick(\''+esc(m.full_name).replace(/'/g,"\\'")+'\',this.checked)" style="width:18px;height:18px">'
@@ -10017,6 +10029,7 @@ async function clRemove(id, label){
   W.platSessChooser=chooser;
   W.platSessCourt=function(v){ SESS.court=v; renderMake(); };
   W.platSessOut=function(v){ SESS.out=v; renderMake(); };
+  W.platSessPool=function(v){ SESS.pool=v; renderMake(); };
   W.platSessQ=function(v){ SESS.q=v; var el=document.activeElement; var pos=el?el.selectionStart:null; renderMake(); var inp=document.querySelector("#platSessBody input[placeholder]"); if(inp){ inp.focus(); if(pos!=null) inp.setSelectionRange(pos,pos); } };
   W.platSessPick=function(n,on){ SESS.picked[n]=on; var c=document.querySelector("#platSessBody .team-label span[style]"); if(c) c.textContent=Object.keys(SESS.picked).filter(function(k){return SESS.picked[k];}).length+" picked"; };
   W.platSessGenerate=function(){
@@ -10026,6 +10039,9 @@ async function clRemove(id, label){
     if(names.length<4) return say("Pick at least four players.");
     if(names.length%2) return say("Pick an even number \u2014 pairs need partners. You have "+names.length+".");
     if(names.some(function(n){ return SESS.ratings[n]==null; })) return say("A picked player has no rating yet \u2014 they need a starting rating first.");
+    try{ var tt=(typeof entryData!=="undefined"&&entryData&&entryData.type)||""; var wantG=tt==="Men's"?"M":(tt==="Ladies"?"F":"");
+      if(wantG){ var off=names.filter(function(n){ var m=SESS.members.find(function(x){return x.full_name===n;}); return m&&(m.gender||"").toUpperCase().charAt(0)!==wantG; });
+        if(off.length) return say(off.join(", ")+(off.length===1?" is":" are")+" not "+(wantG==="M"?"men":"ladies")+" \u2014 the first page says "+tt+"."); } }catch(e){}
     err.style.display="none";
     var courts=makeCourts(names,function(n){ return SESS.ratings[n]; },SESS.court);
     var rows=courts;
@@ -10158,7 +10174,7 @@ async function clRemove(id, label){
         if(host && !document.getElementById("platCardPill") && !(typeof entryData!=="undefined"&&entryData&&entryData.event==="Ladder Match")){
           var pill=document.createElement("button"); pill.type="button"; pill.id="platCardPill"; pill.dataset.platKeep="1";
           pill.innerHTML="\ud83c\udfbe&nbsp; Tonight\u2019s card \u2014 make the courts, or pick a court in play &nbsp;\u203a";
-          pill.style.cssText="display:block;width:100%;margin:0 0 12px;padding:12px 14px;border:1.5px solid #6c3483;border-radius:12px;background:#f5eef8;color:#6c3483;font-size:14px;font-weight:700;cursor:pointer;text-align:center";
+          pill.style.cssText="display:block;width:100%;margin:0 0 14px;padding:14px 16px;border:2px solid #6c3483;border-radius:14px;background:linear-gradient(135deg,#f5eef8,#ede3f4);color:#4a235a;font-size:15px;font-weight:800;cursor:pointer;text-align:center;box-shadow:0 3px 10px rgba(108,52,131,.18)";
           pill.onclick=function(){ chooser(); };
           host.insertBefore(pill, host.firstChild);
         }
