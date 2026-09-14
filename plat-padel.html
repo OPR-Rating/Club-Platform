@@ -735,7 +735,8 @@
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script>
 /* ============================================================================
-   PLAT EARLY SNIPPET — plat-padel.html  VERSION: PLAT-PADEL v2026.09.14-p108  (the card's match type starts on \u201cSelect type...\u201d, as match entry does, and the card cannot be made without one)
+   PLAT EARLY SNIPPET — plat-padel.html  VERSION: PLAT-PADEL v2026.09.14-p109  (a third court mode, Self selected: the organiser fills each court or pair from the ticked names; save, share, print and scoring are unchanged; needs plat_session v3)
+   VERSION: PLAT-PADEL v2026.09.14-p108  (the card's match type starts on \u201cSelect type...\u201d, as match entry does, and the card cannot be made without one)
    VERSION: PLAT-PADEL v2026.09.14-p107  (a saved card can leave the phone: Print the card — a sheet with a score column for the noticeboard — and Send as text for the club's WhatsApp, with the link to enter scores)
    VERSION: PLAT-PADEL v2026.09.14-p106  (the court card switched on for Kloof–Sun Fun, pool 2, by name — the two pills on page one of score entry and nothing else; their door, layout and boards are untouched)
    VERSION: PLAT-PADEL v2026.09.14-p105  (a group's colour runs through the whole score-entry flow — Next buttons, step dots, team cards, chosen players, winning sets, result cards, the club selector; the club in OPR purple is untouched)
@@ -3269,7 +3270,7 @@ const CLUB_NAME = _club.name;  // shown in the logo as "OPR · <name>"
     link.setAttribute('href', href);
   }catch(e){ /* install stays on the static manifest — no functional impact */ }
 })();
-const OPR_VERSION = "OPR-DOUBLES v2026.09.03-56 · PLAT replica p108";  // MANUAL PAIR CREATION REMOVED FROM ADMIN: Create a pair, Bulk create pairs and Re-derive all pairs are gone (they only made match-less ghost pairs, and Re-derive rewrote every stored initial club-wide). Pairs are born automatically at match entry. Current pairs list untouched; the underlying JS is left in place unreferenced, so no other code path changes. Includes v47 (set-score fix + double-tap guard) and all prior.
+const OPR_VERSION = "OPR-DOUBLES v2026.09.03-56 · PLAT replica p109";  // MANUAL PAIR CREATION REMOVED FROM ADMIN: Create a pair, Bulk create pairs and Re-derive all pairs are gone (they only made match-less ghost pairs, and Re-derive rewrote every stored initial club-wide). Pairs are born automatically at match entry. Current pairs list untouched; the underlying JS is left in place unreferenced, so no other code path changes. Includes v47 (set-score fix + double-tap guard) and all prior.
 // Explanation shown above the individual ladder. Open on load so it's read; collapsible
 // (state kept for the session) and scrolls away. Mechanics only — no outcome framing, so
 // members aren't nudged away from playing stronger opponents. Every clause maps to a real
@@ -9705,7 +9706,7 @@ async function clRemove(id, label){
     }catch(e){}
   }
   // the build tag is a debugging aid, not something a member should see: it appears only with ?build=1
-  try{ if(/[?&]build=1/.test(location.search)) buildTag("PLAT p108"); }catch(e){}
+  try{ if(/[?&]build=1/.test(location.search)) buildTag("PLAT p109"); }catch(e){}
   /* A plaque on the club's honour board opens that sport's ledger AT the person: ?player=<name> calls the
      parent's own loadProfile, so nothing in the parent changes. If the name is not recognised the ledger
      simply opens as it always did. */
@@ -10043,8 +10044,8 @@ async function clRemove(id, label){
       +'<label style="font-size:12px;color:#444">Date</label><input type="date" value="'+esc(SESS.date||"")+'" style="'+selS+'" onchange="window.platSessDetail(\'date\',this.value)">'
       +'<label style="font-size:12px;color:#444">Match type</label><select style="'+selS+'" onchange="window.platSessDetail(\'type\',this.value)"><option value=""'+(SESS.type?"":" selected")+'>Select type...</option>'+opt(["Men's","Ladies","Mixed","All Sorts"],SESS.type)+'</select>'
       +'<label style="font-size:12px;color:#444">Sets played</label><select style="'+selS+';margin-bottom:0" onchange="window.platSessDetail(\'sets\',this.value)">'+opt([1,2,3],SESS.sets)+'</select></div>';
-    h+='<div class="team-card"><div class="team-label"><span>2</span>Courts</div>'+seg("court",[["level","Level courts"],["mixed","Mixed courts"]],SESS.court,"window.platSessCourt")
-      +'<div style="font-size:12px;color:#7a6688;margin-top:-6px">Level: like plays like \u2014 for a field with a big spread. Mixed: every court gets a strong, a middling and a weaker player \u2014 for a close field.</div></div>';
+    h+='<div class="team-card"><div class="team-label"><span>2</span>Courts</div>'+seg("court",[["level","Level"],["mixed","Mixed"],["self","Self selected"]],SESS.court,"window.platSessCourt")
+      +'<div style="font-size:12px;color:#7a6688;margin-top:-6px">Level: like plays like \u2014 for a field with a big spread. Mixed: every court gets a strong, a middling and a weaker player \u2014 for a close field. Self selected: you fill the courts yourself from the names you tick.</div></div>';
     h+='<div class="team-card"><div class="team-label"><span>3</span>Who is here <span style="margin-left:auto;background:none;color:#6c3483;width:auto;height:auto;font-size:12px">'+picked.length+' picked</span></div>'
       +(want?'<div style="font-size:12px;color:#7a6688;margin:-4px 0 8px">'+(want==="M"?"Men only":"Ladies only")+' \u2014 from the match type above</div>':'')
       +seg("pool",[["regulars","Regulars"+(nReg?" ("+nReg+")":"")],["all","Everyone"]],pool,"window.platSessPool")
@@ -10062,12 +10063,47 @@ async function clRemove(id, label){
         +'<span style="font-size:11px;color:#888">'+(m.gender||"")+'</span>'+ratingPill(r)+'</label>';
     });
     h+='</div></div>';
-    h+='<div class="team-card"><div class="team-label"><span>4</span>Generate</div>'+seg("out",[["matches","Matches"],["pairs","Pairs only"]],SESS.out,"window.platSessOut")
+    h+='<div class="team-card"><div class="team-label"><span>4</span>'+(SESS.court==="self"?"Fill the courts":"Generate")+'</div>'+seg("out",[["matches","Matches"],["pairs","Pairs only"]],SESS.out,"window.platSessOut")
       +'<div style="font-size:12px;color:#7a6688;margin-top:-6px">Matches: pair v pair on each court. Pairs only: the pairs, and the club decides who plays whom on the day.</div>'
+      +(SESS.court==="self" ? selfSlots(picked) : '')
       +'<div id="platSessErr" class="error-msg" style="display:none;margin-top:10px"></div>'
-      +'<button class="btn btn-primary" style="margin-top:12px" onclick="window.platSessGenerate()">Make the courts</button>'
+      +'<button class="btn btn-primary" style="margin-top:12px" onclick="window.platSessGenerate()">'+(SESS.court==="self"?"Save the card":"Make the courts")+'</button>'
       +'<button class="btn btn-secondary" style="margin-top:8px" onclick="window.platSessPlain()">&larr; Back</button></div>';
     b.innerHTML=h;
+  }
+  /* SELF SELECTED: one row per court (or per pair), each slot a select over the ticked names. A name already
+     placed elsewhere is greyed in the other slots. Slots keep their values across re-renders. */
+  function selfSlots(picked){
+    SESS.self=SESS.self||{};
+    var per=(SESS.out==="pairs")?2:4, n=Math.floor(picked.length/per);
+    if(picked.length<per) return '<div style="font-size:13px;color:#b9770e;margin-top:10px">Tick at least '+per+' players above, then fill the '+(per===4?"courts":"pairs")+' here.</div>';
+    var used={}; Object.keys(SESS.self).forEach(function(k){ if(SESS.self[k]&&picked.indexOf(SESS.self[k])>=0) used[SESS.self[k]]=k; });
+    var sel=function(key){ var cur=(SESS.self[key]&&picked.indexOf(SESS.self[key])>=0)?SESS.self[key]:"";
+      return '<select onchange="window.platSessSlot(\''+key+'\',this.value)" style="flex:1;min-width:0;padding:9px 8px;border:1.5px solid #ddd;border-radius:9px;font-size:13px;background:#fff"><option value="">\u2014</option>'
+        +picked.map(function(nm){ var taken=used[nm]&&used[nm]!==key; return '<option value="'+esc(nm)+'"'+(nm===cur?' selected':'')+(taken?' disabled':'')+'>'+esc(nm)+(taken?' \u2713':'')+'</option>'; }).join("")+'</select>'; };
+    var h='<div style="margin-top:12px">';
+    for(var i=1;i<=n;i++){
+      h+='<div style="margin:8px 0;padding:10px;border:1px solid rgba('+sessRgb()+',.3);border-radius:12px;background:#fff">'
+        +'<div style="font-size:12px;font-weight:800;color:'+sessCol()+';margin-bottom:6px">'+(per===4?"Court ":"Pair ")+i+'</div>'
+        +'<div style="display:flex;gap:6px;align-items:center">'+sel("c"+i+"a")+sel("c"+i+"b")+(per===4?'<span style="color:#999;font-size:12px;padding:0 2px">v</span>'+sel("c"+i+"c")+sel("c"+i+"d"):'')+'</div></div>';
+    }
+    if(picked.length%per) h+='<div style="font-size:12px;color:#7a6688;margin-top:6px">'+(picked.length%per)+' of the ticked players will not fit a '+(per===4?"court":"pair")+' \u2014 untick, or tick more.</div>';
+    return h+'</div>';
+  }
+  W.platSessSlot=function(key,v){ SESS.self=SESS.self||{}; SESS.self[key]=v; renderMake(); };
+  function selfRows(picked){
+    var per=(SESS.out==="pairs")?2:4, n=Math.floor(picked.length/per), rows=[], seen={}, missing=false;
+    for(var i=1;i<=n;i++){
+      var a=SESS.self["c"+i+"a"], b=SESS.self["c"+i+"b"], c=SESS.self["c"+i+"c"], d=SESS.self["c"+i+"d"];
+      var need=per===4?[a,b,c,d]:[a,b];
+      if(need.some(function(x){ return !x||picked.indexOf(x)<0; })){ missing=true; continue; }
+      need.forEach(function(x){ seen[x]=(seen[x]||0)+1; });
+      var r=function(x){ return SESS.ratings[x]||0; };
+      rows.push(per===4 ? {court_no:i,t1p1:a,t1p2:b,t2p1:c,t2p2:d,t1_rating:w6040(r(a),r(b)),t2_rating:w6040(r(c),r(d))}
+                        : {court_no:null,t1p1:a,t1p2:b,t2p1:null,t2p2:null,t1_rating:w6040(r(a),r(b)),t2_rating:null});
+    }
+    var dup=Object.keys(seen).filter(function(k){ return seen[k]>1; });
+    return {rows:rows,missing:missing,dup:dup,expected:n};
   }
   W.platSessChooser=chooser;
   W.platSessCourt=function(v){ SESS.court=v; renderMake(); };
@@ -10087,13 +10123,21 @@ async function clRemove(id, label){
       if(wantG){ var off=names.filter(function(n){ var m=SESS.members.find(function(x){return x.full_name===n;}); return m&&(m.gender||"").toUpperCase().charAt(0)!==wantG; });
         if(off.length) return say(off.join(", ")+(off.length===1?" is":" are")+" not "+(wantG==="M"?"men":"ladies")+" \u2014 the card says "+tt+"."); } }catch(e){}
     err.style.display="none";
+    var rows;
+    if(SESS.court==="self"){
+      var sr=selfRows(names);
+      if(sr.dup.length) return say(sr.dup.join(", ")+" appear"+(sr.dup.length===1?"s":"")+" more than once.");
+      if(sr.missing||!sr.rows.length) return say("Fill every slot of every "+(SESS.out==="pairs"?"pair":"court")+" \u2014 "+sr.expected+" to fill.");
+      rows=sr.rows;
+    } else {
     var courts=makeCourts(names,function(n){ return SESS.ratings[n]; },SESS.court);
-    var rows=courts;
+    rows=courts;
     if(SESS.out==="pairs"){
       rows=[]; courts.forEach(function(k){
         rows.push({court_no:null,t1p1:k.t1p1,t1p2:k.t1p2,t2p1:null,t2p2:null,t1_rating:k.t1_rating,t2_rating:null});
         if(k.t2p1) rows.push({court_no:null,t1p1:k.t2p1,t1p2:k.t2p2,t2p1:null,t2p2:null,t1_rating:k.t2_rating,t2_rating:null});
       });
+    }
     }
     var b=document.getElementById("platSessBody"); b.innerHTML='<div class="loading">Saving the card\u2026</div>';
     var who=null; try{ who=(document.getElementById("submitterName")||{}).value||null; }catch(e){}
@@ -10135,7 +10179,7 @@ async function clRemove(id, label){
       var matched=courts.filter(function(k){return k.t2p1;}), loose=courts.filter(function(k){return !k.t2p1;});
       h+='<div style="display:flex;gap:8px;margin:4px 0 10px"><button type="button" class="btn btn-secondary" style="flex:1;margin:0;padding:10px;font-size:13px" onclick="window.platSessPrint('+s.id+')">\ud83d\udda8 Print the card</button>'
         +'<button type="button" class="btn btn-secondary" style="flex:1;margin:0;padding:10px;font-size:13px" onclick="window.platSessShare('+s.id+')">\ud83d\udcac Send as text</button></div>';
-      h+='<div style="display:flex;justify-content:space-between;align-items:baseline;margin:4px 0 8px"><div style="font-size:12px;color:#888"><b style="color:'+sessCol()+'">'+esc(s.event||"Social")+'</b> \u00b7 '+esc(s.session_date)+' \u00b7 '+esc(s.match_type||"")+' \u00b7 '+(s.sets||3)+' set'+((s.sets||3)===1?"":"s")+' \u00b7 '+(s.court_mode==="mixed"?"Mixed":"Level")+' courts \u00b7 '+((s.players||[]).length)+' players</div>'
+      h+='<div style="display:flex;justify-content:space-between;align-items:baseline;margin:4px 0 8px"><div style="font-size:12px;color:#888"><b style="color:'+sessCol()+'">'+esc(s.event||"Social")+'</b> \u00b7 '+esc(s.session_date)+' \u00b7 '+esc(s.match_type||"")+' \u00b7 '+(s.sets||3)+' set'+((s.sets||3)===1?"":"s")+' \u00b7 '+(s.court_mode==="mixed"?"Mixed":(s.court_mode==="self"?"Self-selected":"Level"))+' courts \u00b7 '+((s.players||[]).length)+' players</div>'
         +'<span style="font-size:11px;color:#c0392b;cursor:pointer;text-decoration:underline" onclick="window.platSessCancelAll('+s.id+')">cancel this card</span></div>';
       matched.sort(function(a,b){ return (a.court_no||99)-(b.court_no||99); }).forEach(function(k){
         h+='<div class="team-card" style="cursor:pointer" onclick="window.platSessScore('+k.id+')">'
@@ -10167,7 +10211,7 @@ async function clRemove(id, label){
     var matched=courts.filter(function(k){return k.t2p1;}).sort(function(a,b){ return (a.court_no||99)-(b.court_no||99); });
     var loose=courts.filter(function(k){return !k.t2p1;});
     return {matched:matched, loose:loose,
-      head:(W.PLAT.name||"")+" \u00b7 "+(s.event||"Social")+" \u00b7 "+(s.session_date||"")+" \u00b7 "+(s.match_type||"")+" \u00b7 "+(s.sets||3)+" set"+((s.sets||3)===1?"":"s")+" \u00b7 "+(s.court_mode==="mixed"?"Mixed":"Level")+" courts"};
+      head:(W.PLAT.name||"")+" \u00b7 "+(s.event||"Social")+" \u00b7 "+(s.session_date||"")+" \u00b7 "+(s.match_type||"")+" \u00b7 "+(s.sets||3)+" set"+((s.sets||3)===1?"":"s")+" \u00b7 "+(s.court_mode==="mixed"?"Mixed":(s.court_mode==="self"?"Self-selected":"Level"))+" courts"};
   }
   W.platSessShare=function(id){
     var s=SESS.open.find(function(x){return x.id===id;}); if(!s) return;
