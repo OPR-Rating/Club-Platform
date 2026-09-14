@@ -735,7 +735,8 @@
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script>
 /* ============================================================================
-   PLAT EARLY SNIPPET — plat-padel.html  VERSION: PLAT-PADEL v2026.09.13-p98  (the Recent Matches banner is OPR green on every board; Admin is the only pill under a board's recent matches, About OPR lives on the door; the vertical scrollbar's space is reserved from the first frame so the page never jiggles sideways)
+   PLAT EARLY SNIPPET — plat-padel.html  VERSION: PLAT-PADEL v2026.09.14-p99  (the session card moves off the big button onto the NAMES page: one pill above Team 1 opens it, and a tapped court comes back to the names with event, date, type and sets kept from page one; a member who never uses it sees one line)
+   VERSION: PLAT-PADEL v2026.09.13-p98  (the Recent Matches banner is OPR green on every board; Admin is the only pill under a board's recent matches, About OPR lives on the door; the vertical scrollbar's space is reserved from the first frame so the page never jiggles sideways)
    VERSION: PLAT-PADEL v2026.09.13-p97  (the back chip on the hero is bigger; the chooser leads with the plain \u271a Enter your match score in the button's own blue, the two card tiles beneath)
    VERSION: PLAT-PADEL v2026.09.13-p96  (six fixes: no Club-N flash on a group board; the session chooser is caught at the button in capture phase, so it opens first time; name search matches the start of any word; the door's banner is shorter; About OPR under recent matches on the door and on group boards; groups in a base-club register get the organisation layout — About off the grid, three tiles across)
    VERSION: PLAT-PADEL v2026.09.13-p95  (a court carries its match type: worked out from the four people's genders, shown on the card and filled into score entry; event, sets and date stay the member's)
@@ -3259,7 +3260,7 @@ const CLUB_NAME = _club.name;  // shown in the logo as "OPR · <name>"
     link.setAttribute('href', href);
   }catch(e){ /* install stays on the static manifest — no functional impact */ }
 })();
-const OPR_VERSION = "OPR-DOUBLES v2026.09.03-56 · PLAT replica p98";  // MANUAL PAIR CREATION REMOVED FROM ADMIN: Create a pair, Bulk create pairs and Re-derive all pairs are gone (they only made match-less ghost pairs, and Re-derive rewrote every stored initial club-wide). Pairs are born automatically at match entry. Current pairs list untouched; the underlying JS is left in place unreferenced, so no other code path changes. Includes v47 (set-score fix + double-tap guard) and all prior.
+const OPR_VERSION = "OPR-DOUBLES v2026.09.03-56 · PLAT replica p99";  // MANUAL PAIR CREATION REMOVED FROM ADMIN: Create a pair, Bulk create pairs and Re-derive all pairs are gone (they only made match-less ghost pairs, and Re-derive rewrote every stored initial club-wide). Pairs are born automatically at match entry. Current pairs list untouched; the underlying JS is left in place unreferenced, so no other code path changes. Includes v47 (set-score fix + double-tap guard) and all prior.
 // Explanation shown above the individual ladder. Open on load so it's read; collapsible
 // (state kept for the session) and scrolls away. Mechanics only — no outcome framing, so
 // members aren't nudged away from playing stronger opponents. Every clause maps to a real
@@ -9695,7 +9696,7 @@ async function clRemove(id, label){
     }catch(e){}
   }
   // the build tag is a debugging aid, not something a member should see: it appears only with ?build=1
-  try{ if(/[?&]build=1/.test(location.search)) buildTag("PLAT p98"); }catch(e){}
+  try{ if(/[?&]build=1/.test(location.search)) buildTag("PLAT p99"); }catch(e){}
   /* A plaque on the club's honour board opens that sport's ledger AT the person: ?player=<name> calls the
      parent's own loadProfile, so nothing in the parent changes. If the name is not recognised the ledger
      simply opens as it always did. */
@@ -9940,7 +9941,7 @@ async function clRemove(id, label){
   function sessScreen(){
     if(document.getElementById("platSessScreen")) return;
     var s=document.createElement("div"); s.id="platSessScreen"; s.className="screen hidden";
-    s.innerHTML='<div class="header"><button class="back-btn" onclick="goHome()">&#8592;</button><h1>Tonight\u2019s session</h1></div>'
+    s.innerHTML='<div class="header"><button class="back-btn" onclick="window.platSessPlain()">&#8592;</button><h1>Tonight\u2019s session</h1></div>'
       +'<div class="screen-content" id="platSessBody"></div>';
     document.getElementById("homeScreen").parentNode.appendChild(s);
     try{ headerBadges(); }catch(e){}
@@ -9955,17 +9956,21 @@ async function clRemove(id, label){
       +'<div style="font-size:13px;color:#555;margin-top:4px">'+sub+'</div>'+(extraId?'<div id="'+extraId+'" style="font-size:13px;color:#b9770e;font-weight:700;margin-top:4px">No courts in play right now</div>':'')+'</div>'; };
     // p97: the plain road to score entry comes FIRST and wears the ✚ Enter button's own blue, so a member who just
     // wants to enter a score is never confused by the card; the two card tiles sit beneath it in the card's colour.
-    b.innerHTML='<button type="button" class="btn-enter" data-plat-keep="1" style="margin:0 0 14px" onclick="window.platSessPlain()">\u271a Enter your match score</button>'
-      +'<div style="font-size:12px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;color:#8a7f9c;margin:4px 2px 8px">Or tonight\u2019s session card</div>'
-      +'<div style="font-size:13px;color:#4a235a;margin:0 0 10px;line-height:1.45">Pick who is here, and the app makes the courts from everyone\u2019s current rating \u2014 balanced pairs, balanced matches. The card is saved straight away, so anyone on either side enters the score from their own phone.</div>'
+    b.innerHTML='<div style="font-size:13px;color:#4a235a;margin:0 0 10px;line-height:1.45">Pick who is here, and the app makes the courts from everyone\u2019s current rating \u2014 balanced pairs, balanced matches. The card is saved straight away, so anyone on either side enters the score from their own phone.</div>'
       +tile(1,"Make tonight\u2019s courts","Who is here, level or mixed courts, matches or just the pairs.","window.platSessMake()")
-      +tile(2,"Courts in play \u2014 enter a result","Every court made today that has not been scored yet.","window.platSessOpen()","platSessCount");
+      +tile(2,"Courts in play \u2014 enter a result","Every court made today that has not been scored yet.","window.platSessOpen()","platSessCount")
+      +'<button class="btn btn-secondary" style="margin-top:4px" onclick="window.platSessPlain()">&larr; Back to the names</button>';
     scall({action:"list_open",club_id:W.PLAT.cid}).then(function(r){
       var n=0; ((r&&r.sessions)||[]).forEach(function(s){ (s.courts||[]).forEach(function(k){ if(k.status==="open") n++; }); });
       var el=document.getElementById("platSessCount"); if(el&&n) el.textContent=n+" court"+(n===1?"":"s")+" in play";
     });
   }
-  W.platSessPlain=function(){ W.PLAT.sessionCourt=null; W.showScreen("entryScreen"); };
+  function backToNames(){
+    try{ document.querySelectorAll(".screen").forEach(function(s){ s.classList.remove("active"); s.classList.add("hidden"); });
+      var es=document.getElementById("entryScreen"); es.classList.remove("hidden"); es.classList.add("active"); W.scrollTo(0,0); }catch(e){}
+    try{ if(typeof renderStep2==="function") renderStep2(); }catch(e){}
+  }
+  W.platSessPlain=function(){ W.PLAT.sessionCourt=null; backToNames(); };
   function loadMembers(){
     return Promise.all([
       // p94: THE WHOLE REGISTER, not the group's members: names live at the club, and a group has no members
@@ -10060,8 +10065,7 @@ async function clRemove(id, label){
     if(!open.length){
       b.innerHTML='<div class="empty-state"><div class="icon">\ud83c\udfbe</div><p>No courts in play. Make tonight\u2019s courts, or enter a match without a session.</p></div>'
         +'<button class="btn btn-primary" onclick="window.platSessMake()">Make tonight\u2019s courts</button>'
-        +'<button class="btn btn-secondary" style="margin-top:8px" onclick="window.platSessPlain()">\u271a Enter a match without a session</button>'
-        +'<button class="btn btn-secondary" style="margin-top:8px" onclick="window.platSessChooser()">&larr; Back</button>';
+        +'<button class="btn btn-secondary" style="margin-top:8px" onclick="window.platSessPlain()">&larr; Back to the names</button>';
       return;
     }
     var h="";
@@ -10107,12 +10111,7 @@ async function clRemove(id, label){
     var k=null; SESS.open.forEach(function(s){ (s.courts||[]).forEach(function(c){ if(c.id===id) k=c; }); });
     if(!k||!k.t2p1) return;
     W.PLAT.sessionCourt={id:k.id,t1p1:k.t1p1,t1p2:k.t1p2,t2p1:k.t2p1,t2p2:k.t2p2,type:courtType(k)};
-    W.showScreen("entryScreen");
-    // step 1 is rendered by the parent on showScreen; the type goes in once its select exists
-    var tries=0, put=function(){ var sel=document.getElementById("matchType"); var c=W.PLAT.sessionCourt;
-      if(sel&&c){ sel.value=c.type; if(sel.value!==c.type&&tries<20){ tries++; setTimeout(put,100); } }
-      else if(tries++<20) setTimeout(put,100); };
-    setTimeout(put,50);
+    backToNames();
   };
   function aboutPill(){
     if(document.getElementById("platAboutPill")) return;
@@ -10148,18 +10147,30 @@ async function clRemove(id, label){
   }
   function sessionCard(){
     if(!sessionScope()) return;
-    var be=document.querySelector("#homeScreen .btn-enter"); if(!be||be.dataset.platSess) return;
-    be.dataset.platSess="1"; be.dataset.platKeep="1";
-    be.onclick=function(){ chooser(); };
-    document.addEventListener("click",function(ev){ try{ var t=ev.target&&ev.target.closest?ev.target.closest("#homeScreen .btn-enter"):null;
-      if(t&&sessionScope()){ ev.preventDefault(); ev.stopImmediatePropagation(); chooser(); } }catch(e){} },true);
-    // step 2 of score entry: fill the four names from the tapped court
+    if(W.PLAT._sessHooked) return; W.PLAT._sessHooked=1;
+    // p99: the big button is the parent's own — no chooser in the way. The card is a pill at the top of the
+    // NAMES page (step 2): by then event, date, type and sets are known, and a member who never uses the
+    // card never sees more than one line.
     var _rs2=W.renderStep2;
-    if(typeof _rs2==="function") W.renderStep2=function(){ _rs2.apply(this,arguments); var k=W.PLAT.sessionCourt; if(!k) return;
+    if(typeof _rs2==="function") W.renderStep2=function(){ _rs2.apply(this,arguments);
+      try{
+        var host=document.getElementById("entryContent");
+        if(host && !document.getElementById("platCardPill") && !(typeof entryData!=="undefined"&&entryData&&entryData.event==="Ladder Match")){
+          var pill=document.createElement("button"); pill.type="button"; pill.id="platCardPill"; pill.dataset.platKeep="1";
+          pill.innerHTML="\ud83c\udfbe&nbsp; Tonight\u2019s card \u2014 make the courts, or pick a court in play &nbsp;\u203a";
+          pill.style.cssText="display:block;width:100%;margin:0 0 12px;padding:12px 14px;border:1.5px solid #6c3483;border-radius:12px;background:#f5eef8;color:#6c3483;font-size:14px;font-weight:700;cursor:pointer;text-align:center";
+          pill.onclick=function(){ chooser(); };
+          host.insertBefore(pill, host.firstChild);
+        }
+      }catch(e){}
+      var k=W.PLAT.sessionCourt; if(!k) return;
       [["t1p1",k.t1p1],["t1p2",k.t1p2],["t2p1",k.t2p1],["t2p2",k.t2p2]].forEach(function(p){
         var v=document.getElementById(p[0]+"_val"), l=document.getElementById(p[0]+"_lbl"), bt=document.getElementById(p[0]+"_btn");
         if(v) v.value=p[1]; if(l) l.textContent=p[1]; if(bt) bt.classList.add("selected"); });
       try{ if(typeof odrUpdateCombined==="function") odrUpdateCombined(); }catch(e){} };
+    // a fresh entry from the home button starts clean
+    var _rs1=W.renderStep1;
+    if(typeof _rs1==="function") W.renderStep1=function(){ W.PLAT.sessionCourt=null; return _rs1.apply(this,arguments); };
     // after a successful submit, close the court on the card
     var _ds=W.doSubmit;
     if(typeof _ds==="function") W.doSubmit=function(btn){ var k=W.PLAT.sessionCourt; var p=_ds.apply(this,arguments);
