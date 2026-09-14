@@ -735,7 +735,8 @@
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script>
 /* ============================================================================
-   PLAT EARLY SNIPPET — plat-padel.html  VERSION: PLAT-PADEL v2026.09.14-p104  (the court card stands alone: event, date, match type and sets are on the card itself — section 1 — and every court inherits them; needs plat_session v2 and addendum 24)
+   PLAT EARLY SNIPPET — plat-padel.html  VERSION: PLAT-PADEL v2026.09.14-p105  (a group's colour runs through the whole score-entry flow — Next buttons, step dots, team cards, chosen players, winning sets, result cards, the club selector; the club in OPR purple is untouched)
+   VERSION: PLAT-PADEL v2026.09.14-p104  (the court card stands alone: event, date, match type and sets are on the card itself — section 1 — and every court inherits them; needs plat_session v2 and addendum 24)
    VERSION: PLAT-PADEL v2026.09.14-p103  (one place for the court process: page one of score entry carries two pills, Create a court card and Enter a court result; the normal flow has nothing added; a made card is saved and shows its courts, each with Enter score)
    VERSION: PLAT-PADEL v2026.09.14-p102  (a court tapped on the card opens the SCORE SHEET itself: names and type from the court, event/date/sets from page one or the everyday defaults)
    VERSION: PLAT-PADEL v2026.09.14-p101  (page one of score entry gets \u201cOpen tonight\u2019s cards\u201d for the evening; a court tapped from there fills the type on page one and the names on page two; the card wears the group's own colour)
@@ -3265,7 +3266,7 @@ const CLUB_NAME = _club.name;  // shown in the logo as "OPR · <name>"
     link.setAttribute('href', href);
   }catch(e){ /* install stays on the static manifest — no functional impact */ }
 })();
-const OPR_VERSION = "OPR-DOUBLES v2026.09.03-56 · PLAT replica p104";  // MANUAL PAIR CREATION REMOVED FROM ADMIN: Create a pair, Bulk create pairs and Re-derive all pairs are gone (they only made match-less ghost pairs, and Re-derive rewrote every stored initial club-wide). Pairs are born automatically at match entry. Current pairs list untouched; the underlying JS is left in place unreferenced, so no other code path changes. Includes v47 (set-score fix + double-tap guard) and all prior.
+const OPR_VERSION = "OPR-DOUBLES v2026.09.03-56 · PLAT replica p105";  // MANUAL PAIR CREATION REMOVED FROM ADMIN: Create a pair, Bulk create pairs and Re-derive all pairs are gone (they only made match-less ghost pairs, and Re-derive rewrote every stored initial club-wide). Pairs are born automatically at match entry. Current pairs list untouched; the underlying JS is left in place unreferenced, so no other code path changes. Includes v47 (set-score fix + double-tap guard) and all prior.
 // Explanation shown above the individual ladder. Open on load so it's read; collapsible
 // (state kept for the session) and scrolls away. Mechanics only — no outcome framing, so
 // members aren't nudged away from playing stronger opponents. Every clause maps to a real
@@ -9701,7 +9702,7 @@ async function clRemove(id, label){
     }catch(e){}
   }
   // the build tag is a debugging aid, not something a member should see: it appears only with ?build=1
-  try{ if(/[?&]build=1/.test(location.search)) buildTag("PLAT p104"); }catch(e){}
+  try{ if(/[?&]build=1/.test(location.search)) buildTag("PLAT p105"); }catch(e){}
   /* A plaque on the club's honour board opens that sport's ledger AT the person: ?player=<name> calls the
      parent's own loadProfile, so nothing in the parent changes. If the name is not recognised the ledger
      simply opens as it always did. */
@@ -10212,6 +10213,30 @@ async function clRemove(id, label){
       wrap.appendChild(b); if(lower.parentNode) lower.parentNode.insertBefore(wrap, lower.nextSibling);
     }
   }
+  /* p105: THE GROUP'S COLOUR THROUGH SCORE ENTRY. Every step of the entry flow — the Next buttons, the step dots,
+     the team cards and their numbers, the chosen-player boxes, the winning set boxes, the result cards, the club
+     selector — takes the group's colour, so a member always knows which board they are on. The club itself
+     (the product's own purple) is left exactly as the parent draws it. */
+  function entryTint(){
+    if(!W.PLAT.cid) return;
+    var col=(W.PLAT.colour||clubPal(W.PLAT.cid)[0]); if(String(col||"").toLowerCase()==="#6c3483") return;
+    var rgb=sessRgb(), deep=darken(col,0.42), mid=darken(col,0.25);
+    var st=document.getElementById("platEntryTint")||document.createElement("style"); st.id="platEntryTint";
+    st.textContent=
+       "#entryScreen .btn-primary{background:"+col+"!important}#entryScreen .btn-primary:active{background:"+deep+"!important}"
+      +"#entryScreen .btn-success{background:"+col+"!important}"
+      +"#entryScreen .step-dot.active,#entryScreen .step-dot.done{background:"+col+"!important}"
+      +"#entryScreen .team-card{background:rgba("+rgb+",.10)!important;border-color:rgba("+rgb+",.32)!important}"
+      +"#entryScreen .team-label{color:"+mid+"!important}#entryScreen .team-label>span{background:"+col+"!important;color:#fff!important}"
+      +"#entryScreen .player-display.selected{border-color:"+col+"!important;background:rgba("+rgb+",.10)!important;color:"+mid+"!important}"
+      +"#entryScreen .set-input.winner{border-color:"+col+"!important;background:rgba("+rgb+",.12)!important}#entryScreen .set-input:focus{border-color:"+col+"!important}"
+      +"#entryScreen .result-card.winner{border-color:"+col+"!important;background:rgba("+rgb+",.12)!important}"
+      +"#entryScreen .result-sets,#entryScreen .winner-label{color:"+mid+"!important}"
+      +"#entryScreen .field select:focus,#entryScreen .field input:focus{border-color:"+col+"!important}"
+      +"#platEntryClub{background:rgba("+rgb+",.08)!important;border-color:rgba("+rgb+",.35)!important}#platEntryClub label{color:"+mid+"!important}"
+      +"#platEntryClub select:focus{border-color:"+col+"!important}";
+    if(!st.parentNode) document.head.appendChild(st);
+  }
   function sessionCard(){
     if(!sessionScope()) return;
     if(W.PLAT._sessHooked) return; W.PLAT._sessHooked=1;
@@ -10276,6 +10301,7 @@ async function clRemove(id, label){
     try{ headerBadges(); }catch(e){}
     try{ adminPill(); profileCardTint(); boardProfileTint(); groupAvatars(); openNamedPlayer(); }catch(e){}
     try{ baseClubGroup(); }catch(e){}
+    try{ entryTint(); }catch(e){}
     try{ sessionCard(); }catch(e){}
     // p98: the Recent Matches banner is the product's green on every board, whatever the group's colour
     try{
