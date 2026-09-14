@@ -735,7 +735,8 @@
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script>
 /* ============================================================================
-   PLAT EARLY SNIPPET — plat-padel.html  VERSION: PLAT-PADEL v2026.09.14-p101  (page one of score entry gets \u201cOpen tonight\u2019s cards\u201d for the evening; a court tapped from there fills the type on page one and the names on page two; the card wears the group's own colour)
+   PLAT EARLY SNIPPET — plat-padel.html  VERSION: PLAT-PADEL v2026.09.14-p102  (a court tapped on the card opens the SCORE SHEET itself: names and type from the court, event/date/sets from page one or the everyday defaults)
+   VERSION: PLAT-PADEL v2026.09.14-p101  (page one of score entry gets \u201cOpen tonight\u2019s cards\u201d for the evening; a court tapped from there fills the type on page one and the names on page two; the card wears the group's own colour)
    VERSION: PLAT-PADEL v2026.09.14-p100  (the card's list follows the first page's match type — men only, ladies only, everyone for Mixed and All Sorts; a Regulars / Everyone switch, Regulars being whoever has played at this group; the card pill is bolder)
    VERSION: PLAT-PADEL v2026.09.14-p99  (the session card moves off the big button onto the NAMES page: one pill above Team 1 opens it, and a tapped court comes back to the names with event, date, type and sets kept from page one; a member who never uses it sees one line)
    VERSION: PLAT-PADEL v2026.09.13-p98  (the Recent Matches banner is OPR green on every board; Admin is the only pill under a board's recent matches, About OPR lives on the door; the vertical scrollbar's space is reserved from the first frame so the page never jiggles sideways)
@@ -3262,7 +3263,7 @@ const CLUB_NAME = _club.name;  // shown in the logo as "OPR · <name>"
     link.setAttribute('href', href);
   }catch(e){ /* install stays on the static manifest — no functional impact */ }
 })();
-const OPR_VERSION = "OPR-DOUBLES v2026.09.03-56 · PLAT replica p101";  // MANUAL PAIR CREATION REMOVED FROM ADMIN: Create a pair, Bulk create pairs and Re-derive all pairs are gone (they only made match-less ghost pairs, and Re-derive rewrote every stored initial club-wide). Pairs are born automatically at match entry. Current pairs list untouched; the underlying JS is left in place unreferenced, so no other code path changes. Includes v47 (set-score fix + double-tap guard) and all prior.
+const OPR_VERSION = "OPR-DOUBLES v2026.09.03-56 · PLAT replica p102";  // MANUAL PAIR CREATION REMOVED FROM ADMIN: Create a pair, Bulk create pairs and Re-derive all pairs are gone (they only made match-less ghost pairs, and Re-derive rewrote every stored initial club-wide). Pairs are born automatically at match entry. Current pairs list untouched; the underlying JS is left in place unreferenced, so no other code path changes. Includes v47 (set-score fix + double-tap guard) and all prior.
 // Explanation shown above the individual ladder. Open on load so it's read; collapsible
 // (state kept for the session) and scrolls away. Mechanics only — no outcome framing, so
 // members aren't nudged away from playing stronger opponents. Every clause maps to a real
@@ -9698,7 +9699,7 @@ async function clRemove(id, label){
     }catch(e){}
   }
   // the build tag is a debugging aid, not something a member should see: it appears only with ?build=1
-  try{ if(/[?&]build=1/.test(location.search)) buildTag("PLAT p101"); }catch(e){}
+  try{ if(/[?&]build=1/.test(location.search)) buildTag("PLAT p102"); }catch(e){}
   /* A plaque on the club's honour board opens that sport's ledger AT the person: ?player=<name> calls the
      parent's own loadProfile, so nothing in the parent changes. If the name is not recognised the ledger
      simply opens as it always did. */
@@ -10145,9 +10146,20 @@ async function clRemove(id, label){
     var k=null; SESS.open.forEach(function(s){ (s.courts||[]).forEach(function(c){ if(c.id===id) k=c; }); });
     if(!k||!k.t2p1) return;
     W.PLAT.sessionCourt={id:k.id,t1p1:k.t1p1,t1p2:k.t1p2,t2p1:k.t2p1,t2p2:k.t2p2,type:courtType(k)};
-    var ready=false; try{ ready=!!(typeof entryData!=="undefined"&&entryData&&entryData.type&&entryData.sets); }catch(e){}
-    if(ready){ backToNames(); return; }
-    W.PLAT._keepCourt=true; W.showScreen("entryScreen");   // page one, with the court's type filled; the names arrive at step 2
+    // p102: a tapped court goes to the SCORE SHEET. The card knows the four names and the type; whatever page one
+    // already said is kept (event, date, sets), and what it did not say gets the everyday answer: Social, today,
+    // the sets chosen on page one or 3. Back from the sheet leads to the names, then to page one, as always.
+    try{
+      var ed=(typeof entryData!=="undefined"&&entryData)?entryData:{};
+      var p1={}; try{ var ev=document.getElementById("matchEvent"), dt=document.getElementById("matchDate"), sp=document.getElementById("setsPlayed");
+        if(ev&&ev.value) p1.event=ev.value; if(dt&&dt.value) p1.date=dt.value; if(sp&&sp.value) p1.sets=parseInt(sp.value,10); }catch(e){}
+      var d={ date:(ed.date||p1.date||new Date().toISOString().slice(0,10)), type:(ed.type||courtType(k)), sets:(ed.sets||p1.sets||3),
+              event:(ed.event||p1.event||"Social"), format:"doubles", t1p1:k.t1p1, t1p2:k.t1p2, t2p1:k.t2p1, t2p2:k.t2p2 };
+      if(typeof entryData!=="undefined"){ entryData=d; }
+      document.querySelectorAll(".screen").forEach(function(s){ s.classList.remove("active"); s.classList.add("hidden"); });
+      var es=document.getElementById("entryScreen"); es.classList.remove("hidden"); es.classList.add("active"); W.scrollTo(0,0);
+      if(typeof renderStep3==="function") renderStep3();
+    }catch(e){ W.PLAT._keepCourt=true; W.showScreen("entryScreen"); }
   };
   function aboutPill(){
     if(document.getElementById("platAboutPill")) return;
