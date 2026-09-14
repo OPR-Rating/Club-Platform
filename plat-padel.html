@@ -735,7 +735,8 @@
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script>
 /* ============================================================================
-   PLAT EARLY SNIPPET — plat-padel.html  VERSION: PLAT-PADEL v2026.09.14-p106  (the court card switched on for Kloof–Sun Fun, pool 2, by name — the two pills on page one of score entry and nothing else; their door, layout and boards are untouched)
+   PLAT EARLY SNIPPET — plat-padel.html  VERSION: PLAT-PADEL v2026.09.14-p107  (a saved card can leave the phone: Print the card — a sheet with a score column for the noticeboard — and Send as text for the club's WhatsApp, with the link to enter scores)
+   VERSION: PLAT-PADEL v2026.09.14-p106  (the court card switched on for Kloof–Sun Fun, pool 2, by name — the two pills on page one of score entry and nothing else; their door, layout and boards are untouched)
    VERSION: PLAT-PADEL v2026.09.14-p105  (a group's colour runs through the whole score-entry flow — Next buttons, step dots, team cards, chosen players, winning sets, result cards, the club selector; the club in OPR purple is untouched)
    VERSION: PLAT-PADEL v2026.09.14-p104  (the court card stands alone: event, date, match type and sets are on the card itself — section 1 — and every court inherits them; needs plat_session v2 and addendum 24)
    VERSION: PLAT-PADEL v2026.09.14-p103  (one place for the court process: page one of score entry carries two pills, Create a court card and Enter a court result; the normal flow has nothing added; a made card is saved and shows its courts, each with Enter score)
@@ -3267,7 +3268,7 @@ const CLUB_NAME = _club.name;  // shown in the logo as "OPR · <name>"
     link.setAttribute('href', href);
   }catch(e){ /* install stays on the static manifest — no functional impact */ }
 })();
-const OPR_VERSION = "OPR-DOUBLES v2026.09.03-56 · PLAT replica p106";  // MANUAL PAIR CREATION REMOVED FROM ADMIN: Create a pair, Bulk create pairs and Re-derive all pairs are gone (they only made match-less ghost pairs, and Re-derive rewrote every stored initial club-wide). Pairs are born automatically at match entry. Current pairs list untouched; the underlying JS is left in place unreferenced, so no other code path changes. Includes v47 (set-score fix + double-tap guard) and all prior.
+const OPR_VERSION = "OPR-DOUBLES v2026.09.03-56 · PLAT replica p107";  // MANUAL PAIR CREATION REMOVED FROM ADMIN: Create a pair, Bulk create pairs and Re-derive all pairs are gone (they only made match-less ghost pairs, and Re-derive rewrote every stored initial club-wide). Pairs are born automatically at match entry. Current pairs list untouched; the underlying JS is left in place unreferenced, so no other code path changes. Includes v47 (set-score fix + double-tap guard) and all prior.
 // Explanation shown above the individual ladder. Open on load so it's read; collapsible
 // (state kept for the session) and scrolls away. Mechanics only — no outcome framing, so
 // members aren't nudged away from playing stronger opponents. Every clause maps to a real
@@ -9703,7 +9704,7 @@ async function clRemove(id, label){
     }catch(e){}
   }
   // the build tag is a debugging aid, not something a member should see: it appears only with ?build=1
-  try{ if(/[?&]build=1/.test(location.search)) buildTag("PLAT p106"); }catch(e){}
+  try{ if(/[?&]build=1/.test(location.search)) buildTag("PLAT p107"); }catch(e){}
   /* A plaque on the club's honour board opens that sport's ledger AT the person: ?player=<name> calls the
      parent's own loadProfile, so nothing in the parent changes. If the name is not recognised the ledger
      simply opens as it always did. */
@@ -10130,6 +10131,8 @@ async function clRemove(id, label){
     open.forEach(function(s){
       var courts=(s.courts||[]).filter(function(k){return k.status==="open";});
       var matched=courts.filter(function(k){return k.t2p1;}), loose=courts.filter(function(k){return !k.t2p1;});
+      h+='<div style="display:flex;gap:8px;margin:4px 0 10px"><button type="button" class="btn btn-secondary" style="flex:1;margin:0;padding:10px;font-size:13px" onclick="window.platSessPrint('+s.id+')">\ud83d\udda8 Print the card</button>'
+        +'<button type="button" class="btn btn-secondary" style="flex:1;margin:0;padding:10px;font-size:13px" onclick="window.platSessShare('+s.id+')">\ud83d\udcac Send as text</button></div>';
       h+='<div style="display:flex;justify-content:space-between;align-items:baseline;margin:4px 0 8px"><div style="font-size:12px;color:#888"><b style="color:'+sessCol()+'">'+esc(s.event||"Social")+'</b> \u00b7 '+esc(s.session_date)+' \u00b7 '+esc(s.match_type||"")+' \u00b7 '+(s.sets||3)+' set'+((s.sets||3)===1?"":"s")+' \u00b7 '+(s.court_mode==="mixed"?"Mixed":"Level")+' courts \u00b7 '+((s.players||[]).length)+' players</div>'
         +'<span style="font-size:11px;color:#c0392b;cursor:pointer;text-decoration:underline" onclick="window.platSessCancelAll('+s.id+')">cancel this card</span></div>';
       matched.sort(function(a,b){ return (a.court_no||99)-(b.court_no||99); }).forEach(function(k){
@@ -10155,6 +10158,43 @@ async function clRemove(id, label){
     h+='<button class="btn btn-secondary" style="margin-top:8px" onclick="window.platSessPlain()">&larr; Back</button>';
     b.innerHTML=h;
   }
+  /* p107: the card leaves the phone — a printable sheet for the noticeboard, or plain text for the club's WhatsApp.
+     Every open court, the pairs with their ratings, and the pairs still to be matched. */
+  function cardLines(s){
+    var courts=(s.courts||[]).filter(function(k){return k.status==="open";});
+    var matched=courts.filter(function(k){return k.t2p1;}).sort(function(a,b){ return (a.court_no||99)-(b.court_no||99); });
+    var loose=courts.filter(function(k){return !k.t2p1;});
+    return {matched:matched, loose:loose,
+      head:(W.PLAT.name||"")+" \u00b7 "+(s.event||"Social")+" \u00b7 "+(s.session_date||"")+" \u00b7 "+(s.match_type||"")+" \u00b7 "+(s.sets||3)+" set"+((s.sets||3)===1?"":"s")+" \u00b7 "+(s.court_mode==="mixed"?"Mixed":"Level")+" courts"};
+  }
+  W.platSessShare=function(id){
+    var s=SESS.open.find(function(x){return x.id===id;}); if(!s) return;
+    var c=cardLines(s), t="\ud83c\udfbe "+c.head+"\n\n";
+    c.matched.forEach(function(k){ t+="Court "+(k.court_no||"")+":  "+k.t1p1+" & "+k.t1p2+"  v  "+k.t2p1+" & "+k.t2p2+"\n"; });
+    if(c.loose.length){ t+="\nStill to be matched:\n"; c.loose.forEach(function(k){ t+="  "+k.t1p1+" & "+k.t1p2+"\n"; }); }
+    t+="\nEnter your score in the app: "+location.origin+location.pathname+"?club="+W.PLAT.cid;
+    var done=function(){ alert("Copied \u2014 paste it into the club's WhatsApp."); };
+    if(navigator.share){ navigator.share({title:"Court card",text:t}).catch(function(){}); return; }
+    if(navigator.clipboard&&navigator.clipboard.writeText){ navigator.clipboard.writeText(t).then(done,function(){ prompt("Copy this:",t); }); } else { prompt("Copy this:",t); }
+  };
+  W.platSessPrint=function(id){
+    var s=SESS.open.find(function(x){return x.id===id;}); if(!s) return;
+    var c=cardLines(s), col=sessCol();
+    var w=window.open("","_blank"); if(!w){ alert("Allow pop-ups to print the card."); return; }
+    var rows=c.matched.map(function(k){ return '<tr><td class="n">'+(k.court_no||"")+'</td><td>'+esc(k.t1p1)+' &amp; '+esc(k.t1p2)+'<span class="r">'+(k.t1_rating!=null?Math.round(k.t1_rating):"")+'</span></td><td class="v">v</td><td>'+esc(k.t2p1)+' &amp; '+esc(k.t2p2)+'<span class="r">'+(k.t2_rating!=null?Math.round(k.t2_rating):"")+'</span></td><td class="s">&nbsp;</td></tr>'; }).join("");
+    var loose=c.loose.length ? '<h2>Still to be matched</h2><ul>'+c.loose.map(function(k){ return '<li>'+esc(k.t1p1)+' &amp; '+esc(k.t1p2)+'<span class="r">'+(k.t1_rating!=null?Math.round(k.t1_rating):"")+'</span></li>'; }).join("")+'</ul>' : "";
+    w.document.write('<html><head><title>Court card \u2014 '+esc(W.PLAT.name||"")+'</title><style>'
+      +'body{font-family:-apple-system,Segoe UI,Roboto,Arial,sans-serif;margin:26px;color:#222}h1{font-size:22px;margin:0 0 2px;color:'+col+'}.meta{color:#666;font-size:13px;margin-bottom:18px}'
+      +'table{width:100%;border-collapse:collapse;font-size:15px}th{background:'+col+';color:#fff;padding:9px 10px;text-align:left;font-size:12px;letter-spacing:.4px;text-transform:uppercase}'
+      +'td{padding:12px 10px;border-bottom:1px solid #e5e5e5;vertical-align:middle}td.n{width:34px;font-weight:800;color:'+col+'}td.v{width:24px;color:#999;text-align:center}td.s{width:120px;border-left:1px dashed #ccc}'
+      +'.r{display:inline-block;margin-left:8px;font-size:11px;font-weight:700;color:'+col+';background:rgba('+sessRgb()+',.12);border-radius:99px;padding:1px 7px}'
+      +'h2{font-size:13px;letter-spacing:.4px;text-transform:uppercase;color:'+col+';margin:22px 0 6px}ul{margin:0;padding-left:18px;font-size:15px}li{margin:4px 0}'
+      +'.foot{margin-top:26px;font-size:12px;color:#777}@media print{@page{margin:14mm}}</style></head><body>'
+      +'<h1>'+esc(W.PLAT.name||"")+' \u2014 court card</h1><div class="meta">'+esc(c.head.replace((W.PLAT.name||"")+" \u00b7 ",""))+'</div>'
+      +'<table><thead><tr><th>Court</th><th>Pair 1</th><th></th><th>Pair 2</th><th>Score</th></tr></thead><tbody>'+rows+'</tbody></table>'+loose
+      +'<div class="foot">Enter scores in the app \u2014 the ratings update on the spot. OPR \u00b7 opr-online.com</div></body></html>');
+    w.document.close(); setTimeout(function(){ w.focus(); w.print(); },350);
+  };
   W.platSessPair=function(id){
     if(SESS.pairA==null){ SESS.pairA=id; renderOpen(); return; }
     if(SESS.pairA===id){ SESS.pairA=null; renderOpen(); return; }
