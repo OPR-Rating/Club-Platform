@@ -735,7 +735,8 @@
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script>
 /* ============================================================================
-   PLAT EARLY SNIPPET — plat-padel.html  VERSION: PLAT-PADEL v2026.09.14-p113  (the back chip returns to where you came from: the sport door if you arrived through it, otherwise the club hub)
+   PLAT EARLY SNIPPET — plat-padel.html  VERSION: PLAT-PADEL v2026.09.14-p114  (door: recent matches robust to the schema; a Club chip back to the hub on an organisation's sport door)
+   VERSION: PLAT-PADEL v2026.09.14-p113  (the back chip returns to where you came from: the sport door if you arrived through it, otherwise the club hub)
    VERSION: PLAT-PADEL v2026.09.14-p112  (the flat door shows recent matches too; on the card a tournament event narrows the match type to its divisions and picks it when there is one, as page one does)
    VERSION: PLAT-PADEL v2026.09.14-p111  (the door's recent matches read like the board's: centred, date · type · S/T badge, tap a match to open its set scores and games)
    VERSION: PLAT-PADEL v2026.09.14-p110  (a court opened from the card offers the Live Umpire on its score sheet; the umpire returns to the sheet with the sets filled, as from a normal entry)
@@ -3274,7 +3275,7 @@ const CLUB_NAME = _club.name;  // shown in the logo as "OPR · <name>"
     link.setAttribute('href', href);
   }catch(e){ /* install stays on the static manifest — no functional impact */ }
 })();
-const OPR_VERSION = "OPR-DOUBLES v2026.09.03-56 · PLAT replica p113";  // MANUAL PAIR CREATION REMOVED FROM ADMIN: Create a pair, Bulk create pairs and Re-derive all pairs are gone (they only made match-less ghost pairs, and Re-derive rewrote every stored initial club-wide). Pairs are born automatically at match entry. Current pairs list untouched; the underlying JS is left in place unreferenced, so no other code path changes. Includes v47 (set-score fix + double-tap guard) and all prior.
+const OPR_VERSION = "OPR-DOUBLES v2026.09.03-56 · PLAT replica p114";  // MANUAL PAIR CREATION REMOVED FROM ADMIN: Create a pair, Bulk create pairs and Re-derive all pairs are gone (they only made match-less ghost pairs, and Re-derive rewrote every stored initial club-wide). Pairs are born automatically at match entry. Current pairs list untouched; the underlying JS is left in place unreferenced, so no other code path changes. Includes v47 (set-score fix + double-tap guard) and all prior.
 // Explanation shown above the individual ladder. Open on load so it's read; collapsible
 // (state kept for the session) and scrolls away. Mechanics only — no outcome framing, so
 // members aren't nudged away from playing stronger opponents. Every clause maps to a real
@@ -9047,14 +9048,16 @@ async function clRemove(id, label){
   function doorRecent(){
     var box=document.getElementById("platDoorRecent"); if(!box||!W.PLAT.pool) return;
     // p111: the door's recent matches read like the board's — centred, with a tap to open the set scores
-    fetch(SBR("plat_matches?pool_id=eq."+W.PLAT.pool+"&discipline=eq.padel&select=id,club_id,match_date,match_type,event,t1p1,t2p1,t1_sets,t2_sets,t1_games,t2_games,set_scores,display_t1,display_t2&order=match_date.desc,id.desc&limit=6"))
-      .then(function(r){return r.json();}).then(function(ms){
+    var q1="plat_matches?pool_id=eq."+W.PLAT.pool+"&discipline=eq.padel&select=id,club_id,match_date,match_type,event,t1p1,t1p2,t2p1,t2p2,t1_sets,t2_sets,t1_games,t2_games,set_scores,display_t1,display_t2&order=match_date.desc,id.desc&limit=6";
+    var q2="plat_matches?pool_id=eq."+W.PLAT.pool+"&discipline=eq.padel&select=id,club_id,match_date,match_type,event,t1p1,t1p2,t2p1,t2p2,t1_sets,t2_sets,t1_games,t2_games,set_scores&order=id.desc&limit=6";
+    fetch(SBR(q1)).then(function(r){return r.json();}).then(function(ms){ if(Array.isArray(ms)) return ms; return fetch(SBR(q2)).then(function(r){return r.json();}); })
+      .then(function(ms){
         if(!Array.isArray(ms)||!ms.length) return;
         box.innerHTML='<div style="margin:14px 2px 8px;font-size:11.5px;letter-spacing:.1em;text-transform:uppercase;color:#8a7f9c;font-weight:700;text-align:center">Recent matches</div>'
           +ms.map(function(m){
             var c=(W.PLAT.clubs||[]).find(function(x){return x.id===m.club_id;})||{name:"",id:0};
             var col=clubPal(c.id)[0];
-            var side=function(a){ return esc(a||""); };
+            var side=function(a,b){ return esc([a,b].filter(function(x){ return x && String(x).trim().toLowerCase()!=="null"; }).join(" & ")); };
             var sets=String(m.set_scores||"").trim().split(/[\s,]+/).filter(Boolean);
             var tourn=(m.event&&m.event!=="Social"&&m.event!=="Ladder Match");
             var detail='<div class="plat-door-detail" style="display:none;border-top:1px solid #eee;margin-top:8px;padding-top:8px;text-align:center">'
@@ -9063,7 +9066,7 @@ async function clRemove(id, label){
             return '<div onclick="var d=this.querySelector(\'.plat-door-detail\');var a=this.querySelector(\'.plat-door-arrow\');var o=d.style.display!==\'none\';d.style.display=o?\'none\':\'block\';a.textContent=o?\'\u25bc\':\'\u25b2\';" style="background:#fff;border:1px solid rgba(108,52,131,.14);border-left:4px solid '+col+';border-radius:12px;padding:10px 12px;margin-bottom:7px;text-align:center;cursor:pointer">'
               +'<div style="font-size:11px;color:#7a6688;margin-bottom:3px">'+esc(m.match_date||"")+' \u00a0<b style="color:'+col+'">'+esc(m.match_type||"")+'</b> \u00a0'
               +'<span style="display:inline-block;background:'+(tourn?'#6c3483':'#e0e0e0')+';color:'+(tourn?'#fff':'#333')+';border-radius:4px;padding:0 6px;font-size:10px;font-weight:800">'+(tourn?'T':'S')+'</span> \u00a0<span class="plat-door-arrow" style="color:'+col+';font-size:11px">\u25bc</span></div>'
-              +'<div style="font-size:13.5px;font-weight:700;color:#3a2348;line-height:1.35">'+(m.display_t1?esc(m.display_t1):side(m.t1p1))+' <span style="color:#9b80b3;font-weight:500">'+(m.t1_sets||0)+'-'+(m.t2_sets||0)+'</span> '+(m.display_t2?esc(m.display_t2):side(m.t2p1))+'</div>'
+              +'<div style="font-size:13.5px;font-weight:700;color:#3a2348;line-height:1.35">'+(m.display_t1?esc(m.display_t1):side(m.t1p1,m.t1p2))+' <span style="color:#9b80b3;font-weight:500">'+(m.t1_sets||0)+'-'+(m.t2_sets||0)+'</span> '+(m.display_t2?esc(m.display_t2):side(m.t2p1,m.t2p2))+'</div>'
               +'<div style="margin-top:5px"><span style="display:inline-block;background:'+col+';color:#fff;border-radius:99px;padding:1px 9px;font-size:10px;font-weight:700">'+esc(c.name)+'</span></div>'
               +detail+'</div>';
           }).join("");
@@ -9686,6 +9689,15 @@ async function clRemove(id, label){
   // last visit whether this pool has an organisation, so the first frame is already right; a first-ever
   // visit resolves it below, before anything is drawn.
   try{ if(W.PLAT.cid===0 && !W.PLAT.landing){ ledgerTheme(); ledgerLayout(); if(!W.PLAT.orgCached) regTile(); } if(!W.PLAT.landing) chip(); }catch(e){}
+  /* an organisation's SPORT DOOR gets the same chip, back to the club hub — the way you came in */
+  function doorChip(){
+    if(!W.PLAT.landing || !W.PLAT.orgId || document.getElementById("platChip")) return;
+    var panel=document.querySelector("#homeScreen .hero-logo-panel"); if(!panel) return;
+    var a=document.createElement("button"); a.id="platChip"; a.dataset.platKeep="1"; a.textContent="\u2039 Club";
+    a.style.cssText="display:inline-block;margin:12px auto 0;background:rgba(255,255,255,.22);color:#fff;border:1.5px solid rgba(255,255,255,.75);padding:11px 26px;border-radius:99px;font-size:15px;font-weight:800;letter-spacing:.2px;cursor:pointer;text-shadow:none;box-shadow:0 2px 8px rgba(0,0,0,.2)";
+    a.onclick=function(){ location.href="hub.html?org="+W.PLAT.orgId; };
+    panel.appendChild(a);
+  }
   /* The Admin pill: OPR hides its admin link on the About screen, which a board no longer shows. This puts
      it under Recent Matches, where an organiser will look for it — and only on a group board, never on a
      ledger, which is read-only. */
@@ -9719,7 +9731,7 @@ async function clRemove(id, label){
     }catch(e){}
   }
   // the build tag is a debugging aid, not something a member should see: it appears only with ?build=1
-  try{ if(/[?&]build=1/.test(location.search)) buildTag("PLAT p113"); }catch(e){}
+  try{ if(/[?&]build=1/.test(location.search)) buildTag("PLAT p114"); }catch(e){}
   /* A plaque on the club's honour board opens that sport's ledger AT the person: ?player=<name> calls the
      parent's own loadProfile, so nothing in the parent changes. If the name is not recognised the ledger
      simply opens as it always did. */
@@ -10443,7 +10455,7 @@ async function clRemove(id, label){
     try{ if(W.PLAT.cid) localStorage.setItem("plat_org_of_club_"+W.PLAT.cid, W.PLAT.orgId ? "1" : "0"); }catch(e){}
     fixManifest();
     var ht=document.getElementById("heroTitle");
-    if(W.PLAT.landing){ var t1="OPR · "+(W.PLAT.poolName||"Clubs"); if(ht) ht.textContent=t1; document.title=t1; landing(); return; }
+    if(W.PLAT.landing){ var t1="OPR · "+(W.PLAT.poolName||"Clubs"); if(ht) ht.textContent=t1; document.title=t1; landing(); try{ doorChip(); }catch(e){} return; }
     if(W.PLAT.cid===0){ var t2="OPR · "+(W.PLAT.poolName||"Overall")+" · Ledger"; if(ht) ht.textContent=t2; document.title=t2; ledgerOnly(); }
     else if(W.PLAT.name&&ht){ ht.textContent="OPR · "+W.PLAT.name; document.title="OPR · "+W.PLAT.name;
       var sb=document.querySelector("#homeScreen .hero-logo-panel .sub, #homeScreen .sub");
