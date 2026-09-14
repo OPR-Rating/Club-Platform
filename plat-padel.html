@@ -735,7 +735,8 @@
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script>
 /* ============================================================================
-   PLAT EARLY SNIPPET — plat-padel.html  VERSION: PLAT-PADEL v2026.09.14-p107  (a saved card can leave the phone: Print the card — a sheet with a score column for the noticeboard — and Send as text for the club's WhatsApp, with the link to enter scores)
+   PLAT EARLY SNIPPET — plat-padel.html  VERSION: PLAT-PADEL v2026.09.14-p108  (the card's match type starts on \u201cSelect type...\u201d, as match entry does, and the card cannot be made without one)
+   VERSION: PLAT-PADEL v2026.09.14-p107  (a saved card can leave the phone: Print the card — a sheet with a score column for the noticeboard — and Send as text for the club's WhatsApp, with the link to enter scores)
    VERSION: PLAT-PADEL v2026.09.14-p106  (the court card switched on for Kloof–Sun Fun, pool 2, by name — the two pills on page one of score entry and nothing else; their door, layout and boards are untouched)
    VERSION: PLAT-PADEL v2026.09.14-p105  (a group's colour runs through the whole score-entry flow — Next buttons, step dots, team cards, chosen players, winning sets, result cards, the club selector; the club in OPR purple is untouched)
    VERSION: PLAT-PADEL v2026.09.14-p104  (the court card stands alone: event, date, match type and sets are on the card itself — section 1 — and every court inherits them; needs plat_session v2 and addendum 24)
@@ -3268,7 +3269,7 @@ const CLUB_NAME = _club.name;  // shown in the logo as "OPR · <name>"
     link.setAttribute('href', href);
   }catch(e){ /* install stays on the static manifest — no functional impact */ }
 })();
-const OPR_VERSION = "OPR-DOUBLES v2026.09.03-56 · PLAT replica p107";  // MANUAL PAIR CREATION REMOVED FROM ADMIN: Create a pair, Bulk create pairs and Re-derive all pairs are gone (they only made match-less ghost pairs, and Re-derive rewrote every stored initial club-wide). Pairs are born automatically at match entry. Current pairs list untouched; the underlying JS is left in place unreferenced, so no other code path changes. Includes v47 (set-score fix + double-tap guard) and all prior.
+const OPR_VERSION = "OPR-DOUBLES v2026.09.03-56 · PLAT replica p108";  // MANUAL PAIR CREATION REMOVED FROM ADMIN: Create a pair, Bulk create pairs and Re-derive all pairs are gone (they only made match-less ghost pairs, and Re-derive rewrote every stored initial club-wide). Pairs are born automatically at match entry. Current pairs list untouched; the underlying JS is left in place unreferenced, so no other code path changes. Includes v47 (set-score fix + double-tap guard) and all prior.
 // Explanation shown above the individual ladder. Open on load so it's read; collapsible
 // (state kept for the session) and scrolls away. Mechanics only — no outcome framing, so
 // members aren't nudged away from playing stronger opponents. Every clause maps to a real
@@ -9704,7 +9705,7 @@ async function clRemove(id, label){
     }catch(e){}
   }
   // the build tag is a debugging aid, not something a member should see: it appears only with ?build=1
-  try{ if(/[?&]build=1/.test(location.search)) buildTag("PLAT p107"); }catch(e){}
+  try{ if(/[?&]build=1/.test(location.search)) buildTag("PLAT p108"); }catch(e){}
   /* A plaque on the club's honour board opens that sport's ledger AT the person: ?player=<name> calls the
      parent's own loadProfile, so nothing in the parent changes. If the name is not recognised the ledger
      simply opens as it always did. */
@@ -10020,10 +10021,10 @@ async function clRemove(id, label){
     // the card's own details, seeded from page one where something was chosen there
     try{ var ev=document.getElementById("matchEvent"), dt=document.getElementById("matchDate"), ty=document.getElementById("matchType"), sp=document.getElementById("setsPlayed");
       SESS.event=(ev&&ev.value)||"Social"; SESS.date=(dt&&dt.value)||new Date().toISOString().slice(0,10);
-      SESS.type=(ty&&ty.value)||"All Sorts"; SESS.sets=(sp&&sp.value)?parseInt(sp.value,10):3;
+      SESS.type=(ty&&ty.value)||""; SESS.sets=(sp&&sp.value)?parseInt(sp.value,10):3;
       SESS.events=[]; if(ev) Array.prototype.forEach.call(ev.options,function(o){ if(o.value) SESS.events.push(o.value); });
       if(!SESS.events.length) SESS.events=["Social"];
-    }catch(e){ SESS.event="Social"; SESS.date=new Date().toISOString().slice(0,10); SESS.type="All Sorts"; SESS.sets=3; SESS.events=["Social"]; }
+    }catch(e){ SESS.event="Social"; SESS.date=new Date().toISOString().slice(0,10); SESS.type=""; SESS.sets=3; SESS.events=["Social"]; }
     loadMembers().then(function(){ SESS.picked={}; SESS.pairA=null; renderMake(); });
   };
   W.platSessDetail=function(k,v){ SESS[k]=(k==="sets"?parseInt(v,10):v); if(k==="type") renderMake(); };
@@ -10040,7 +10041,7 @@ async function clRemove(id, label){
       +'<div style="font-size:12px;color:#7a6688;margin:0 0 6px">Every court on this card takes these.</div>'
       +'<label style="font-size:12px;color:#444">Event</label><select style="'+selS+'" onchange="window.platSessDetail(\'event\',this.value)">'+opt(SESS.events||["Social"],SESS.event)+'</select>'
       +'<label style="font-size:12px;color:#444">Date</label><input type="date" value="'+esc(SESS.date||"")+'" style="'+selS+'" onchange="window.platSessDetail(\'date\',this.value)">'
-      +'<label style="font-size:12px;color:#444">Match type</label><select style="'+selS+'" onchange="window.platSessDetail(\'type\',this.value)">'+opt(["Men's","Ladies","Mixed","All Sorts"],SESS.type)+'</select>'
+      +'<label style="font-size:12px;color:#444">Match type</label><select style="'+selS+'" onchange="window.platSessDetail(\'type\',this.value)"><option value=""'+(SESS.type?"":" selected")+'>Select type...</option>'+opt(["Men's","Ladies","Mixed","All Sorts"],SESS.type)+'</select>'
       +'<label style="font-size:12px;color:#444">Sets played</label><select style="'+selS+';margin-bottom:0" onchange="window.platSessDetail(\'sets\',this.value)">'+opt([1,2,3],SESS.sets)+'</select></div>';
     h+='<div class="team-card"><div class="team-label"><span>2</span>Courts</div>'+seg("court",[["level","Level courts"],["mixed","Mixed courts"]],SESS.court,"window.platSessCourt")
       +'<div style="font-size:12px;color:#7a6688;margin-top:-6px">Level: like plays like \u2014 for a field with a big spread. Mixed: every court gets a strong, a middling and a weaker player \u2014 for a close field.</div></div>';
@@ -10078,6 +10079,7 @@ async function clRemove(id, label){
     var err=document.getElementById("platSessErr");
     var names=Object.keys(SESS.picked).filter(function(k){return SESS.picked[k];});
     var say=function(m){ err.textContent=m; err.style.display="block"; };
+    if(!SESS.type) return say("Choose the match type first \u2014 Men's, Ladies, Mixed or All Sorts.");
     if(names.length<4) return say("Pick at least four players.");
     if(names.length%2) return say("Pick an even number \u2014 pairs need partners. You have "+names.length+".");
     if(names.some(function(n){ return SESS.ratings[n]==null; })) return say("A picked player has no rating yet \u2014 they need a starting rating first.");
