@@ -735,7 +735,8 @@
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script>
 /* ============================================================================
-   PLAT EARLY SNIPPET — plat-padel.html  VERSION: PLAT-PADEL v2026.09.14-p100  (the card's list follows the first page's match type — men only, ladies only, everyone for Mixed and All Sorts; a Regulars / Everyone switch, Regulars being whoever has played at this group; the card pill is bolder)
+   PLAT EARLY SNIPPET — plat-padel.html  VERSION: PLAT-PADEL v2026.09.14-p101  (page one of score entry gets \u201cOpen tonight\u2019s cards\u201d for the evening; a court tapped from there fills the type on page one and the names on page two; the card wears the group's own colour)
+   VERSION: PLAT-PADEL v2026.09.14-p100  (the card's list follows the first page's match type — men only, ladies only, everyone for Mixed and All Sorts; a Regulars / Everyone switch, Regulars being whoever has played at this group; the card pill is bolder)
    VERSION: PLAT-PADEL v2026.09.14-p99  (the session card moves off the big button onto the NAMES page: one pill above Team 1 opens it, and a tapped court comes back to the names with event, date, type and sets kept from page one; a member who never uses it sees one line)
    VERSION: PLAT-PADEL v2026.09.13-p98  (the Recent Matches banner is OPR green on every board; Admin is the only pill under a board's recent matches, About OPR lives on the door; the vertical scrollbar's space is reserved from the first frame so the page never jiggles sideways)
    VERSION: PLAT-PADEL v2026.09.13-p97  (the back chip on the hero is bigger; the chooser leads with the plain \u271a Enter your match score in the button's own blue, the two card tiles beneath)
@@ -3261,7 +3262,7 @@ const CLUB_NAME = _club.name;  // shown in the logo as "OPR · <name>"
     link.setAttribute('href', href);
   }catch(e){ /* install stays on the static manifest — no functional impact */ }
 })();
-const OPR_VERSION = "OPR-DOUBLES v2026.09.03-56 · PLAT replica p100";  // MANUAL PAIR CREATION REMOVED FROM ADMIN: Create a pair, Bulk create pairs and Re-derive all pairs are gone (they only made match-less ghost pairs, and Re-derive rewrote every stored initial club-wide). Pairs are born automatically at match entry. Current pairs list untouched; the underlying JS is left in place unreferenced, so no other code path changes. Includes v47 (set-score fix + double-tap guard) and all prior.
+const OPR_VERSION = "OPR-DOUBLES v2026.09.03-56 · PLAT replica p101";  // MANUAL PAIR CREATION REMOVED FROM ADMIN: Create a pair, Bulk create pairs and Re-derive all pairs are gone (they only made match-less ghost pairs, and Re-derive rewrote every stored initial club-wide). Pairs are born automatically at match entry. Current pairs list untouched; the underlying JS is left in place unreferenced, so no other code path changes. Includes v47 (set-score fix + double-tap guard) and all prior.
 // Explanation shown above the individual ladder. Open on load so it's read; collapsible
 // (state kept for the session) and scrolls away. Mechanics only — no outcome framing, so
 // members aren't nudged away from playing stronger opponents. Every clause maps to a real
@@ -9697,7 +9698,7 @@ async function clRemove(id, label){
     }catch(e){}
   }
   // the build tag is a debugging aid, not something a member should see: it appears only with ?build=1
-  try{ if(/[?&]build=1/.test(location.search)) buildTag("PLAT p100"); }catch(e){}
+  try{ if(/[?&]build=1/.test(location.search)) buildTag("PLAT p101"); }catch(e){}
   /* A plaque on the club's honour board opens that sport's ledger AT the person: ?player=<name> calls the
      parent's own loadProfile, so nothing in the parent changes. If the name is not recognised the ledger
      simply opens as it always did. */
@@ -9939,7 +9940,22 @@ async function clRemove(id, label){
     return courts;
   }
   W.platMakeCourts=makeCourts;   // exposed so the maths can be checked outside the page
+  function sessCol(){ return (W.PLAT.cid && W.PLAT.colour) ? W.PLAT.colour : "#6c3483"; }
+  function sessRgb(){ var h=sessCol(); try{ var n=parseInt(h.slice(1),16); return ((n>>16)&255)+","+((n>>8)&255)+","+(n&255); }catch(e){ return "108,52,131"; } }
+  function sessStyle(){
+    var col=sessCol(), rgb=sessRgb(), deep=darken(col,0.42);
+    var st=document.getElementById("platSessStyle")||document.createElement("style"); st.id="platSessStyle";
+    st.textContent="#platSessScreen .team-card{background:rgba("+rgb+",.10)!important;border-color:rgba("+rgb+",.32)!important}"
+      +"#platSessScreen .team-label,#platSessScreen .team-label span[style]{color:"+col+"!important}"
+      +"#platSessScreen .team-label>span:first-child{background:"+col+"!important;color:#fff!important}"
+      +"#platSessScreen .mk-seg{background:rgba("+rgb+",.10)!important;border-color:rgba("+rgb+",.2)!important}"
+      +"#platSessScreen .mk-seg button.on{background:"+col+"!important;color:#fff!important}"
+      +"#platSessScreen .btn-primary{background:linear-gradient(180deg,"+col+","+deep+")!important}"
+      +"#platSessScreen .loading-spinner,#platSessScreen .empty-state .icon{color:"+col+"}";
+    if(!st.parentNode) document.head.appendChild(st);
+  }
   function sessScreen(){
+    sessStyle();
     if(document.getElementById("platSessScreen")) return;
     var s=document.createElement("div"); s.id="platSessScreen"; s.className="screen hidden";
     s.innerHTML='<div class="header"><button class="back-btn" onclick="window.platSessPlain()">&#8592;</button><h1>Tonight\u2019s session</h1></div>'
@@ -9948,12 +9964,12 @@ async function clRemove(id, label){
     try{ headerBadges(); }catch(e){}
   }
   function pairLabel(a,b){ return esc(a)+" & "+esc(b); }
-  function ratingPill(r){ return r==null?"":'<span data-plat-keep="1" style="display:inline-block;background:#f0eaf5;color:#6c3483;border-radius:99px;padding:1px 8px;font-size:11px;font-weight:800;margin-left:6px">'+Math.round(r)+'</span>'; }
+  function ratingPill(r){ return r==null?"":'<span data-plat-keep="1" style="display:inline-block;background:rgba('+sessRgb()+',.12);color:'+sessCol()+';border-radius:99px;padding:1px 8px;font-size:11px;font-weight:800;margin-left:6px">'+Math.round(r)+'</span>'; }
   function chooser(){
     sessScreen(); W.showScreen("platSessScreen");
     var b=document.getElementById("platSessBody");
     var tile=function(n,title,sub,fn,extraId){ return '<div class="team-card" style="cursor:pointer" onclick="'+fn+'">'
-      +'<div style="font-size:17px;font-weight:800;color:#6c3483">'+n+' \u00b7 '+title+'</div>'
+      +'<div style="font-size:17px;font-weight:800;color:'+sessCol()+'">'+n+' \u00b7 '+title+'</div>'
       +'<div style="font-size:13px;color:#555;margin-top:4px">'+sub+'</div>'+(extraId?'<div id="'+extraId+'" style="font-size:13px;color:#b9770e;font-weight:700;margin-top:4px">No courts in play right now</div>':'')+'</div>'; };
     // p97: the plain road to score entry comes FIRST and wears the ✚ Enter button's own blue, so a member who just
     // wants to enter a score is never confused by the card; the two card tiles sit beneath it in the card's colour.
@@ -9971,7 +9987,9 @@ async function clRemove(id, label){
       var es=document.getElementById("entryScreen"); es.classList.remove("hidden"); es.classList.add("active"); W.scrollTo(0,0); }catch(e){}
     try{ if(typeof renderStep2==="function") renderStep2(); }catch(e){}
   }
-  W.platSessPlain=function(){ W.PLAT.sessionCourt=null; backToNames(); };
+  W.platSessPlain=function(){ W.PLAT.sessionCourt=null;
+    var ready=false; try{ ready=!!(typeof entryData!=="undefined"&&entryData&&entryData.type&&entryData.sets); }catch(e){}
+    if(ready) backToNames(); else W.showScreen("entryScreen"); };
   function loadMembers(){
     return Promise.all([
       // p94: THE WHOLE REGISTER, not the group's members: names live at the club, and a group has no members
@@ -10092,7 +10110,7 @@ async function clRemove(id, label){
         +'<span style="font-size:11px;color:#c0392b;cursor:pointer;text-decoration:underline" onclick="window.platSessCancelAll('+s.id+')">cancel this card</span></div>';
       matched.sort(function(a,b){ return (a.court_no||99)-(b.court_no||99); }).forEach(function(k){
         h+='<div class="team-card" style="cursor:pointer" onclick="window.platSessScore('+k.id+')">'
-          +'<div style="font-size:12px;color:#888">Court '+(k.court_no||"")+' \u00b7 <b style="color:#6c3483">'+esc(courtType(k))+'</b></div>'
+          +'<div style="font-size:12px;color:#888">Court '+(k.court_no||"")+' \u00b7 <b style="color:'+sessCol()+'">'+esc(courtType(k))+'</b></div>'
           +'<div style="font-weight:700;color:#3a2348;margin-top:4px">'+pairLabel(k.t1p1,k.t1p2)+ratingPill(k.t1_rating)+'</div>'
           +'<div style="font-size:12px;color:#888">v</div>'
           +'<div style="font-weight:700;color:#3a2348">'+pairLabel(k.t2p1,k.t2p2)+ratingPill(k.t2_rating)+'</div>'
@@ -10100,12 +10118,12 @@ async function clRemove(id, label){
           +'<span style="font-size:11px;color:#c0392b;cursor:pointer;text-decoration:underline" onclick="event.stopPropagation();window.platSessCancel('+k.id+')">not played</span></div></div>';
       });
       if(loose.length){
-        h+='<div style="font-size:12px;font-weight:700;color:#6c3483;margin:10px 0 6px">'+(matched.length?"Pairs without opponents":"Pairs")+' \u2014 tap two to put them on a court</div>';
+        h+='<div style="font-size:12px;font-weight:700;color:'+sessCol()+';margin:10px 0 6px">'+(matched.length?"Pairs without opponents":"Pairs")+' \u2014 tap two to put them on a court</div>';
         loose.forEach(function(k){
           var sel=(SESS.pairA===k.id);
-          h+='<div class="team-card" style="cursor:pointer;'+(sel?'border-color:#6c3483;background:#f5eef8':'')+'" onclick="window.platSessPair('+k.id+')">'
+          h+='<div class="team-card" style="cursor:pointer;'+(sel?'border-color:'+sessCol()+'!important;background:rgba('+sessRgb()+',.22)!important':'')+'" onclick="window.platSessPair('+k.id+')">'
             +'<div style="display:flex;align-items:center;gap:8px"><span style="flex:1;font-weight:700;color:#3a2348">'+pairLabel(k.t1p1,k.t1p2)+ratingPill(k.t1_rating)+'</span>'
-            +(sel?'<span style="font-size:11px;color:#6c3483;font-weight:700">now tap their opponents</span>':'')
+            +(sel?'<span style="font-size:11px;color:'+sessCol()+';font-weight:700">now tap their opponents</span>':'')
             +'<span style="font-size:11px;color:#c0392b;cursor:pointer;text-decoration:underline" onclick="event.stopPropagation();window.platSessCancel('+k.id+')">out</span></div></div>';
         });
       }
@@ -10127,7 +10145,9 @@ async function clRemove(id, label){
     var k=null; SESS.open.forEach(function(s){ (s.courts||[]).forEach(function(c){ if(c.id===id) k=c; }); });
     if(!k||!k.t2p1) return;
     W.PLAT.sessionCourt={id:k.id,t1p1:k.t1p1,t1p2:k.t1p2,t2p1:k.t2p1,t2p2:k.t2p2,type:courtType(k)};
-    backToNames();
+    var ready=false; try{ ready=!!(typeof entryData!=="undefined"&&entryData&&entryData.type&&entryData.sets); }catch(e){}
+    if(ready){ backToNames(); return; }
+    W.PLAT._keepCourt=true; W.showScreen("entryScreen");   // page one, with the court's type filled; the names arrive at step 2
   };
   function aboutPill(){
     if(document.getElementById("platAboutPill")) return;
@@ -10174,7 +10194,7 @@ async function clRemove(id, label){
         if(host && !document.getElementById("platCardPill") && !(typeof entryData!=="undefined"&&entryData&&entryData.event==="Ladder Match")){
           var pill=document.createElement("button"); pill.type="button"; pill.id="platCardPill"; pill.dataset.platKeep="1";
           pill.innerHTML="\ud83c\udfbe&nbsp; Tonight\u2019s card \u2014 make the courts, or pick a court in play &nbsp;\u203a";
-          pill.style.cssText="display:block;width:100%;margin:0 0 14px;padding:14px 16px;border:2px solid #6c3483;border-radius:14px;background:linear-gradient(135deg,#f5eef8,#ede3f4);color:#4a235a;font-size:15px;font-weight:800;cursor:pointer;text-align:center;box-shadow:0 3px 10px rgba(108,52,131,.18)";
+          pill.style.cssText="display:block;width:100%;margin:0 0 14px;padding:14px 16px;border:2px solid "+sessCol()+";border-radius:14px;background:rgba("+sessRgb()+",.10);color:"+darken(sessCol(),0.25)+";font-size:15px;font-weight:800;cursor:pointer;text-align:center;box-shadow:0 3px 10px rgba("+sessRgb()+",.18)";
           pill.onclick=function(){ chooser(); };
           host.insertBefore(pill, host.firstChild);
         }
@@ -10186,7 +10206,25 @@ async function clRemove(id, label){
       try{ if(typeof odrUpdateCombined==="function") odrUpdateCombined(); }catch(e){} };
     // a fresh entry from the home button starts clean
     var _rs1=W.renderStep1;
-    if(typeof _rs1==="function") W.renderStep1=function(){ W.PLAT.sessionCourt=null; return _rs1.apply(this,arguments); };
+    if(typeof _rs1==="function") W.renderStep1=function(){
+      if(W.PLAT._keepCourt){ W.PLAT._keepCourt=false; } else { W.PLAT.sessionCourt=null; }
+      var r=_rs1.apply(this,arguments);
+      var after=function(){
+        try{
+          var host=document.getElementById("entryContent");
+          if(host && !document.getElementById("platCardsBtn")){
+            var b=document.createElement("button"); b.type="button"; b.id="platCardsBtn"; b.dataset.platKeep="1"; b.className="btn";
+            b.textContent="\ud83c\udfbe Open tonight\u2019s cards";
+            b.style.cssText="margin-top:10px;background:rgba("+sessRgb()+",.10);color:"+darken(sessCol(),0.25)+";border:2px solid "+sessCol()+";font-weight:800";
+            b.onclick=function(){ sessScreen(); W.showScreen("platSessScreen"); W.platSessOpen(); };
+            host.appendChild(b);
+          }
+          // a court chosen from page one: its type goes into the select once the form is there
+          var k=W.PLAT.sessionCourt, sel=document.getElementById("matchType");
+          if(k&&sel&&k.type){ sel.value=k.type; }
+        }catch(e){}
+      };
+      Promise.resolve(r).then(after, after); return r; };
     // after a successful submit, close the court on the card
     var _ds=W.doSubmit;
     if(typeof _ds==="function") W.doSubmit=function(btn){ var k=W.PLAT.sessionCourt; var p=_ds.apply(this,arguments);
