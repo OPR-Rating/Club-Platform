@@ -735,7 +735,8 @@
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script>
 /* ============================================================================
-   PLAT EARLY SNIPPET — plat-padel.html  VERSION: PLAT-PADEL v2026.09.14-p112  (the flat door shows recent matches too; on the card a tournament event narrows the match type to its divisions and picks it when there is one, as page one does)
+   PLAT EARLY SNIPPET — plat-padel.html  VERSION: PLAT-PADEL v2026.09.14-p113  (the back chip returns to where you came from: the sport door if you arrived through it, otherwise the club hub)
+   VERSION: PLAT-PADEL v2026.09.14-p112  (the flat door shows recent matches too; on the card a tournament event narrows the match type to its divisions and picks it when there is one, as page one does)
    VERSION: PLAT-PADEL v2026.09.14-p111  (the door's recent matches read like the board's: centred, date · type · S/T badge, tap a match to open its set scores and games)
    VERSION: PLAT-PADEL v2026.09.14-p110  (a court opened from the card offers the Live Umpire on its score sheet; the umpire returns to the sheet with the sets filled, as from a normal entry)
    VERSION: PLAT-PADEL v2026.09.14-p109  (a third court mode, Self selected: the organiser fills each court or pair from the ticked names; save, share, print and scoring are unchanged; needs plat_session v3)
@@ -3273,7 +3274,7 @@ const CLUB_NAME = _club.name;  // shown in the logo as "OPR · <name>"
     link.setAttribute('href', href);
   }catch(e){ /* install stays on the static manifest — no functional impact */ }
 })();
-const OPR_VERSION = "OPR-DOUBLES v2026.09.03-56 · PLAT replica p112";  // MANUAL PAIR CREATION REMOVED FROM ADMIN: Create a pair, Bulk create pairs and Re-derive all pairs are gone (they only made match-less ghost pairs, and Re-derive rewrote every stored initial club-wide). Pairs are born automatically at match entry. Current pairs list untouched; the underlying JS is left in place unreferenced, so no other code path changes. Includes v47 (set-score fix + double-tap guard) and all prior.
+const OPR_VERSION = "OPR-DOUBLES v2026.09.03-56 · PLAT replica p113";  // MANUAL PAIR CREATION REMOVED FROM ADMIN: Create a pair, Bulk create pairs and Re-derive all pairs are gone (they only made match-less ghost pairs, and Re-derive rewrote every stored initial club-wide). Pairs are born automatically at match entry. Current pairs list untouched; the underlying JS is left in place unreferenced, so no other code path changes. Includes v47 (set-score fix + double-tap guard) and all prior.
 // Explanation shown above the individual ladder. Open on load so it's read; collapsible
 // (state kept for the session) and scrolls away. Mechanics only — no outcome framing, so
 // members aren't nudged away from playing stronger opponents. Every clause maps to a real
@@ -8965,7 +8966,7 @@ async function clRemove(id, label){
 (function(){
   var W=window;
   function esc(s){ return String(s==null?"":s).replace(/[&<>"']/g,function(c){return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c];}); }
-  function go(id){ location.href="plat-padel.html?club="+id+(id===0?("&pool="+W.PLAT.pool):"")+(location.hash||""); }
+  function go(id){ try{ sessionStorage.setItem("plat_from_door_padel",String(W.PLAT.pool)); }catch(e){} location.href="plat-padel.html?club="+id+(id===0?("&pool="+W.PLAT.pool):"")+(location.hash||""); }
   /* p3 LANDING: hero + one button per club (+ Overall); the rest of the home screen is hidden. */
   var PAL=[["#6c3483","#3a1d6e"],["#1f7a8c","#0f4c5c"],["#b5651d","#7a3e0a"],["#2e7d32","#1b4d1e"],["#c2185b","#7b1040"],["#455a64","#263238"],["#8e24aa","#4a148c"]];
   var LEDGER=["#1a1a1a","#3d3d3d"];
@@ -9641,7 +9642,8 @@ async function clRemove(id, label){
     var org=W.PLAT.orgId||0;
     var a=document.createElement("button"); a.id="platChip"; a.textContent=(W.PLAT.orgId?"‹ Club":"‹ All clubs");
     a.style.cssText="display:inline-block;margin:12px auto 0;background:rgba(255,255,255,.22);color:#fff;border:1.5px solid rgba(255,255,255,.75);padding:11px 26px;border-radius:99px;font-size:15px;font-weight:800;letter-spacing:.2px;cursor:pointer;text-shadow:none;box-shadow:0 2px 8px rgba(0,0,0,.2)";   // p97: bigger — it is the way back
-    a.onclick=function(){ var o=W.PLAT.orgId||0; location.href = o ? ("hub.html?org="+o) : ("plat-padel.html?pool="+W.PLAT.pool); };
+    a.onclick=function(){ var o=W.PLAT.orgId||0; var fromDoor=false; try{ fromDoor=(sessionStorage.getItem("plat_from_door_padel")===String(W.PLAT.pool)); }catch(e){}
+      location.href = (o && !fromDoor) ? ("hub.html?org="+o) : ("plat-padel.html?pool="+W.PLAT.pool); };   // back to where you came from: the sport door if that is how you arrived, else the club hub
     panel.appendChild(a);
   }
   function entrySelect(){
@@ -9717,7 +9719,7 @@ async function clRemove(id, label){
     }catch(e){}
   }
   // the build tag is a debugging aid, not something a member should see: it appears only with ?build=1
-  try{ if(/[?&]build=1/.test(location.search)) buildTag("PLAT p112"); }catch(e){}
+  try{ if(/[?&]build=1/.test(location.search)) buildTag("PLAT p113"); }catch(e){}
   /* A plaque on the club's honour board opens that sport's ledger AT the person: ?player=<name> calls the
      parent's own loadProfile, so nothing in the parent changes. If the name is not recognised the ledger
      simply opens as it always did. */

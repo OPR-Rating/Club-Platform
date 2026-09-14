@@ -559,6 +559,7 @@
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script>
 /* ====
+   VERSION: PLAT-SQUASH v2026.09.14-s42  (brought level with padel p113: bigger back chip, batched repaint pass, recent-match colours; the back chip returns to the sport door when you arrived through it)
    VERSION: PLAT-SQUASH v2026.09.14-s41  (STAGE A of the club structure on squash, ported from padel p112: the club door for a register with a base club — base club card, GROUPS, ledger, recent matches with set scores — the flat door keeps its shape and gains recent matches; groups in a base-club register get the organisation layout, Admin pill, group colour through score entry; Recent Matches banner in the product green; no Club-N flash; no sideways jiggle; parent re-pinned to OSR-LAPTOP v46)
    VERSION: PLAT-SQUASH v2026.09.13-s40 (the admin gate: every admin call carries pool_id and club_id, so a code is checked
    against the register you are standing in — see plat_admin_squash v3)========================================================================
@@ -3058,7 +3059,7 @@ const _club = CLUBS[_clubParam] || (/^\d+$/.test(_clubParam) ? {id:Number(_clubP
 const CLUB_ID = _club.id;
 document.title = 'OSR · ' + _club.name;
 const CLUB_NAME = _club.name;  // shown in the logo as "OPR · <name>"
-const OPR_VERSION = "OSR-LAPTOP v2026.09.13-46 · PLAT replica s41";   // PLAT MARKED HUNK: the build stamp everywhere the parent prints its own  // SCOPED ADMIN CODE: every admin call carries club_id, so a club code is checked against this club only (with admin v2026.09.13-2) — a code from another club no longer opens its admin from here. Master unchanged. Includes v2026.09.03-45 and all prior.  // MANUAL PAIR CREATION REMOVED FROM ADMIN (ported from OPR v56): Create a pair, Bulk create pairs and Re-derive all pairs are gone — they only made match-less ghost pairs, and Re-derive rewrote every stored initial club-wide. Pairs are born automatically at match entry. Current pairs list untouched; underlying JS left in place unreferenced. Includes all prior work.
+const OPR_VERSION = "OSR-LAPTOP v2026.09.13-46 · PLAT replica s42";   // PLAT MARKED HUNK: the build stamp everywhere the parent prints its own  // SCOPED ADMIN CODE: every admin call carries club_id, so a club code is checked against this club only (with admin v2026.09.13-2) — a code from another club no longer opens its admin from here. Master unchanged. Includes v2026.09.03-45 and all prior.  // MANUAL PAIR CREATION REMOVED FROM ADMIN (ported from OPR v56): Create a pair, Bulk create pairs and Re-derive all pairs are gone — they only made match-less ghost pairs, and Re-derive rewrote every stored initial club-wide. Pairs are born automatically at match entry. Current pairs list untouched; underlying JS left in place unreferenced. Includes all prior work.
 // Explanation shown above the individual ladder. Open on load so it's read; collapsible
 // (state kept for the session) and scrolls away. Mechanics only — no outcome framing, so
 // members aren't nudged away from playing stronger opponents. Every clause maps to a real
@@ -9020,7 +9021,7 @@ async function clRemove(id, label){
 (function(){
   var W=window;
   function esc(s){ return String(s==null?"":s).replace(/[&<>"']/g,function(c){return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c];}); }
-  function go(id){ location.href="plat-squash.html?club="+id+(id===0?("&pool="+W.PLAT.pool):"")+(location.hash||""); }
+  function go(id){ try{ sessionStorage.setItem("plat_from_door_squash",String(W.PLAT.pool)); }catch(e){} location.href="plat-squash.html?club="+id+(id===0?("&pool="+W.PLAT.pool):"")+(location.hash||""); }
   /* p3 LANDING: hero + one button per club (+ Overall); the rest of the home screen is hidden. */
   var PAL=[["#6c3483","#3a1d6e"],["#1f7a8c","#0f4c5c"],["#b5651d","#7a3e0a"],["#2e7d32","#1b4d1e"],["#c2185b","#7b1040"],["#455a64","#263238"],["#8e24aa","#4a148c"]];
   var LEDGER=["#1a1a1a","#3d3d3d"];
@@ -9357,8 +9358,8 @@ async function clRemove(id, label){
   function recentColours(){
     var list=document.getElementById("homeRecentList"); if(!list) return;
     var order=null;
-    var fetchOrder=function(){ return fetch("https://djmbnvikrdgnomjhtkgf.supabase.co/rest/v1/plat_matches?pool_id=eq."+W.PLAT.pool+"&discipline=eq.squash&select=id,club_id&order=match_date.desc,id.desc&limit=15").then(function(r){return r.json();}).then(function(rows){ order=Array.isArray(rows)?rows:[]; }); };
-    var paint=function(){ if(!order) return; list.querySelectorAll(".recent-item").forEach(function(el,i){ var m=order[i]; if(!m||el.querySelector(".platCp")) return; var c=(W.PLAT.clubs||[]).find(function(x){return x.id===m.club_id;}); if(!c) return; var p=clubPal(c.id); el.style.borderLeft="4px solid "+p[0]; el.style.borderRight="4px solid "+p[0]; var hd=el.querySelector(".match-header"); if(hd){ var s=document.createElement("span"); s.className="platCp"; s.dataset.platKeep="1"; s.innerHTML='<span style="display:inline-block;background:#eee;color:#333;border-radius:99px;padding:1px 8px;font-size:10px;font-weight:700;margin-right:6px">'+esc(c.name)+'</span>'; hd.insertBefore(s,hd.firstChild); } }); };
+    var fetchOrder=function(){ return fetch("https://djmbnvikrdgnomjhtkgf.supabase.co/rest/v1/plat_matches?pool_id=eq."+W.PLAT.pool+"&discipline=eq.padel&select=id,club_id&order=match_date.desc,id.desc&limit=15").then(function(r){return r.json();}).then(function(rows){ order=Array.isArray(rows)?rows:[]; }); };
+    var paint=function(){ if(!order) return; list.querySelectorAll(".recent-item").forEach(function(el,i){ var m=order[i]; if(!m||el.querySelector(".platCp")) return; var c=(W.PLAT.clubs||[]).find(function(x){return x.id===m.club_id;}); if(!c) return; var p=clubPal(c.id); el.style.borderLeft="4px solid "+p[0]; el.style.borderRight="4px solid "+p[0]; var hd=el.querySelector(".match-header"); if(hd){ var s=document.createElement("span"); s.className="platCp"; s.dataset.platKeep="1"; s.innerHTML=clubPill(c,true); hd.insertBefore(s,hd.firstChild); } }); };
     fetchOrder().then(function(){ paint(); new MutationObserver(paint).observe(list,{childList:true}); });
   }
   function ledgerOnly(){
@@ -9693,8 +9694,9 @@ async function clRemove(id, label){
     // p25: inside an organisation the way back is the club door; otherwise it is the register's own door.
     var org=W.PLAT.orgId||0;
     var a=document.createElement("button"); a.id="platChip"; a.textContent=(W.PLAT.orgId?"‹ Club":"‹ All clubs");
-    a.style.cssText="display:inline-block;margin:10px auto 0;background:rgba(255,255,255,.18);color:#fff;border:1px solid rgba(255,255,255,.6);padding:6px 14px;border-radius:99px;font-size:12px;font-weight:600;cursor:pointer;text-shadow:none";
-    a.onclick=function(){ var o=W.PLAT.orgId||0; location.href = o ? ("hub.html?org="+o) : ("plat-squash.html?pool="+W.PLAT.pool); };
+    a.style.cssText="display:inline-block;margin:12px auto 0;background:rgba(255,255,255,.22);color:#fff;border:1.5px solid rgba(255,255,255,.75);padding:11px 26px;border-radius:99px;font-size:15px;font-weight:800;letter-spacing:.2px;cursor:pointer;text-shadow:none;box-shadow:0 2px 8px rgba(0,0,0,.2)";   // p97: bigger — it is the way back
+    a.onclick=function(){ var o=W.PLAT.orgId||0; var fromDoor=false; try{ fromDoor=(sessionStorage.getItem("plat_from_door_squash")===String(W.PLAT.pool)); }catch(e){}
+      location.href = (o && !fromDoor) ? ("hub.html?org="+o) : ("plat-squash.html?pool="+W.PLAT.pool); };   // back to where you came from: the sport door if that is how you arrived, else the club hub
     panel.appendChild(a);
   }
   function entrySelect(){
@@ -9770,7 +9772,7 @@ async function clRemove(id, label){
     }catch(e){}
   }
   // the build tag is a debugging aid, not something a member should see: it appears only with ?build=1
-  try{ if(/[?&]build=1/.test(location.search)) buildTag("PLAT s41"); }catch(e){}
+  try{ if(/[?&]build=1/.test(location.search)) buildTag("PLAT s42"); }catch(e){}
   /* A plaque on the club's honour board opens that sport's ledger AT the person: ?player=<name> calls the
      parent's own loadProfile, so nothing in the parent changes. If the name is not recognised the ledger
      simply opens as it always did. */
@@ -9818,14 +9820,12 @@ async function clRemove(id, label){
      gradient and no class, so nothing ever matched. This finds that div, exactly as the ledger does. */
   function boardProfileTint(){
     if(W.PLAT.cid===0) return;   // any group board — an organisation's or a standalone register's        // organisation boards; a standalone register is untouched
-    // OSR and OTR draw the profile card with a class inside profileScreen; OPR uses a classless div in
-    // partnershipsCard. Cover both, so one rule holds for every leg.
-    // Watch the PAGE, not one container: each parent puts this card on a different screen under a different
-    // id, and choosing one of them is how earlier passes kept missing whichever screen you were looking at.
+    // Watch the PAGE: each parent puts the profile card on a different screen under a different id, and
+    // picking one is how earlier passes kept missing whichever screen was open.
     var card=document.body; if(!card) return;
     var col=(W.PLAT.colour||clubPal(W.PLAT.cid)[0]), deep=darken(col,0.42);
     if(String(col||"").toLowerCase()==="#D35400") return;   // the product's own colour: keep the parent's exact shades
-    var rgb=(function(h){ try{ var n=parseInt(h.slice(1),16); return ((n>>16)&255)+","+((n>>8)&255)+","+(n&255); }catch(e){ return "108,52,131"; } })(col);
+    var rgb=(function(h){ try{ var n=parseInt(h.slice(1),16); return ((n>>16)&255)+","+((n>>8)&255)+","+(n&255); }catch(e){ return "211,84,0"; } })(col);
     var st=document.getElementById("platBoardWash")||document.createElement("style");
     st.id="platBoardWash";
     st.textContent=".stat-card{background:rgba("+rgb+",.12) !important}"
@@ -9838,10 +9838,10 @@ async function clRemove(id, label){
       if(box && box.dataset.platBoard!=="1"){ box.style.background="linear-gradient(135deg,"+col+","+deep+")"; box.dataset.platBoard="1"; }
       tintTiles(card, col);
       // the section headings on the card ("Partnerships") are inline-styled in the parent's purple
-      try{ card.querySelectorAll('div[style*="color:#5b3a6e"],div[style*="color:#6c3483"]').forEach(function(h){
+      try{ card.querySelectorAll('div[style*="color:#5b3a6e"],div[style*="color:#D35400"]').forEach(function(h){
         if(h.dataset.platHead==="1"||h.children.length) return; h.dataset.platHead="1"; h.style.color=darken(col,0.2); }); }catch(e){}
     };
-    new MutationObserver(paint).observe(card,{childList:true,subtree:true}); paint();
+    platSchedule(paint); platRun();
   }
   /* The stat tiles on a profile card are INLINE-styled divs with no class, so no stylesheet can reach them —
      which is why they stayed purple through several attempts. They are tinted here, in the DOM, with the
@@ -9951,12 +9951,32 @@ async function clRemove(id, label){
       if(hit){ el.setAttribute("style", out); el.dataset.platPaint="1"; }
     }
   }
-  function watchAndPaint(colFn){
-    var run=function(){ try{ var c=colFn(); if(c) repaint(document.body, c); }catch(e){} };
-    new MutationObserver(run).observe(document.body,{childList:true,subtree:true});
-    run();
+  function platSchedule(fn){ if(_platJobs.indexOf(fn)<0) _platJobs.push(fn); }
+  function platRun(){
+    if(_platQueued) return; _platQueued=true;
+    (W.requestAnimationFrame||setTimeout)(function(){
+      _platQueued=false;
+      for(var i=0;i<_platJobs.length;i++){ try{ _platJobs[i](); }catch(e){} }
+    }, 16);
   }
-  try{ new MutationObserver(function(){ try{ oneRowTiles(document.body); }catch(e){} }).observe(document.body,{childList:true,subtree:true}); }catch(e){}
+  try{
+    platSchedule(function(){ oneRowTiles(document.body); });
+    new MutationObserver(platRun).observe(document.body,{childList:true,subtree:true});
+    platRun();
+  }catch(e){}
+  /* ===== THE SESSION CARD (p93) — a night's courts at a group, saved so anyone scores from their own phone.
+     Modelled on OBR's card: the big button opens a chooser — make tonight's courts, courts in play, or a plain
+     match. Pairings come from the group's current ratings (the same numbers the board shows); the engine sees
+     nothing but ordinary matches. Organisation boards and base-club registers only: Kloof–Sun Fun and Sandbox
+     keep the plain button until switched on. */
+  function watchAndPaint(colFn){
+    platSchedule(function(){ var c=colFn(); if(c) repaint(document.body, c); });
+    platRun();
+  }
+  // one row of five, on every screen and in every mode
+  /* One batched pass per frame. Three observers used to watch the whole page and each wrote styles that
+     woke the others — the page re-laid itself out continuously, which is the stutter and the jump. */
+  var _platQueued=false, _platJobs=[];
   function sessCol(){ return (W.PLAT.cid && W.PLAT.colour) ? W.PLAT.colour : "#D35400"; }
   function sessRgb(){ var h=sessCol(); try{ var n=parseInt(h.slice(1),16); return ((n>>16)&255)+","+((n>>8)&255)+","+(n&255); }catch(e){ return "211,84,0"; } }
   function aboutPill(){
