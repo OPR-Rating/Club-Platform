@@ -1,0 +1,224 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>Welcome to OPR</title>
+<!-- ============================================================
+     WELCOME PACK — Club Platform (padel).  One file for every club.
+     Open as  welcome.html?pool=N  — the page reads the register: its name, its club, its groups and
+     their colours. A new club needs NO new file; give members welcome.html?pool=<their pool>.
+     Companion page: ratings-explained.html (same folder). Icons: icon-192.png / icon-512.png.
+     ============================================================ -->
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="OPR — Open Padel Rating">
+<meta property="og:title" content="Your club on OPR — one club, one rating">
+<meta property="og:description" content="Your rating, your groups, court cards, ladders and tournaments. Tap to open and add it to your phone.">
+<meta property="og:image" content="https://opr-rating.github.io/Club-Platform/icon-512.png">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="theme-color" content="#5B2BD6">
+<link rel="apple-touch-icon" href="./icon-192.png">
+<link rel="icon" href="./icon-192.png">
+<style>
+  :root{--ink:#0D0A1F;--ink-soft:#1A1535;--violet:#5B2BD6;--violet-bright:#7B4DFF;--azure:#1A9FFF;--cyan:#39D0FF;
+    --paper:#F7F6FB;--paper-dim:#E9E6F4;--muted:#6B6585;--body:#2A2540;--line:#E1DCEF;--ball:#BCE400;--opr:#6c3483;}
+  *{box-sizing:border-box;margin:0;padding:0;}
+  html{scroll-behavior:smooth;overflow-y:scroll;}
+  body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;background:var(--paper);color:var(--body);line-height:1.6;padding-bottom:46px;-webkit-font-smoothing:antialiased;}
+  .wrap{max-width:720px;margin:0 auto;padding:0 22px;}
+  header.hero{position:relative;overflow:hidden;color:#fff;text-align:center;padding:44px 0 40px;background:linear-gradient(160deg,#0D0A1F 0%,#1A1535 45%,#3A1D8F 85%,#5B2BD6 125%);}
+  header.hero::after{content:"";position:absolute;left:0;right:0;bottom:0;height:3px;background:linear-gradient(90deg,var(--violet),var(--azure),var(--cyan),var(--ball));}
+  .hero-logo{display:inline-flex;align-items:center;gap:9px;margin-bottom:14px;}
+  .hero-logo .balls{display:flex;gap:5px;}
+  .hero-logo .balls i{width:9px;height:9px;border-radius:50%;display:block;background:var(--ball);box-shadow:0 0 10px rgba(188,228,0,.6);}
+  .hero-logo .balls i:nth-child(2){background:var(--cyan);box-shadow:0 0 10px rgba(57,208,255,.6);}
+  .hero-logo .balls i:nth-child(3){background:var(--azure);box-shadow:0 0 10px rgba(26,159,255,.6);}
+  .hero-logo .word{font-size:15px;font-weight:800;letter-spacing:5px;}
+  .eyebrow{font-size:12px;font-weight:800;letter-spacing:3px;text-transform:uppercase;color:var(--cyan);margin-bottom:10px;}
+  header.hero h1{font-size:33px;font-weight:800;letter-spacing:.2px;line-height:1.15;}
+  header.hero .club{display:inline-block;margin-top:14px;font-size:15px;font-weight:700;letter-spacing:1px;text-transform:uppercase;background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.22);padding:6px 16px;border-radius:999px;min-width:120px;min-height:34px;}
+  .card{background:#fff;border:1px solid var(--line);border-radius:16px;padding:22px 24px;box-shadow:0 2px 12px rgba(13,10,31,.05);}
+  .intro{margin-top:-24px;position:relative;z-index:2;box-shadow:0 10px 34px rgba(13,10,31,.10);}
+  .intro p{font-size:15px;margin-bottom:9px;} .intro p:last-child{margin-bottom:0;} .intro b{color:var(--ink);}
+  .storyline{display:block;margin-top:4px;font-style:italic;color:var(--violet);font-weight:600;}
+  .install{margin-top:22px;border-radius:16px;padding:18px 20px;color:#fff;background:linear-gradient(135deg,var(--violet),var(--azure));box-shadow:0 8px 26px rgba(91,43,214,.28);display:flex;align-items:center;gap:16px;}
+  .install .glyph{flex-shrink:0;width:46px;height:46px;border-radius:12px;background:rgba(255,255,255,.16);border:1px solid rgba(255,255,255,.3);display:flex;align-items:center;justify-content:center;font-size:24px;}
+  .install .txt{flex:1;min-width:0;} .install .txt b{display:block;font-size:15px;font-weight:800;} .install .txt span{display:block;font-size:12.5px;color:rgba(255,255,255,.85);margin-top:2px;}
+  .install .cta{flex-shrink:0;background:#fff;color:var(--violet);font-weight:800;font-size:13px;border:none;border-radius:999px;padding:9px 16px;cursor:pointer;box-shadow:0 3px 10px rgba(0,0,0,.14);}
+  section{margin-top:30px;}
+  h2{font-size:13px;font-weight:800;text-transform:uppercase;letter-spacing:1.4px;color:var(--violet);margin-bottom:12px;padding-bottom:8px;border-bottom:2px solid var(--paper-dim);}
+  .linkbox{background:#fff;border:1px solid var(--line);border-radius:14px;overflow:hidden;box-shadow:0 2px 12px rgba(13,10,31,.05);}
+  .linkrow{display:flex;align-items:center;gap:14px;padding:15px 18px;border-bottom:1px solid var(--paper-dim);text-decoration:none;color:inherit;}
+  .linkrow:last-child{border-bottom:none;} .linkrow:hover{background:var(--paper);}
+  .linkrow .ic{flex-shrink:0;width:42px;height:42px;border-radius:11px;background:linear-gradient(135deg,var(--violet),var(--azure));color:#fff;font-size:19px;display:flex;align-items:center;justify-content:center;}
+  .linkrow .ic.dark{background:linear-gradient(135deg,#1A1535,#3A1D8F);} .linkrow .ic.go-app{background:linear-gradient(135deg,var(--violet-bright),var(--cyan));}
+  .linkrow .m{flex:1;min-width:0;} .linkrow .m .t{display:block;font-weight:700;font-size:15px;color:var(--ink);} .linkrow .m .s{display:block;font-size:12.5px;color:var(--muted);margin-top:1px;}
+  .linkrow .go{flex-shrink:0;color:var(--violet);font-weight:800;font-size:13px;}
+  .linkrow.primary{background:linear-gradient(135deg,rgba(91,43,214,.05),rgba(26,159,255,.05));} .linkrow.primary .m .t{color:var(--violet);}
+  /* the club as built — drawn from the register */
+  .tier{display:flex;gap:14px;align-items:flex-start;padding:11px 0;} .tier+.tier{border-top:1px solid var(--paper-dim);}
+  .tier .tag{flex-shrink:0;width:104px;padding:5px 0;border-radius:999px;text-align:center;color:#fff;font-size:11.5px;font-weight:800;margin-top:2px;}
+  .tier .m{font-size:13.5px;} .tier .m b{color:var(--ink);display:block;font-size:14.5px;}
+  .pills{display:flex;flex-wrap:wrap;gap:8px;margin-top:8px;}
+  .pill{display:inline-block;color:#fff;border-radius:999px;padding:6px 14px;font-size:13px;font-weight:800;text-decoration:none;}
+  .oneline{margin-top:12px;padding:11px 14px;background:var(--paper);border-radius:9px;border-left:3px solid var(--opr);font-size:13.5px;color:var(--ink);}
+  .step{display:flex;gap:12px;align-items:flex-start;margin-bottom:10px;} .step:last-child{margin-bottom:0;}
+  .step .n{flex-shrink:0;width:26px;height:26px;border-radius:8px;background:linear-gradient(135deg,var(--violet),var(--azure));color:#fff;font-size:12px;font-weight:800;display:flex;align-items:center;justify-content:center;margin-top:1px;}
+  .step p{font-size:13.5px;} .step b{color:var(--ink);}
+  details.card{padding:0;margin-bottom:12px;overflow:hidden;}
+  details.card summary{list-style:none;cursor:pointer;padding:15px 18px;display:flex;align-items:center;gap:12px;font-weight:700;font-size:14.5px;color:var(--ink);}
+  details.card summary::-webkit-details-marker{display:none;}
+  details.card summary .chev{margin-left:auto;color:var(--violet);font-weight:800;transition:transform .2s;} details.card[open] summary .chev{transform:rotate(90deg);}
+  details.card summary .badge{flex-shrink:0;width:34px;height:34px;border-radius:9px;background:linear-gradient(135deg,var(--violet),var(--azure));color:#fff;display:flex;align-items:center;justify-content:center;font-size:16px;}
+  details.card summary .badge.opr{background:var(--opr);}
+  details.card .inner{padding:0 18px 16px;font-size:13.5px;} details.card .inner b{color:var(--ink);}
+  .os{margin:10px 0;padding:11px 14px;background:var(--paper);border-radius:9px;border-left:3px solid var(--cyan);font-size:13px;} .os b{color:var(--violet);}
+  .note{margin-top:11px;padding-top:11px;border-top:1px solid var(--paper-dim);color:var(--muted);}
+  footer{text-align:center;color:var(--muted);font-size:12.5px;margin-top:36px;padding-top:18px;border-top:2px solid var(--paper-dim);} footer b{color:var(--violet);}
+  .hidden{display:none;}
+  @media(max-width:560px){header.hero h1{font-size:27px;} .install{flex-wrap:wrap;} .install .cta{width:100%;padding:11px;} .tier{flex-direction:column;gap:6px;}}
+</style>
+</head>
+<body>
+<header class="hero"><div class="wrap">
+  <div class="hero-logo"><span class="balls"><i></i><i></i><i></i></span><span class="word">O P R</span></div>
+  <div class="eyebrow">Welcome to your club</div>
+  <h1>One club. One rating. Your groups.</h1>
+  <div class="club" id="clubName">&nbsp;</div>
+</div></header>
+
+<div class="wrap">
+  <div class="card intro">
+    <p><b>Welcome — this is <span class="cn">your club</span> on OPR, in one package.</b> You're registered once, you carry one padel rating, and you can play in any of the club's groups — whichever you join, whenever you're there.</p>
+    <span class="storyline">Every match you play, anywhere in the club, tells the same story.</span>
+    <p style="margin-top:9px;">Add it to your phone, enter your scores after each match, and watch your rating build. Your organisers handle the rest — all you do is <b>play, have fun, and enjoy the padel.</b></p>
+  </div>
+
+  <div class="install">
+    <span class="glyph">📲</span>
+    <span class="txt"><b>Add <span class="cn">your club</span> to your phone</b><span>Installs like an app, with its own icon — one tap to your club.</span></span>
+    <button class="cta" onclick="var d=document.getElementById('installhow');d.open=true;d.scrollIntoView({behavior:'smooth'});">How ›</button>
+  </div>
+
+  <section>
+    <h2>Everything in one place</h2>
+    <div class="linkbox">
+      <a class="linkrow primary" id="lnkApp" href="#" target="_blank" rel="noopener"><span class="ic go-app">📱</span><span class="m"><span class="t">Open <span class="cn">your club</span></span><span class="s">Your club, your groups, score entry — this is the one to add to your phone</span></span><span class="go">Open ›</span></a>
+      <a class="linkrow" id="lnkLaptop" href="#" target="_blank" rel="noopener"><span class="ic dark">💻</span><span class="m"><span class="t">On a laptop</span><span class="s">The same club on a big screen — tables, ladders, admin</span></span><span class="go">Open ›</span></a>
+      <a class="linkrow" href="./ratings-explained.html" target="_blank" rel="noopener"><span class="ic dark">🎯</span><span class="m"><span class="t">Your rating, and how it moves</span><span class="s">Where your number starts, what a Level means, why a close loss costs less</span></span><span class="go">Open ›</span></a>
+      <a class="linkrow" href="#night"><span class="ic dark">🎾</span><span class="m"><span class="t">A night at the club</span><span class="s">How the court card works, and how a score gets in</span></span><span class="go">See ›</span></a>
+      <a class="linkrow" href="#admin"><span class="ic dark">📘</span><span class="m"><span class="t">What your club can run</span><span class="s">Groups, court cards, ladders, tournaments, handicap days</span></span><span class="go">See ›</span></a>
+      <a class="linkrow" href="https://www.opr-online.com" target="_blank" rel="noopener"><span class="ic dark">🌐</span><span class="m"><span class="t">OPR website</span><span class="s">opr-online.com</span></span><span class="go">Open ›</span></a>
+    </div>
+  </section>
+
+  <section>
+    <h2>How your club is built</h2>
+    <div class="card" style="padding:16px 18px;">
+      <div class="tier"><span class="tag" id="tagClub" style="background:#6c3483">The club</span><span class="m"><b class="cn">Your club</b>Open to every member. Play here any time, with anyone — no group needed.</span></div>
+      <div class="tier"><span class="tag" style="background:linear-gradient(135deg,#c62828,#00695c)">Groups</span><span class="m"><b>The crowds you play with</b>Each group has its own colour, its own pairs, ladder, tournaments and court cards. You join a group simply by playing a match there.<div class="pills" id="groupPills"></div></span></div>
+      <div class="tier"><span class="tag" style="background:linear-gradient(135deg,#1A1535,#3A1D8F)">Club ledger</span><span class="m"><b>Everyone, one rating each</b>The whole club in one list, with ladders and stats across every group.</span></div>
+      <div class="oneline">Groups rank you. They never change your rating — that belongs to you, and it moves only when you play. The colour tells you where you are: the club is OPR purple; each group wears its own.</div>
+    </div>
+  </section>
+
+  <section id="night">
+    <h2>A night at the club</h2>
+    <div class="card">
+      <div class="step"><span class="n">1</span><p><b>Someone makes the court card.</b> In the app: <i>✚ Enter your match score → Create a court card</i>. Set the event, date, match type and sets once; tick who's here (your group's regulars first, or the whole club); choose <b>Level courts</b> (like plays like) or <b>Mixed courts</b> (every court gets a strong, a middling and a weaker player); then <b>Make the courts</b>.</p></div>
+      <div class="step"><span class="n">2</span><p><b>The app pairs everyone from their current ratings.</b> On each court the two pairs are as evenly matched as the field allows. The card is saved straight away — every phone on the board sees it.</p></div>
+      <div class="step"><span class="n">3</span><p><b>Play.</b> Then anyone on the court taps <i>Enter a court result</i>, picks the court, and types the score. Names, type and sets are already filled in.</p></div>
+      <div class="step"><span class="n">4</span><p><b>Ratings update on the spot.</b> A court card match is an ordinary match — same rating, same ladder, same story. No card? Enter a score the normal way; nothing changes.</p></div>
+    </div>
+  </section>
+
+  <section>
+    <h2>Add the app to your phone</h2>
+    <details class="card" id="installhow">
+      <summary><span class="badge">📲</span> Show me how to install it <span class="chev">›</span></summary>
+      <div class="inner">
+        <div class="os"><b>On iPhone (Safari):</b> open <b class="cn">your club</b> → tap the Share icon ⬆️ → <b>“Add to Home Screen”</b>.</div>
+        <div class="os"><b>On Android (Chrome):</b> open <b class="cn">your club</b> → tap the <b>⋮</b> menu → <b>“Add to Home screen”</b> (or “Install app”).</div>
+        It then works just like an app, with its own OPR icon — one tap and you're on your club, no browser bar, no fuss.
+      </div>
+    </details>
+  </section>
+
+  <section>
+    <h2>What you can do</h2>
+    <details class="card" open>
+      <summary><span class="badge">🎾</span> Inside the app <span class="chev">›</span></summary>
+      <div class="inner">
+        <div class="step"><span class="n">1</span><p><b>Enter your match scores</b> — pick the four names, enter the sets. No PIN needed.</p></div>
+        <div class="step"><span class="n">2</span><p><b>Follow your rating and form</b> match by match. It's the same number wherever in the club you play.</p></div>
+        <div class="step"><span class="n">3</span><p><b>See how you play with each partner</b> — every pairing rated on its own.</p></div>
+        <div class="step"><span class="n">4</span><p><b>Climb your group's ladder</b> and issue your challenges.</p></div>
+        <div class="step"><span class="n">5</span><p><b>Enter the tournaments</b> — at your group or across the whole club — and follow the draws live.</p></div>
+        <div class="step"><span class="n">6</span><p><b>Open the club ledger</b> to see where you stand among everyone.</p></div>
+        <div class="note">Your scores count the moment they're entered — the ratings update automatically.</div>
+      </div>
+    </details>
+  </section>
+
+  <section id="admin">
+    <h2>What your club can run</h2>
+    <details class="card">
+      <summary><span class="badge opr">🏛</span> Club admin — the register <span class="chev">›</span></summary>
+      <div class="inner">
+        <p style="margin-bottom:10px;">Opens with the club's register code, from the club ledger. This is where the club itself is looked after.</p>
+        <div class="step"><span class="n">1</span><p><b>Add members</b> — one at a time, or paste the whole club from a spreadsheet (name, gender, starting rating).</p></div>
+        <div class="step"><span class="n">2</span><p><b>Starting ratings</b> — one default for everyone (1500 men / 1300 ladies), or a graded list from your coach.</p></div>
+        <div class="step"><span class="n">3</span><p><b>Create groups</b> — name, colour, its own code — and hand each group its link.</p></div>
+        <div class="step"><span class="n">4</span><p><b>Safety net</b> — snapshots before anything drastic, and a one-tap put-back.</p></div>
+        <div class="note">A member is registered once. They appear in a group the first time they play there.</div>
+      </div>
+    </details>
+    <details class="card">
+      <summary><span class="badge">🎯</span> Group admin — the playing side <span class="chev">›</span></summary>
+      <div class="inner">
+        <p style="margin-bottom:10px;">Opens with the group's own code (or the register code). Each group runs its own padel.</p>
+        <div class="step"><span class="n">1</span><p><b>Court cards</b> — anyone can make one; the organiser decides Level or Mixed, Matches or Pairs.</p></div>
+        <div class="step"><span class="n">2</span><p><b>Tournaments</b> — Banded Swiss, Knockout with Plate, or Round Robin; Men's, Ladies, Mixed and All Sorts divisions.</p></div>
+        <div class="step"><span class="n">3</span><p><b>Handicap days</b> — every match balanced by rating, just for fun; nobody's rating moves.</p></div>
+        <div class="step"><span class="n">4</span><p><b>The ladder</b> — challenges, positions, seasons.</p></div>
+        <div class="step"><span class="n">5</span><p><b>Fix a match</b> — correct a score or delete it; ratings recompute by themselves.</p></div>
+        <div class="note">The club itself is a group too — a club-wide tournament runs from the club's own board.</div>
+      </div>
+    </details>
+  </section>
+
+  <footer><b>OPR</b> — Open Padel Rating · One club, one rating.<br><span class="cn">Your club</span> · Powered by OPR · opr-online.com</footer>
+</div>
+
+<script>
+(function(){
+  var PLAT="https://djmbnvikrdgnomjhtkgf.supabase.co", ANON="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRqbWJudmlrcmRnbm9tamh0a2dmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODUzOTE0MzEsImV4cCI6MjEwMDk2NzQzMX0.vR8xlVFjV6jXW-pAclGjM74HqmWSKVpsacFjM-dCIJI";
+  var q=new URLSearchParams(location.search), pool=parseInt(q.get("pool")||"0",10)||0;
+  var base=location.href.replace(/[^\/]*$/,"");
+  function get(p){ return fetch(PLAT+"/rest/v1/"+p,{headers:{apikey:ANON,Authorization:"Bearer "+ANON}}).then(function(r){return r.json();}); }
+  function esc(s){ return String(s==null?"":s).replace(/[&<>"']/g,function(c){return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c];}); }
+  function setName(n){ document.getElementById("clubName").textContent=n; document.title="Welcome to OPR — "+n;
+    document.querySelectorAll(".cn").forEach(function(el){ el.textContent=n; });
+    var og=document.querySelector('meta[property="og:title"]'); if(og) og.setAttribute("content",n+" on OPR — one club, one rating"); }
+  function manifest(n,url){ try{
+    var mf={id:url,name:"OPR · "+n,short_name:(n.length>12?n.slice(0,12):n),start_url:url,scope:"./",display:"standalone",background_color:"#5B2BD6",theme_color:"#5B2BD6",
+      icons:[{src:"./icon-192.png",sizes:"192x192",type:"image/png"},{src:"./icon-512.png",sizes:"512x512",type:"image/png"}]};
+    var l=document.createElement("link"); l.rel="manifest"; l.href="data:application/manifest+json,"+encodeURIComponent(JSON.stringify(mf)); document.head.appendChild(l); }catch(e){} }
+  if(!pool){ setName("your club"); document.getElementById("lnkApp").href=base+"plat-padel.html"; document.getElementById("lnkLaptop").href=base+"plat-padel.html"; return; }
+  var app=base+"plat-padel.html?pool="+pool;
+  document.getElementById("lnkApp").href=app; document.getElementById("lnkLaptop").href=app;
+  Promise.all([ get("plat_pools?id=eq."+pool+"&select=name"), get("plat_clubs?pool_id=eq."+pool+"&select=id,name,colour,is_general&order=id") ]).then(function(res){
+    var p=(res[0]&&res[0][0])||{}, clubs=Array.isArray(res[1])?res[1]:[];
+    var baseClub=clubs.find(function(c){return c.is_general;});
+    var name=(baseClub&&baseClub.name)||p.name||"your club";
+    setName(name); manifest(name,app);
+    if(baseClub&&baseClub.colour) document.getElementById("tagClub").style.background=baseClub.colour;
+    var pills=document.getElementById("groupPills");
+    var groups=clubs.filter(function(c){return !c.is_general;}).sort(function(a,b){return String(a.name).localeCompare(String(b.name));});
+    pills.innerHTML=groups.length ? groups.map(function(g){ return '<a class="pill" href="'+base+'plat-padel.html?club='+g.id+'" style="background:'+esc(g.colour||"#455a64")+'">'+esc(g.name)+'</a>'; }).join("")
+                                  : '<span style="font-size:12.5px;color:#6B6585">The first groups are being set up — they will appear here.</span>';
+  }).catch(function(){ setName(p&&p.name||"your club"); });
+})();
+</script>
+</body>
+</html>

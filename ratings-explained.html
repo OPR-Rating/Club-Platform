@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Your rating, and how it moves — OPR</title>
+<meta name="theme-color" content="#5B2BD6">
+<link rel="icon" href="./icon-192.png">
+<style>
+  :root{--ink:#0D0A1F;--violet:#5B2BD6;--azure:#1A9FFF;--cyan:#39D0FF;--paper:#F7F6FB;--paper-dim:#E9E6F4;--muted:#6B6585;--body:#2A2540;--line:#E1DCEF;--soft:#E9A23B;--ball:#BCE400;--opr:#6c3483;}
+  *{box-sizing:border-box;margin:0;padding:0;}
+  html{overflow-y:scroll;scroll-behavior:smooth;}
+  body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:var(--paper);color:var(--body);line-height:1.6;padding-bottom:50px;}
+  .wrap{max-width:760px;margin:0 auto;padding:0 18px;}
+  header.hero{position:relative;background:linear-gradient(160deg,#0D0A1F 0%,#1A1535 45%,#3A1D8F 85%,#5B2BD6 125%);color:#fff;padding:42px 0 38px;text-align:center;}
+  header.hero::after{content:"";position:absolute;left:0;right:0;bottom:0;height:3px;background:linear-gradient(90deg,var(--violet),var(--azure),var(--cyan),var(--ball));}
+  .eyebrow{font-size:12px;font-weight:800;letter-spacing:2px;text-transform:uppercase;color:var(--cyan);margin-bottom:12px;}
+  header.hero h1{font-size:30px;font-weight:800;line-height:1.15;}
+  header.hero p{color:rgba(255,255,255,.82);margin-top:10px;font-size:15px;}
+  .headline{background:#fff;border:1px solid var(--line);border-radius:14px;padding:24px;margin-top:-22px;position:relative;z-index:2;box-shadow:0 6px 24px rgba(13,10,31,.08);text-align:center;}
+  .headline p{font-size:18px;font-weight:700;color:var(--ink);line-height:1.45;}
+  .headline .sub{font-size:13px;color:var(--muted);font-weight:500;margin-top:8px;}
+  .parts{display:flex;flex-wrap:wrap;gap:8px;justify-content:center;margin-top:18px;}
+  .parts a{font-size:12px;font-weight:800;color:var(--violet);background:#fff;border:1px solid var(--line);border-radius:999px;padding:7px 14px;text-decoration:none;}
+  .part{font-size:11px;font-weight:800;letter-spacing:2px;text-transform:uppercase;color:var(--muted);margin:38px 0 4px;}
+  h2{font-size:14px;font-weight:800;text-transform:uppercase;letter-spacing:1.2px;color:var(--violet);margin:22px 0 12px;padding-bottom:8px;border-bottom:2px solid var(--paper-dim);}
+  p{font-size:15px;margin-bottom:12px;}
+  .card{background:#fff;border:1px solid var(--line);border-radius:12px;padding:16px 18px;margin-bottom:10px;}
+  .rule{display:flex;gap:14px;align-items:flex-start;}
+  .rule .n{flex-shrink:0;width:34px;height:34px;border-radius:9px;background:linear-gradient(135deg,var(--violet),var(--azure));color:#fff;font-weight:800;font-size:16px;display:flex;align-items:center;justify-content:center;}
+  .rule h3{font-size:16px;color:var(--ink);margin-bottom:4px;} .rule p{font-size:14px;margin:0;}
+  table{width:100%;border-collapse:collapse;background:#fff;border:1px solid var(--line);border-radius:12px;overflow:hidden;font-size:14px;margin-bottom:8px;}
+  thead th{background:linear-gradient(135deg,#1A1535,#3A1D8F);color:#fff;padding:11px 10px;text-align:left;font-size:12px;letter-spacing:.4px;text-transform:uppercase;}
+  tbody td{padding:11px 10px;border-top:1px solid var(--line);} tbody tr:nth-child(even){background:var(--paper);}
+  .pen{font-weight:800;text-align:right;font-variant-numeric:tabular-nums;} .soft{color:var(--soft);}
+  .tag{display:inline-block;font-size:11px;font-weight:700;padding:2px 8px;border-radius:20px;} .tag.f{background:#F1ECFB;color:var(--violet);} .tag.s{background:#FBF1E1;color:#B4771C;}
+  .caption{font-size:13px;color:var(--muted);margin-top:4px;text-align:center;}
+  .big{font-size:22px;font-weight:800;color:var(--ink);}
+  .qa .q{font-weight:800;color:var(--violet);font-size:15px;margin-bottom:6px;} .qa p{font-size:14px;margin:0;}
+  .oneliner{background:linear-gradient(135deg,#1A1535,#3A1D8F);color:#fff;border-radius:14px;padding:26px 24px;text-align:center;margin-top:16px;}
+  .oneliner .lbl{font-size:11px;font-weight:800;letter-spacing:2px;text-transform:uppercase;color:var(--cyan);margin-bottom:10px;}
+  .oneliner p{font-size:17px;font-weight:700;line-height:1.6;margin:0;color:#fff;}
+  .tier{display:flex;gap:12px;align-items:flex-start;padding:9px 0;} .tier+.tier{border-top:1px solid var(--paper-dim);}
+  .tier .tag2{flex-shrink:0;width:92px;padding:4px 0;border-radius:999px;text-align:center;color:#fff;font-size:11px;font-weight:800;margin-top:2px;}
+  .tier p{font-size:14px;margin:0;}
+  footer{text-align:center;color:var(--muted);font-size:12px;margin-top:40px;} footer a{color:var(--violet);font-weight:700;text-decoration:none;}
+</style>
+</head>
+<body>
+<header class="hero"><div class="wrap">
+  <div class="eyebrow">OPR · Open Padel Rating</div>
+  <h1>Your rating, and how it moves</h1>
+  <p>Where your number starts, what a Level means, why a close loss costs less — and how one rating works across a whole club.</p>
+</div></header>
+
+<div class="wrap">
+  <div class="headline">
+    <p>“Your rating is your reputation — and every match either backs it up or dents it.”</p>
+    <div class="sub">The rating scores <b>how you played</b> — sets, games, who you played, and how it compared to what was expected — not just who won.</div>
+    <div class="parts"><a href="#start">1 · Where it starts</a><a href="#moves">2 · How it moves</a><a href="#close">3 · Close matches</a><a href="#club">4 · One rating, many groups</a><a href="#faq">5 · Questions</a><a href="#playtomic">6 · Playtomic</a></div>
+  </div>
+
+  <div class="part" id="start">Part one</div>
+  <h2>1 · The starting scale</h2>
+  <p>Every player begins with a starting rating, set once when they join the club's register. The working ranges:</p>
+  <table><thead><tr><th></th><th>Inexperienced</th><th>Improving</th><th>Solid club player</th><th>Strong / advanced</th></tr></thead>
+    <tbody><tr><td><b>Men</b></td><td>1000–1200</td><td>1200–1400</td><td>1400–1600</td><td>1600–1800</td></tr>
+           <tr><td><b>Ladies</b></td><td>900–1050</td><td>1050–1200</td><td>1200–1350</td><td>1350–1500</td></tr></tbody></table>
+
+  <h2>2 · Two ways to start a club</h2>
+  <div class="card rule"><div class="n">A</div><div><h3>The simple route — one default for everyone</h3><p>Men <b>1500</b>, ladies <b>1300</b>. Start everyone there and let them play. Within a handful of matches the numbers separate and settle around each player's true level — someone who started too high loses rating to those beating them, someone too low climbs just as fast. This is how most clubs begin.</p></div></div>
+  <div class="card rule"><div class="n">B</div><div><h3>The bespoke route — grade your own players</h3><p>If the club knows its players, the coach or committee places each one in a band from the table above and the whole list is pasted in at once. The very first ladder then already looks sensible; the engine fine-tunes from there.</p></div></div>
+  <p>Either way, you can't get it “wrong”. A starting rating is a starting point, not a verdict — the matches do the real grading.</p>
+
+  <h2>3 · From rating to Level</h2>
+  <p>Alongside the exact number, OPR shows a <b>Level</b> — simply the rating divided by 200. It's the friendly headline used on ladders and in tournaments.</p>
+  <table><thead><tr><th>OPR rating</th><th>1000</th><th>1200</th><th>1400</th><th>1500</th><th>1600</th><th>1800</th></tr></thead>
+    <tbody><tr><td><b>OPR Level</b></td><td>5.0</td><td>6.0</td><td>7.0</td><td>7.5</td><td>8.0</td><td>9.0</td></tr></tbody></table>
+
+  <div class="part" id="moves">Part two</div>
+  <h2>4 · Four things decide how much it moves</h2>
+  <div class="card rule"><div class="n">1</div><div><h3>Who you played</h3><p>Beat someone the club expects you to beat and you barely move — you did what everyone knew you'd do. Beat someone stronger and you jump. That's news.</p></div></div>
+  <div class="card rule"><div class="n">2</div><div><h3>How convincingly</h3><p>Squeaking through 7–5 in a decider says “it was tight”. Winning 6–1, 6–2 says “you were clearly better”. The system watches the <b>games</b>, not just who won the sets.</p></div></div>
+  <div class="card rule"><div class="n">3</div><div><h3>How much you played</h3><p>A three-set battle carries more weight than a quick two-setter — there is more evidence in it. One set counts least, three sets most.</p></div></div>
+  <div class="card rule"><div class="n">4</div><div><h3>How close it was to expected</h3><p>Before every match the system already expects a result — it knows the gap between the teams. Better than expected moves you up more; worse than expected costs you more. A brave loss never costs as much as a thrashing.</p></div></div>
+
+  <h2>5 · A pair's strength</h2>
+  <p>For two players of similar strength the pair is the blend of both. Where one partner is clearly stronger, that partner carries a little more of the weight — <b>60/40</b> — because that's how the game plays out on court. It's the same rule for Men's, Ladies, Mixed and All Sorts, and the pair's number is always the live blend of its two members' current ratings.</p>
+
+  <div class="part" id="close">Part three</div>
+  <h2>6 · Close matches — the three rules</h2>
+  <div class="card rule"><div class="n">1</div><div><h3>Win the way you were expected to → full credit</h3><p>Favourite, won by the margin predicted or better: full gain for you, full loss for them. A clean, convincing win always counts in full.</p></div></div>
+  <div class="card rule"><div class="n">2</div><div><h3>Scrape home by less than predicted → the loser is cushioned</h3><p>If the underdog kept the games close, the loser's penalty slides down — the closer the games, the smaller the drop, to a minimum of about 10%. A brave loss always stings a little, never much.</p></div></div>
+  <div class="card rule"><div class="n">3</div><div><h3>Pull off an upset → full reward, no cushion</h3><p>If the underdog actually wins, that's the most important result of all. Full reward for the winner, full loss for the favourite. Upsets are never softened.</p></div></div>
+
+  <h2>7 · What it looks like</h2>
+  <p>A stronger pair, expected to take about 75% of the games, wins three different ways. What the losing pair drops:</p>
+  <table><thead><tr><th>Result (favourite wins)</th><th>Games</th><th>How close</th><th class="pen">Loss</th></tr></thead>
+    <tbody><tr><td>6/2 6/3 6/2</td><td>18–7</td><td><span class="tag f">as predicted</span></td><td class="pen">−16.6</td></tr>
+           <tr><td>6/4 6/4 7/5</td><td>19–13</td><td><span class="tag s">closer than expected</span></td><td class="pen soft">−7.1</td></tr>
+           <tr><td>7/6 5/7 7/5</td><td>19–18</td><td><span class="tag s">nail-biter</span></td><td class="pen soft">−1.8</td></tr></tbody></table>
+  <p class="caption">Same winner, same result on paper — the closer the games, the gentler the drop.</p>
+  <p style="margin-top:14px;">And the bigger the gap between the teams, the gentler a loss to begin with: losing badly to an equal is bad news; losing to a much stronger pair was always on the cards.</p>
+  <table><thead><tr><th>Rating gap</th><th class="pen">Thrashed</th><th class="pen">Lost as predicted</th><th class="pen">Brave loss</th></tr></thead>
+    <tbody><tr><td>Even teams</td><td class="pen">−27.8</td><td class="pen">−24.6</td><td class="pen">−11.1</td></tr>
+           <tr><td>Small gap</td><td class="pen">−25.1</td><td class="pen">−21.9</td><td class="pen soft">−1.8</td></tr>
+           <tr><td>Clear favourite</td><td class="pen">−19.4</td><td class="pen">−10.7</td><td class="pen soft">−1.9</td></tr>
+           <tr><td>Big favourite</td><td class="pen">−15.3</td><td class="pen">−9.1</td><td class="pen soft">−2.1</td></tr></tbody></table>
+  <p class="caption">The biggest possible single drop is around −28, and only between near-equal teams in a one-sided three-setter.</p>
+
+  <div class="part" id="club">Part four</div>
+  <h2>8 · One rating, many groups</h2>
+  <p>Your club on OPR is one register. You are in it once, with <b>one padel rating</b>. The club has groups — the Tuesday crowd, the ladies, the ballies — and you can play in any of them.</p>
+  <div class="card" style="padding:12px 18px;">
+    <div class="tier"><span class="tag2" style="background:var(--opr)">The club</span><p>Open to every member. Play here any time, with anyone.</p></div>
+    <div class="tier"><span class="tag2" style="background:linear-gradient(135deg,#c62828,#00695c)">Groups</span><p>Each has its own colour, pairs, ladder, tournaments and court cards. You join one by playing a match there. A group <b>ranks</b> you among its members — it never changes your rating.</p></div>
+    <div class="tier"><span class="tag2" style="background:linear-gradient(135deg,#1A1535,#3A1D8F)">Club ledger</span><p>Everyone across the club, one rating each, with every match you've played anywhere in the club.</p></div>
+  </div>
+  <p>So a match at the ladies' group and a match at the club move the <b>same</b> number. On a group's board you'll see your movement broken down by group — this group first — and the ledger shows the whole story.</p>
+
+  <div class="part" id="faq">Part five</div>
+  <h2>9 · The questions everyone asks</h2>
+  <div class="card qa"><div class="q">“Why did my partner and I move differently? We played the same match!”</div><p>Because you didn't play the same story. Your ratings were different going in, so the club expected different things from each of you. The underdog who won gained more — more to prove, and proved it. The favourite gained less: winning was expected.</p></div>
+  <div class="card qa"><div class="q">“Why am I still behind someone who keeps losing?”</div><p>Because they started from a higher reputation. Losing brings them down, but a reputation built over forty matches doesn't collapse in three. Keep winning and you will pass them — the system is slow to be fooled, in both directions.</p></div>
+  <div class="card qa"><div class="q">“Does a close loss ever earn me points?”</div><p>No. A loss is always a loss — it just hurts less when you kept it close against a stronger team. You only ever climb by winning.</p></div>
+  <div class="card qa"><div class="q">“I won in straight sets but only just — why did I gain less?”</div><p>The system watches games, not only sets. Expected to win comfortably but the games stayed tight — you didn't quite meet expectation, so the swing is smaller. Win more convincingly and you'll get the full gain.</p></div>
+  <div class="card qa"><div class="q">“Why is a close loss between two even teams still a full penalty?”</div><p>The cushion rewards underdogs beating expectation. Between equal teams there is no underdog — it was a genuine 50/50 and it went against you. That's real news, so it counts in full.</p></div>
+  <div class="card qa"><div class="q">“Someone has played more and won more sets than me — why is their rating lower?”</div><p>Wins are counted, but they aren't all weighed the same. A pile of wins against weaker pairs moves you less than a handful against strong ones. Open their profile in the app and look at who they actually played — the answer is usually right there.</p></div>
+  <div class="card qa"><div class="q">“I play in two groups — do I have two ratings?”</div><p>No, one. Both groups rank the same number. What differs is where you stand among each group's members.</p></div>
+
+  <div class="oneliner"><div class="lbl">If you remember one thing</div>
+    <p>Beat who you're supposed to beat, you tick along.<br>Beat someone you shouldn't, you jump.<br>Push a stronger team close, your loss is cushioned.<br>Get thrashed by someone weaker, you drop.<br>The rating just keeps an honest record of what actually happened.</p></div>
+
+  <div class="part" id="playtomic">Part six</div>
+  <h2>10 · Comparing with Playtomic (and similar apps)</h2>
+  <p>Many players know their Playtomic level and want to know where they sit on OPR. The two systems measure differently — OPR's scale is wider and doubles-first — but as a practical rule of thumb:</p>
+  <div class="card" style="text-align:center;"><div class="big">OPR Level ≈ Playtomic level + 5.5 to 6</div><p class="caption" style="margin-top:6px;">A Playtomic 4.0 typically sits around OPR Level 9.5–10; an OPR Level 7.5 player is broadly a Playtomic 1.5–2. A guide, not a conversion — no two rating systems map exactly.</p></div>
+
+  <footer>OPR · Open Padel Rating — the rating explained for members · <a href="https://www.opr-online.com">opr-online.com</a></footer>
+</div>
+</body>
+</html>
