@@ -559,6 +559,7 @@
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script>
 /* ====
+   VERSION: PLAT-SQUASH v2026.09.14-s44  (THE COURT CARD on squash, the whole of padel p112: create a card on page one of score entry, Level/Mixed/Self selected, Matches/Pairs, regulars, print and share, tap a court to the score sheet, Live Umpire; plat_session v4 knows the sport)
    VERSION: PLAT-SQUASH v2026.09.14-s43  (door: recent matches robust to the schema, players not pairs, a Club chip back to the hub on an organisation's sport door)
    VERSION: PLAT-SQUASH v2026.09.14-s42  (brought level with padel p113: bigger back chip, batched repaint pass, recent-match colours; the back chip returns to the sport door when you arrived through it)
    VERSION: PLAT-SQUASH v2026.09.14-s41  (STAGE A of the club structure on squash, ported from padel p112: the club door for a register with a base club — base club card, GROUPS, ledger, recent matches with set scores — the flat door keeps its shape and gains recent matches; groups in a base-club register get the organisation layout, Admin pill, group colour through score entry; Recent Matches banner in the product green; no Club-N flash; no sideways jiggle; parent re-pinned to OSR-LAPTOP v46)
@@ -3060,7 +3061,7 @@ const _club = CLUBS[_clubParam] || (/^\d+$/.test(_clubParam) ? {id:Number(_clubP
 const CLUB_ID = _club.id;
 document.title = 'OSR · ' + _club.name;
 const CLUB_NAME = _club.name;  // shown in the logo as "OPR · <name>"
-const OPR_VERSION = "OSR-LAPTOP v2026.09.13-46 · PLAT replica s43";   // PLAT MARKED HUNK: the build stamp everywhere the parent prints its own  // SCOPED ADMIN CODE: every admin call carries club_id, so a club code is checked against this club only (with admin v2026.09.13-2) — a code from another club no longer opens its admin from here. Master unchanged. Includes v2026.09.03-45 and all prior.  // MANUAL PAIR CREATION REMOVED FROM ADMIN (ported from OPR v56): Create a pair, Bulk create pairs and Re-derive all pairs are gone — they only made match-less ghost pairs, and Re-derive rewrote every stored initial club-wide. Pairs are born automatically at match entry. Current pairs list untouched; underlying JS left in place unreferenced. Includes all prior work.
+const OPR_VERSION = "OSR-LAPTOP v2026.09.13-46 · PLAT replica s44";   // PLAT MARKED HUNK: the build stamp everywhere the parent prints its own  // SCOPED ADMIN CODE: every admin call carries club_id, so a club code is checked against this club only (with admin v2026.09.13-2) — a code from another club no longer opens its admin from here. Master unchanged. Includes v2026.09.03-45 and all prior.  // MANUAL PAIR CREATION REMOVED FROM ADMIN (ported from OPR v56): Create a pair, Bulk create pairs and Re-derive all pairs are gone — they only made match-less ghost pairs, and Re-derive rewrote every stored initial club-wide. Pairs are born automatically at match entry. Current pairs list untouched; underlying JS left in place unreferenced. Includes all prior work.
 // Explanation shown above the individual ladder. Open on load so it's read; collapsible
 // (state kept for the session) and scrolls away. Mechanics only — no outcome framing, so
 // members aren't nudged away from playing stronger opponents. Every clause maps to a real
@@ -9784,7 +9785,7 @@ async function clRemove(id, label){
     }catch(e){}
   }
   // the build tag is a debugging aid, not something a member should see: it appears only with ?build=1
-  try{ if(/[?&]build=1/.test(location.search)) buildTag("PLAT s43"); }catch(e){}
+  try{ if(/[?&]build=1/.test(location.search)) buildTag("PLAT s44"); }catch(e){}
   /* A plaque on the club's honour board opens that sport's ledger AT the person: ?player=<name> calls the
      parent's own loadProfile, so nothing in the parent changes. If the name is not recognised the ledger
      simply opens as it always did. */
@@ -10047,6 +10048,441 @@ async function clRemove(id, label){
       +"#platEntryClub select:focus{border-color:"+col+"!important}";
     if(!st.parentNode) document.head.appendChild(st);
   }
+  /* ===== THE SESSION CARD (p93) — a night's courts at a group, saved so anyone scores from their own phone.
+     Modelled on OBR's card: the big button opens a chooser — make tonight's courts, courts in play, or a plain
+     match. Pairings come from the group's current ratings (the same numbers the board shows); the engine sees
+     nothing but ordinary matches. Organisation boards and base-club registers only: Kloof–Sun Fun and Sandbox
+     keep the plain button until switched on. */
+  function SFN(){ return "https://djmbnvikrdgnomjhtkgf.supabase.co/functions/v1/plat_session"; }
+  function scall(body){ body.discipline="squash"; return fetch(SFN(),{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(body)}).then(function(r){return r.json();}); }
+  var SESS={members:[],ratings:{},picked:{},court:"level",out:"matches",open:[],pendingCourt:null,pairA:null};
+  /* Where the court card is switched on: every organisation board, every register with a base club, and the
+     registers named here. p106: Kloof–Sun Fun (pool 2) — the card only; nothing else on their boards changes. */
+  var SESSION_POOLS=[2];
+  function sessionScope(){
+    if(!W.PLAT.cid) return false;
+    if(W.PLAT.orgId) return true;
+    if(SESSION_POOLS.indexOf(Number(W.PLAT.pool))>=0) return true;
+    return (W.PLAT.clubs||[]).some(function(c){ return c.is_general; });
+  }
+  function w6040(a,b){ return Math.round(Math.max(a,b)*0.6+Math.min(a,b)*0.4); }
+  /* THE MATHS. Field sorted strongest first. LEVEL: blocks of four down the list, so like meets like.
+     MIXED: dealt snake-fashion so every court has a strong, a middling and a weaker player. Inside each four,
+     1 & 4 play 2 & 3 — the two pairs on a court are as close as that four allows. A leftover two (n mod 4 = 2)
+     become one pair with no opponents; the club arranges them on the night. */
+  function makeCourts(names, ratingOf, courtMode){
+    var sorted=names.slice().sort(function(a,b){ return (ratingOf(b)||0)-(ratingOf(a)||0); });
+    var nCourts=Math.floor(sorted.length/4), fours=[];
+    for(var i=0;i<nCourts;i++) fours.push([]);
+    if(courtMode==="mixed" && nCourts>1){
+      var idx=0, dir=1;
+      sorted.forEach(function(n,k){
+        if(k>=nCourts*4) return;
+        fours[idx].push(n);
+        if(dir===1){ if(idx===nCourts-1) dir=-1; else idx++; } else { if(idx===0) dir=1; else idx--; }
+      });
+    } else {
+      for(var j=0;j<nCourts*4;j++) fours[Math.floor(j/4)].push(sorted[j]);
+    }
+    var courts=fours.map(function(f,i){
+      f.sort(function(a,b){ return (ratingOf(b)||0)-(ratingOf(a)||0); });
+      return { court_no:i+1, t1p1:f[0], t1p2:f[3], t2p1:f[1], t2p2:f[2],
+               t1_rating:w6040(ratingOf(f[0])||0,ratingOf(f[3])||0), t2_rating:w6040(ratingOf(f[1])||0,ratingOf(f[2])||0) };
+    });
+    var rest=sorted.slice(nCourts*4);
+    if(rest.length===2) courts.push({ court_no:null, t1p1:rest[0], t1p2:rest[1], t2p1:null, t2p2:null, t1_rating:w6040(ratingOf(rest[0])||0,ratingOf(rest[1])||0), t2_rating:null, unmatched:true });
+    return courts;
+  }
+  W.platMakeCourts=makeCourts;   // exposed so the maths can be checked outside the page
+  function sessStyle(){
+    var col=sessCol(), rgb=sessRgb(), deep=darken(col,0.42);
+    var st=document.getElementById("platSessStyle")||document.createElement("style"); st.id="platSessStyle";
+    st.textContent="#platSessScreen .team-card{background:rgba("+rgb+",.10)!important;border-color:rgba("+rgb+",.32)!important}"
+      +"#platSessScreen .team-label,#platSessScreen .team-label span[style]{color:"+col+"!important}"
+      +"#platSessScreen .team-label>span:first-child{background:"+col+"!important;color:#fff!important}"
+      +"#platSessScreen .mk-seg{background:rgba("+rgb+",.10)!important;border-color:rgba("+rgb+",.2)!important}"
+      +"#platSessScreen .mk-seg button.on{background:"+col+"!important;color:#fff!important}"
+      +"#platSessScreen .btn-primary{background:linear-gradient(180deg,"+col+","+deep+")!important}"
+      +"#platSessScreen .loading-spinner,#platSessScreen .empty-state .icon{color:"+col+"}";
+    if(!st.parentNode) document.head.appendChild(st);
+  }
+  function sessScreen(){
+    sessStyle();
+    if(document.getElementById("platSessScreen")) return;
+    var s=document.createElement("div"); s.id="platSessScreen"; s.className="screen hidden";
+    s.innerHTML='<div class="header"><button class="back-btn" onclick="window.platSessPlain()">&#8592;</button><h1>Tonight\u2019s session</h1></div>'
+      +'<div class="screen-content" id="platSessBody"></div>';
+    document.getElementById("homeScreen").parentNode.appendChild(s);
+    try{ headerBadges(); }catch(e){}
+  }
+  function pairLabel(a,b){ return esc(a)+" & "+esc(b); }
+  function ratingPill(r){ return r==null?"":'<span data-plat-keep="1" style="display:inline-block;background:rgba('+sessRgb()+',.12);color:'+sessCol()+';border-radius:99px;padding:1px 8px;font-size:11px;font-weight:800;margin-left:6px">'+Math.round(r)+'</span>'; }
+  function chooser(){
+    sessScreen(); W.showScreen("platSessScreen");
+    var b=document.getElementById("platSessBody");
+    var tile=function(n,title,sub,fn,extraId){ return '<div class="team-card" style="cursor:pointer" onclick="'+fn+'">'
+      +'<div style="font-size:17px;font-weight:800;color:'+sessCol()+'">'+n+' \u00b7 '+title+'</div>'
+      +'<div style="font-size:13px;color:#555;margin-top:4px">'+sub+'</div>'+(extraId?'<div id="'+extraId+'" style="font-size:13px;color:#b9770e;font-weight:700;margin-top:4px">No courts in play right now</div>':'')+'</div>'; };
+    // p97: the plain road to score entry comes FIRST and wears the ✚ Enter button's own blue, so a member who just
+    // wants to enter a score is never confused by the card; the two card tiles sit beneath it in the card's colour.
+    b.innerHTML='<div style="font-size:13px;color:#4a235a;margin:0 0 10px;line-height:1.45">Pick who is here, and the app makes the courts from everyone\u2019s current rating \u2014 balanced pairs, balanced matches. The card is saved straight away, so anyone on either side enters the score from their own phone.</div>'
+      +tile(1,"Make tonight\u2019s courts","Who is here, level or mixed courts, matches or just the pairs.","window.platSessMake()")
+      +tile(2,"Courts in play \u2014 enter a result","Every court made today that has not been scored yet.","window.platSessOpen()","platSessCount")
+      +'<button class="btn btn-secondary" style="margin-top:4px" onclick="window.platSessPlain()">&larr; Back</button>';
+    scall({action:"list_open",club_id:W.PLAT.cid}).then(function(r){
+      var n=0; ((r&&r.sessions)||[]).forEach(function(s){ (s.courts||[]).forEach(function(k){ if(k.status==="open") n++; }); });
+      var el=document.getElementById("platSessCount"); if(el&&n) el.textContent=n+" court"+(n===1?"":"s")+" in play";
+    });
+  }
+  function backToNames(){
+    try{ document.querySelectorAll(".screen").forEach(function(s){ s.classList.remove("active"); s.classList.add("hidden"); });
+      var es=document.getElementById("entryScreen"); es.classList.remove("hidden"); es.classList.add("active"); W.scrollTo(0,0); }catch(e){}
+    try{ if(typeof renderStep2==="function") renderStep2(); }catch(e){}
+  }
+  W.platSessPlain=function(){ W.PLAT.sessionCourt=null; W.showScreen("entryScreen"); };
+  function loadMembers(){
+    return Promise.all([
+      // p94: THE WHOLE REGISTER, not the group's members: names live at the club, and a group has no members
+      // until someone plays there. plat_squash_v_ratings holds every person for every group with THIS group's
+      // club-adjusted base (the number the board replays from); OPR's own cache refines it for anyone who has played here.
+      fetch(SBR("plat_squash_v_ratings?club_id=eq."+W.PLAT.cid+"&select=full_name,gender,seed_rating&order=full_name.asc")).then(function(r){return r.json();}),
+      (typeof OPR!=="undefined"&&OPR.load)?OPR.load().catch(function(){}):Promise.resolve()
+      ,fetch(SBR("plat_squash_v_individuals?club_id=eq."+W.PLAT.cid+"&select=full_name")).then(function(r){return r.json();}).catch(function(){ return []; })
+    ]).then(function(res){
+      SESS.regulars={}; (Array.isArray(res[2])?res[2]:[]).forEach(function(m){ if(m.full_name) SESS.regulars[m.full_name]=1; });
+      if(SESS.pool==null) SESS.pool = Object.keys(SESS.regulars).length>=4 ? "regulars" : "all";   // a group with no history shows everyone
+      var rows=Array.isArray(res[0])?res[0]:[]; var seen={};
+      SESS.members=rows.filter(function(m){ if(!m.full_name||seen[m.full_name]) return false; seen[m.full_name]=1; return true; });
+      SESS.ratings={}; SESS.members.forEach(function(m){ var v=null; try{ v=OPR.indiv(m.full_name); }catch(e){}
+        if(v==null && m.seed_rating!=null) v=Number(m.seed_rating); SESS.ratings[m.full_name]=(v==null?null:v); });
+    });
+  }
+  W.platSessMake=function(){
+    var b=document.getElementById("platSessBody"); b.innerHTML='<div class="loading">Loading members\u2026</div>';
+    // the card's own details, seeded from page one where something was chosen there
+    try{ var ev=document.getElementById("matchEvent"), dt=document.getElementById("matchDate"), ty=document.getElementById("matchType"), sp=document.getElementById("setsPlayed");
+      SESS.event=(ev&&ev.value)||"Social"; SESS.date=(dt&&dt.value)||new Date().toISOString().slice(0,10);
+      SESS.type=(ty&&ty.value)||""; SESS.sets=(sp&&sp.value)?parseInt(sp.value,10):3;
+      SESS.events=[]; if(ev) Array.prototype.forEach.call(ev.options,function(o){ if(o.value) SESS.events.push(o.value); });
+      if(!SESS.events.length) SESS.events=["Social"];
+    }catch(e){ SESS.event="Social"; SESS.date=new Date().toISOString().slice(0,10); SESS.type=""; SESS.sets=3; SESS.events=["Social"]; }
+    SESS.divs=null; SESS.typeLocked=false;
+    loadMembers().then(function(){ SESS.picked={}; SESS.pairA=null; renderMake(); sessEventDivs(); });
+  };
+  W.platSessDetail=function(k,v){ SESS[k]=(k==="sets"?parseInt(v,10):v); if(k==="type") renderMake(); if(k==="event") sessEventDivs(); };
+  /* the tournament's divisions decide the type list, exactly as on page one: one division -> chosen for you */
+  function sessEventDivs(){
+    var ev=(SESS.event||"").trim(); SESS.divs=null;
+    if(!ev||ev==="Social"||ev==="Ladder Match"){ if(SESS.typeLocked){ SESS.type=""; SESS.typeLocked=false; } renderMake(); return; }
+    fetch(SBR("plat_squash_tournaments?select=divisions&club_id=eq."+W.PLAT.cid+"&name=eq."+encodeURIComponent(ev)+"&limit=1")).then(function(r){return r.json();}).then(function(rows){
+      var d=rows&&rows[0]&&rows[0].divisions; if(typeof d==="string"){ var s=d.trim(); if(s.charAt(0)==="["){ try{ d=JSON.parse(s); }catch(e){ d=s.split(","); } } else d=s.split(","); }
+      d=Array.isArray(d)?d.map(function(x){return String(x).trim();}).filter(Boolean):[];
+      if(d.length){ SESS.divs=d; if(d.length===1){ SESS.type=d[0]; SESS.typeLocked=true; } else if(d.indexOf(SESS.type)<0){ SESS.type=""; } }
+      renderMake();
+    }).catch(function(){ renderMake(); });
+  }
+  function seg(id,opts,cur,fn){ return '<div class="mk-seg" style="margin:6px 0 12px">'+opts.map(function(o){ return '<button type="button" class="'+(o[0]===cur?'on':'')+'" onclick="'+fn+'(\''+o[0]+'\')">'+o[1]+'</button>'; }).join("")+'</div>'; }
+  function renderMake(){
+    var b=document.getElementById("platSessBody"); if(!b) return;
+    var q=(SESS.q||"").toLowerCase();
+    var picked=Object.keys(SESS.picked).filter(function(k){return SESS.picked[k];});
+    var want=(SESS.type==="Men's")?"M":(SESS.type==="Ladies"?"F":"");
+    var pool=SESS.pool||"all", nReg=Object.keys(SESS.regulars||{}).length;
+    var selS='width:100%;padding:10px 12px;border:1.5px solid #ddd;border-radius:10px;font-size:14px;background:#fff;margin-bottom:8px';
+    var opt=function(vals,cur){ return vals.map(function(v){ return '<option value="'+esc(String(v))+'"'+(String(v)===String(cur)?' selected':'')+'>'+esc(String(v))+'</option>'; }).join(""); };
+    var h='<div class="team-card"><div class="team-label"><span>1</span>The match</div>'
+      +'<div style="font-size:12px;color:#7a6688;margin:0 0 6px">Every court on this card takes these.</div>'
+      +'<label style="font-size:12px;color:#444">Event</label><select style="'+selS+'" onchange="window.platSessDetail(\'event\',this.value)">'+opt(SESS.events||["Social"],SESS.event)+'</select>'
+      +'<label style="font-size:12px;color:#444">Date</label><input type="date" value="'+esc(SESS.date||"")+'" style="'+selS+'" onchange="window.platSessDetail(\'date\',this.value)">'
+      +'<label style="font-size:12px;color:#444">Match type'+(SESS.divs?' <span style="color:#7a6688">\u2014 '+esc(SESS.event)+' runs '+esc(SESS.divs.join(", "))+'</span>':'')+'</label><select style="'+selS+'" onchange="window.platSessDetail(\'type\',this.value)"><option value=""'+(SESS.type?"":" selected")+'>Select type...</option>'+opt(SESS.divs||["Men's","Ladies","Mixed","All Sorts"],SESS.type)+'</select>'
+      +'<label style="font-size:12px;color:#444">Sets played</label><select style="'+selS+';margin-bottom:0" onchange="window.platSessDetail(\'sets\',this.value)">'+opt([1,2,3],SESS.sets)+'</select></div>';
+    h+='<div class="team-card"><div class="team-label"><span>2</span>Courts</div>'+seg("court",[["level","Level"],["mixed","Mixed"],["self","Self selected"]],SESS.court,"window.platSessCourt")
+      +'<div style="font-size:12px;color:#7a6688;margin-top:-6px">Level: like plays like \u2014 for a field with a big spread. Mixed: every court gets a strong, a middling and a weaker player \u2014 for a close field. Self selected: you fill the courts yourself from the names you tick.</div></div>';
+    h+='<div class="team-card"><div class="team-label"><span>3</span>Who is here <span style="margin-left:auto;background:none;color:#D35400;width:auto;height:auto;font-size:12px">'+picked.length+' picked</span></div>'
+      +(want?'<div style="font-size:12px;color:#7a6688;margin:-4px 0 8px">'+(want==="M"?"Men only":"Ladies only")+' \u2014 from the match type above</div>':'')
+      +seg("pool",[["regulars","Regulars"+(nReg?" ("+nReg+")":"")],["all","Everyone"]],pool,"window.platSessPool")
+      +'<div style="font-size:12px;color:#7a6688;margin:-6px 0 8px">Regulars are the people who have played at this group. Everyone is the whole club.</div>'
+      +'<input placeholder="Find a name\u2026" value="'+esc(SESS.q||"")+'" oninput="window.platSessQ(this.value)" style="width:100%;padding:10px 12px;border:1.5px solid #ddd;border-radius:10px;font-size:14px;margin-bottom:8px">'
+      +'<div style="max-height:46vh;overflow-y:auto;-webkit-overflow-scrolling:touch">';
+    SESS.members.filter(function(m){
+      if(want && (m.gender||"").toUpperCase().charAt(0)!==want && !SESS.picked[m.full_name]) return false;
+      if(pool==="regulars" && !SESS.regulars[m.full_name] && !SESS.picked[m.full_name]) return false;
+      return !q||m.full_name.toLowerCase().split(/\s+/).some(function(w){ return w.indexOf(q)===0; }); }).forEach(function(m){
+      var on=!!SESS.picked[m.full_name], r=SESS.ratings[m.full_name];
+      h+='<label style="display:flex;align-items:center;gap:10px;padding:8px 4px;border-bottom:1px solid #f0ecf4;cursor:pointer">'
+        +'<input type="checkbox" '+(on?'checked':'')+' onchange="window.platSessPick(\''+esc(m.full_name).replace(/'/g,"\\'")+'\',this.checked)" style="width:18px;height:18px">'
+        +'<span style="flex:1;font-size:14px;font-weight:600">'+esc(m.full_name)+'</span>'
+        +'<span style="font-size:11px;color:#888">'+(m.gender||"")+'</span>'+ratingPill(r)+'</label>';
+    });
+    h+='</div></div>';
+    h+='<div class="team-card"><div class="team-label"><span>4</span>'+(SESS.court==="self"?"Fill the courts":"Generate")+'</div>'+seg("out",[["matches","Matches"],["pairs","Pairs only"]],SESS.out,"window.platSessOut")
+      +'<div style="font-size:12px;color:#7a6688;margin-top:-6px">Matches: pair v pair on each court. Pairs only: the pairs, and the club decides who plays whom on the day.</div>'
+      +(SESS.court==="self" ? selfSlots(picked) : '')
+      +'<div id="platSessErr" class="error-msg" style="display:none;margin-top:10px"></div>'
+      +'<button class="btn btn-primary" style="margin-top:12px" onclick="window.platSessGenerate()">'+(SESS.court==="self"?"Save the card":"Make the courts")+'</button>'
+      +'<button class="btn btn-secondary" style="margin-top:8px" onclick="window.platSessPlain()">&larr; Back</button></div>';
+    b.innerHTML=h;
+  }
+  /* SELF SELECTED: one row per court (or per pair), each slot a select over the ticked names. A name already
+     placed elsewhere is greyed in the other slots. Slots keep their values across re-renders. */
+  function selfSlots(picked){
+    SESS.self=SESS.self||{};
+    var per=(SESS.out==="pairs")?2:4, n=Math.floor(picked.length/per);
+    if(picked.length<per) return '<div style="font-size:13px;color:#b9770e;margin-top:10px">Tick at least '+per+' players above, then fill the '+(per===4?"courts":"pairs")+' here.</div>';
+    var used={}; Object.keys(SESS.self).forEach(function(k){ if(SESS.self[k]&&picked.indexOf(SESS.self[k])>=0) used[SESS.self[k]]=k; });
+    var sel=function(key){ var cur=(SESS.self[key]&&picked.indexOf(SESS.self[key])>=0)?SESS.self[key]:"";
+      return '<select onchange="window.platSessSlot(\''+key+'\',this.value)" style="flex:1;min-width:0;padding:9px 8px;border:1.5px solid #ddd;border-radius:9px;font-size:13px;background:#fff"><option value="">\u2014</option>'
+        +picked.map(function(nm){ var taken=used[nm]&&used[nm]!==key; return '<option value="'+esc(nm)+'"'+(nm===cur?' selected':'')+(taken?' disabled':'')+'>'+esc(nm)+(taken?' \u2713':'')+'</option>'; }).join("")+'</select>'; };
+    var h='<div style="margin-top:12px">';
+    for(var i=1;i<=n;i++){
+      h+='<div style="margin:8px 0;padding:10px;border:1px solid rgba('+sessRgb()+',.3);border-radius:12px;background:#fff">'
+        +'<div style="font-size:12px;font-weight:800;color:'+sessCol()+';margin-bottom:6px">'+(per===4?"Court ":"Pair ")+i+'</div>'
+        +'<div style="display:flex;gap:6px;align-items:center">'+sel("c"+i+"a")+sel("c"+i+"b")+(per===4?'<span style="color:#999;font-size:12px;padding:0 2px">v</span>'+sel("c"+i+"c")+sel("c"+i+"d"):'')+'</div></div>';
+    }
+    if(picked.length%per) h+='<div style="font-size:12px;color:#7a6688;margin-top:6px">'+(picked.length%per)+' of the ticked players will not fit a '+(per===4?"court":"pair")+' \u2014 untick, or tick more.</div>';
+    return h+'</div>';
+  }
+  W.platSessSlot=function(key,v){ SESS.self=SESS.self||{}; SESS.self[key]=v; renderMake(); };
+  function selfRows(picked){
+    var per=(SESS.out==="pairs")?2:4, n=Math.floor(picked.length/per), rows=[], seen={}, missing=false;
+    for(var i=1;i<=n;i++){
+      var a=SESS.self["c"+i+"a"], b=SESS.self["c"+i+"b"], c=SESS.self["c"+i+"c"], d=SESS.self["c"+i+"d"];
+      var need=per===4?[a,b,c,d]:[a,b];
+      if(need.some(function(x){ return !x||picked.indexOf(x)<0; })){ missing=true; continue; }
+      need.forEach(function(x){ seen[x]=(seen[x]||0)+1; });
+      var r=function(x){ return SESS.ratings[x]||0; };
+      rows.push(per===4 ? {court_no:i,t1p1:a,t1p2:b,t2p1:c,t2p2:d,t1_rating:w6040(r(a),r(b)),t2_rating:w6040(r(c),r(d))}
+                        : {court_no:null,t1p1:a,t1p2:b,t2p1:null,t2p2:null,t1_rating:w6040(r(a),r(b)),t2_rating:null});
+    }
+    var dup=Object.keys(seen).filter(function(k){ return seen[k]>1; });
+    return {rows:rows,missing:missing,dup:dup,expected:n};
+  }
+  W.platSessChooser=chooser;
+  W.platSessCourt=function(v){ SESS.court=v; renderMake(); };
+  W.platSessOut=function(v){ SESS.out=v; renderMake(); };
+  W.platSessPool=function(v){ SESS.pool=v; renderMake(); };
+  W.platSessQ=function(v){ SESS.q=v; var el=document.activeElement; var pos=el?el.selectionStart:null; renderMake(); var inp=document.querySelector("#platSessBody input[placeholder]"); if(inp){ inp.focus(); if(pos!=null) inp.setSelectionRange(pos,pos); } };
+  W.platSessPick=function(n,on){ SESS.picked[n]=on; var c=document.querySelector("#platSessBody .team-label span[style]"); if(c) c.textContent=Object.keys(SESS.picked).filter(function(k){return SESS.picked[k];}).length+" picked"; };
+  W.platSessGenerate=function(){
+    var err=document.getElementById("platSessErr");
+    var names=Object.keys(SESS.picked).filter(function(k){return SESS.picked[k];});
+    var say=function(m){ err.textContent=m; err.style.display="block"; };
+    if(!SESS.type) return say("Choose the match type first \u2014 Men's, Ladies, Mixed or All Sorts.");
+    if(names.length<4) return say("Pick at least four players.");
+    if(names.length%2) return say("Pick an even number \u2014 pairs need partners. You have "+names.length+".");
+    if(names.some(function(n){ return SESS.ratings[n]==null; })) return say("A picked player has no rating yet \u2014 they need a starting rating first.");
+    try{ var tt=SESS.type||""; var wantG=tt==="Men's"?"M":(tt==="Ladies"?"F":"");
+      if(wantG){ var off=names.filter(function(n){ var m=SESS.members.find(function(x){return x.full_name===n;}); return m&&(m.gender||"").toUpperCase().charAt(0)!==wantG; });
+        if(off.length) return say(off.join(", ")+(off.length===1?" is":" are")+" not "+(wantG==="M"?"men":"ladies")+" \u2014 the card says "+tt+"."); } }catch(e){}
+    err.style.display="none";
+    var rows;
+    if(SESS.court==="self"){
+      var sr=selfRows(names);
+      if(sr.dup.length) return say(sr.dup.join(", ")+" appear"+(sr.dup.length===1?"s":"")+" more than once.");
+      if(sr.missing||!sr.rows.length) return say("Fill every slot of every "+(SESS.out==="pairs"?"pair":"court")+" \u2014 "+sr.expected+" to fill.");
+      rows=sr.rows;
+    } else {
+    var courts=makeCourts(names,function(n){ return SESS.ratings[n]; },SESS.court);
+    rows=courts;
+    if(SESS.out==="pairs"){
+      rows=[]; courts.forEach(function(k){
+        rows.push({court_no:null,t1p1:k.t1p1,t1p2:k.t1p2,t2p1:null,t2p2:null,t1_rating:k.t1_rating,t2_rating:null});
+        if(k.t2p1) rows.push({court_no:null,t1p1:k.t2p1,t1p2:k.t2p2,t2p1:null,t2p2:null,t1_rating:k.t2_rating,t2_rating:null});
+      });
+    }
+    }
+    var b=document.getElementById("platSessBody"); b.innerHTML='<div class="loading">Saving the card\u2026</div>';
+    var who=null; try{ who=(document.getElementById("submitterName")||{}).value||null; }catch(e){}
+    scall({action:"make_session",club_id:W.PLAT.cid,court_mode:SESS.court,output_mode:SESS.out,players:names,courts:rows,created_by:who,
+           event:SESS.event,session_date:SESS.date,match_type:SESS.type,sets:SESS.sets}).then(function(r){
+      if(!r||!r.ok){ renderMake(); say((r&&r.error)||"Could not save the card."); return; }
+      W.platSessOpen();
+    });
+  };
+  W.platSessOpen=function(){
+    var b=document.getElementById("platSessBody"); b.innerHTML='<div class="loading">Loading courts\u2026</div>';
+    Promise.all([scall({action:"list_open",club_id:W.PLAT.cid}), (SESS.members.length?Promise.resolve():loadMembers())]).then(function(res){
+      var r=res[0]; SESS.open=(r&&r.sessions)||[]; SESS.pairA=null; renderOpen();
+    });
+  };
+  /* The match TYPE follows from the four people: two men a side is Men's, two ladies a side is Ladies, a man and
+     a lady on each side is Mixed, and anything else is All Sorts — exactly the categories score entry offers. */
+  function genderOf(n){ var m=SESS.members.find(function(x){ return x.full_name===n; }); return (m&&m.gender)||""; }
+  function courtType(k){
+    var g=function(a,b){ return [genderOf(a),genderOf(b)].sort().join(""); };
+    var s1=g(k.t1p1,k.t1p2), s2=g(k.t2p1,k.t2p2);
+    if(s1==="MM"&&s2==="MM") return "Men's";
+    if(s1==="FF"&&s2==="FF") return "Ladies";
+    if(s1==="FM"&&s2==="FM") return "Mixed";
+    return "All Sorts";
+  }
+  function renderOpen(){
+    var b=document.getElementById("platSessBody"); if(!b) return;
+    var open=SESS.open.filter(function(s){ return (s.courts||[]).some(function(k){return k.status==="open";}); });
+    if(!open.length){
+      b.innerHTML='<div class="empty-state"><div class="icon">\ud83c\udfbe</div><p>No courts in play. Make tonight\u2019s courts, or enter a match without a session.</p></div>'
+        +'<button class="btn btn-primary" onclick="window.platSessMake()">Make tonight\u2019s courts</button>'
+        +'<button class="btn btn-secondary" style="margin-top:8px" onclick="window.platSessPlain()">&larr; Back</button>';
+      return;
+    }
+    var h="";
+    open.forEach(function(s){
+      var courts=(s.courts||[]).filter(function(k){return k.status==="open";});
+      var matched=courts.filter(function(k){return k.t2p1;}), loose=courts.filter(function(k){return !k.t2p1;});
+      h+='<div style="display:flex;gap:8px;margin:4px 0 10px"><button type="button" class="btn btn-secondary" style="flex:1;margin:0;padding:10px;font-size:13px" onclick="window.platSessPrint('+s.id+')">\ud83d\udda8 Print the card</button>'
+        +'<button type="button" class="btn btn-secondary" style="flex:1;margin:0;padding:10px;font-size:13px" onclick="window.platSessShare('+s.id+')">\ud83d\udcac Send as text</button></div>';
+      h+='<div style="display:flex;justify-content:space-between;align-items:baseline;margin:4px 0 8px"><div style="font-size:12px;color:#888"><b style="color:'+sessCol()+'">'+esc(s.event||"Social")+'</b> \u00b7 '+esc(s.session_date)+' \u00b7 '+esc(s.match_type||"")+' \u00b7 '+(s.sets||3)+' set'+((s.sets||3)===1?"":"s")+' \u00b7 '+(s.court_mode==="mixed"?"Mixed":(s.court_mode==="self"?"Self-selected":"Level"))+' courts \u00b7 '+((s.players||[]).length)+' players</div>'
+        +'<span style="font-size:11px;color:#c0392b;cursor:pointer;text-decoration:underline" onclick="window.platSessCancelAll('+s.id+')">cancel this card</span></div>';
+      matched.sort(function(a,b){ return (a.court_no||99)-(b.court_no||99); }).forEach(function(k){
+        h+='<div class="team-card" style="cursor:pointer" onclick="window.platSessScore('+k.id+')">'
+          +'<div style="font-size:12px;color:#888">Court '+(k.court_no||"")+' \u00b7 <b style="color:'+sessCol()+'">'+esc(courtType(k))+'</b></div>'
+          +'<div style="font-weight:700;color:#3a2348;margin-top:4px">'+pairLabel(k.t1p1,k.t1p2)+ratingPill(k.t1_rating)+'</div>'
+          +'<div style="font-size:12px;color:#888">v</div>'
+          +'<div style="font-weight:700;color:#3a2348">'+pairLabel(k.t2p1,k.t2p2)+ratingPill(k.t2_rating)+'</div>'
+          +'<div style="display:flex;gap:8px;margin-top:10px;align-items:center"><button type="button" class="btn btn-primary" style="flex:1;margin:0;padding:11px;font-size:14px" onclick="event.stopPropagation();window.platSessScore('+k.id+')">\u271a Enter score</button>'
+          +'<span style="font-size:11px;color:#c0392b;cursor:pointer;text-decoration:underline" onclick="event.stopPropagation();window.platSessCancel('+k.id+')">not played</span></div></div>';
+      });
+      if(loose.length){
+        h+='<div style="font-size:12px;font-weight:700;color:'+sessCol()+';margin:10px 0 6px">'+(matched.length?"Pairs without opponents":"Pairs")+' \u2014 tap two to put them on a court</div>';
+        loose.forEach(function(k){
+          var sel=(SESS.pairA===k.id);
+          h+='<div class="team-card" style="cursor:pointer;'+(sel?'border-color:'+sessCol()+'!important;background:rgba('+sessRgb()+',.22)!important':'')+'" onclick="window.platSessPair('+k.id+')">'
+            +'<div style="display:flex;align-items:center;gap:8px"><span style="flex:1;font-weight:700;color:#3a2348">'+pairLabel(k.t1p1,k.t1p2)+ratingPill(k.t1_rating)+'</span>'
+            +(sel?'<span style="font-size:11px;color:'+sessCol()+';font-weight:700">now tap their opponents</span>':'')
+            +'<span style="font-size:11px;color:#c0392b;cursor:pointer;text-decoration:underline" onclick="event.stopPropagation();window.platSessCancel('+k.id+')">out</span></div></div>';
+        });
+      }
+    });
+    h+='<button class="btn btn-secondary" style="margin-top:8px" onclick="window.platSessPlain()">&larr; Back</button>';
+    b.innerHTML=h;
+  }
+  /* p107: the card leaves the phone — a printable sheet for the noticeboard, or plain text for the club's WhatsApp.
+     Every open court, the pairs with their ratings, and the pairs still to be matched. */
+  function cardLines(s){
+    var courts=(s.courts||[]).filter(function(k){return k.status==="open";});
+    var matched=courts.filter(function(k){return k.t2p1;}).sort(function(a,b){ return (a.court_no||99)-(b.court_no||99); });
+    var loose=courts.filter(function(k){return !k.t2p1;});
+    return {matched:matched, loose:loose,
+      head:(W.PLAT.name||"")+" \u00b7 "+(s.event||"Social")+" \u00b7 "+(s.session_date||"")+" \u00b7 "+(s.match_type||"")+" \u00b7 "+(s.sets||3)+" set"+((s.sets||3)===1?"":"s")+" \u00b7 "+(s.court_mode==="mixed"?"Mixed":(s.court_mode==="self"?"Self-selected":"Level"))+" courts"};
+  }
+  W.platSessShare=function(id){
+    var s=SESS.open.find(function(x){return x.id===id;}); if(!s) return;
+    var c=cardLines(s), t="\ud83c\udfbe "+c.head+"\n\n";
+    c.matched.forEach(function(k){ t+="Court "+(k.court_no||"")+":  "+k.t1p1+" & "+k.t1p2+"  v  "+k.t2p1+" & "+k.t2p2+"\n"; });
+    if(c.loose.length){ t+="\nStill to be matched:\n"; c.loose.forEach(function(k){ t+="  "+k.t1p1+" & "+k.t1p2+"\n"; }); }
+    t+="\nEnter your score in the app: "+location.origin+location.pathname+"?club="+W.PLAT.cid;
+    var done=function(){ alert("Copied \u2014 paste it into the club's WhatsApp."); };
+    if(navigator.share){ navigator.share({title:"Court card",text:t}).catch(function(){}); return; }
+    if(navigator.clipboard&&navigator.clipboard.writeText){ navigator.clipboard.writeText(t).then(done,function(){ prompt("Copy this:",t); }); } else { prompt("Copy this:",t); }
+  };
+  W.platSessPrint=function(id){
+    var s=SESS.open.find(function(x){return x.id===id;}); if(!s) return;
+    var c=cardLines(s), col=sessCol();
+    var w=window.open("","_blank"); if(!w){ alert("Allow pop-ups to print the card."); return; }
+    var rows=c.matched.map(function(k){ return '<tr><td class="n">'+(k.court_no||"")+'</td><td>'+esc(k.t1p1)+' &amp; '+esc(k.t1p2)+'<span class="r">'+(k.t1_rating!=null?Math.round(k.t1_rating):"")+'</span></td><td class="v">v</td><td>'+esc(k.t2p1)+' &amp; '+esc(k.t2p2)+'<span class="r">'+(k.t2_rating!=null?Math.round(k.t2_rating):"")+'</span></td><td class="s">&nbsp;</td></tr>'; }).join("");
+    var loose=c.loose.length ? '<h2>Still to be matched</h2><ul>'+c.loose.map(function(k){ return '<li>'+esc(k.t1p1)+' &amp; '+esc(k.t1p2)+'<span class="r">'+(k.t1_rating!=null?Math.round(k.t1_rating):"")+'</span></li>'; }).join("")+'</ul>' : "";
+    w.document.write('<html><head><title>Court card \u2014 '+esc(W.PLAT.name||"")+'</title><style>'
+      +'body{font-family:-apple-system,Segoe UI,Roboto,Arial,sans-serif;margin:26px;color:#222}h1{font-size:22px;margin:0 0 2px;color:'+col+'}.meta{color:#666;font-size:13px;margin-bottom:18px}'
+      +'table{width:100%;border-collapse:collapse;font-size:15px}th{background:'+col+';color:#fff;padding:9px 10px;text-align:left;font-size:12px;letter-spacing:.4px;text-transform:uppercase}'
+      +'td{padding:12px 10px;border-bottom:1px solid #e5e5e5;vertical-align:middle}td.n{width:34px;font-weight:800;color:'+col+'}td.v{width:24px;color:#999;text-align:center}td.s{width:120px;border-left:1px dashed #ccc}'
+      +'.r{display:inline-block;margin-left:8px;font-size:11px;font-weight:700;color:'+col+';background:rgba('+sessRgb()+',.12);border-radius:99px;padding:1px 7px}'
+      +'h2{font-size:13px;letter-spacing:.4px;text-transform:uppercase;color:'+col+';margin:22px 0 6px}ul{margin:0;padding-left:18px;font-size:15px}li{margin:4px 0}'
+      +'.foot{margin-top:26px;font-size:12px;color:#777}@media print{@page{margin:14mm}}</style></head><body>'
+      +'<h1>'+esc(W.PLAT.name||"")+' \u2014 court card</h1><div class="meta">'+esc(c.head.replace((W.PLAT.name||"")+" \u00b7 ",""))+'</div>'
+      +'<table><thead><tr><th>Court</th><th>Pair 1</th><th></th><th>Pair 2</th><th>Score</th></tr></thead><tbody>'+rows+'</tbody></table>'+loose
+      +'<div class="foot">Enter scores in the app \u2014 the ratings update on the spot. OPR \u00b7 opr-online.com</div></body></html>');
+    w.document.close(); setTimeout(function(){ w.focus(); w.print(); },350);
+  };
+  W.platSessPair=function(id){
+    if(SESS.pairA==null){ SESS.pairA=id; renderOpen(); return; }
+    if(SESS.pairA===id){ SESS.pairA=null; renderOpen(); return; }
+    var a=SESS.pairA; SESS.pairA=null;
+    scall({action:"match_pairs",court_id:a,opp_court_id:id}).then(function(r){ if(!r||!r.ok) alert((r&&r.error)||"Could not match those pairs."); W.platSessOpen(); });
+  };
+  W.platSessCancel=function(id){ if(!confirm("This court was not played \u2014 take it off the card?")) return; scall({action:"cancel_court",court_id:id}).then(function(){ W.platSessOpen(); }); };
+  W.platSessCancelAll=function(id){ if(!confirm("Cancel the whole card? Courts already scored are unaffected.")) return; scall({action:"cancel_session",session_id:id}).then(function(){ W.platSessOpen(); }); };
+  /* A tap on a court opens the parent's own score entry with the four names in place. The parent still asks
+     for event, type and sets — those are the member's to choose. Nothing is filled in until a court is tapped. */
+  W.platSessScore=function(id){
+    var k=null, S=null; SESS.open.forEach(function(s){ (s.courts||[]).forEach(function(c){ if(c.id===id){ k=c; S=s; } }); });
+    if(!k||!k.t2p1) return;
+    W.PLAT.sessionCourt={id:k.id,t1p1:k.t1p1,t1p2:k.t1p2,t2p1:k.t2p1,t2p2:k.t2p2,type:courtType(k)};
+    // p102: a tapped court goes to the SCORE SHEET. The card knows the four names and the type; whatever page one
+    // already said is kept (event, date, sets), and what it did not say gets the everyday answer: Social, today,
+    // the sets chosen on page one or 3. Back from the sheet leads to the names, then to page one, as always.
+    try{
+      var ed=(typeof entryData!=="undefined"&&entryData)?entryData:{};
+      var p1={}; try{ var ev=document.getElementById("matchEvent"), dt=document.getElementById("matchDate"), sp=document.getElementById("setsPlayed");
+        if(ev&&ev.value) p1.event=ev.value; if(dt&&dt.value) p1.date=dt.value; if(sp&&sp.value) p1.sets=parseInt(sp.value,10); }catch(e){}
+      // the CARD's details first; then page one; then the everyday defaults
+      var d={ date:((S&&S.session_date)||ed.date||p1.date||new Date().toISOString().slice(0,10)), type:((S&&S.match_type)||ed.type||courtType(k)),
+              sets:((S&&S.sets)||ed.sets||p1.sets||3), event:((S&&S.event)||ed.event||p1.event||"Social"), format:"doubles",
+              t1p1:k.t1p1, t1p2:k.t1p2, t2p1:k.t2p1, t2p2:k.t2p2 };
+      if(typeof entryData!=="undefined"){ entryData=d; }
+      document.querySelectorAll(".screen").forEach(function(s){ s.classList.remove("active"); s.classList.add("hidden"); });
+      var es=document.getElementById("entryScreen"); es.classList.remove("hidden"); es.classList.add("active"); W.scrollTo(0,0);
+      if(typeof renderStep3==="function") renderStep3();
+      // p110: the Live Umpire, as on the names page — the four names are already in entryData, and the umpire
+      // returns to this sheet with the sets filled in, exactly as it does from a normal entry.
+      try{
+        var ec=document.getElementById("entryContent");
+        if(ec && typeof mkOpenFromEntry==="function" && !document.getElementById("platCourtUmpire")){
+          var ub=document.createElement("button"); ub.type="button"; ub.id="platCourtUmpire"; ub.className="btn"; ub.dataset.platKeep="1";
+          ub.textContent="\u25c9 Live Umpire (score this court live)";
+          ub.style.cssText="width:100%;margin-top:10px;background:linear-gradient(180deg,"+darken(sessCol(),0.15)+","+darken(sessCol(),0.55)+");color:#fff;border:1.5px solid rgba(196,224,0,.35)";
+          ub.onclick=function(){ try{ MK._pendingHc=null; }catch(e){} mkOpenFromEntry(); };
+          ec.appendChild(ub);
+        }
+      }catch(e){}
+    }catch(e){ W.PLAT._keepCourt=true; W.showScreen("entryScreen"); }
+  };
+  function sessionCard(){
+    if(!sessionScope()) return;
+    if(W.PLAT._sessHooked) return; W.PLAT._sessHooked=1;
+    // p99: the big button is the parent's own — no chooser in the way. The card is a pill at the top of the
+    // NAMES page (step 2): by then event, date, type and sets are known, and a member who never uses the
+    // card never sees more than one line.
+    var _rs2=W.renderStep2;
+    if(typeof _rs2==="function") W.renderStep2=function(){ _rs2.apply(this,arguments);
+      try{
+        /* p103: the names page carries nothing extra — the court doors are both on page one */
+      }catch(e){}
+      var k=W.PLAT.sessionCourt; if(!k) return;
+      [["t1p1",k.t1p1],["t1p2",k.t1p2],["t2p1",k.t2p1],["t2p2",k.t2p2]].forEach(function(p){
+        var v=document.getElementById(p[0]+"_val"), l=document.getElementById(p[0]+"_lbl"), bt=document.getElementById(p[0]+"_btn");
+        if(v) v.value=p[1]; if(l) l.textContent=p[1]; if(bt) bt.classList.add("selected"); });
+      try{ if(typeof odrUpdateCombined==="function") odrUpdateCombined(); }catch(e){} };
+    // a fresh entry from the home button starts clean
+    var _rs1=W.renderStep1;
+    if(typeof _rs1==="function") W.renderStep1=function(){
+      if(W.PLAT._keepCourt){ W.PLAT._keepCourt=false; } else { W.PLAT.sessionCourt=null; }
+      var r=_rs1.apply(this,arguments);
+      var after=function(){
+        try{
+          var host=document.getElementById("entryContent");
+          if(host && !document.getElementById("platCardsBtn")){
+            var wrap=document.createElement("div"); wrap.id="platCardsBtn"; wrap.dataset.platKeep="1";
+            wrap.style.cssText="margin-top:16px;padding-top:12px;border-top:1px dashed rgba("+sessRgb()+",.35)";
+            wrap.innerHTML='<div style="font-size:11.5px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;color:#8a7f9c;margin:0 0 8px;text-align:center">Or use a court card</div>';
+            var mk=function(label,fn){ var b=document.createElement("button"); b.type="button"; b.className="btn"; b.textContent=label;
+              b.style.cssText="margin-top:8px;background:rgba("+sessRgb()+",.10);color:"+darken(sessCol(),0.25)+";border:2px solid "+sessCol()+";font-weight:800"; b.onclick=fn; return b; };
+            wrap.appendChild(mk("\ud83c\udfbe Create a court card", function(){ sessScreen(); W.showScreen("platSessScreen"); W.platSessMake(); }));
+            wrap.appendChild(mk("\u271a Enter a court result", function(){ sessScreen(); W.showScreen("platSessScreen"); W.platSessOpen(); }));
+            host.appendChild(wrap);
+          }
+          // a court chosen from page one: its type goes into the select once the form is there
+          var k=W.PLAT.sessionCourt, sel=document.getElementById("matchType");
+          if(k&&sel&&k.type){ sel.value=k.type; }
+        }catch(e){}
+      };
+      Promise.resolve(r).then(after, after); return r; };
+    // after a successful submit, close the court on the card
+    var _ds=W.doSubmit;
+    if(typeof _ds==="function") W.doSubmit=function(btn){ var k=W.PLAT.sessionCourt; var p=_ds.apply(this,arguments);
+      return Promise.resolve(p).then(function(v){
+        try{ if(k && document.querySelector("#entryContent .success-icon")){ W.PLAT.sessionCourt=null; scall({action:"close_court",court_id:k.id}).catch(function(){}); } }catch(e){}
+        return v; }); };
+  }
   W.PLAT.ready.then(function(){
     elsewhereLine();
     // p24: name known — reveal the title and remember it for the next visit's first frame
@@ -10065,6 +10501,7 @@ async function clRemove(id, label){
     try{ adminPill(); profileCardTint(); boardProfileTint(); groupAvatars(); openNamedPlayer(); }catch(e){}
     try{ baseClubGroup(); }catch(e){}
     try{ entryTint(); }catch(e){}
+    try{ sessionCard(); }catch(e){}
     // s41: the Recent Matches banner is the product's green on every board, whatever the group's colour
     try{
       var rb=document.querySelector("#homeScreen .home-recent-col > div:first-child");
