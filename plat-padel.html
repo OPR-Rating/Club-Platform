@@ -735,7 +735,8 @@
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script>
 /* ============================================================================
-   PLAT EARLY SNIPPET — plat-padel.html  VERSION: PLAT-PADEL v2026.09.14-p110  (a court opened from the card offers the Live Umpire on its score sheet; the umpire returns to the sheet with the sets filled, as from a normal entry)
+   PLAT EARLY SNIPPET — plat-padel.html  VERSION: PLAT-PADEL v2026.09.14-p111  (the door's recent matches read like the board's: centred, date · type · S/T badge, tap a match to open its set scores and games)
+   VERSION: PLAT-PADEL v2026.09.14-p110  (a court opened from the card offers the Live Umpire on its score sheet; the umpire returns to the sheet with the sets filled, as from a normal entry)
    VERSION: PLAT-PADEL v2026.09.14-p109  (a third court mode, Self selected: the organiser fills each court or pair from the ticked names; save, share, print and scoring are unchanged; needs plat_session v3)
    VERSION: PLAT-PADEL v2026.09.14-p108  (the card's match type starts on \u201cSelect type...\u201d, as match entry does, and the card cannot be made without one)
    VERSION: PLAT-PADEL v2026.09.14-p107  (a saved card can leave the phone: Print the card — a sheet with a score column for the noticeboard — and Send as text for the club's WhatsApp, with the link to enter scores)
@@ -3271,7 +3272,7 @@ const CLUB_NAME = _club.name;  // shown in the logo as "OPR · <name>"
     link.setAttribute('href', href);
   }catch(e){ /* install stays on the static manifest — no functional impact */ }
 })();
-const OPR_VERSION = "OPR-DOUBLES v2026.09.03-56 · PLAT replica p110";  // MANUAL PAIR CREATION REMOVED FROM ADMIN: Create a pair, Bulk create pairs and Re-derive all pairs are gone (they only made match-less ghost pairs, and Re-derive rewrote every stored initial club-wide). Pairs are born automatically at match entry. Current pairs list untouched; the underlying JS is left in place unreferenced, so no other code path changes. Includes v47 (set-score fix + double-tap guard) and all prior.
+const OPR_VERSION = "OPR-DOUBLES v2026.09.03-56 · PLAT replica p111";  // MANUAL PAIR CREATION REMOVED FROM ADMIN: Create a pair, Bulk create pairs and Re-derive all pairs are gone (they only made match-less ghost pairs, and Re-derive rewrote every stored initial club-wide). Pairs are born automatically at match entry. Current pairs list untouched; the underlying JS is left in place unreferenced, so no other code path changes. Includes v47 (set-score fix + double-tap guard) and all prior.
 // Explanation shown above the individual ladder. Open on load so it's read; collapsible
 // (state kept for the session) and scrolls away. Mechanics only — no outcome framing, so
 // members aren't nudged away from playing stronger opponents. Every clause maps to a real
@@ -9042,19 +9043,26 @@ async function clRemove(id, label){
   /* What has just been played, across the whole club — the door's own short list. */
   function doorRecent(){
     var box=document.getElementById("platDoorRecent"); if(!box||!W.PLAT.pool) return;
-    fetch(SBR("plat_matches?pool_id=eq."+W.PLAT.pool+"&discipline=eq.padel&select=club_id,match_date,match_type,t1p1,t2p1,t1_sets,t2_sets,display_t1,display_t2&order=match_date.desc,id.desc&limit=6"))
+    // p111: the door's recent matches read like the board's — centred, with a tap to open the set scores
+    fetch(SBR("plat_matches?pool_id=eq."+W.PLAT.pool+"&discipline=eq.padel&select=id,club_id,match_date,match_type,event,t1p1,t2p1,t1_sets,t2_sets,t1_games,t2_games,set_scores,display_t1,display_t2&order=match_date.desc,id.desc&limit=6"))
       .then(function(r){return r.json();}).then(function(ms){
         if(!Array.isArray(ms)||!ms.length) return;
-        box.innerHTML='<div style="margin:14px 2px 8px;font-size:11.5px;letter-spacing:.1em;text-transform:uppercase;color:#8a7f9c;font-weight:700">Recent matches</div>'
+        box.innerHTML='<div style="margin:14px 2px 8px;font-size:11.5px;letter-spacing:.1em;text-transform:uppercase;color:#8a7f9c;font-weight:700;text-align:center">Recent matches</div>'
           +ms.map(function(m){
             var c=(W.PLAT.clubs||[]).find(function(x){return x.id===m.club_id;})||{name:"",id:0};
             var col=clubPal(c.id)[0];
             var side=function(a){ return esc(a||""); };
-            return '<div style="background:#fff;border:1px solid rgba(108,52,131,.14);border-left:4px solid '+col+';border-radius:12px;padding:10px 12px;margin-bottom:7px">'
-              +'<div style="font-size:13px;font-weight:600;color:#3a2348;line-height:1.35">'+(m.display_t1?esc(m.display_t1):side(m.t1p1))+' <span style="color:#9b80b3">v</span> '+(m.display_t2?esc(m.display_t2):side(m.t2p1))+'</div>'
-              +'<div style="font-size:11px;color:#7a6688;margin-top:3px">'
-              +'<span style="display:inline-block;background:'+col+';color:#fff;border-radius:99px;padding:1px 8px;font-size:10px;font-weight:700;margin-right:6px">'+esc(c.name)+'</span>'
-              +esc(m.match_type||"")+' · '+esc(m.match_date||"")+' · <b style="color:#5b3a6e">'+(m.t1_sets||0)+'–'+(m.t2_sets||0)+'</b></div></div>';
+            var sets=String(m.set_scores||"").trim().split(/[\s,]+/).filter(Boolean);
+            var tourn=(m.event&&m.event!=="Social"&&m.event!=="Ladder Match");
+            var detail='<div class="plat-door-detail" style="display:none;border-top:1px solid #eee;margin-top:8px;padding-top:8px;text-align:center">'
+              +(sets.length? sets.map(function(s){ return '<span style="display:inline-block;background:'+col+';color:#fff;border-radius:6px;padding:3px 9px;font-size:12px;font-weight:800;margin:0 3px">'+esc(s.replace("-","/"))+'</span>'; }).join("") : '<span style="font-size:12px;color:#999">set scores not recorded</span>')
+              +'<div style="font-size:11px;color:#7a6688;margin-top:6px">Sets: '+(m.t1_sets||0)+'-'+(m.t2_sets||0)+(m.t1_games!=null&&m.t2_games!=null?' \u00b7 Games: '+m.t1_games+'-'+m.t2_games:'')+(tourn?' \u00b7 '+esc(m.event):'')+'</div></div>';
+            return '<div onclick="var d=this.querySelector(\'.plat-door-detail\');var a=this.querySelector(\'.plat-door-arrow\');var o=d.style.display!==\'none\';d.style.display=o?\'none\':\'block\';a.textContent=o?\'\u25bc\':\'\u25b2\';" style="background:#fff;border:1px solid rgba(108,52,131,.14);border-left:4px solid '+col+';border-radius:12px;padding:10px 12px;margin-bottom:7px;text-align:center;cursor:pointer">'
+              +'<div style="font-size:11px;color:#7a6688;margin-bottom:3px">'+esc(m.match_date||"")+' \u00a0<b style="color:'+col+'">'+esc(m.match_type||"")+'</b> \u00a0'
+              +'<span style="display:inline-block;background:'+(tourn?'#6c3483':'#e0e0e0')+';color:'+(tourn?'#fff':'#333')+';border-radius:4px;padding:0 6px;font-size:10px;font-weight:800">'+(tourn?'T':'S')+'</span> \u00a0<span class="plat-door-arrow" style="color:'+col+';font-size:11px">\u25bc</span></div>'
+              +'<div style="font-size:13.5px;font-weight:700;color:#3a2348;line-height:1.35">'+(m.display_t1?esc(m.display_t1):side(m.t1p1))+' <span style="color:#9b80b3;font-weight:500">'+(m.t1_sets||0)+'-'+(m.t2_sets||0)+'</span> '+(m.display_t2?esc(m.display_t2):side(m.t2p1))+'</div>'
+              +'<div style="margin-top:5px"><span style="display:inline-block;background:'+col+';color:#fff;border-radius:99px;padding:1px 9px;font-size:10px;font-weight:700">'+esc(c.name)+'</span></div>'
+              +detail+'</div>';
           }).join("");
       }).catch(function(){});
   }
@@ -9707,7 +9715,7 @@ async function clRemove(id, label){
     }catch(e){}
   }
   // the build tag is a debugging aid, not something a member should see: it appears only with ?build=1
-  try{ if(/[?&]build=1/.test(location.search)) buildTag("PLAT p110"); }catch(e){}
+  try{ if(/[?&]build=1/.test(location.search)) buildTag("PLAT p111"); }catch(e){}
   /* A plaque on the club's honour board opens that sport's ledger AT the person: ?player=<name> calls the
      parent's own loadProfile, so nothing in the parent changes. If the name is not recognised the ledger
      simply opens as it always did. */
