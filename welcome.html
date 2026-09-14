@@ -6,8 +6,8 @@
 <title>Welcome to OPR</title>
 <!-- ============================================================
      WELCOME PACK — Club Platform (padel).  One file for every club.
-     Open as  welcome.html?pool=N  — the page reads the register: its name, its club, its groups and
-     their colours. A new club needs NO new file; give members welcome.html?pool=<their pool>.
+     Open as  welcome.html?pool=N  (a club with a base club: the club, its groups) or
+     welcome.html?club=N  (one club or group: its own pack, its register explained). A new club needs NO new file.
      Companion page: ratings-explained.html (same folder). Icons: icon-192.png / icon-512.png.
      ============================================================ -->
 <meta property="og:type" content="website">
@@ -204,6 +204,39 @@
     var mf={id:url,name:"OPR · "+n,short_name:(n.length>12?n.slice(0,12):n),start_url:url,scope:"./",display:"standalone",background_color:"#5B2BD6",theme_color:"#5B2BD6",
       icons:[{src:"./icon-192.png",sizes:"192x192",type:"image/png"},{src:"./icon-512.png",sizes:"512x512",type:"image/png"}]};
     var l=document.createElement("link"); l.rel="manifest"; l.href="data:application/manifest+json,"+encodeURIComponent(JSON.stringify(mf)); document.head.appendChild(l); }catch(e){} }
+  var clubQ=parseInt(q.get("club")||"0",10)||0;
+  if(clubQ){
+    // CLUB MODE — welcome.html?club=N — for a group or a club in a flat register (Kloof–Sun Fun): the pack is
+    // that club's own. The register it belongs to is explained as "the register", not as "the club".
+    var appC=base+"plat-padel.html?club="+clubQ;
+    document.getElementById("lnkApp").href=appC; document.getElementById("lnkLaptop").href=appC;
+    get("plat_clubs?id=eq."+clubQ+"&select=id,pool_id,name,colour,is_general").then(function(rows){
+      var c=(rows&&rows[0])||null; if(!c){ setName("your club"); return; }
+      setName(c.name); manifest(c.name,appC);
+      if(c.colour) document.getElementById("tagClub").style.background=c.colour;
+      return Promise.all([ get("plat_pools?id=eq."+c.pool_id+"&select=name"), get("plat_clubs?pool_id=eq."+c.pool_id+"&select=id,name,colour,is_general&order=id") ]).then(function(res){
+        var pname=(res[0]&&res[0][0]&&res[0][0].name)||"the register", all=Array.isArray(res[1])?res[1]:[];
+        var baseClub=all.find(function(x){return x.is_general;});
+        var others=all.filter(function(x){ return x.id!==c.id && !x.is_general; }).sort(function(a,b){return String(a.name).localeCompare(String(b.name));});
+        // first tier: THIS club
+        var tiers=document.querelectorAll?null:document.querySelectorAll(".tier");
+        var t1=tiers[0]; t1.querySelector(".tag").textContent="Your club"; t1.querySelector(".m").innerHTML='<b>'+esc(c.name)+'</b>Your board: your pairs, ladder, tournaments and court cards. Everything you enter here counts for your one rating.';
+        // second tier: the register it sits in
+        var t2=tiers[1]; t2.querySelector(".tag").textContent="The register"; t2.querySelector(".tag").style.background="linear-gradient(135deg,#455a64,#263238)";
+        t2.querySelector(".m").innerHTML='<b>'+esc(pname)+'</b>'+(baseClub
+          ? 'The club your group belongs to. Its other groups:'
+          : (others.length? 'One register shared by '+(others.length+1)+' clubs, so a player who plays at more than one carries one rating everywhere. The other club'+(others.length===1?'':'s')+':' : 'Your club has its own register.'))
+          +'<div class="pills" id="groupPills"></div>';
+        var pills=document.getElementById("groupPills");
+        var list=(baseClub?[baseClub]:[]).concat(others);
+        pills.innerHTML=list.map(function(g){ return '<a class="pill" href="'+base+'plat-padel.html?club='+g.id+'" style="background:'+esc(g.colour||"#455a64")+'">'+esc(g.name)+'</a>'; }).join("");
+        // third tier: the ledger, and the door link if there is one
+        var t3=tiers[2]; t3.querySelector(".m").innerHTML='<b>Everyone, one rating each</b>Every player across '+esc(pname)+' in one list, with ladders and stats across every board. <a href="'+base+'plat-padel.html?pool='+c.pool_id+'" style="color:#5B2BD6;font-weight:700;text-decoration:none">Open the register \u203a</a>';
+        var one=document.querySelector(".oneline"); if(one) one.textContent="Clubs and groups rank you. They never change your rating \u2014 that belongs to you, and it moves only when you play. The colour tells you where you are.";
+      });
+    }).catch(function(){ setName("your club"); });
+    return;
+  }
   if(!pool){ setName("your club"); document.getElementById("lnkApp").href=base+"plat-padel.html"; document.getElementById("lnkLaptop").href=base+"plat-padel.html"; return; }
   var app=base+"plat-padel.html?pool="+pool;
   document.getElementById("lnkApp").href=app; document.getElementById("lnkLaptop").href=app;
