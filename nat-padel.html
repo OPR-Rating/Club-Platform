@@ -3335,7 +3335,7 @@ const CLUB_NAME = _club.name;  // shown in the logo as "OPR · <name>"
     link.setAttribute('href', href);
   }catch(e){ /* install stays on the static manifest — no functional impact */ }
 })();
-const OPR_VERSION = "OPR-DOUBLES v2026.09.03-56 · NAT fork n5 (of PLAT p117)";  // MANUAL PAIR CREATION REMOVED FROM ADMIN: Create a pair, Bulk create pairs and Re-derive all pairs are gone (they only made match-less ghost pairs, and Re-derive rewrote every stored initial club-wide). Pairs are born automatically at match entry. Current pairs list untouched; the underlying JS is left in place unreferenced, so no other code path changes. Includes v47 (set-score fix + double-tap guard) and all prior.
+const OPR_VERSION = "OPR-DOUBLES v2026.09.03-56 · NAT fork n6 (of PLAT p117)";  // MANUAL PAIR CREATION REMOVED FROM ADMIN: Create a pair, Bulk create pairs and Re-derive all pairs are gone (they only made match-less ghost pairs, and Re-derive rewrote every stored initial club-wide). Pairs are born automatically at match entry. Current pairs list untouched; the underlying JS is left in place unreferenced, so no other code path changes. Includes v47 (set-score fix + double-tap guard) and all prior.
 // Explanation shown above the individual ladder. Open on load so it's read; collapsible
 // (state kept for the session) and scrolls away. Mechanics only — no outcome framing, so
 // members aren't nudged away from playing stronger opponents. Every clause maps to a real
@@ -9521,7 +9521,11 @@ async function clRemove(id, label){
   function recentColours(){
     var list=document.getElementById("homeRecentList"); if(!list) return;
     var order=null;
-    var fetchOrder=function(){ return fetch("https://djmbnvikrdgnomjhtkgf.supabase.co/rest/v1/plat_matches?pool_id=eq."+W.PLAT.pool+"&discipline=eq.padel&select=id,club_id&order=match_date.desc,id.desc&limit=15").then(function(r){return r.json();}).then(function(rows){ order=Array.isArray(rows)?rows:[]; }); };
+    // n6: THE PILLS MUST COME FROM THE SAME LIST AS THE ROWS. This helper fetched its own pool-wide order and
+    // painted it onto the parent's list by position — so on a club ledger (whose rows are club-scoped) the
+    // labels came from the combined list and Monday's matches wore Sun Fun's pill. Scope it the same way.
+    var _where=(W.PLAT.natIds&&W.PLAT.natIds.length)?("club_id=in.("+W.PLAT.natIds.join(",")+")"):("pool_id=eq."+W.PLAT.pool);
+    var fetchOrder=function(){ return fetch("https://djmbnvikrdgnomjhtkgf.supabase.co/rest/v1/plat_matches?"+_where+"&discipline=eq.padel&select=id,club_id&order=match_date.desc,id.desc&limit=15").then(function(r){return r.json();}).then(function(rows){ order=Array.isArray(rows)?rows:[]; }); };
     var paint=function(){ if(!order) return; list.querySelectorAll(".recent-item").forEach(function(el,i){ var m=order[i]; if(!m||el.querySelector(".platCp")) return; var c=(W.PLAT.clubs||[]).find(function(x){return x.id===m.club_id;}); if(!c) return; var p=clubPal(c.id); el.style.borderLeft="4px solid "+p[0]; el.style.borderRight="4px solid "+p[0]; var hd=el.querySelector(".match-header"); if(hd){ var s=document.createElement("span"); s.className="platCp"; s.dataset.platKeep="1"; s.innerHTML=clubPill(c,true); hd.insertBefore(s,hd.firstChild); } }); };
     fetchOrder().then(function(){ paint(); new MutationObserver(paint).observe(list,{childList:true}); });
   }
@@ -9915,7 +9919,7 @@ async function clRemove(id, label){
     if(W.PLAT.cid!==0 || W.PLAT.landing || !natMode() || document.getElementById("platNatToggle")) return;
     var host=document.querySelector("#homeScreen .home-content"); if(!host) return;
     var box=document.createElement("div"); box.id="platNatToggle"; box.dataset.platKeep="1";
-    box.style.cssText="text-align:center;margin:22px auto 14px;max-width:1000px";   /* n5: clear of the header */
+    box.style.cssText="text-align:center;margin:34px auto 18px;max-width:1000px;padding-top:4px";   /* n6: clear of the header */
     try{ if(W.PLAT.nat){ sessionStorage.setItem("nat_last_club_"+W.PLAT.pool, String(W.PLAT.nat)+"|"+(W.PLAT.natName||"")); } }catch(e){}
     var isNat=!W.PLAT.nat;
     var btn=function(label,active,href){ return '<button onclick="location.href=\''+href+'\'" style="display:inline-block;margin:0 4px;background:'+(active?"#1a1a1a":"transparent")+';color:'+(active?"#fff":"#1a1a1a")+';border:1.5px solid #1a1a1a;border-radius:99px;padding:8px 18px;font-size:13px;font-weight:800;cursor:pointer">'+esc(label)+'</button>'; };
