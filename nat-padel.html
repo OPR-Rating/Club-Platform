@@ -873,7 +873,13 @@
 st0.textContent += "html{overflow-y:scroll}";   // p98: the scrollbar's space is reserved from the first frame, so the centred page never shifts sideways when content arrives
     st0.textContent += ".hero-logo-panel{padding-bottom:56px!important}";   // room for the chip, so nothing moves when it appears
     if(LANDING) st0.textContent += "#homeScreen .hero-logo-panel{padding:22px 16px 22px!important}#homeScreen .home-content{margin-top:0!important}";   // p96: the door has no chip; a shorter banner lifts the club card
-    if(W.PLAT.clubDoor) st0.textContent += "#homeScreen .home-content{margin-top:0!important}";   // NAT: a club door lays out like the register door
+    // n11: a door is a list of choices, not a poster — the banner gives back the dead space above it and the
+    // cards start higher up the phone. (A board keeps the parent's full hero: that is its identity.)
+    if(W.PLAT.clubDoor) st0.textContent += "#homeScreen .home-content{margin-top:0!important;padding-top:10px!important}"
+      + "#homeScreen .hero-logo-panel{padding:14px 16px 16px!important}"
+      + "#homeScreen .hero-logo-panel img,#homeScreen .hero-logo-panel .balls img{max-height:46px!important}"
+      + "#homeScreen h2#heroTitle{font-size:25px!important;margin:6px 0 2px!important}"
+      + "#homeScreen .hero-logo-panel .sub,#homeScreen .sub{font-size:12px!important;margin-top:0!important}";
     (document.head||document.documentElement).appendChild(st0);
   }catch(e){}
   try{ if(CID && !sessionStorage.getItem("plat_padel_name_"+CID)){ var stH=document.createElement("style"); stH.id="platHideTitle"; stH.textContent="#heroTitle{visibility:hidden}"; (document.head||document.documentElement).appendChild(stH); } }catch(e){}   // p96
@@ -3382,7 +3388,7 @@ const CLUB_NAME = _club.name;  // shown in the logo as "OPR · <name>"
     link.setAttribute('href', href);
   }catch(e){ /* install stays on the static manifest — no functional impact */ }
 })();
-const OPR_VERSION = "OPR-DOUBLES v2026.09.03-56 · NAT fork n10 (of PLAT p117)";  // MANUAL PAIR CREATION REMOVED FROM ADMIN: Create a pair, Bulk create pairs and Re-derive all pairs are gone (they only made match-less ghost pairs, and Re-derive rewrote every stored initial club-wide). Pairs are born automatically at match entry. Current pairs list untouched; the underlying JS is left in place unreferenced, so no other code path changes. Includes v47 (set-score fix + double-tap guard) and all prior.
+const OPR_VERSION = "OPR-DOUBLES v2026.09.03-56 · NAT fork n11 (of PLAT p117)";  // MANUAL PAIR CREATION REMOVED FROM ADMIN: Create a pair, Bulk create pairs and Re-derive all pairs are gone (they only made match-less ghost pairs, and Re-derive rewrote every stored initial club-wide). Pairs are born automatically at match entry. Current pairs list untouched; the underlying JS is left in place unreferenced, so no other code path changes. Includes v47 (set-score fix + double-tap guard) and all prior.
 // Explanation shown above the individual ladder. Open on load so it's read; collapsible
 // (state kept for the session) and scrolls away. Mechanics only — no outcome framing, so
 // members aren't nudged away from playing stronger opponents. Every clause maps to a real
@@ -9554,15 +9560,16 @@ async function clRemove(id, label){
   function adminPanel(){
     var h='<div style="margin:10px 0 14px;padding:12px;border:1px dashed #cbbfd8;border-radius:12px;background:#faf7fc">';
     if(!REG.role){
-      h+='<div style="font-weight:800;color:#6c3483;margin-bottom:6px">General Admin</div>'
-        +'<div style="font-size:12px;color:#666;margin-bottom:8px">The register PIN (or master) opens the admin over every club: add or remove a club, set its colour, register a player, correct a seed, recompute.</div>'
+      h+='<div style="font-weight:800;color:#6c3483;margin-bottom:6px">'+(W.PLAT.nat?"Club Admin":"General Admin")+'</div>' 
+        +'<div style="font-size:12px;color:#666;margin-bottom:8px">'+(W.PLAT.nat?"The club\'s own code opens the club\'s register: onboard members, correct a seed, make a group inside the club.":"The register code (or master) opens the admin over every club: add or remove a club, set its colour, register a player, correct a seed, recompute.")+'</div>' 
         +'<div style="display:flex;gap:8px"><input id="platRegPin" type="password" inputmode="numeric" placeholder="Register PIN" style="flex:1;padding:10px 12px;border:1.5px solid #ddd;border-radius:10px;font-size:14px"><button class="menu-btn" style="min-height:40px" onclick="window.platRegUnlock()">Open</button></div><div id="platRegMsg" style="font-size:12px;color:#c00;margin-top:6px"></div>';
       return h+'</div>';
     }
-    h+='<div style="display:flex;justify-content:space-between;align-items:center"><div style="font-weight:800;color:#6c3483">General Admin · '+(REG.role==="master"?"master":"register")+'</div><button class="menu-btn" style="min-height:32px;padding:4px 10px;font-size:12px" onclick="window.platRegLock()">Close</button></div>';
+    h+='<div style="display:flex;justify-content:space-between;align-items:center"><div style="font-weight:800;color:#6c3483">'+((REG.role==="club")?("Club Admin · "+esc(REG.clubName||"club")):("General Admin · "+(REG.role==="master"?"master":"register")))+'</div><button class="menu-btn" style="min-height:32px;padding:4px 10px;font-size:12px" onclick="window.platRegLock()">Close</button></div>';
     // clubs: colour + remove
     h+='<div style="margin-top:10px;font-weight:700;font-size:13px;color:#444">Clubs</div>';
-    (REG.clubs||[]).forEach(function(c){
+    /* n11: a club's room lists ITS OWN boards; the register's room lists them all. */
+    (REG.clubs||[]).filter(function(c){ return (REG.role!=="club") || Number(c.id)===Number(REG.clubId) || Number(c.parent_id)===Number(REG.clubId); }).forEach(function(c){
       var p=clubPal(c.id);
       h+='<div style="display:flex;align-items:center;gap:8px;padding:7px 0;border-bottom:1px solid #eee">'
         +'<span style="width:16px;height:16px;border-radius:50%;background:'+p[0]+';flex:0 0 16px"></span>'
@@ -9574,7 +9581,7 @@ async function clRemove(id, label){
     h+='<div id="platSwatch"></div>';
     // members first, groups second: a register can be filled before any group exists
     h+='<div style="margin-top:14px;font-weight:700;font-size:13px;color:#444">Add a member</div>'
-      +'<div style="font-size:12px;color:#666;margin:4px 0 6px">Registered to <b>'+esc(W.PLAT.poolName||"this register")+'</b> with one starting rating. They appear in a group the first time they play there — no group needed now.</div>'
+      +'<div style="font-size:12px;color:#666;margin:4px 0 6px">Registered to <b>'+esc((REG.role==="club")?(REG.clubName||"this club"):(W.PLAT.poolName||"this register"))+'</b> with one starting rating. They appear in a group the first time they play there — no group needed now.</div>'
       +'<div style="display:flex;gap:8px;flex-wrap:wrap"><input id="platPName" placeholder="Full name" style="flex:2;min-width:150px;padding:10px 12px;border:1.5px solid #ddd;border-radius:10px">'
       +'<select id="platPSex" style="flex:0 0 80px;padding:10px;border:1.5px solid #ddd;border-radius:10px"><option value="M">M</option><option value="F">F</option></select>'
       +'<input id="platPSeed" type="number" placeholder="Rating (blank = 1500 / 1300)" style="flex:1;min-width:120px;padding:10px 12px;border:1.5px solid #ddd;border-radius:10px"></div>'
@@ -9586,10 +9593,15 @@ async function clRemove(id, label){
     // new club
     // n4: ONBOARDING. A CLUB is a top-level door in this register (own name, colour, code, ledger and groups);
     // a GROUP belongs to a club. Both are made here; a club also makes its own groups from its own door.
-    h+='<div style="margin-top:14px;font-weight:700;font-size:13px;color:#444">New club or group</div>'
-      +'<select id="platNewParent" style="width:100%;padding:10px 12px;border:1.5px solid #ddd;border-radius:10px;margin:6px 0 8px"><option value="0">A new CLUB in this register</option>'
-      +(REG.clubs||[]).filter(function(c){ return !c.parent_id; }).map(function(c){ return '<option value="'+c.id+'">A group inside '+esc(c.name)+'</option>'; }).join("")+'</select>' 
-      +'<div style="font-size:12px;color:#666;margin:4px 0 6px">A <b>club</b> gets its own door, colour, code, ledger and groups, and shares this register\'s one player base. A <b>group</b> belongs to a club and runs its own ladder and tournaments.</div>' 
+    h+='<div style="margin-top:14px;font-weight:700;font-size:13px;color:#444">'+((REG.role==="club")?"New group":"New club or group")+'</div>' 
+      /* n11: a CLUB is created only by the register (6001) — the organisation keeps the record of who is in it.
+         A club's own code (6003) gets one choice: a group inside its own club. nat_admin refuses it server-side
+         too, so this is the polite version of a rule that holds either way. */
+      +((REG.role==="club")
+        ? '<select id="platNewParent" style="width:100%;padding:10px 12px;border:1.5px solid #ddd;border-radius:10px;margin:6px 0 8px"><option value="'+(REG.clubId||0)+'">A group inside '+esc(REG.clubName||"this club")+'</option></select>'
+        : '<select id="platNewParent" style="width:100%;padding:10px 12px;border:1.5px solid #ddd;border-radius:10px;margin:6px 0 8px"><option value="0">A new CLUB in this register</option>'
+          +(REG.clubs||[]).filter(function(c){ return !c.parent_id; }).map(function(c){ return '<option value="'+c.id+'">A group inside '+esc(c.name)+'</option>'; }).join("")+'</select>') 
+      +'<div style="font-size:12px;color:#666;margin:4px 0 6px">'+((REG.role==="club")?"A group runs its own board, ladder and tournaments, and shares the club\'s players and their one rating.":"A <b>club</b> gets its own door, colour, code, ledger and groups, and shares this register\'s one player base. A <b>group</b> belongs to a club and runs its own ladder and tournaments.")+'</div>' 
       +'<div style="display:flex;gap:8px;flex-wrap:wrap"><input id="platNewName" placeholder="Group name" style="flex:2;min-width:150px;padding:10px 12px;border:1.5px solid #ddd;border-radius:10px"><input id="platNewPin" inputmode="numeric" placeholder="Its code" style="flex:1;min-width:100px;padding:10px 12px;border:1.5px solid #ddd;border-radius:10px"></div>'
       +'<div style="margin-top:8px;font-size:12px;color:#666">Colour</div><div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:4px">'
       +SWATCH.map(function(s,i){ return '<button onclick="window.platPickNew(\''+s+'\')" id="platNewSw'+i+'" style="width:26px;height:26px;border-radius:50%;background:'+s+';border:2px solid '+(i===0?'#333':'transparent')+';cursor:pointer"></button>'; }).join('')
@@ -9744,7 +9756,14 @@ async function clRemove(id, label){
   W.platRegQ=function(v){ REG.q=v; var el=document.getElementById("platRegQ"); var pos=el?el.selectionStart:null; regRender(); var e2=document.getElementById("platRegQ"); if(e2){ e2.focus(); if(pos!=null) e2.setSelectionRange(pos,pos); } };
   W.platRegSort=function(){ REG.sort=(REG.sort==="rating")?"name":"rating"; regRender(); };
   W.platRegUnlock=function(){ var p=(document.getElementById("platRegPin")||{}).value||""; var m=document.getElementById("platRegMsg");
-    acall({action:"check_pin",admin_pin:p,pool_id:W.PLAT.pool}).then(function(r){ if(r&&r.ok&&(r.role==="master"||r.role==="pool")){ REG.pin=p; REG.role=r.role; regRender(); } else { m.textContent=(r&&r.role==="club")?"That is a club PIN — the register needs the register PIN or master.":"PIN not recognised."; } }); };
+    acall({action:"check_pin",admin_pin:p,pool_id:W.PLAT.pool}).then(function(r){
+      /* n11: ORGANISATION > CLUB > GROUP. The register code opens everything; a CLUB's own code opens the
+         club's register — but only from ITS OWN ledger: a code is valid in the register, so without this a
+         club admin standing on another club's ledger would manage that club. And reload the list with the
+         code in hand, or the room would still show what the unlocked page had fetched for everyone. */
+      var okRole = r && r.ok && (r.role==="master" || r.role==="pool" || (r.role==="club" && r.club_admin));
+      if (okRole && r.role==="club" && W.PLAT.nat && Number(r.club_id)!==Number(W.PLAT.nat)) okRole=false;
+      if (okRole){ REG.pin=p; REG.role=r.role; REG.clubId=r.club_id||0; REG.clubName=r.club_name||""; regRender(); regLoad(); } else { m.textContent=(r&&r.role==="club")?"That is a club PIN — the register needs the register PIN or master.":"PIN not recognised."; } }); };
   W.platRegLock=function(){ REG.pin=""; REG.role=""; regRender(); };
   W.platAddPoolMember=function(){
     var m=document.getElementById("platRegMsg");
@@ -10726,7 +10745,12 @@ async function clRemove(id, label){
     // NAT: a club with groups opens on its DOOR (its board is ?club=C&board=1)
     if(W.PLAT.clubDoor){ var t3="OPR · "+(W.PLAT.name||"Club"); if(ht) ht.textContent=t3; document.title=t3;
       var sb3=document.querySelector("#homeScreen .hero-logo-panel .sub, #homeScreen .sub"); if(sb3 && W.PLAT.poolName) sb3.textContent=W.PLAT.poolName+" · Open Padel Ratings System";
-      clubDoor(); return; }
+      clubDoor();
+      /* n11: the door's About has an Admin link that only reaches the club board's own admin — which you get
+         to by tapping General play anyway. Two doors to one room confuse; the door keeps About alone. */
+      try{ var ab=document.getElementById("aboutScreen");
+           if(ab) Array.prototype.forEach.call(ab.querySelectorAll("button"),function(b){ if(/admin/i.test(b.textContent||"")) b.style.display="none"; }); }catch(e){}
+      return; }
     if(W.PLAT.cid===0){ var t2="OPR · "+(W.PLAT.nat?(W.PLAT.natName||"Club"):(W.PLAT.poolName||"Overall"))+" · Ledger"; if(ht) ht.textContent=t2; document.title=t2; ledgerOnly(); try{ natToggle(); }catch(e){} }
     else if(W.PLAT.name&&ht){ var _bn=(W.PLAT.board&&isClubWithKids(W.PLAT.cid))?(W.PLAT.name+" · General play"):W.PLAT.name;   /* n3 */
       /* n3: the parent writes 'OPR · '+CLUB_NAME into the hero from its own window.onload, which can land
