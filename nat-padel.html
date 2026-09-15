@@ -3388,7 +3388,7 @@ const CLUB_NAME = _club.name;  // shown in the logo as "OPR · <name>"
     link.setAttribute('href', href);
   }catch(e){ /* install stays on the static manifest — no functional impact */ }
 })();
-const OPR_VERSION = "OPR-DOUBLES v2026.09.03-56 · NAT fork n11 (of PLAT p117)";  // MANUAL PAIR CREATION REMOVED FROM ADMIN: Create a pair, Bulk create pairs and Re-derive all pairs are gone (they only made match-less ghost pairs, and Re-derive rewrote every stored initial club-wide). Pairs are born automatically at match entry. Current pairs list untouched; the underlying JS is left in place unreferenced, so no other code path changes. Includes v47 (set-score fix + double-tap guard) and all prior.
+const OPR_VERSION = "OPR-DOUBLES v2026.09.03-56 · NAT fork n12 (of PLAT p117)";  // MANUAL PAIR CREATION REMOVED FROM ADMIN: Create a pair, Bulk create pairs and Re-derive all pairs are gone (they only made match-less ghost pairs, and Re-derive rewrote every stored initial club-wide). Pairs are born automatically at match entry. Current pairs list untouched; the underlying JS is left in place unreferenced, so no other code path changes. Includes v47 (set-score fix + double-tap guard) and all prior.
 // Explanation shown above the individual ladder. Open on load so it's read; collapsible
 // (state kept for the session) and scrolls away. Mechanics only — no outcome framing, so
 // members aren't nudged away from playing stronger opponents. Every clause maps to a real
@@ -9567,17 +9567,35 @@ async function clRemove(id, label){
     }
     h+='<div style="display:flex;justify-content:space-between;align-items:center"><div style="font-weight:800;color:#6c3483">'+((REG.role==="club")?("Club Admin · "+esc(REG.clubName||"club")):("General Admin · "+(REG.role==="master"?"master":"register")))+'</div><button class="menu-btn" style="min-height:32px;padding:4px 10px;font-size:12px" onclick="window.platRegLock()">Close</button></div>';
     // clubs: colour + remove
-    h+='<div style="margin-top:10px;font-weight:700;font-size:13px;color:#444">Clubs</div>';
-    /* n11: a club's room lists ITS OWN boards; the register's room lists them all. */
-    (REG.clubs||[]).filter(function(c){ return (REG.role!=="club") || Number(c.id)===Number(REG.clubId) || Number(c.parent_id)===Number(REG.clubId); }).forEach(function(c){
+    /* n12: A CLUB IS NOT A GROUP. The room used to run them together under one "Clubs" heading, so Kloof
+       Padel Ballies read as a club beside Monday Club. Now: the CLUB's own board first — the club's own OPR
+       app, which this club calls General play — and its GROUPS listed with the form that makes them, where
+       you look when you are thinking about groups. */
+    function boardRow(c, sub){
       var p=clubPal(c.id);
-      h+='<div style="display:flex;align-items:center;gap:8px;padding:7px 0;border-bottom:1px solid #eee">'
+      return '<div style="display:flex;align-items:center;gap:8px;padding:7px 0;border-bottom:1px solid #eee">'
         +'<span style="width:16px;height:16px;border-radius:50%;background:'+p[0]+';flex:0 0 16px"></span>'
-        +'<span style="flex:1;font-weight:600">'+esc(c.name)+'</span>'
+        +'<span style="flex:1;min-width:0"><span style="font-weight:600">'+esc(c.name)+'</span>'
+        +(sub?'<span style="display:block;font-size:11.5px;color:#777">'+esc(sub)+'</span>':'')+'</span>'
         +'<button class="menu-btn" style="min-height:30px;padding:4px 10px;font-size:12px" onclick="window.platClubColour('+c.id+')">Colour</button>'
-        +'<button style="min-height:30px;padding:4px 10px;font-size:12px;border:1px solid #c62828;color:#c62828;background:#fff;border-radius:8px;cursor:pointer" onclick="window.platClubTeardown('+c.id+')">Delete…</button></div>'
+        +'<button style="min-height:30px;padding:4px 10px;font-size:12px;border:1px solid #c62828;color:#c62828;background:#fff;border-radius:8px;cursor:pointer" onclick="window.platClubTeardown('+c.id+')">Delete\u2026</button></div>'
         +'<div id="platTd'+c.id+'"></div>';
-    });
+    }
+    var myGroups=[];
+    if(REG.role==="club"){
+      var own=(REG.clubs||[]).filter(function(c){ return Number(c.id)===Number(REG.clubId); })[0];
+      myGroups=(REG.clubs||[]).filter(function(c){ return Number(c.parent_id)===Number(REG.clubId); });
+      h+='<div style="margin-top:10px;font-weight:700;font-size:13px;color:#444">The club</div>';
+      if(own) h+=boardRow(own, "General play \u00b7 the club\'s own board, for matches outside the groups");
+    } else {
+      h+='<div style="margin-top:10px;font-weight:700;font-size:13px;color:#444">Clubs and groups</div>';
+      (REG.clubs||[]).filter(function(c){ return !c.parent_id; }).forEach(function(c){
+        h+=boardRow(c, "The club \u00b7 its own board is its General play");
+        (REG.clubs||[]).filter(function(g){ return Number(g.parent_id)===Number(c.id); }).forEach(function(g){
+          h+='<div style="padding-left:18px;border-left:2px solid #eee">'+boardRow(g, "Group inside "+c.name)+'</div>';
+        });
+      });
+    }
     h+='<div id="platSwatch"></div>';
     // members first, groups second: a register can be filled before any group exists
     h+='<div style="margin-top:14px;font-weight:700;font-size:13px;color:#444">Add a member</div>'
@@ -9593,6 +9611,12 @@ async function clRemove(id, label){
     // new club
     // n4: ONBOARDING. A CLUB is a top-level door in this register (own name, colour, code, ledger and groups);
     // a GROUP belongs to a club. Both are made here; a club also makes its own groups from its own door.
+    if(REG.role==="club"){   /* n12: the club's groups, right where you make another one */
+      h+='<div style="margin-top:16px;font-weight:700;font-size:13px;color:#444">Groups in '+esc(REG.clubName||"this club")+'</div>';
+      h+= myGroups.length ? myGroups.map(function(g){ return boardRow(g, "Group \u00b7 its own board, ladder and tournaments"); }).join("")
+                          : '<div style="font-size:12px;color:#666;padding:6px 0">No groups yet — the club plays as General play until you make one.</div>';
+      h+='<div id="platSwatch2"></div>';
+    }
     h+='<div style="margin-top:14px;font-weight:700;font-size:13px;color:#444">'+((REG.role==="club")?"New group":"New club or group")+'</div>' 
       /* n11: a CLUB is created only by the register (6001) — the organisation keeps the record of who is in it.
          A club's own code (6003) gets one choice: a group inside its own club. nat_admin refuses it server-side
@@ -9861,7 +9885,7 @@ async function clRemove(id, label){
     // p25: inside an organisation the way back is the club door; otherwise it is the register's own door.
     var org=W.PLAT.orgId||0;
     var a=document.createElement("button"); a.id="platChip";
-    a.textContent=(W.PLAT.parentCached||(W.PLAT.natCached&&W.PLAT.cid&&!W.PLAT.landing&&W.PLAT.cid!==0)) ? "\u2039 Home" : (W.PLAT.orgId?"‹ Club":"‹ All clubs");   /* n10 */
+    a.textContent=(W.PLAT.natCached||W.PLAT.parentCached||W.PLAT.nat) ? "\u2039 Home" : (W.PLAT.orgId?"‹ Club":"‹ All clubs");   /* n10/n12 */
     a.dataset.natChip="1";   // NAT: relabelled and re-pointed once the ladder is known (natChip)
     a.style.cssText="display:inline-block;margin:12px auto 0;background:rgba(255,255,255,.22);color:#fff;border:1.5px solid rgba(255,255,255,.75);padding:11px 26px;border-radius:99px;font-size:15px;font-weight:800;letter-spacing:.2px;cursor:pointer;text-shadow:none;box-shadow:0 2px 8px rgba(0,0,0,.2)";   // p97: bigger — it is the way back
     a.onclick=function(){ var o=W.PLAT.orgId||0; var fromDoor=false; try{ fromDoor=(sessionStorage.getItem("plat_from_door_padel")===String(W.PLAT.pool)); }catch(e){}
@@ -9905,7 +9929,7 @@ async function clRemove(id, label){
     if(!natMode()){ show(); return; }   // a plain register: the parent's own chip is right
     // n7: inside a club the chip just says HOME — naming the club again is noise, you know where you are.
     // Only the register owner's combined ledger offers the way out to the other clubs.
-    if(W.PLAT.cid===0){ a.textContent=W.PLAT.nat?"\u2039 Home":"\u2039 All clubs"; show(); return; }
+    if(W.PLAT.cid===0){ a.textContent="\u2039 Home"; show(); return; }   /* n12: one rung up is Home, on every ledger */
     if(W.PLAT.parentId){ a.textContent="\u2039 Home"; show(); return; }
     if(W.PLAT.board && isClubWithKids(W.PLAT.cid)){ a.textContent="\u2039 Home"; show(); return; }
     a.remove();   // a club with no club above it: nowhere to go but sideways, so no chip
