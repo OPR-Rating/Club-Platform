@@ -735,7 +735,7 @@
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script>
 /* ============================================================================
-   NAT EARLY SNIPPET — nat-padel.html  VERSION: NAT-PADEL v2026.09.15-n1  (THE NATIONAL REGISTER FORK of PLAT p117.
+   NAT EARLY SNIPPET — nat-padel.html  VERSION: NAT-PADEL v2026.09.15-n2  (n2: A RATING IS NATIONAL — the club ledger rebuilt the rating from the club's matches alone, so one person read three numbers; the engine's replay is now pool-wide on every ledger and only the lists are club-scoped.)\n   NAT-PADEL v2026.09.15-n1  (THE NATIONAL REGISTER FORK of PLAT p117.
    plat-padel.html is not touched. Changes, each marked NAT:
      * the CLUB RUNG: nat_club_parent says which club a board is a group of. A club with groups has a CLUB DOOR at
        ?club=C (its board is one tap further, ?club=C&board=1); a register with two or more clubs has a NATIONAL
@@ -942,7 +942,13 @@ st0.textContent += "html{overflow-y:scroll}";   // p98: the scrollbar's space is
       return "plat_padel_v_individuals?"+qs;
     }
     if(DISC_TABLES[tbl]){
-      if(pool && NAT){ swapClub("club_id=in.("+NAT+")"); }   // NAT: the club ledger — this club's boards only; pairs, matches and ladder rows are board rows already
+      // NAT n2: A RATING IS NATIONAL. The parent rebuilds a person's rating in the browser — seed plus every
+      // match delta it can see (OPR.load). On a club ledger the club-scoped match set gave a club-scoped
+      // number (Murray 1791 at Monday, 1782 at North Coast, 1773 everywhere else). So the ENGINE's three
+      // load queries are answered pool-wide, always; only the LISTS stay club-scoped.
+      var engineQuery = (tbl==="matches" && qs.indexOf("rating_delta")>=0) || (tbl==="players" && qs.indexOf("member_a_id")>=0);
+      if(pool && NAT && engineQuery){ swapClub("pool_id=eq."+P); }
+      else if(pool && NAT){ swapClub("club_id=in.("+NAT+")"); }   // NAT: the club ledger — this club's boards only; pairs, matches and ladder rows are board rows already
       else if(pool){ swapClub("pool_id=eq."+P+((tbl==="doubles_results")?"&club_id=is.null":"")); }   // p6: pairs are CLUB rows — Overall lists every club's pairs; only the category tables have a pool-wide set
       return "plat_"+tbl+"?"+qs+(qs?"&":"")+"discipline=eq."+DISC;
     }
@@ -1001,7 +1007,9 @@ st0.textContent += "html{overflow-y:scroll}";   // p98: the scrollbar's space is
         u=PLAT+"/rest/v1/"+(rw||m[1]);
         // NAT: on the club ledger the people views are register-wide (every rating is the one national number);
         // keep only the club's own people — members of the club board or its groups — so the list is the club's.
-        if(CID===0 && W.PLAT.natIds && W.PLAT.natNames && tbl==="individuals"){
+        // NAT n2: the engine's own seed query (select=id,full_name,seed_rating) is left whole — it feeds the
+        // pool-wide replay above. Only the people LIST (it also asks for gender/current_rating) is trimmed.
+        if(CID===0 && W.PLAT.natIds && W.PLAT.natNames && tbl==="individuals" && m[1].indexOf("gender")>=0){
           var names=W.PLAT.natNames;
           return _fetch(u,Object.assign({},init,{headers:h})).then(function(r){ return r.json().then(function(rows){
             if(!Array.isArray(rows)) return jsonResp(rows,r.status);
@@ -3322,7 +3330,7 @@ const CLUB_NAME = _club.name;  // shown in the logo as "OPR · <name>"
     link.setAttribute('href', href);
   }catch(e){ /* install stays on the static manifest — no functional impact */ }
 })();
-const OPR_VERSION = "OPR-DOUBLES v2026.09.03-56 · NAT fork n1 (of PLAT p117)";  // MANUAL PAIR CREATION REMOVED FROM ADMIN: Create a pair, Bulk create pairs and Re-derive all pairs are gone (they only made match-less ghost pairs, and Re-derive rewrote every stored initial club-wide). Pairs are born automatically at match entry. Current pairs list untouched; the underlying JS is left in place unreferenced, so no other code path changes. Includes v47 (set-score fix + double-tap guard) and all prior.
+const OPR_VERSION = "OPR-DOUBLES v2026.09.03-56 · NAT fork n2 (of PLAT p117)";  // MANUAL PAIR CREATION REMOVED FROM ADMIN: Create a pair, Bulk create pairs and Re-derive all pairs are gone (they only made match-less ghost pairs, and Re-derive rewrote every stored initial club-wide). Pairs are born automatically at match entry. Current pairs list untouched; the underlying JS is left in place unreferenced, so no other code path changes. Includes v47 (set-score fix + double-tap guard) and all prior.
 // Explanation shown above the individual ladder. Open on load so it's read; collapsible
 // (state kept for the session) and scrolls away. Mechanics only — no outcome framing, so
 // members aren't nudged away from playing stronger opponents. Every clause maps to a real
