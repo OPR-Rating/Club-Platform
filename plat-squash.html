@@ -559,6 +559,7 @@
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script>
 /* ====
+   VERSION: PLAT-SQUASH v2026.09.15-s47  (THE FIX behind 'no names on the card' and 'no recent matches on the door': the shim passed its own plat_ requests through WITHOUT the API key, so every bare read from the glue came back 401 and was read as empty — padel's shim attaches the key on that path; now squash does too)
    VERSION: PLAT-SQUASH v2026.09.15-s46  (door recent matches: the colour bar on both sides — balanced)
    VERSION: PLAT-SQUASH v2026.09.15-s45  (the card's name list falls back through the register views until one answers — the squash view refused the padel-shaped query and the list came up empty)
    VERSION: PLAT-SQUASH v2026.09.14-s44  (THE COURT CARD on squash, the whole of padel p112: create a card on page one of score entry, Level/Mixed/Self selected, Matches/Pairs, regulars, print and share, tap a court to the score sheet, Live Umpire; plat_session v4 knows the sport)
@@ -721,7 +722,7 @@ st0.textContent += "html{overflow-y:scroll}";   // s41: scrollbar space reserved
     if(url.indexOf(PLAT)!==0) return _fetch(input,init);
     // a call the shim itself makes (already plat_-prefixed, or an edge function) passes straight through
     var own=url.match(/\/rest\/v1\/(plat_[a-z_]+)/);
-    if(own) return _fetch(input,init);
+    if(own) return _fetch(input, Object.assign({}, init, {headers: hdrs(init.headers)}));   // s47: the shim's own plat_ reads carry the key, as padel's do
     var method=(init.method||"GET").toUpperCase();
     return W.PLAT.ready.then(function(){
       var u=url.replace(FAR,PLAT); var h=hdrs(init.headers);
@@ -3063,7 +3064,7 @@ const _club = CLUBS[_clubParam] || (/^\d+$/.test(_clubParam) ? {id:Number(_clubP
 const CLUB_ID = _club.id;
 document.title = 'OSR · ' + _club.name;
 const CLUB_NAME = _club.name;  // shown in the logo as "OPR · <name>"
-const OPR_VERSION = "OSR-LAPTOP v2026.09.13-46 · PLAT replica s46";   // PLAT MARKED HUNK: the build stamp everywhere the parent prints its own  // SCOPED ADMIN CODE: every admin call carries club_id, so a club code is checked against this club only (with admin v2026.09.13-2) — a code from another club no longer opens its admin from here. Master unchanged. Includes v2026.09.03-45 and all prior.  // MANUAL PAIR CREATION REMOVED FROM ADMIN (ported from OPR v56): Create a pair, Bulk create pairs and Re-derive all pairs are gone — they only made match-less ghost pairs, and Re-derive rewrote every stored initial club-wide. Pairs are born automatically at match entry. Current pairs list untouched; underlying JS left in place unreferenced. Includes all prior work.
+const OPR_VERSION = "OSR-LAPTOP v2026.09.13-46 · PLAT replica s47";   // PLAT MARKED HUNK: the build stamp everywhere the parent prints its own  // SCOPED ADMIN CODE: every admin call carries club_id, so a club code is checked against this club only (with admin v2026.09.13-2) — a code from another club no longer opens its admin from here. Master unchanged. Includes v2026.09.03-45 and all prior.  // MANUAL PAIR CREATION REMOVED FROM ADMIN (ported from OPR v56): Create a pair, Bulk create pairs and Re-derive all pairs are gone — they only made match-less ghost pairs, and Re-derive rewrote every stored initial club-wide. Pairs are born automatically at match entry. Current pairs list untouched; underlying JS left in place unreferenced. Includes all prior work.
 // Explanation shown above the individual ladder. Open on load so it's read; collapsible
 // (state kept for the session) and scrolls away. Mechanics only — no outcome framing, so
 // members aren't nudged away from playing stronger opponents. Every clause maps to a real
@@ -9787,7 +9788,7 @@ async function clRemove(id, label){
     }catch(e){}
   }
   // the build tag is a debugging aid, not something a member should see: it appears only with ?build=1
-  try{ if(/[?&]build=1/.test(location.search)) buildTag("PLAT s46"); }catch(e){}
+  try{ if(/[?&]build=1/.test(location.search)) buildTag("PLAT s47"); }catch(e){}
   /* A plaque on the club's honour board opens that sport's ledger AT the person: ?player=<name> calls the
      parent's own loadProfile, so nothing in the parent changes. If the name is not recognised the ledger
      simply opens as it always did. */
