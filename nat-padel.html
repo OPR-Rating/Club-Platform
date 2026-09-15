@@ -1032,6 +1032,31 @@ st0.textContent += "html{overflow-y:scroll}";   // p98: the scrollbar's space is
           init=Object.assign({},init,{body:JSON.stringify(ab)}); }
         if(f[1]==="submit_match"){ if(CID===0) return jsonResp({ok:false,error:"Choose a club before entering a match."},400);
           var bb={}; try{ bb=JSON.parse(init.body||"{}"); }catch(e){} bb.discipline=DISC; bb.club_id=CID; init=Object.assign({},init,{body:JSON.stringify(bb)}); }
+        // n8: THE LEDGER IS THE MEMBER ROLL. nat_admin_padel refuses a new pair whose names are not on the
+        // register (409 needs_confirm) and hands back the names it thinks were meant. Put that to the admin
+        // here rather than leaving them with an error: use the registered player, or say it is someone new
+        // and register them. Only these two answers reach the database.
+        if(f[1]==="admin"){
+          var ob={}; try{ ob=JSON.parse(init.body||"{}"); }catch(e){}
+          if(ob.action==="add_member"){
+            var _u=u, _i=init;
+            var ask=function(resp){
+              return resp.clone().json().then(function(j){
+                if(!j || !j.needs_confirm) return resp;
+                var body={}; try{ body=JSON.parse(_i.body||"{}"); }catch(e){}
+                var sug=(j.suggestions||[])[0];
+                if(sug && W.confirm(j.error+"\n\nOK — use “"+sug+"”.\nCancel — it is someone else.")){
+                  body.name=String(body.name||"").split(" & ").map(function(x){ return (x.trim()===j.name)?sug:x.trim(); }).join(" & ");
+                } else if(W.confirm("Register “"+j.name+"” on the ledger as a new player?\n\nEveryone is registered once for the whole register — this adds them there.")){
+                  body.confirm_new=true;
+                } else { return jsonResp({ok:false,error:"Nothing was saved."},200); }
+                _i=Object.assign({},_i,{body:JSON.stringify(body)});
+                return _fetch(_u,_i).then(ask);
+              }).catch(function(){ return resp; });
+            };
+            return _fetch(u,init).then(ask);
+          }
+        }
       }
       if(f) h=fnHdrs(init.headers);
       return _fetch(u,Object.assign({},init,{headers:h}));
@@ -3335,7 +3360,7 @@ const CLUB_NAME = _club.name;  // shown in the logo as "OPR · <name>"
     link.setAttribute('href', href);
   }catch(e){ /* install stays on the static manifest — no functional impact */ }
 })();
-const OPR_VERSION = "OPR-DOUBLES v2026.09.03-56 · NAT fork n7 (of PLAT p117)";  // MANUAL PAIR CREATION REMOVED FROM ADMIN: Create a pair, Bulk create pairs and Re-derive all pairs are gone (they only made match-less ghost pairs, and Re-derive rewrote every stored initial club-wide). Pairs are born automatically at match entry. Current pairs list untouched; the underlying JS is left in place unreferenced, so no other code path changes. Includes v47 (set-score fix + double-tap guard) and all prior.
+const OPR_VERSION = "OPR-DOUBLES v2026.09.03-56 · NAT fork n8 (of PLAT p117)";  // MANUAL PAIR CREATION REMOVED FROM ADMIN: Create a pair, Bulk create pairs and Re-derive all pairs are gone (they only made match-less ghost pairs, and Re-derive rewrote every stored initial club-wide). Pairs are born automatically at match entry. Current pairs list untouched; the underlying JS is left in place unreferenced, so no other code path changes. Includes v47 (set-score fix + double-tap guard) and all prior.
 // Explanation shown above the individual ladder. Open on load so it's read; collapsible
 // (state kept for the session) and scrolls away. Mechanics only — no outcome framing, so
 // members aren't nudged away from playing stronger opponents. Every clause maps to a real
