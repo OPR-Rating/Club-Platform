@@ -918,6 +918,12 @@ st0.textContent += "html{overflow-y:scroll}";   // p98: the scrollbar's space is
           W.PLAT.parentId=CID?(pm[CID]||0):0;
           W.PLAT.kids=(W.PLAT.clubs||[]).filter(function(c){ return c.parent_id===CID && CID>0; }).map(function(c){return c.id;});
           W.PLAT.clubDoor=(CID>0 && !BOARDQ && W.PLAT.kids.length>0);
+          if(CID>0){                                    // n13: my club's boards — its own and its groups
+            var mine=W.PLAT.parentId||CID;
+            W.PLAT.myClub=mine;
+            W.PLAT.myBoards=[mine].concat((W.PLAT.clubs||[]).filter(function(c){ return c.parent_id===mine; }).map(function(c){ return c.id; }));
+            if(W.PLAT.myBoards.length<2 && !W.PLAT.parentId && !W.PLAT.kids.length) W.PLAT.myBoards=null;   // a plain register: no club rung, leave p56 alone
+          }
           try{ if(CID) localStorage.setItem("plat_nat_kids_"+CID, W.PLAT.kids.length?"1":"0");
                if(CID) localStorage.setItem("plat_nat_parent_"+CID, String(W.PLAT.parentId||0));
                if(W.PLAT.pool) localStorage.setItem("plat_nat_shape_"+W.PLAT.pool, (W.PLAT.clubs||[]).some(function(c){return !!c.parent_id;})?"1":"0"); }catch(e){}
@@ -926,8 +932,18 @@ st0.textContent += "html{overflow-y:scroll}";   // p98: the scrollbar's space is
             W.PLAT.natIds=scope;
             var nc=(W.PLAT.clubs||[]).find(function(c){return c.id===NATQ;}); W.PLAT.natName=nc?nc.name:("Club "+NATQ);
             // the club's people: everyone who is a member of the club board or one of its groups (derived, never stored twice)
+            // n13: the club's own people. This decides who appears on the club ledger, so it must not rest on
+            // one query: if the member view answers with nothing, take everyone NAMED IN A MATCH at the club's
+            // boards instead. An empty answer used to mean "no filter", which showed the whole register.
             return _fetch(PLAT+"/rest/v1/plat_padel_v_individuals?club_id=in.("+scope.join(",")+")&select=full_name",{headers:hdrs()}).then(function(r){return r.json();}).then(function(rows){
-              var set={}; (Array.isArray(rows)?rows:[]).forEach(function(r){ if(r.full_name) set[String(r.full_name)]=1; }); W.PLAT.natNames=set; }).catch(function(){ W.PLAT.natNames=null; });
+              var set={}; (Array.isArray(rows)?rows:[]).forEach(function(r){ if(r.full_name) set[String(r.full_name)]=1; });
+              if(Object.keys(set).length) { W.PLAT.natNames=set; return; }
+              return _fetch(PLAT+"/rest/v1/plat_matches?club_id=in.("+scope.join(",")+")&discipline=eq.padel&select=t1p1,t1p2,t2p1,t2p2",{headers:hdrs()}).then(function(r2){return r2.json();}).then(function(ms){
+                var s2={}; (Array.isArray(ms)?ms:[]).forEach(function(m){ [m.t1p1,m.t1p2,m.t2p1,m.t2p2].forEach(function(v){ if(!v) return;
+                  String(v).split(" & ").forEach(function(x){ x=x.trim(); if(x) s2[x]=1; }); }); });
+                W.PLAT.natNames=Object.keys(s2).length?s2:{};   // {} still filters — an empty club shows nobody, which is true
+              });
+            }).catch(function(){ W.PLAT.natNames={}; });
           }
         });
       }).catch(function(){});
@@ -961,6 +977,10 @@ st0.textContent += "html{overflow-y:scroll}";   // p98: the scrollbar's space is
         // safe default is the register: a picker that is short of names is worse than a list that is long.
         if(here==="" || here==="homeScreen" || here==="entryScreen" || here==="enterTournamentScreen"
            || here==="clubLadderScreen" || here==="markerScreen"){
+          // n13: in a national register the entry picker opens on THIS CLUB's people — its own board and its
+          // groups. Everyone else in the register is still reachable: type three letters and the glue asks
+          // for them by name. (A plain register is unchanged: the whole register, as p56 intended.)
+          if(!pool && W.PLAT.myBoards && W.PLAT.myBoards.length){ swapClub("club_id=in.("+W.PLAT.myBoards.join(",")+")"); return "plat_padel_v_individuals?"+qs; }
           swapClub("pool_id=eq."+P); return "plat_padel_v_pool_individuals?"+qs;
         }
         if(here==="adminScreen" && !pool) return "plat_padel_v_individuals?"+qs;
@@ -1042,7 +1062,7 @@ st0.textContent += "html{overflow-y:scroll}";   // p98: the scrollbar's space is
         // keep only the club's own people — members of the club board or its groups — so the list is the club's.
         // NAT n2: the engine's own seed query (select=id,full_name,seed_rating) is left whole — it feeds the
         // pool-wide replay above. Only the people LIST (it also asks for gender/current_rating) is trimmed.
-        if(CID===0 && W.PLAT.natIds && W.PLAT.natNames && tbl==="individuals" && m[1].indexOf("gender")>=0){
+        if(CID===0 && W.PLAT.natIds && W.PLAT.natNames && typeof W.PLAT.natNames==="object" && tbl==="individuals" && m[1].indexOf("gender")>=0){
           var names=W.PLAT.natNames;
           return _fetch(u,Object.assign({},init,{headers:h})).then(function(r){ return r.json().then(function(rows){
             if(!Array.isArray(rows)) return jsonResp(rows,r.status);
@@ -1050,6 +1070,35 @@ st0.textContent += "html{overflow-y:scroll}";   // p98: the scrollbar's space is
         }
       }
       var f=u.match(/\/functions\/v1\/([a-z_-]+)/);
+      // n14: ONE SPELLING OF A PERSON. Both doors that can create somebody — the group's Control Room
+      // (routed as FN.admin) and the club/register screen (which posts to nat_admin by name) — answer 409
+      // needs_confirm when the name is close to somebody already registered. Put the question to the admin
+      // wherever it came from, and send back only their answer.
+      if(f && (FN[f[1]] || f[1]==="nat_admin") && method==="POST"){
+        var cb={}; try{ cb=JSON.parse(init.body||"{}"); }catch(e){}
+        if(cb.action==="add_member" || cb.action==="add_pool_member" || cb.action==="bulk_add_pool_members"){
+          var uu=u.replace("/functions/v1/"+f[1], "/functions/v1/"+(FN[f[1]]||f[1])), ii=init;
+          if(FN[f[1]]==="nat_admin_padel"||f[1]==="admin"){ var ab2={}; try{ ab2=JSON.parse(ii.body||"{}"); }catch(e){}
+            if(ab2.club_id==null && CID) ab2.club_id=CID; if(ab2.pool_id==null && W.PLAT.pool) ab2.pool_id=W.PLAT.pool;
+            ii=Object.assign({},ii,{body:JSON.stringify(ab2)}); }
+          var ask=function(resp){
+            return resp.clone().json().then(function(j){
+              if(!j || !j.needs_confirm) return resp;
+              var body={}; try{ body=JSON.parse(ii.body||"{}"); }catch(e){}
+              var sug=(j.suggestions||[])[0];
+              if(sug && W.confirm(j.error+"\n\nOK — use \u201c"+sug+"\u201d.\nCancel — it is someone else.")){
+                if(body.full_name!==undefined) body.full_name=sug;
+                else body.name=String(body.name||"").split(" & ").map(function(x){ return (x.trim()===j.name)?sug:x.trim(); }).join(" & ");
+              } else if(W.confirm("Register \u201c"+j.name+"\u201d as a new player?\n\nEveryone is registered once for the whole register — this adds them there.")){
+                body.confirm_new=true;
+              } else { return jsonResp({ok:false,error:"Nothing was saved."},200); }
+              ii=Object.assign({},ii,{body:JSON.stringify(body)});
+              return _fetch(uu,Object.assign({},ii,{headers:fnHdrs(init.headers)})).then(ask);
+            }).catch(function(){ return resp; });
+          };
+          return _fetch(uu,Object.assign({},ii,{headers:fnHdrs(init.headers)})).then(ask);
+        }
+      }
       if(f&&FN[f[1]]){
         u=u.replace("/functions/v1/"+f[1],"/functions/v1/"+FN[f[1]]);
         // p92: every admin call names the board it was made from, so a code is checked against THIS group —
@@ -1060,31 +1109,7 @@ st0.textContent += "html{overflow-y:scroll}";   // p98: the scrollbar's space is
           init=Object.assign({},init,{body:JSON.stringify(ab)}); }
         if(f[1]==="submit_match"){ if(CID===0) return jsonResp({ok:false,error:"Choose a club before entering a match."},400);
           var bb={}; try{ bb=JSON.parse(init.body||"{}"); }catch(e){} bb.discipline=DISC; bb.club_id=CID; init=Object.assign({},init,{body:JSON.stringify(bb)}); }
-        // n8: THE LEDGER IS THE MEMBER ROLL. nat_admin_padel refuses a new pair whose names are not on the
-        // register (409 needs_confirm) and hands back the names it thinks were meant. Put that to the admin
-        // here rather than leaving them with an error: use the registered player, or say it is someone new
-        // and register them. Only these two answers reach the database.
-        if(f[1]==="admin"){
-          var ob={}; try{ ob=JSON.parse(init.body||"{}"); }catch(e){}
-          if(ob.action==="add_member"){
-            var _u=u, _i=init;
-            var ask=function(resp){
-              return resp.clone().json().then(function(j){
-                if(!j || !j.needs_confirm) return resp;
-                var body={}; try{ body=JSON.parse(_i.body||"{}"); }catch(e){}
-                var sug=(j.suggestions||[])[0];
-                if(sug && W.confirm(j.error+"\n\nOK — use “"+sug+"”.\nCancel — it is someone else.")){
-                  body.name=String(body.name||"").split(" & ").map(function(x){ return (x.trim()===j.name)?sug:x.trim(); }).join(" & ");
-                } else if(W.confirm("Register “"+j.name+"” on the ledger as a new player?\n\nEveryone is registered once for the whole register — this adds them there.")){
-                  body.confirm_new=true;
-                } else { return jsonResp({ok:false,error:"Nothing was saved."},200); }
-                _i=Object.assign({},_i,{body:JSON.stringify(body)});
-                return _fetch(_u,_i).then(ask);
-              }).catch(function(){ return resp; });
-            };
-            return _fetch(u,init).then(ask);
-          }
-        }
+        /* n14: the add-member confirm now happens above, before routing, so it covers both doors. */
       }
       if(f) h=fnHdrs(init.headers);
       return _fetch(u,Object.assign({},init,{headers:h}));
@@ -3388,7 +3413,7 @@ const CLUB_NAME = _club.name;  // shown in the logo as "OPR · <name>"
     link.setAttribute('href', href);
   }catch(e){ /* install stays on the static manifest — no functional impact */ }
 })();
-const OPR_VERSION = "OPR-DOUBLES v2026.09.03-56 · NAT fork n12 (of PLAT p117)";  // MANUAL PAIR CREATION REMOVED FROM ADMIN: Create a pair, Bulk create pairs and Re-derive all pairs are gone (they only made match-less ghost pairs, and Re-derive rewrote every stored initial club-wide). Pairs are born automatically at match entry. Current pairs list untouched; the underlying JS is left in place unreferenced, so no other code path changes. Includes v47 (set-score fix + double-tap guard) and all prior.
+const OPR_VERSION = "OPR-DOUBLES v2026.09.03-56 · NAT fork n14 (of PLAT p117)";  // MANUAL PAIR CREATION REMOVED FROM ADMIN: Create a pair, Bulk create pairs and Re-derive all pairs are gone (they only made match-less ghost pairs, and Re-derive rewrote every stored initial club-wide). Pairs are born automatically at match entry. Current pairs list untouched; the underlying JS is left in place unreferenced, so no other code path changes. Includes v47 (set-score fix + double-tap guard) and all prior.
 // Explanation shown above the individual ladder. Open on load so it's read; collapsible
 // (state kept for the session) and scrolls away. Mechanics only — no outcome framing, so
 // members aren't nudged away from playing stronger opponents. Every clause maps to a real
@@ -9228,6 +9253,49 @@ async function clRemove(id, label){
      register owner knows — and can bill for — every club in it. About OPR's Admin link is the parent's own
      again. (nat_admin enforces the same rule server-side: add_club with no parent_id demands the register
      code or master, so a club's code can never create a club even if a screen asked it to.) */
+  /* n13: TYPE TO REACH THE REGISTER. The picker opens on the club's own people — the names an organiser
+     actually wants, a dozen or two, not five hundred. Type three letters and everyone else in the register
+     who matches is offered beneath them, marked, so a visitor can be entered without ever listing the
+     country. Choosing one is enough: entering the match makes them a member of this board, and from then on
+     they are in the club's own list. Nothing is registered and no rating is touched by the picker. */
+  var REGALL=null, REGFETCH=null;
+  function regAll(){
+    if(REGALL) return Promise.resolve(REGALL);
+    if(REGFETCH) return REGFETCH;
+    REGFETCH=fetch("https://djmbnvikrdgnomjhtkgf.supabase.co/rest/v1/plat_padel_v_pool_individuals?pool_id=eq."+W.PLAT.pool+"&select=full_name,gender&order=full_name.asc")
+      .then(function(r){ return r.json(); })
+      .then(function(rows){ REGALL=(Array.isArray(rows)?rows:[]).map(function(r){ return {name:String(r.full_name||""),gender:r.gender}; }).filter(function(r){ return r.name; }); return REGALL; })
+      .catch(function(){ REGALL=[]; return REGALL; });
+    return REGFETCH;
+  }
+  var AWAY=" \u00b7 elsewhere in the register";
+  function bare(n){ var i=String(n).indexOf(AWAY); return i<0 ? String(n) : String(n).slice(0,i); }
+  function pickerPatch(){
+    if(!natMode() || !W.PLAT.cid || W.PLAT.cid===0) return;
+    if(W.__natPicker) return; W.__natPicker=true;
+    regAll();                                   // warm it, so the first keystroke is instant
+    var origFilter=W.filterModalPlayers, origSelect=W.selectModalPlayer, origOpen=W.openNamePicker;
+    if(typeof origFilter!=="function" || typeof origSelect!=="function" || typeof origOpen!=="function") { W.__natPicker=false; return; }
+    var MINE=[];                                  // the club's own names, captured as the picker opens
+    W.openNamePicker=function(label,names,onPick){ MINE=(names||[]).slice(); return origOpen.call(this,label,names,onPick); };
+    var origModal=W.openPlayerModal;              // the score sheet's own opener (target, players, exclude)
+    if(typeof origModal==="function") W.openPlayerModal=function(t,players,exclude){
+      MINE=(players||[]).filter(function(p){ return !(exclude||[]).includes(p); }); return origModal.apply(this,arguments); };
+    W.filterModalPlayers=function(){
+      var box=document.getElementById("playerModalSearch"); if(!box) return origFilter.apply(this,arguments);
+      var q=String(box.value||"").toLowerCase().trim();
+      var mine=MINE;
+      var hit=function(n){ return String(n).toLowerCase().split(" ").some(function(w){ return w.indexOf(q)===0; }); };
+      var near=q?mine.filter(hit):mine;
+      if(q.length<3){ W.renderModalList(near); return; }
+      var have={}; mine.forEach(function(n){ have[bare(n)]=1; });
+      regAll().then(function(all){
+        var extra=(all||[]).filter(function(p){ return !have[p.name] && hit(p.name); }).map(function(p){ return p.name+AWAY; });
+        W.renderModalList(near.concat(extra.slice(0,25)));
+      });
+    };
+    W.selectModalPlayer=function(n){ return origSelect.call(this, bare(n)); };
+  }
   /* What has just been played, across the whole club — the door's own short list. */
   function doorRecent(scope){
     var box=document.getElementById("platDoorRecent"); if(!box||!W.PLAT.pool) return;
@@ -10765,6 +10833,7 @@ async function clRemove(id, label){
     fixManifest();
     var ht=document.getElementById("heroTitle");
     try{ natChip(); }catch(e){}   // NAT: the chip climbs the ladder
+    try{ pickerPatch(); }catch(e){}   // n13: club first, register on typing
     if(W.PLAT.landing){ var t1="OPR · "+(W.PLAT.poolName||"Clubs"); if(ht) ht.textContent=t1; document.title=t1; landing(); try{ doorChip(); }catch(e){} return; }
     // NAT: a club with groups opens on its DOOR (its board is ?club=C&board=1)
     if(W.PLAT.clubDoor){ var t3="OPR · "+(W.PLAT.name||"Club"); if(ht) ht.textContent=t3; document.title=t3;
