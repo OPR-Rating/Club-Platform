@@ -559,6 +559,8 @@
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script>
 /* ====
+   VERSION: PLAT-SQUASH v2026.09.15-s46  (door recent matches: the colour bar on both sides — balanced)
+   VERSION: PLAT-SQUASH v2026.09.15-s45  (the card's name list falls back through the register views until one answers — the squash view refused the padel-shaped query and the list came up empty)
    VERSION: PLAT-SQUASH v2026.09.14-s44  (THE COURT CARD on squash, the whole of padel p112: create a card on page one of score entry, Level/Mixed/Self selected, Matches/Pairs, regulars, print and share, tap a court to the score sheet, Live Umpire; plat_session v4 knows the sport)
    VERSION: PLAT-SQUASH v2026.09.14-s43  (door: recent matches robust to the schema, players not pairs, a Club chip back to the hub on an organisation's sport door)
    VERSION: PLAT-SQUASH v2026.09.14-s42  (brought level with padel p113: bigger back chip, batched repaint pass, recent-match colours; the back chip returns to the sport door when you arrived through it)
@@ -3061,7 +3063,7 @@ const _club = CLUBS[_clubParam] || (/^\d+$/.test(_clubParam) ? {id:Number(_clubP
 const CLUB_ID = _club.id;
 document.title = 'OSR · ' + _club.name;
 const CLUB_NAME = _club.name;  // shown in the logo as "OPR · <name>"
-const OPR_VERSION = "OSR-LAPTOP v2026.09.13-46 · PLAT replica s44";   // PLAT MARKED HUNK: the build stamp everywhere the parent prints its own  // SCOPED ADMIN CODE: every admin call carries club_id, so a club code is checked against this club only (with admin v2026.09.13-2) — a code from another club no longer opens its admin from here. Master unchanged. Includes v2026.09.03-45 and all prior.  // MANUAL PAIR CREATION REMOVED FROM ADMIN (ported from OPR v56): Create a pair, Bulk create pairs and Re-derive all pairs are gone — they only made match-less ghost pairs, and Re-derive rewrote every stored initial club-wide. Pairs are born automatically at match entry. Current pairs list untouched; underlying JS left in place unreferenced. Includes all prior work.
+const OPR_VERSION = "OSR-LAPTOP v2026.09.13-46 · PLAT replica s46";   // PLAT MARKED HUNK: the build stamp everywhere the parent prints its own  // SCOPED ADMIN CODE: every admin call carries club_id, so a club code is checked against this club only (with admin v2026.09.13-2) — a code from another club no longer opens its admin from here. Master unchanged. Includes v2026.09.03-45 and all prior.  // MANUAL PAIR CREATION REMOVED FROM ADMIN (ported from OPR v56): Create a pair, Bulk create pairs and Re-derive all pairs are gone — they only made match-less ghost pairs, and Re-derive rewrote every stored initial club-wide. Pairs are born automatically at match entry. Current pairs list untouched; underlying JS left in place unreferenced. Includes all prior work.
 // Explanation shown above the individual ladder. Open on load so it's read; collapsible
 // (state kept for the session) and scrolls away. Mechanics only — no outcome framing, so
 // members aren't nudged away from playing stronger opponents. Every clause maps to a real
@@ -9119,7 +9121,7 @@ async function clRemove(id, label){
             var detail='<div class="plat-door-detail" style="display:none;border-top:1px solid #eee;margin-top:8px;padding-top:8px;text-align:center">'
               +(sets.length? sets.map(function(s){ return '<span style="display:inline-block;background:'+col+';color:#fff;border-radius:6px;padding:3px 9px;font-size:12px;font-weight:800;margin:0 3px">'+esc(s.replace("-","/"))+'</span>'; }).join("") : '<span style="font-size:12px;color:#999">set scores not recorded</span>')
               +'<div style="font-size:11px;color:#7a6688;margin-top:6px">Sets: '+(m.t1_sets||0)+'-'+(m.t2_sets||0)+(m.t1_games!=null&&m.t2_games!=null?' \u00b7 Games: '+m.t1_games+'-'+m.t2_games:'')+(tourn?' \u00b7 '+esc(m.event):'')+'</div></div>';
-            return '<div onclick="var d=this.querySelector(\'.plat-door-detail\');var a=this.querySelector(\'.plat-door-arrow\');var o=d.style.display!==\'none\';d.style.display=o?\'none\':\'block\';a.textContent=o?\'\u25bc\':\'\u25b2\';" style="background:#fff;border:1px solid rgba(211,84,0,.14);border-left:4px solid '+col+';border-radius:12px;padding:10px 12px;margin-bottom:7px;text-align:center;cursor:pointer">'
+            return '<div onclick="var d=this.querySelector(\'.plat-door-detail\');var a=this.querySelector(\'.plat-door-arrow\');var o=d.style.display!==\'none\';d.style.display=o?\'none\':\'block\';a.textContent=o?\'\u25bc\':\'\u25b2\';" style="background:#fff;border:1px solid rgba(211,84,0,.14);border-left:4px solid '+col+';border-right:4px solid '+col+';border-radius:12px;padding:10px 12px;margin-bottom:7px;text-align:center;cursor:pointer">'
               +'<div style="font-size:11px;color:#7a6688;margin-bottom:3px">'+esc(m.match_date||"")+' \u00a0<b style="color:'+col+'">'+esc(m.match_type||"")+'</b> \u00a0'
               +'<span style="display:inline-block;background:'+(tourn?'#D35400':'#e0e0e0')+';color:'+(tourn?'#fff':'#333')+';border-radius:4px;padding:0 6px;font-size:10px;font-weight:800">'+(tourn?'T':'S')+'</span> \u00a0<span class="plat-door-arrow" style="color:'+col+';font-size:11px">\u25bc</span></div>'
               +'<div style="font-size:13.5px;font-weight:700;color:#3a2348;line-height:1.35">'+(m.display_t1?esc(m.display_t1):side(m.t1p1,m.t1p2))+' <span style="color:#9b80b3;font-weight:500">'+(m.t1_sets||0)+'-'+(m.t2_sets||0)+'</span> '+(m.display_t2?esc(m.display_t2):side(m.t2p1,m.t2p2))+'</div>'
@@ -9785,7 +9787,7 @@ async function clRemove(id, label){
     }catch(e){}
   }
   // the build tag is a debugging aid, not something a member should see: it appears only with ?build=1
-  try{ if(/[?&]build=1/.test(location.search)) buildTag("PLAT s44"); }catch(e){}
+  try{ if(/[?&]build=1/.test(location.search)) buildTag("PLAT s46"); }catch(e){}
   /* A plaque on the club's honour board opens that sport's ledger AT the person: ?player=<name> calls the
      parent's own loadProfile, so nothing in the parent changes. If the name is not recognised the ledger
      simply opens as it always did. */
@@ -10145,7 +10147,16 @@ async function clRemove(id, label){
       // p94: THE WHOLE REGISTER, not the group's members: names live at the club, and a group has no members
       // until someone plays there. plat_squash_v_ratings holds every person for every group with THIS group's
       // club-adjusted base (the number the board replays from); OPR's own cache refines it for anyone who has played here.
-      fetch(SBR("plat_squash_v_ratings?club_id=eq."+W.PLAT.cid+"&select=full_name,gender,seed_rating&order=full_name.asc")).then(function(r){return r.json();}),
+      // the register for this board: the club-adjusted view first; if it refuses a column, ask for less; if it
+      // refuses the board, ask the register itself (pool). Whatever comes back that is a list is the list.
+      (function(){
+        var tries=["plat_squash_v_ratings?club_id=eq."+W.PLAT.cid+"&select=full_name,gender,seed_rating&order=full_name.asc",
+                   "plat_squash_v_ratings?club_id=eq."+W.PLAT.cid+"&select=full_name,seed_rating&order=full_name.asc",
+                   "plat_squash_v_pool_individuals?pool_id=eq."+W.PLAT.pool+"&select=full_name,gender,seed_rating&order=full_name.asc",
+                   "plat_individuals?pool_id=eq."+W.PLAT.pool+"&select=full_name,gender&order=full_name.asc"];
+        var i=0; var next=function(){ if(i>=tries.length) return Promise.resolve([]);
+          return fetch(SBR(tries[i++])).then(function(r){return r.json();}).then(function(rows){ return Array.isArray(rows)?rows:next(); }).catch(next); };
+        return next(); })(),
       (typeof OPR!=="undefined"&&OPR.load)?OPR.load().catch(function(){}):Promise.resolve()
       ,fetch(SBR("plat_squash_v_individuals?club_id=eq."+W.PLAT.cid+"&select=full_name")).then(function(r){return r.json();}).catch(function(){ return []; })
     ]).then(function(res){
