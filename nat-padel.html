@@ -946,7 +946,12 @@ st0.textContent += "html{overflow-y:scroll}";   // p98: the scrollbar's space is
       // match delta it can see (OPR.load). On a club ledger the club-scoped match set gave a club-scoped
       // number (Murray 1791 at Monday, 1782 at North Coast, 1773 everywhere else). So the ENGINE's three
       // load queries are answered pool-wide, always; only the LISTS stay club-scoped.
-      var engineQuery = (tbl==="matches" && qs.indexOf("rating_delta")>=0) || (tbl==="players" && qs.indexOf("member_a_id")>=0);
+      // n5: the rule must name the ENGINE's OWN two queries exactly. "any query mentioning rating_delta" was
+      // too loose — the Recent Matches list asks for it too, so a club ledger was showing the other club's
+      // matches and counting the register's pairs. OPR.load sends precisely these two selects:
+      //   matches?select=t1p1,t2p1,rating_delta   ·   players?select=name,member_a_id,member_b_id
+      var engineQuery = (tbl==="matches" && qs.indexOf("select=t1p1,t2p1,rating_delta")>=0)
+                     || (tbl==="players" && qs.indexOf("select=name,member_a_id,member_b_id")>=0);
       if(pool && NAT && engineQuery){ swapClub("pool_id=eq."+P); }
       else if(pool && NAT){ swapClub("club_id=in.("+NAT+")"); }   // NAT: the club ledger — this club's boards only; pairs, matches and ladder rows are board rows already
       else if(pool){ swapClub("pool_id=eq."+P+((tbl==="doubles_results")?"&club_id=is.null":"")); }   // p6: pairs are CLUB rows — Overall lists every club's pairs; only the category tables have a pool-wide set
@@ -3330,7 +3335,7 @@ const CLUB_NAME = _club.name;  // shown in the logo as "OPR · <name>"
     link.setAttribute('href', href);
   }catch(e){ /* install stays on the static manifest — no functional impact */ }
 })();
-const OPR_VERSION = "OPR-DOUBLES v2026.09.03-56 · NAT fork n4 (of PLAT p117)";  // MANUAL PAIR CREATION REMOVED FROM ADMIN: Create a pair, Bulk create pairs and Re-derive all pairs are gone (they only made match-less ghost pairs, and Re-derive rewrote every stored initial club-wide). Pairs are born automatically at match entry. Current pairs list untouched; the underlying JS is left in place unreferenced, so no other code path changes. Includes v47 (set-score fix + double-tap guard) and all prior.
+const OPR_VERSION = "OPR-DOUBLES v2026.09.03-56 · NAT fork n5 (of PLAT p117)";  // MANUAL PAIR CREATION REMOVED FROM ADMIN: Create a pair, Bulk create pairs and Re-derive all pairs are gone (they only made match-less ghost pairs, and Re-derive rewrote every stored initial club-wide). Pairs are born automatically at match entry. Current pairs list untouched; the underlying JS is left in place unreferenced, so no other code path changes. Includes v47 (set-score fix + double-tap guard) and all prior.
 // Explanation shown above the individual ladder. Open on load so it's read; collapsible
 // (state kept for the session) and scrolls away. Mechanics only — no outcome framing, so
 // members aren't nudged away from playing stronger opponents. Every clause maps to a real
@@ -9910,16 +9915,23 @@ async function clRemove(id, label){
     if(W.PLAT.cid!==0 || W.PLAT.landing || !natMode() || document.getElementById("platNatToggle")) return;
     var host=document.querySelector("#homeScreen .home-content"); if(!host) return;
     var box=document.createElement("div"); box.id="platNatToggle"; box.dataset.platKeep="1";
-    box.style.cssText="text-align:center;margin:0 auto 12px;max-width:1000px";
+    box.style.cssText="text-align:center;margin:22px auto 14px;max-width:1000px";   /* n5: clear of the header */
+    try{ if(W.PLAT.nat){ sessionStorage.setItem("nat_last_club_"+W.PLAT.pool, String(W.PLAT.nat)+"|"+(W.PLAT.natName||"")); } }catch(e){}
     var isNat=!W.PLAT.nat;
     var btn=function(label,active,href){ return '<button onclick="location.href=\''+href+'\'" style="display:inline-block;margin:0 4px;background:'+(active?"#1a1a1a":"transparent")+';color:'+(active?"#fff":"#1a1a1a")+';border:1.5px solid #1a1a1a;border-radius:99px;padding:8px 18px;font-size:13px;font-weight:800;cursor:pointer">'+esc(label)+'</button>'; };
     // n3: two buttons only — this club, or every club. Naming the other clubs here would show Monday who
     // North Coast is, which is the one thing a club must never see from inside its own ledger.
-    var h='<div style="font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:#8a7f9c;font-weight:700;margin-bottom:8px">Ledger</div>';
-    if(W.PLAT.nat){ h += btn((W.PLAT.natName||"Club")+" ledger", true, PAGE+"?club=0&pool="+W.PLAT.pool+"&nat="+W.PLAT.nat);
-                    h += btn("Combined Clubs", false, PAGE+"?club=0&pool="+W.PLAT.pool); }
-    else { h += btn("Combined Clubs", true, PAGE+"?club=0&pool="+W.PLAT.pool); }
-    box.style.marginTop="14px";   // n3: room under the header — the pills were tight against it
+    var h="";
+    if(W.PLAT.nat){
+      h += btn((W.PLAT.natName||"Club")+" ledger", true, PAGE+"?club=0&pool="+W.PLAT.pool+"&nat="+W.PLAT.nat);
+      h += btn("Combined Clubs", false, PAGE+"?club=0&pool="+W.PLAT.pool);
+    } else {
+      // n5: on the combined ledger, offer the way back to the club ledger you were last in — remembered for
+      // this visit only, so the register owner arriving fresh simply sees the one button.
+      var last=null; try{ last=sessionStorage.getItem("nat_last_club_"+W.PLAT.pool); }catch(e){}
+      if(last){ var bits=last.split("|"); h += btn((bits[1]||"Club")+" ledger", false, PAGE+"?club=0&pool="+W.PLAT.pool+"&nat="+bits[0]); }
+      h += btn("Combined Clubs", true, PAGE+"?club=0&pool="+W.PLAT.pool);
+    }
     box.innerHTML=h; host.insertBefore(box, host.firstChild);
   }
   W.platGo=function(id){ if(W.PLAT.landing || id!==W.PLAT.cid){ if(document.getElementById("entryScreen")&&document.getElementById("entryScreen").classList.contains("active")) location.hash="#enter"; go(id); } };
