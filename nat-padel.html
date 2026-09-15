@@ -809,6 +809,26 @@
     board:BOARDQ,nat:NATQ,natIds:null,natNames:null,parentId:0,kids:[],clubDoor:false};
   // NAT: a club door is known from the last visit, so the first frame is already laid out as a door
   try{ W.PLAT.clubDoor=(CID>0 && !BOARDQ && localStorage.getItem("plat_nat_kids_"+CID)==="1"); }catch(e){}
+  // n10: NO FLASH OF THE OLD PAGE. The parent draws its board, chip and title on the first frame, from its
+  // own defaults; the platform only learns the ladder when the network answers, so for a moment you saw the
+  // previous shape and then it jumped. Two things stop that: (a) the ladder is remembered from the last
+  // visit, so the very first frame is already the right shape; (b) anything that can only be decided once
+  // the answer arrives is drawn INVISIBLE and revealed then — never drawn wrong and corrected.
+  try{ W.PLAT.natCached=(localStorage.getItem("plat_nat_shape_"+POOLQ)==="1"); }catch(e){}
+  try{ var kc=localStorage.getItem("plat_nat_parent_"+CID); W.PLAT.parentCached=kc?Number(kc):0; }catch(e){}
+  (function(){
+    var st=document.createElement("style"); st.id="platNoFlash";
+    var css="";
+    // the chip: the parent has none; ours is added by the glue at parse time, before the ladder is known
+    css += "#platChip{visibility:hidden}";
+    // a club DOOR: the parent's board must not be seen at all — the door replaces it a moment later
+    if(W.PLAT.clubDoor) css += "#homeScreen .home-content > *:not([data-plat-keep]):not(#platDoor){visibility:hidden}"
+                             + "#homeScreen .btn-enter{display:none}";
+    st.textContent=css; (document.head||document.documentElement).appendChild(st);
+    // n10: a mask that outlives a failed load would leave a blank page — take it off regardless after 2.5s
+    setTimeout(function(){ var x=document.getElementById("platNoFlash"); if(x) x.remove(); }, 2500);
+    W.addEventListener("error", function(){ var x=document.getElementById("platNoFlash"); if(x) x.remove(); });
+  })();
   // p23: OPR paints its hero from the cached club name before the platform answers. On a door or ledger
   // entry that cache belongs to a DIFFERENT page, which flashed "Club 2" for a frame. Clear it here.
   // p24: with no ?club=, OPR defaults to club "1" and paints "OPR · Club 1" on the FIRST frame, before the
@@ -892,7 +912,9 @@ st0.textContent += "html{overflow-y:scroll}";   // p98: the scrollbar's space is
           W.PLAT.parentId=CID?(pm[CID]||0):0;
           W.PLAT.kids=(W.PLAT.clubs||[]).filter(function(c){ return c.parent_id===CID && CID>0; }).map(function(c){return c.id;});
           W.PLAT.clubDoor=(CID>0 && !BOARDQ && W.PLAT.kids.length>0);
-          try{ if(CID) localStorage.setItem("plat_nat_kids_"+CID, W.PLAT.kids.length?"1":"0"); }catch(e){}
+          try{ if(CID) localStorage.setItem("plat_nat_kids_"+CID, W.PLAT.kids.length?"1":"0");
+               if(CID) localStorage.setItem("plat_nat_parent_"+CID, String(W.PLAT.parentId||0));
+               if(W.PLAT.pool) localStorage.setItem("plat_nat_shape_"+W.PLAT.pool, (W.PLAT.clubs||[]).some(function(c){return !!c.parent_id;})?"1":"0"); }catch(e){}
           if(CID===0 && NATQ){
             var scope=[NATQ].concat((W.PLAT.clubs||[]).filter(function(c){ return c.parent_id===NATQ; }).map(function(c){return c.id;}));
             W.PLAT.natIds=scope;
@@ -3360,7 +3382,7 @@ const CLUB_NAME = _club.name;  // shown in the logo as "OPR · <name>"
     link.setAttribute('href', href);
   }catch(e){ /* install stays on the static manifest — no functional impact */ }
 })();
-const OPR_VERSION = "OPR-DOUBLES v2026.09.03-56 · NAT fork n8 (of PLAT p117)";  // MANUAL PAIR CREATION REMOVED FROM ADMIN: Create a pair, Bulk create pairs and Re-derive all pairs are gone (they only made match-less ghost pairs, and Re-derive rewrote every stored initial club-wide). Pairs are born automatically at match entry. Current pairs list untouched; the underlying JS is left in place unreferenced, so no other code path changes. Includes v47 (set-score fix + double-tap guard) and all prior.
+const OPR_VERSION = "OPR-DOUBLES v2026.09.03-56 · NAT fork n10 (of PLAT p117)";  // MANUAL PAIR CREATION REMOVED FROM ADMIN: Create a pair, Bulk create pairs and Re-derive all pairs are gone (they only made match-less ghost pairs, and Re-derive rewrote every stored initial club-wide). Pairs are born automatically at match entry. Current pairs list untouched; the underlying JS is left in place unreferenced, so no other code path changes. Includes v47 (set-score fix + double-tap guard) and all prior.
 // Explanation shown above the individual ladder. Open on load so it's read; collapsible
 // (state kept for the session) and scrolls away. Mechanics only — no outcome framing, so
 // members aren't nudged away from playing stronger opponents. Every clause maps to a real
@@ -9093,6 +9115,7 @@ async function clRemove(id, label){
     if(natMode() && !W.PLAT.clubDoor){
       var tops=topClubs().sort(function(a,b){ return (b.is_general?1:0)-(a.is_general?1:0) || String(a.name).localeCompare(String(b.name)); });
       if(tops.length===1){ location.replace(PAGE+"?club="+tops[0].id+(isClubWithKids(tops[0].id)?"":"&board=1")); return; }
+      try{ var m0=document.getElementById("platNoFlash"); if(m0) m0.remove(); }catch(e){}   /* n10 */
       var dn=document.createElement("div"); dn.id="platDoor";
       dn.style.cssText="max-width:620px;margin:0 auto;display:flex;flex-direction:column;gap:12px;padding:0 4px 8px";
       var h="";
@@ -9188,110 +9211,17 @@ async function clRemove(id, label){
     html += '<div style="margin:14px 2px 2px;font-size:11.5px;letter-spacing:.1em;text-transform:uppercase;color:#8a7f9c;font-weight:700">Club ledger</div>';
     html += natCard("platGoClubLedger("+C+")", "Club ledger", "Every player who has played here — one rating each · ladders and stats", LEDGER);
     html += '<div id="platDoorRecent" style="margin-top:6px"></div>';
-    html += '<div id="platClubAdmin" style="margin:16px 0 6px;display:none"></div>';   /* n7: opened from About OPR */
     html += '<div style="text-align:center;margin:14px 0 6px"><button data-plat-keep="1" onclick="showScreen(\'aboutScreen\')" style="display:inline-flex;align-items:center;background:transparent;border:1.5px solid #9b80b3;color:#6c3483;border-radius:99px;padding:8px 20px;font-size:13px;font-weight:700;cursor:pointer">About OPR</button></div>';
     html += '<div style="text-align:center;color:#b3a9c4;font-size:10px;letter-spacing:.5px;margin:0 0 10px">'+esc((typeof OPR_VERSION!=="undefined"?OPR_VERSION:""))+'</div>';
     d.innerHTML=html; host.insertBefore(d,host.firstChild);
+    try{ var m=document.getElementById("platNoFlash"); if(m) m.remove(); }catch(e){}   /* n10: reveal, once */
     doorRecent([C].concat(kids.map(function(k){return k.id;})));
-    clubAdmin(C);
   }
-  /* n4: THE CLUB'S OWN ADMIN. Behind the club's code: make a group, recolour or rename one, give it a code.
-     People are NOT here — a person belongs to the register, not to a club, so registering stays in General
-     Admin. A club code opens only its own club and groups; the register code opens this too. */
-  var CA={pin:"",open:false};
-  function clubAdmin(C){
-    var box=document.getElementById("platClubAdmin"); if(!box) return;
-    var kids=kidsOf(C).sort(function(a,b){ return String(a.name).localeCompare(String(b.name)); });
-    if(!CA.open){ box.innerHTML=""; return; }   /* n7: no pill on the door — About OPR opens this */
-    var h='<div style="max-width:620px;margin:0 auto;padding:12px;border:1px dashed #cbbfd8;border-radius:12px;background:#faf7fc">';
-    if(!CA.pin){
-      h+='<div style="font-weight:800;color:'+clubPal(C)[0]+';margin-bottom:6px">Club admin</div>'
-        +'<div style="font-size:12px;color:#666;margin-bottom:8px">The club\'s own code makes and manages its groups. Members are registered once for the whole register, in the ledger\'s General Admin.</div>'
-        +'<div style="display:flex;gap:8px"><input id="platCAPin" type="password" inputmode="numeric" placeholder="Club code" style="flex:1;padding:10px 12px;border:1.5px solid #ddd;border-radius:10px;font-size:16px">'
-        +'<button class="menu-btn" style="min-height:42px;padding:8px 16px" onclick="window.platClubAdminPin('+C+')">Open</button></div>'
-        +'<div id="platCAMsg" style="font-size:12px;margin-top:8px"></div>';
-      box.innerHTML=h+'</div>'; return;
-    }
-    h+='<div style="font-weight:800;color:'+clubPal(C)[0]+'">Club admin \u00b7 '+esc(W.PLAT.name||"")+'</div>';
-    h+='<div style="margin-top:10px;font-weight:700;font-size:13px;color:#444">Groups</div>';
-    kids.forEach(function(k){
-      h+='<div style="display:flex;align-items:center;gap:8px;padding:7px 0;border-bottom:1px solid #eee">'
-        +'<span style="width:16px;height:16px;border-radius:50%;background:'+clubPal(k.id)[0]+';flex:0 0 16px"></span>'
-        +'<span style="flex:1;font-weight:600">'+esc(k.name)+'</span>'
-        +'<button class="menu-btn" style="min-height:30px;padding:4px 10px;font-size:12px" onclick="window.platCARename('+k.id+')">Rename</button>'
-        +'<button class="menu-btn" style="min-height:30px;padding:4px 10px;font-size:12px" onclick="window.platCACode('+k.id+')">Code</button></div>';
-    });
-    if(!kids.length) h+='<div style="font-size:12px;color:#666;padding:6px 0">No groups yet.</div>';
-    h+='<div style="margin-top:14px;font-weight:700;font-size:13px;color:#444">New group</div>'
-      +'<div style="font-size:12px;color:#666;margin:4px 0 6px">A group runs its own board, ladder and tournaments, and shares the club\'s players and their ratings.</div>'
-      +'<div style="display:flex;gap:8px;flex-wrap:wrap"><input id="platCAName" placeholder="Group name" style="flex:2;min-width:150px;padding:10px 12px;border:1.5px solid #ddd;border-radius:10px">'
-      +'<input id="platCACodeNew" placeholder="Group code" style="flex:1;min-width:110px;padding:10px 12px;border:1.5px solid #ddd;border-radius:10px"></div>'
-      +'<div style="margin-top:8px;font-size:12px;color:#666">Colour</div><div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:4px">'
-      +SWATCH.map(function(sw,i){ return '<button onclick="window.platCAPick(\''+sw+'\')" id="platCASw'+i+'" style="width:26px;height:26px;border-radius:50%;background:'+sw+';border:2px solid '+(sw===CACOL?"#333":"transparent")+';cursor:pointer"></button>'; }).join("")
-      +'</div><button class="menu-btn" style="margin-top:10px;width:100%" onclick="window.platCANew('+C+')">Create group</button>'
-      +'<div id="platCAMsg" style="font-size:12px;margin-top:8px"></div>';
-    box.innerHTML=h+'</div>';
-  }
-  var CACOL=SWATCH[2];
-  W.platCAPick=function(c){ CACOL=c; SWATCH.forEach(function(s,i){ var e=document.getElementById("platCASw"+i); if(e) e.style.borderColor=(s===c)?"#333":"transparent"; }); };
-  // n7: the club door's admin is reached where every other admin is reached — About OPR. openAdmin() on a
-  // door would open the general-play board's Control Room, which is not what "admin" means from here.
-  W.platClubAdminOpen=function(){ var b=document.getElementById("platClubAdmin"); if(b) b.style.display="";
-    CA.open=true; clubAdmin(W.PLAT.cid);
-    try{ if(typeof showScreen==="function") showScreen("homeScreen"); }catch(e){}
-    setTimeout(function(){ var x=document.getElementById("platClubAdmin"); if(x) x.scrollIntoView({behavior:"smooth",block:"center"}); },60);
-  };
-  function aboutAdminLink(){
-    if(!W.PLAT.clubDoor) return;
-    var about=document.getElementById("aboutScreen"); if(!about) return;
-    var btns=about.querySelectorAll("button");
-    for(var i=0;i<btns.length;i++){
-      if(/admin/i.test(btns[i].textContent||"")){
-        btns[i].textContent="Club admin";
-        btns[i].onclick=function(){ W.platClubAdminOpen(); };
-        return;
-      }
-    }
-  }
-  W.platClubAdminPin=function(C){
-    var v=(document.getElementById("platCAPin").value||"").trim(), m=document.getElementById("platCAMsg");
-    if(!v){ return; }
-    m.style.color="#666"; m.textContent="Checking…";
-    acall({action:"check_pin",admin_pin:v,pool_id:W.PLAT.pool,club_id:C}).then(function(r){
-      if(!r||!r.ok){ m.style.color="#c00"; m.textContent=(r&&r.error)||"That code does not open this club."; return; }
-      CA.pin=v; clubAdmin(C);
-    });
-  };
-  W.platCANew=function(C){
-    var m=document.getElementById("platCAMsg");
-    var name=(document.getElementById("platCAName").value||"").trim(), code=(document.getElementById("platCACodeNew").value||"").trim();
-    if(!name){ m.style.color="#c00"; m.textContent="A group name is required."; return; }
-    m.style.color="#666"; m.textContent="Creating…";
-    acall({action:"add_club",admin_pin:CA.pin,pool_id:W.PLAT.pool,parent_id:C,name:name,club_admin_pin:code,disciplines:["padel"],colour:CACOL}).then(function(r){
-      if(!r||!r.ok){ m.style.color="#c00"; m.textContent=(r&&r.error)||"Failed."; return; }
-      W.PLAT.clubs.push({id:r.club.id,name:name,colour:CACOL,parent_id:C});
-      m.style.color="#2e7d32"; m.textContent="Created "+name+". Its door is nat-padel.html?club="+r.club.id+(code?(", its code is "+code):"")+".";
-      clubAdmin(C);
-    });
-  };
-  W.platCARename=function(id){
-    var cur=((W.PLAT.clubs||[]).find(function(c){return c.id===id;})||{}).name||"";
-    var v=prompt("New name for "+cur, cur); if(!v||!v.trim()) return;
-    acall({action:"rename_club",admin_pin:CA.pin,club_id:id,pool_id:W.PLAT.pool,name:v.trim()}).then(function(r){
-      var m=document.getElementById("platCAMsg");
-      if(!r||!r.ok){ if(m){ m.style.color="#c00"; m.textContent=(r&&r.error)||"Failed."; } return; }
-      (W.PLAT.clubs||[]).forEach(function(c){ if(c.id===id) c.name=v.trim(); });
-      clubAdmin(W.PLAT.cid);
-    });
-  };
-  W.platCACode=function(id){
-    var v=prompt("New code for this group (organisers use it to open its Control Room)"); if(!v||!v.trim()) return;
-    acall({action:"set_club_pin",admin_pin:CA.pin,club_id:id,pool_id:W.PLAT.pool,new_pin:v.trim()}).then(function(r){
-      var m=document.getElementById("platCAMsg"); if(!m) return;
-      if(!r||!r.ok){ m.style.color="#c00"; m.textContent=(r&&r.error)||"Failed."; return; }
-      m.style.color="#2e7d32"; m.textContent="Code changed.";
-    });
-  };
+  /* n9: A CLUB DOES NOT MAKE CLUBS. The club-admin room that briefly lived on the door is gone: clubs and
+     groups are created in ONE place, the register's General Admin on the Combined Clubs ledger, so the
+     register owner knows — and can bill for — every club in it. About OPR's Admin link is the parent's own
+     again. (nat_admin enforces the same rule server-side: add_club with no parent_id demands the register
+     code or master, so a club's code can never create a club even if a screen asked it to.) */
   /* What has just been played, across the whole club — the door's own short list. */
   function doorRecent(scope){
     var box=document.getElementById("platDoorRecent"); if(!box||!W.PLAT.pool) return;
@@ -9906,9 +9836,13 @@ async function clRemove(id, label){
   }
   function chip(){
     var panel=document.querySelector("#homeScreen .hero-logo-panel"); if(!panel||document.getElementById("platChip")) return;
+    /* n10: the last visit already told us where we stand — a club door has no chip, anything under a club
+       says Home. Drawing it right now beats drawing it wrong and fixing it a moment later. */
+    if(W.PLAT.clubDoor) return;
     // p25: inside an organisation the way back is the club door; otherwise it is the register's own door.
     var org=W.PLAT.orgId||0;
-    var a=document.createElement("button"); a.id="platChip"; a.textContent=(W.PLAT.orgId?"‹ Club":"‹ All clubs");
+    var a=document.createElement("button"); a.id="platChip";
+    a.textContent=(W.PLAT.parentCached||(W.PLAT.natCached&&W.PLAT.cid&&!W.PLAT.landing&&W.PLAT.cid!==0)) ? "\u2039 Home" : (W.PLAT.orgId?"‹ Club":"‹ All clubs");   /* n10 */
     a.dataset.natChip="1";   // NAT: relabelled and re-pointed once the ladder is known (natChip)
     a.style.cssText="display:inline-block;margin:12px auto 0;background:rgba(255,255,255,.22);color:#fff;border:1.5px solid rgba(255,255,255,.75);padding:11px 26px;border-radius:99px;font-size:15px;font-weight:800;letter-spacing:.2px;cursor:pointer;text-shadow:none;box-shadow:0 2px 8px rgba(0,0,0,.2)";   // p97: bigger — it is the way back
     a.onclick=function(){ var o=W.PLAT.orgId||0; var fromDoor=false; try{ fromDoor=(sessionStorage.getItem("plat_from_door_padel")===String(W.PLAT.pool)); }catch(e){}
@@ -9946,12 +9880,15 @@ async function clRemove(id, label){
   // the way to the other clubs exists only on the combined ledger and the register door, which are the
   // register owner's screens. So on a club door itself there is no chip at all.
   function natChip(){
-    var a=document.getElementById("platChip"); if(!a||!natMode()) return;
+    var a=document.getElementById("platChip");
+    var show=function(){ if(a) a.style.visibility="visible"; };   /* n10 */
+    if(!a) return;
+    if(!natMode()){ show(); return; }   // a plain register: the parent's own chip is right
     // n7: inside a club the chip just says HOME — naming the club again is noise, you know where you are.
     // Only the register owner's combined ledger offers the way out to the other clubs.
-    if(W.PLAT.cid===0){ a.textContent=W.PLAT.nat?"\u2039 Home":"\u2039 All clubs"; return; }
-    if(W.PLAT.parentId){ a.textContent="\u2039 Home"; return; }
-    if(W.PLAT.board && isClubWithKids(W.PLAT.cid)){ a.textContent="\u2039 Home"; return; }
+    if(W.PLAT.cid===0){ a.textContent=W.PLAT.nat?"\u2039 Home":"\u2039 All clubs"; show(); return; }
+    if(W.PLAT.parentId){ a.textContent="\u2039 Home"; show(); return; }
+    if(W.PLAT.board && isClubWithKids(W.PLAT.cid)){ a.textContent="\u2039 Home"; show(); return; }
     a.remove();   // a club with no club above it: nowhere to go but sideways, so no chip
   }
   /* NAT: the National grid toggle — on a club ledger, one tap to the national ledger; on the national ledger
@@ -10789,7 +10726,7 @@ async function clRemove(id, label){
     // NAT: a club with groups opens on its DOOR (its board is ?club=C&board=1)
     if(W.PLAT.clubDoor){ var t3="OPR · "+(W.PLAT.name||"Club"); if(ht) ht.textContent=t3; document.title=t3;
       var sb3=document.querySelector("#homeScreen .hero-logo-panel .sub, #homeScreen .sub"); if(sb3 && W.PLAT.poolName) sb3.textContent=W.PLAT.poolName+" · Open Padel Ratings System";
-      clubDoor(); try{ aboutAdminLink(); }catch(e){} return; }
+      clubDoor(); return; }
     if(W.PLAT.cid===0){ var t2="OPR · "+(W.PLAT.nat?(W.PLAT.natName||"Club"):(W.PLAT.poolName||"Overall"))+" · Ledger"; if(ht) ht.textContent=t2; document.title=t2; ledgerOnly(); try{ natToggle(); }catch(e){} }
     else if(W.PLAT.name&&ht){ var _bn=(W.PLAT.board&&isClubWithKids(W.PLAT.cid))?(W.PLAT.name+" · General play"):W.PLAT.name;   /* n3 */
       /* n3: the parent writes 'OPR · '+CLUB_NAME into the hero from its own window.onload, which can land
