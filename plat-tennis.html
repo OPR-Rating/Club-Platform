@@ -549,7 +549,9 @@
   }
 </style>
 <script>
-/* ============================================================================
+/* ====
+   VERSION: PLAT-TENNIS v2026.09.13-t41 (the admin gate: every admin call carries pool_id and club_id, so a code is checked
+   against the register you are standing in — see plat_admin_tennis v3)========================================================================
    PLAT EARLY SNIPPET — plat-tennis.html  VERSION: PLAT-TENNIS v2026.09.11-t9  (the group board is centred on a wide screen, as padel is — the two
    were the same width but OTR's flex column was not centring itself)
    VERSION: PLAT-TENNIS v2026.09.11-t8  (no two-stage paint on the ledger list, the parent's version string
@@ -596,7 +598,8 @@
             club_ladder:"plat_tennis_club_ladder",club_ladder_state:"plat_tennis_club_ladder_state"};
   var FN={submit_match:"plat_submit_match",recompute:"plat_recompute_"+DISC,admin:"plat_admin_"+DISC,
           tournament:"plat_tournament_"+DISC,ladder:"plat_ladder_"+DISC};
-  var W=window; W.PLAT={cid:CID,pool:POOLQ,orgId:0,clubs:[],poolName:"",name:"",ready:null,ledger:(CID===0)};
+  var LANDING=(!q.has("club") && POOLQ>0);   // t42: the door — pick your club (as padel p3)
+  var W=window; W.PLAT={cid:CID,pool:POOLQ,orgId:0,clubs:[],poolName:"",name:"",ready:null,ledger:(CID===0 && !LANDING),landing:LANDING};
 
   function hdrs(h){ var o={}; if(h){ if(h.forEach) h.forEach(function(v,k){o[k]=v;}); else Object.keys(h).forEach(function(k){o[k]=h[k];}); }
     Object.keys(o).forEach(function(k){ if(/^(apikey|authorization)$/i.test(k)) delete o[k]; });
@@ -610,7 +613,8 @@
   // read-only view, so its score button, tournaments and admin link never appear rather than vanishing late.
   try{
     var st0=document.createElement("style"); st0.id="platLayout";
-    st0.textContent = (CID===0)
+    var isLedger = (CID===0 && !LANDING);
+    st0.textContent = isLedger
       ? "#homeScreen .btn-enter{display:none!important}"
         + "#homeScreen .menu-btn[onclick*='tournamentScreen']{display:none!important}"
         + "button[onclick='openAdmin()']{display:none!important}"
@@ -622,7 +626,8 @@
     // t8: the ledger list used to paint SOLID initials and then turn them into outlines once the data
     // arrived — two states, one page, which read as the sheet loading twice. The outline is now the
     // starting state; the group's colour simply replaces the neutral one when it is known.
-    if(CID===0) st0.textContent += "#playerList .player-avatar{background:transparent!important;color:#3d3d3d!important;border:1.5px solid #cfd6d2!important;font-weight:700}"
+    if(LANDING) st0.textContent += "#homeScreen .btn-enter{display:none!important}#homeScreen .menu-grid{display:none!important}";   // t42: the door shows cards, not the board
+    if(isLedger) st0.textContent += "#playerList .player-avatar{background:transparent!important;color:#3d3d3d!important;border:1.5px solid #cfd6d2!important;font-weight:700}"
                                  + "#playerList .player-gender{display:none}#playerList .player-name{line-height:1.25}";
     // t8: a group board's four tiles wrap to one long row; padel lays them out two by two
     // t9: OTR's home content is a flex column that does not centre itself on a wide screen, so the page sat
@@ -640,11 +645,14 @@
       // the cached answers cover a board opened directly from a bookmark or an installed icon.
       var ORGCACHE = /[?&]org=\d+/.test(location.search)
                   || (localStorage.getItem("plat_org_of_club_"+CID)==="1")
+                  || (localStorage.getItem("plat_base_of_club_"+CID)==="1")      // t42: a group in a register with a base club
                   || (localStorage.getItem("plat_reg_org_"+(POOLQ||0))==="1");
       if(ORGCACHE) st0.textContent += "#homeScreen .menu-btn[onclick*='aboutScreen']{display:none!important}"
                                     + "#homeScreen .menu-grid{grid-template-columns:repeat(3,1fr)!important}";
     }catch(e){}
-st0.textContent += ".hero-logo-panel{padding-bottom:52px!important}";
+st0.textContent += "html{overflow-y:scroll}";   // t42: no sideways jiggle
+    st0.textContent += ".hero-logo-panel{padding-bottom:52px!important}";
+    if(LANDING) st0.textContent += "#homeScreen .hero-logo-panel{padding:22px 16px 22px!important}#homeScreen .home-content{margin-top:0!important}";   // t42: the door has no chip
     (document.head||document.documentElement).appendChild(st0);
   }catch(e){}
   // the ledger paints from a cached name so the first frame is never wrong (padel p24 lesson)
@@ -654,12 +662,12 @@ st0.textContent += ".hero-logo-panel{padding-bottom:52px!important}";
     }catch(e){} }
 
   W.PLAT.ready=(function(){
-    var p = CID ? _fetch(PLAT+"/rest/v1/plat_clubs?id=eq."+CID+"&select=id,pool_id,name,colour",{headers:hdrs()})
+    var p = CID ? _fetch(PLAT+"/rest/v1/plat_clubs?id=eq."+CID+"&select=id,pool_id,name,colour,is_general",{headers:hdrs()})
                     .then(function(r){return r.json();}).then(function(rows){ var c=rows&&rows[0];
                       if(c){ W.PLAT.pool=c.pool_id; W.PLAT.name=c.name; W.PLAT.colour=c.colour||""; try{ sessionStorage.setItem("plat_tennis_name_"+CID,c.name); }catch(e){} } })
                 : Promise.resolve();
     return p.then(function(){ if(!W.PLAT.pool) return; return Promise.all([
-        _fetch(PLAT+"/rest/v1/plat_clubs?pool_id=eq."+W.PLAT.pool+"&select=id,name,colour&order=id",{headers:hdrs()})
+        _fetch(PLAT+"/rest/v1/plat_clubs?pool_id=eq."+W.PLAT.pool+"&select=id,name,colour,is_general&order=id",{headers:hdrs()})
           .then(function(r){return r.json();}).then(function(rows){ W.PLAT.clubs=Array.isArray(rows)?rows:[]; }),
         _fetch(PLAT+"/rest/v1/plat_pools?id=eq."+W.PLAT.pool+"&select=name,org_id",{headers:hdrs()})
           .then(function(r){return r.json();}).then(function(rows){ W.PLAT.poolName=(rows&&rows[0]&&rows[0].name)||""; W.PLAT.orgId=(rows&&rows[0]&&rows[0].org_id)||0;
@@ -673,7 +681,7 @@ st0.textContent += ".hero-logo-panel{padding-bottom:52px!important}";
     var clubIds=(W.PLAT.clubs||[]).map(function(c){return c.id;}).join(",");
     function swapClub(to){ qs=qs.replace(/club_id=eq\.\d+/g,to); }
     if(tbl==="clubs"){
-      if(ledger) return {synthetic:[{id:0,name:((W.PLAT.poolName?W.PLAT.poolName+" · ":"")+"Ledger"),admin_pin:null}]};
+      if(ledger) return {synthetic:[{id:0,name:(LANDING?(W.PLAT.poolName||"Clubs"):((W.PLAT.poolName?W.PLAT.poolName+" · ":"")+"Ledger")),admin_pin:null}]};   // t42: the door names itself after the register
       return "plat_clubs?"+qs;
     }
     // the PICKER and the rating cache: the register of this pool/organisation, presented as players_public
@@ -713,6 +721,10 @@ st0.textContent += ".hero-logo-panel{padding-bottom:52px!important}";
       var f=u.match(/\/functions\/v1\/([a-z_-]+)/);
       if(f&&FN[f[1]]){
         u=u.replace("/functions/v1/"+f[1],"/functions/v1/"+FN[f[1]]);
+        // p90-class fix: EVERY admin call names the register it was made from, so the code typed at the gate is checked
+        // against THIS register only — never looked up across the platform (a Vantage group code opened its group from Club Alpha).
+        if(f[1]==="admin"){ var ab={}; try{ ab=JSON.parse(init.body||"{}"); }catch(e){}
+          ab.pool_id=(W.PLAT&&W.PLAT.pool)||POOLQ||ab.pool_id||0; if(ab.club_id==null&&CID) ab.club_id=CID; init=Object.assign({},init,{body:JSON.stringify(ab)}); }
         h=fnHdrs(init.headers);
         if(f[1]==="submit_match"){
           if(CID===0) return jsonResp({ok:false,error:"Open a group to enter a score — the ledger is a read-only view."},400);
@@ -1300,7 +1312,7 @@ function showScreen(id) {
 let ADMIN_PIN = "";
 function openAdmin(){ document.getElementById('adminGate').style.display='block'; document.getElementById('adminPanel').style.display='none'; document.getElementById('adminPin').value=''; document.getElementById('adminGateErr').style.display='none'; showScreen('adminScreen'); }
 async function adminCall(action, args, pinOverride){
-  const body=Object.assign({ master_pin:(pinOverride||ADMIN_PIN), action }, args||{});
+  const body=Object.assign({ master_pin:(pinOverride||ADMIN_PIN), action, club_id:CLUB_ID }, args||{});   // 38: tell the admin function which club this is — its code is checked against THIS club only
   const resp=await fetch(SB_URL+"/functions/v1/admin",{ method:"POST", headers:{ apikey:SB_ANON, Authorization:"Bearer "+SB_ANON, "Content-Type":"application/json" }, body:JSON.stringify(body) });
   return await resp.json();
 }
@@ -1915,7 +1927,7 @@ const _club = CLUBS[_clubParam] || (/^\d+$/.test(_clubParam) ? {id:Number(_clubP
 const CLUB_ID = _club.id;
 document.title = 'OTR · ' + _club.name;
 const CLUB_NAME = _club.name;  // shown in the logo as "OPR · <name>"
-const OPR_VERSION = "OTR-LAPTOP v2026.09.03-37 · PLAT replica t39";   // PLAT MARKED HUNK: the build stamp everywhere the parent prints its own  // DOUBLES ROW OPENS THE TEAM PROFILE (parity with OPR/OSR/ODR, ported from the proven CC g38/g39 glue): tapping a pair in the doubles rating table opens its full profile page — the screen is SHOWN first, because OTR’s loadTeamProfile fills the profile screen without switching to it (this is why earlier attempts appeared to do nothing); Back returns to the same table. The ▼ chevron still expands the inline history. Supersedes the withdrawn v34–v36. Includes all prior work.
+const OPR_VERSION = "OTR-LAPTOP v2026.09.13-38 · PLAT replica t42";   // PLAT MARKED HUNK: the build stamp everywhere the parent prints its own  // SCOPED ADMIN CODE: every admin call carries club_id, so a club code is checked against this club only (with admin v2026.09.13-2) — a code from another club no longer opens its admin from here. Master unchanged. Includes v2026.09.03-37 and all prior.  // DOUBLES ROW OPENS THE TEAM PROFILE (parity with OPR/OSR/ODR, ported from the proven CC g38/g39 glue): tapping a pair in the doubles rating table opens its full profile page — the screen is SHOWN first, because OTR’s loadTeamProfile fills the profile screen without switching to it (this is why earlier attempts appeared to do nothing); Back returns to the same table. The ▼ chevron still expands the inline history. Supersedes the withdrawn v34–v36. Includes all prior work.
 // Explanation shown above the individual ladder. Open on load so it's read; collapsible
 // (state kept for the session) and scrolls away. Mechanics only — no outcome framing, so
 // members aren't nudged away from playing stronger opponents. Every clause maps to a real
@@ -8160,76 +8172,1507 @@ async function clRemove(id, label){
 </div>
 
 <script>
-/* PLAT GLUE (tennis) — the way back to the club, the register name in the hero, and the install identity.
-   Nothing else: OTR's own screens, wizard and Live Umpire are untouched. */
+/* PLAT GLUE — club strip under the hero, club dropdown at ✚ Enter, hero name from the platform. */
 (function(){
   var W=window;
   function esc(s){ return String(s==null?"":s).replace(/[&<>"']/g,function(c){return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c];}); }
-  function chip(){
-    if(document.getElementById("platChip")) return;
-    var host=document.querySelector(".home-hero .hero-logo-panel, #homeScreen .hero-logo-panel"); if(!host) return;
-    var a=document.createElement("button"); a.id="platChip";
-    a.textContent = W.PLAT.orgId ? "‹ Club" : "‹ All groups";
-    a.style.cssText="display:block;margin:10px auto 0;background:rgba(255,255,255,.18);color:#fff;border:1px solid rgba(255,255,255,.6);padding:6px 14px;border-radius:99px;font-size:12px;font-weight:600;cursor:pointer";
-    a.onclick=function(){ location.href = W.PLAT.orgId ? ("hub.html?org="+W.PLAT.orgId) : ("plat-tennis.html?club=0&pool="+W.PLAT.pool); };
-    host.appendChild(a);
+  function go(id){ try{ sessionStorage.setItem("plat_from_door_tennis",String(W.PLAT.pool)); }catch(e){} location.href="plat-tennis.html?club="+id+(id===0?("&pool="+W.PLAT.pool):"")+(location.hash||""); }
+  /* p3 LANDING: hero + one button per club (+ Overall); the rest of the home screen is hidden. */
+  var PAL=[["#6c3483","#3a1d6e"],["#1f7a8c","#0f4c5c"],["#b5651d","#7a3e0a"],["#2e7d32","#1b4d1e"],["#c2185b","#7b1040"],["#455a64","#263238"],["#8e24aa","#4a148c"]];
+  var LEDGER=["#1a1a1a","#3d3d3d"];
+  function darken(hex,f){ try{ var n=parseInt(hex.slice(1),16), r=(n>>16)&255,gg=(n>>8)&255,b=n&255;
+    var d=function(x){ return Math.max(0,Math.round(x*(1-f))); };
+    return "#"+[d(r),d(gg),d(b)].map(function(x){return ("0"+x.toString(16)).slice(-2);}).join(""); }catch(e){ return hex; } }
+  function clubPal(id){ var cs=W.PLAT.clubs||[]; var i=cs.findIndex(function(c){return c.id===id;});
+    if(i<0) return LEDGER;
+    var col=cs[i].colour; if(col && /^#[0-9a-fA-F]{6}$/.test(col)) return [col, darken(col,0.42)];
+    return PAL[i%PAL.length]; }
+  // A twelve-colour palette spread right around the wheel — purple, indigo, blue, cyan, teal, green,
+  // olive, gold, amber, red, magenta, slate — instead of the old set, which had two purples, two pinks
+  // and two greens close enough to confuse. Every one clears 4.5:1 against white text, so a group name
+  // reads on its own pill.
+  var SWATCH=["#6c3483","#283593","#1565c0","#00838f","#00695c","#2e7d32","#4e802b","#827717","#ae611c","#c62828","#ad1457","#455a64"];
+  function clubPill(c,small){ var p=clubPal(c.id); return '<span style="display:inline-block;background:'+p[0]+';color:#fff;border-radius:99px;padding:'+(small?'1px 7px':'2px 9px')+';font-size:'+(small?'9.5px':'11px')+';font-weight:700;margin:2px 3px 0 0;white-space:nowrap;vertical-align:middle">'+esc(c.name)+'</span>'; }
+  var BALL='<svg viewBox="0 0 100 100" width="30" height="30" xmlns="http://www.w3.org/2000/svg" style="filter:drop-shadow(0 0 6px rgba(196,224,0,.5))"><circle cx="50" cy="50" r="46" fill="url(#bg1)" stroke="#7da300" stroke-width="1"/><path d="M18 18 Q50 50 18 82" fill="none" stroke="#fbfff0" stroke-width="4" stroke-linecap="round"/><path d="M82 18 Q50 50 82 82" fill="none" stroke="#fbfff0" stroke-width="4" stroke-linecap="round"/><ellipse cx="40" cy="32" rx="14" ry="9" fill="rgba(255,255,255,0.35)"/></svg>';
+  function landing(){
+    var host=document.querySelector("#homeScreen .home-content"); if(!host||document.getElementById("platDoor")) return;
+    Array.prototype.forEach.call(host.children,function(el){ el.style.display="none"; });
+    var cs=(W.PLAT.clubs||[]).slice();
+    host.style.marginTop="0"; host.style.paddingTop="26px";
+
+    /* THE CLUB DOOR, padel only, in the platform's own skin.
+       A register with a BASE CLUB (is_general) reads as a club: the club itself at the top, the groups that
+       grow out of it beneath a heading, then the club ledger, then what has just been played. A register
+       with no base club keeps the older flat list of tiles, so Kloof–Sun Fun and Sandbox are unchanged. */
+    var base = cs.filter(function(c){ return c.is_general; });
+    var rest = cs.filter(function(c){ return !c.is_general; })
+                 .sort(function(a,b){ return String(a.name).localeCompare(String(b.name)); });
+
+    var d=document.createElement("div"); d.id="platDoor";
+    d.style.cssText="max-width:620px;margin:0 auto;display:flex;flex-direction:column;gap:12px;padding:0 4px 8px";
+
+    var bigCard=function(id,label,sub,pal){
+      return '<button onclick="window.platGo('+id+')" style="width:100%;text-align:left;display:flex;align-items:center;gap:16px;padding:18px 20px;border:none;border-radius:16px;color:#fff;cursor:pointer;'
+        +'background:linear-gradient(135deg,'+pal[0]+','+pal[1]+');box-shadow:0 6px 18px rgba(58,29,110,.22)">'
+        +'<div style="width:46px;height:46px;border-radius:50%;background:rgba(255,255,255,.18);display:flex;align-items:center;justify-content:center;flex:0 0 46px">'+BALL+'</div>'
+        +'<div style="flex:1;min-width:0"><div style="font-size:19px;font-weight:800;letter-spacing:.2px;line-height:1.15">'+esc(label)+'</div>'
+        +'<div style="font-size:12.5px;opacity:.88;margin-top:5px;line-height:1.3">'+esc(sub)+'</div></div>'
+        +'<div style="font-size:26px;opacity:.85;flex:0 0 auto">›</div></button>';
+    };
+    var halfPill=function(c){
+      var p=clubPal(c.id);
+      return '<button onclick="window.platGo('+c.id+')" style="flex:1 1 calc(50% - 5px);min-width:0;display:flex;align-items:center;justify-content:center;gap:8px;'
+        +'background:linear-gradient(135deg,'+p[0]+','+p[1]+');color:#fff;border:none;border-radius:99px;padding:12px 16px;font-size:14px;font-weight:800;cursor:pointer;'
+        +'box-shadow:0 2px 6px rgba(58,29,110,.20);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+esc(c.name)+'</button>';
+    };
+
+    var html="";
+    if(base.length){
+      html += bigCard(base[0].id, base[0].name, "The club — open to every member · ratings, players, scores, tournaments", clubPal(base[0].id));
+      html += '<div style="margin:10px 2px 2px;font-size:11.5px;letter-spacing:.1em;text-transform:uppercase;color:#8a7f9c;font-weight:700">Groups</div>';
+      html += rest.length
+        ? '<div style="display:flex;flex-wrap:wrap;gap:10px">'+rest.map(halfPill).join("")+'</div>'
+        : '<div style="text-align:center;padding:12px 14px;border:1px dashed #cbbfd8;border-radius:14px;color:#0F6E56;font-size:13px;line-height:1.5">'
+          +'No groups yet.<br>Open the ledger below — General Admin — and create the first.</div>';
+      html += '<div style="margin:14px 2px 2px;font-size:11.5px;letter-spacing:.1em;text-transform:uppercase;color:#8a7f9c;font-weight:700">Club ledger</div>';
+      html += bigCard(0, "Club ledger", "Every player across the club — one rating each · ladders and stats", LEDGER);
+      html += '<div id="platDoorRecent" style="margin-top:6px"></div>';
+    } else {
+      html += (cs.length?"":'<div style="text-align:center;padding:14px 16px;margin-bottom:4px;border:1px dashed #cbbfd8;border-radius:14px;color:#0F6E56;font-size:13px;line-height:1.5"><b>No clubs yet.</b><br>Open the Overall Ledger below → About OTR → Register → General Admin, and create the first club.</div>')
+        + cs.map(function(c){ return bigCard(c.id,c.name,"Ratings · players · scores · tournaments",clubPal(c.id)); }).join("")
+        + bigCard(0,"Overall Ledger","Every player across the clubs — one rating each · ladders and stats only",LEDGER);
+      html += '<div id="platDoorRecent" style="margin-top:6px"></div>';   // p112: the flat door shows recent matches too
+      html += '<div style="text-align:center;font-size:12px;color:#7a6f8a;margin:8px 0 14px;line-height:1.5">One register · one rating per player<br>Each club keeps its own pairs, matches, tournaments and stats</div>';
+    }
+    html += '<div style="text-align:center;color:#b3a9c4;font-size:10px;letter-spacing:.5px;margin:0 0 10px">'+esc((typeof OPR_VERSION!=="undefined"?OPR_VERSION:""))+'</div>';
+    d.innerHTML=html;
+    host.insertBefore(d,host.firstChild);
+    doorRecent();   // p112: both door shapes
+    if(base.length){ var ab=document.createElement("div"); ab.style.cssText="text-align:center;margin:14px 0 6px";
+      ab.innerHTML='<button data-plat-keep="1" onclick="showScreen(\'aboutScreen\')" style="display:inline-flex;align-items:center;background:transparent;border:1.5px solid #9b80b3;color:#0F6E56;border-radius:99px;padding:8px 20px;font-size:13px;font-weight:700;cursor:pointer">About OTR</button>';
+      var tag=d.querySelector('div[style*="letter-spacing:.5px"]'); if(tag) d.insertBefore(ab,tag); else d.appendChild(ab); }
   }
-  function fixManifest(){
-    try{
-      var name,url;
-      if(W.PLAT.cid===0){ name="OTR · "+(W.PLAT.poolName||"Tennis")+" · Ledger"; url="./plat-tennis.html?club=0&pool="+W.PLAT.pool; }
-      else { if(!W.PLAT.name) return; name="OTR · "+W.PLAT.name; url="./plat-tennis.html?club="+W.PLAT.cid; }
-      // each app is scoped to its OWN page: with scope "./" an installed app covered the whole folder, so
-      // Chrome reported "already installed" for every other page in it.
-      var mf={id:url,name:name,short_name:String(W.PLAT.name||"Tennis").slice(0,12),start_url:url,scope:"./plat-tennis.html",display:"standalone",
-              background_color:"#0F381E",theme_color:"#0F381E",
-              icons:[{src:"./icon-192.png",sizes:"192x192",type:"image/png"},{src:"./icon-512.png",sizes:"512x512",type:"image/png"}]};
-      var l=document.querySelector('link[rel="manifest"]');
-      if(!l){ l=document.createElement("link"); l.rel="manifest"; document.head.appendChild(l); }
-      l.href="data:application/manifest+json,"+encodeURIComponent(JSON.stringify(mf));
-    }catch(e){}
+
+  /* What has just been played, across the whole club — the door's own short list. */
+  function doorRecent(){
+    var box=document.getElementById("platDoorRecent"); if(!box||!W.PLAT.pool) return;
+    // p111: the door's recent matches read like the board's — centred, with a tap to open the set scores
+    var q1="plat_matches?pool_id=eq."+W.PLAT.pool+"&discipline=eq.tennis&select=id,club_id,match_date,match_type,event,t1p1,t1p2,t2p1,t2p2,t1_sets,t2_sets,t1_games,t2_games,set_scores,display_t1,display_t2&order=match_date.desc,id.desc&limit=6";
+    var q2="plat_matches?pool_id=eq."+W.PLAT.pool+"&discipline=eq.tennis&select=id,club_id,match_date,match_type,event,t1p1,t1p2,t2p1,t2p2,t1_sets,t2_sets,t1_games,t2_games,set_scores&order=id.desc&limit=6";
+    fetch(SBR(q1)).then(function(r){return r.json();}).then(function(ms){ if(Array.isArray(ms)) return ms; return fetch(SBR(q2)).then(function(r){return r.json();}); })
+      .then(function(ms){
+        if(!Array.isArray(ms)||!ms.length) return;
+        box.innerHTML='<div style="margin:14px 2px 8px;font-size:11.5px;letter-spacing:.1em;text-transform:uppercase;color:#8a7f9c;font-weight:700;text-align:center">Recent matches</div>'
+          +ms.map(function(m){
+            var c=(W.PLAT.clubs||[]).find(function(x){return x.id===m.club_id;})||{name:"",id:0};
+            var col=clubPal(c.id)[0];
+            var side=function(a,b){ return esc([a,b].filter(function(x){ return x && String(x).trim().toLowerCase()!=="null"; }).join(" & ")); };
+            var sets=String(m.set_scores||"").trim().split(/[\s,]+/).filter(Boolean);
+            var tourn=(m.event&&m.event!=="Social"&&m.event!=="Ladder Match");
+            var detail='<div class="plat-door-detail" style="display:none;border-top:1px solid #eee;margin-top:8px;padding-top:8px;text-align:center">'
+              +(sets.length? sets.map(function(s){ return '<span style="display:inline-block;background:'+col+';color:#fff;border-radius:6px;padding:3px 9px;font-size:12px;font-weight:800;margin:0 3px">'+esc(s.replace("-","/"))+'</span>'; }).join("") : '<span style="font-size:12px;color:#999">set scores not recorded</span>')
+              +'<div style="font-size:11px;color:#7a6688;margin-top:6px">Sets: '+(m.t1_sets||0)+'-'+(m.t2_sets||0)+(m.t1_games!=null&&m.t2_games!=null?' \u00b7 Games: '+m.t1_games+'-'+m.t2_games:'')+(tourn?' \u00b7 '+esc(m.event):'')+'</div></div>';
+            return '<div onclick="var d=this.querySelector(\'.plat-door-detail\');var a=this.querySelector(\'.plat-door-arrow\');var o=d.style.display!==\'none\';d.style.display=o?\'none\':\'block\';a.textContent=o?\'\u25bc\':\'\u25b2\';" style="background:#fff;border:1px solid rgba(15,110,86,.14);border-left:4px solid '+col+';border-right:4px solid '+col+';border-radius:12px;padding:10px 12px;margin-bottom:7px;text-align:center;cursor:pointer">'
+              +'<div style="font-size:11px;color:#7a6688;margin-bottom:3px">'+esc(m.match_date||"")+' \u00a0<b style="color:'+col+'">'+esc(m.match_type||"")+'</b> \u00a0'
+              +'<span style="display:inline-block;background:'+(tourn?'#0F6E56':'#e0e0e0')+';color:'+(tourn?'#fff':'#333')+';border-radius:4px;padding:0 6px;font-size:10px;font-weight:800">'+(tourn?'T':'S')+'</span> \u00a0<span class="plat-door-arrow" style="color:'+col+';font-size:11px">\u25bc</span></div>'
+              +'<div style="font-size:13.5px;font-weight:700;color:#3a2348;line-height:1.35">'+(m.display_t1?esc(m.display_t1):side(m.t1p1,m.t1p2))+' <span style="color:#9b80b3;font-weight:500">'+(m.t1_sets||0)+'-'+(m.t2_sets||0)+'</span> '+(m.display_t2?esc(m.display_t2):side(m.t2p1,m.t2p2))+'</div>'
+              +'<div style="margin-top:5px"><span style="display:inline-block;background:'+col+';color:#fff;border-radius:99px;padding:1px 9px;font-size:10px;font-weight:700">'+esc(c.name)+'</span></div>'
+              +detail+'</div>';
+          }).join("");
+      }).catch(function(){});
   }
-  /* t2: every sheet says where you are — the boards are identical across groups otherwise. */
+
+  /* OVERALL: read-only ledger — no score entry, no tournaments, no admin link */
+  function ledgerTheme(){
+    var st=document.createElement("style"); st.id="platLedgerTheme";
+    st.textContent=".hero,.screen .header{background:linear-gradient(135deg,"+LEDGER[0]+","+LEDGER[1]+") !important;background-image:linear-gradient(135deg,"+LEDGER[0]+","+LEDGER[1]+") !important}"
+      +".ladder-table th,#tournamentSheetContent th{background:"+LEDGER[1]+" !important}"
+      +".club-panel>div:first-child,.club-panel-head,.club-panel h3{background:linear-gradient(135deg,"+LEDGER[0]+","+LEDGER[1]+") !important}"
+      +".menu-btn{border-color:"+LEDGER[0]+" !important;color:"+LEDGER[0]+" !important}"
+      +"#platChip{background:rgba(255,255,255,.14) !important}"
+      +"#playerList .player-gender{display:none}"   /* p17: the club pill is the distinction; gender line is noise here */
+      +"#playerList .player-name{line-height:1.25}";
+    document.head.appendChild(st);
+    document.querySelectorAll("#homeScreen .menu-btn").forEach(function(b){ if(/showProfileSearch/.test(b.getAttribute("onclick")||"")) b.textContent="Overall Profile"; });
+    var h1=document.querySelector("#profileSearchScreen .header h1"); if(h1) h1.textContent="Overall Profile";
+  }
+  /* p13: About moves AFTER the whole lower block (it is a CSS grid on desktop — appending into it made
+     About a grid cell and pushed Recent into column 2). Wrapper goes after .home-lower, full width. */
+  function ledgerLayout(){
+    var about=null; document.querySelectorAll("#homeScreen .menu-btn").forEach(function(b){ if(/aboutScreen/.test(b.getAttribute("onclick")||"")) about=b; });
+    if(!about) return;
+    var lower=document.querySelector("#homeScreen .home-lower");
+    var host=document.querySelector("#homeScreen .home-content"); if(!host) return;
+    var wrap=document.createElement("div"); wrap.id="platAboutWrap";
+    wrap.style.cssText="text-align:center;margin:18px auto 10px;max-width:1000px;width:100%;clear:both";
+    about.style.cssText="display:inline-flex;min-height:40px;padding:8px 18px;font-size:13px;opacity:.85";
+    wrap.appendChild(about);
+    if(lower&&lower.parentNode) lower.parentNode.insertBefore(wrap, lower.nextSibling); else host.appendChild(wrap);
+    // single remaining tile pair stays centred; on desktop the club panel + recent grid is untouched
+    var st=document.createElement("style"); st.id="platLedgerLayout";
+    st.textContent="#homeScreen .menu-grid{max-width:1000px;margin-left:auto;margin-right:auto}";
+    document.head.appendChild(st);
+  }
+  var REGMAP=null;
+  function regMap(){ if(REGMAP) return Promise.resolve(REGMAP); return acall({action:"list_register",pool_id:W.PLAT.pool,discipline:"tennis"}).then(function(r){ REGMAP={}; ((r&&r.players)||[]).forEach(function(p){ REGMAP[p.full_name]=p.clubs||[]; }); return REGMAP; }).catch(function(){ return {}; }); }
+  function profilePills(){
+    var list=document.getElementById("playerList"); if(!list) return;
+    var paint=function(){ regMap().then(function(map){ list.querySelectorAll("li.player-item").forEach(function(li){
+      var el=li.querySelector(".player-name"); if(!el||el.querySelector(".platCp")) return;
+      var cs=map[el.textContent.trim()]||[]; if(!cs.length) return;
+      var s=document.createElement("span"); s.className="platCp"; s.dataset.platKeep="1"; s.style.cssText="display:block;margin:3px 0 0";
+      s.innerHTML=cs.map(function(c){return clubPill(c,true);}).join(""); el.appendChild(s);
+      // p26: the letter is an outline, not a filled disc — the club pill already carries the colour,
+      // and a page of solid circles reads as clutter.
+      var av=li.querySelector(".player-avatar");
+      if(av){ var col=clubPal(cs[0].id)[0]; av.style.background="transparent"; av.style.color=col;
+              av.style.border="1.5px solid "+col; av.style.fontWeight="700"; }
+    }); }); };
+    new MutationObserver(paint).observe(list,{childList:true}); paint();
+  }
+  /* p29 (ledger only): on a profile's Partnerships list, the category pill becomes the GROUP the pair
+     belongs to, in that group's colour — so a player who plays at two groups can see at a glance which
+     partnership belongs where. The pair is a group row, so the answer is simply its club_id. */
+  var PAIRCLUB=null;
+  function pairClubs(){
+    if(PAIRCLUB) return Promise.resolve(PAIRCLUB);
+    return fetch("https://djmbnvikrdgnomjhtkgf.supabase.co/rest/v1/plat_players?pool_id=eq."+W.PLAT.pool+"&discipline=eq.tennis&select=name,club_id")
+      .then(function(r){return r.json();}).then(function(rows){ PAIRCLUB={};
+        (Array.isArray(rows)?rows:[]).forEach(function(p){ PAIRCLUB[p.name]=p.club_id; }); return PAIRCLUB; })
+      .catch(function(){ return {}; });
+  }
+  function partnershipPills(){
+    // p31: the cards render into #partnershipsList (the banner alone is #partnershipsCard) — watching the
+    // wrong element meant the observer never fired. Watch the screen and catch every pill inside it.
+    var scr=document.getElementById("partnershipsScreen")||document.getElementById("partnershipsList"); if(!scr) return;
+    var paint=function(){
+      var pills=scr.querySelectorAll(".odr-cat-pill:not([data-plat])"); if(!pills.length) return;
+      pairClubs().then(function(map){
+        scr.querySelectorAll(".odr-cat-pill:not([data-plat])").forEach(function(pill){
+          var head=pill.parentElement; if(!head) return;
+          var nameEl=head.querySelector("span"); if(!nameEl) return;
+          var cid=map[nameEl.textContent.trim()]; if(cid==null) return;
+          var c=(W.PLAT.clubs||[]).find(function(x){return x.id===cid;}); if(!c) return;
+          var col=clubPal(cid)[0];
+          // p30: the label stays as it is (Men's / Ladies / Mixed) — only the COLOUR changes, to the
+          // group the pair belongs to. Same pill, one glance tells you where that partnership plays.
+          pill.dataset.plat="1";
+          pill.style.background=col; pill.style.color="#fff"; pill.style.borderColor=col;
+          pill.title=c.name;
+        });
+      });
+    };
+    new MutationObserver(paint).observe(scr,{childList:true,subtree:true}); paint();
+  }
+  /* p36 (GROUP pages, and only for people who play at more than one group): a line under the profile
+     hero naming what they earned ELSEWHERE. The group's own numbers stay its own — no other group's
+     partnerships are listed here — but the movement is no longer invisible, and the line points at the
+     ledger, which is the screen that shows every match. */
+  function elsewhereLine(){
+    if(W.PLAT.cid===0 || !W.PLAT.pool) return;                       // ledger already shows everything
+    var card=document.getElementById("partnershipsCard"); if(!card) return;
+    var DELTAS=null;
+    function deltas(){
+      if(DELTAS) return Promise.resolve(DELTAS);
+      return Promise.all([
+        fetch(SBR("plat_matches?pool_id=eq."+W.PLAT.pool+"&discipline=eq.tennis&select=club_id,t1p1,t2p1,rating_delta")).then(function(r){return r.json();}),
+        fetch(SBR("plat_players?pool_id=eq."+W.PLAT.pool+"&discipline=eq.tennis&select=name,club_id,member_a_id,member_b_id")).then(function(r){return r.json();}),
+        fetch(SBR("plat_individuals?select=id,full_name")).then(function(r){return r.json();})
+      ]).then(function(res){
+        var ms=res[0]||[], ps=res[1]||[], ind=res[2]||[];
+        var nameOf={}; ind.forEach(function(i){ nameOf[i.id]=i.full_name; });
+        var members={}; ps.forEach(function(p){ members[p.name]=[nameOf[p.member_a_id],nameOf[p.member_b_id]]; });
+        var d={};   // person -> club -> movement
+        ms.forEach(function(m){ if(m.rating_delta==null) return;
+          [[m.t1p1,1],[m.t2p1,-1]].forEach(function(side){
+            (members[side[0]]||[]).forEach(function(nm){ if(!nm) return;
+              (d[nm]=d[nm]||{})[m.club_id]=(d[nm][m.club_id]||0)+side[1]*Number(m.rating_delta); });
+          });
+        });
+        DELTAS=d; return d;
+      }).catch(function(){ return {}; });
+    }
+    var paint=function(){
+      var box=card.querySelector('div[style*="linear-gradient"]'); if(!box||box.dataset.platElse) return;
+      var nm=(box.querySelector("div")||{}).textContent; if(!nm) return;
+      nm=nm.trim(); box.dataset.platElse="1";
+      deltas().then(function(d){
+        // p40: the hero now states the person's TOTAL movement — the same number the ledger shows and the
+        // same on every group's board — and this line breaks it down by group, THIS group first, so the
+        // tally is complete. Before, the hero showed only this group's share while saying "since inception",
+        // which read as a contradiction next to the partnerships below.
+        var mine=d[nm]||{}; var all=[], total=0, elsewhereCount=0;
+        Object.keys(mine).forEach(function(cid){
+          if(Math.abs(mine[cid])<0.05) return;
+          var c=(W.PLAT.clubs||[]).find(function(x){return x.id===Number(cid);}); if(!c) return;
+          var mv=Math.round(mine[cid]*10)/10; total+=mine[cid];
+          if(Number(cid)!==W.PLAT.cid) elsewhereCount++;
+          all.push({id:Number(cid),name:c.name,colour:clubPal(c.id)[0],mv:mv,here:(Number(cid)===W.PLAT.cid)});
+        });
+        if(!elsewhereCount) return;                       // plays here only: nothing to explain
+        all.sort(function(a,b){ return (b.here?1:0)-(a.here?1:0); });
+        var others=all;
+        // restate the hero's move as the total across the register
+        try{
+          var line=null;
+          Array.prototype.forEach.call(box.querySelectorAll("div"), function(x){ if(!line && /since inception/.test(x.textContent||"")) line=x; });
+          if(line){ var sp=line.querySelector("span");
+            if(sp){ var t=Math.round(total); sp.textContent=(t>0?"+":"")+t; sp.style.color=(t>=0?"#c4e000":"#ff9d7a"); } }
+        }catch(e){}
+        // p38: sits ABOVE the "Partnerships" heading, left-ranged, and reads as a plain statement:
+        //   Move in <group>  -17.9
+        var el=document.createElement("div");
+        el.dataset.platKeep="1";   // platform-drawn: the repaint must not touch it
+        el.style.cssText="margin:14px 0 6px;font-size:13px;color:#5b3a6e;text-align:left";
+        // p44: the movement itself IS the pill, in the group's colour — one line however many groups a
+        // player has. The colour is the same one that group wears on the header badge, its ladder badges
+        // and its partnership pills, and it follows the stored colour if you re-colour the group.
+        el.innerHTML='<span style="color:#7a6f8a;margin-right:8px;font-weight:600">Overall move</span>'
+          +others.map(function(o){
+            return '<span title="'+esc(o.name)+'" style="display:inline-block;background:'+o.colour+';color:#fff;'
+              +'border-radius:99px;padding:3px 12px;font-weight:800;font-size:13px;margin:0 6px 4px 0;'
+              +'box-shadow:0 1px 3px rgba(0,0,0,.15)">'+(o.mv>0?"+":"")+o.mv+'</span>'; }).join("")
+          +'<div style="margin-top:3px;font-size:12px;color:#7a6f8a">'
+          +others.map(function(o){ return '<span style="display:inline-block;margin-right:10px"><span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:'+o.colour+';margin-right:5px"></span>'+esc(o.name)+'</span>'; }).join("")
+          +'</div><div style="margin-top:2px;font-size:12px;color:#7a6f8a">See all matches in the ledger.</div>';
+        // place it just before the "Partnerships" heading if that heading is inside the card
+        var heading=null;
+        Array.prototype.forEach.call(card.querySelectorAll("div,h1,h2,h3,h4"), function(x){
+          if(!heading && x.children.length===0 && (x.textContent||"").trim()==="Partnerships") heading=x; });
+        if(heading && heading.parentNode) heading.parentNode.insertBefore(el, heading);
+        else card.parentNode.insertBefore(el, card.nextSibling);
+      });
+    };
+    new MutationObserver(paint).observe(card,{childList:true,subtree:true}); paint();
+  }
+  function SBR(p){ return "https://djmbnvikrdgnomjhtkgf.supabase.co/rest/v1/"+p; }
+  /* p32 (ledger only): the ladders are read across every group, so rank 1-2-3 medals say nothing useful
+     here — a pair belongs to exactly one GROUP, so the rank badge wears that group's colour instead.
+     The badge keeps its number; only the colour changes. Club pages keep OPR's own medals. */
+  function ladderBadges(){
+    var seen=[];
+    ["ladderScreen","ratingsScreen","pairsScreen","doublesScreen"].forEach(function(id){ var el=document.getElementById(id); if(el) seen.push(el); });
+    if(!seen.length) seen=[document.body];
+    var paint=function(){
+      var any=false; seen.forEach(function(scr){ if(scr.querySelector(".rank-badge:not([data-plat])")) any=true; });
+      if(!any) return;
+      pairClubs().then(function(map){
+        seen.forEach(function(scr){
+          scr.querySelectorAll(".rank-badge:not([data-plat])").forEach(function(b){
+            var tr=b.closest("tr"); if(!tr) return;
+            var cells=tr.querySelectorAll("td"); if(cells.length<2) return;
+            var nm=(cells[1].textContent||"").trim();
+            var cid=map[nm]; b.dataset.plat="1";
+            b.classList.remove("rank-1","rank-2","rank-3");     // no gold / silver / bronze in the ledger
+            if(cid==null) return;
+            var c=(W.PLAT.clubs||[]).find(function(x){return x.id===cid;}); if(!c) return;
+            var col=clubPal(cid)[0];
+            b.style.background=col; b.style.color="#fff"; b.title=c.name;
+          });
+        });
+      });
+    };
+    seen.forEach(function(scr){ new MutationObserver(paint).observe(scr,{childList:true,subtree:true}); });
+    paint();
+  }
+  /* p16 (ledger only): the profile banner takes the club's colour, darkened for white-text contrast */
+  function profileHero(){
+    var card=document.getElementById("partnershipsCard"); if(!card) return;
+    var paint=function(){
+      var box=card.querySelector('div[style*="linear-gradient"]'); if(!box||box.dataset.platCol) return;
+      var nm=(box.querySelector("div")||{}).textContent; if(!nm) return;
+      regMap().then(function(map){
+        var cs=map[nm.trim()]||[]; if(!cs.length) return;
+        var p=clubPal(cs[0].id);
+        box.style.background="linear-gradient(135deg,"+darken(p[0],0.12)+","+darken(p[0],0.55)+")";
+        box.dataset.platCol="1";
+        tintTiles(card, p[0]);
+        try{ card.querySelectorAll('div[style*="color:#5b3a6e"],div[style*="color:#6c3483"]').forEach(function(h){
+          if(h.dataset.platHead==="1"||h.children.length) return; h.dataset.platHead="1"; h.style.color=darken(p[0],0.2); }); }catch(e){}
+        // p70: the pale tiles and the snapshot bar under the card were still OPR's purple wash, so a teal
+        // card sat on a purple page. They take a faint wash of the SAME colour, and their figures take it too.
+        try{
+          var rgb=(function(h){ var n=parseInt(h.slice(1),16); return ((n>>16)&255)+","+((n>>8)&255)+","+(n&255); })(p[0]);
+          var st=document.getElementById("platProfileWash")||document.createElement("style");
+          st.id="platProfileWash";
+          st.textContent=".stat-card{background:rgba("+rgb+",.12) !important}"
+            +".stat-value{color:"+darken(p[0],0.25)+" !important}"
+            +"#chartSnapBtn,#chartSnap,[onclick*='chartSnap']{background:rgba("+rgb+",.10) !important}"
+            +"[onclick*='chartSnap'],#chartSnapBtn{color:"+darken(p[0],0.30)+" !important}";
+          if(!st.parentNode) document.head.appendChild(st);
+        }catch(e){}
+        if(!box.querySelector(".platCp")){ var s=document.createElement("div"); s.className="platCp"; s.dataset.platKeep="1"; s.style.cssText="margin-top:10px";
+          // p59: a pill naming a group wears THAT group's colour, wherever it appears. On the banner the
+          // pill for the group whose colour the banner already is would disappear, so every pill keeps a
+          // white outline to lift it off the background.
+          s.innerHTML=cs.map(function(c){ return '<span style="display:inline-block;background:'+clubPal(c.id)[0]
+            +';border:1.5px solid rgba(255,255,255,.85);color:#fff;border-radius:99px;padding:2px 10px;font-size:11px;font-weight:700;margin:0 3px;box-shadow:0 1px 3px rgba(0,0,0,.25)">'+esc(c.name)+'</span>'; }).join("");
+          box.appendChild(s); }
+      });
+    };
+    new MutationObserver(paint).observe(card,{childList:true,subtree:true}); paint();
+  }
+  function recentColours(){
+    var list=document.getElementById("homeRecentList"); if(!list) return;
+    var order=null;
+    var fetchOrder=function(){ return fetch("https://djmbnvikrdgnomjhtkgf.supabase.co/rest/v1/plat_matches?pool_id=eq."+W.PLAT.pool+"&discipline=eq.tennis&select=id,club_id&order=match_date.desc,id.desc&limit=15").then(function(r){return r.json();}).then(function(rows){ order=Array.isArray(rows)?rows:[]; }); };
+    var paint=function(){ if(!order) return; list.querySelectorAll(".recent-item").forEach(function(el,i){ var m=order[i]; if(!m||el.querySelector(".platCp")) return; var c=(W.PLAT.clubs||[]).find(function(x){return x.id===m.club_id;}); if(!c) return; var p=clubPal(c.id); el.style.borderLeft="4px solid "+p[0]; el.style.borderRight="4px solid "+p[0]; var hd=el.querySelector(".match-header"); if(hd){ var s=document.createElement("span"); s.className="platCp"; s.dataset.platKeep="1"; s.innerHTML=clubPill(c,true); hd.insertBefore(s,hd.firstChild); } }); };
+    fetchOrder().then(function(){ paint(); new MutationObserver(paint).observe(list,{childList:true}); });
+  }
+  function ledgerOnly(){
+    var be=document.querySelector("#homeScreen .btn-enter"); if(be) be.style.display="none";
+    Array.prototype.forEach.call(document.querySelectorAll("#homeScreen .menu-btn"),function(b){ if(/tournamentScreen/.test(b.getAttribute("onclick")||"")) b.style.display="none"; });
+    Array.prototype.forEach.call(document.querySelectorAll("button[onclick='openAdmin()']"),function(b){ b.style.display="none"; });
+    var st=document.createElement("style"); st.textContent="#homeScreen .menu-grid{grid-template-columns:1fr 1fr !important}"; document.head.appendChild(st);
+    ledgerTheme(); ledgerLayout(); recentColours(); profilePills(); profileHero(); partnershipPills(); ladderBadges();
+  }
+  /* ===== REGISTER (Overall Ledger only): every player once, rating + club pills; General Admin behind the register PIN ===== */
+  var REG={players:[],clubs:[],pin:"",role:"",sort:"name",q:""};
+  function ajs(){ return "https://djmbnvikrdgnomjhtkgf.supabase.co/functions/v1/plat_admin"; }
+  function acall(body){ return fetch(ajs(),{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(body)}).then(function(r){return r.json();}); }
+  function pillHtml(c){ return clubPill(c,false); }
+  function regScreen(){
+    if(document.getElementById("platRegScreen")) return;
+    var s=document.createElement("div"); s.id="platRegScreen"; s.className="screen hidden";
+    s.innerHTML='<div class="header"><button class="back-btn" onclick="goHome()">&#8592;</button><h1>Register</h1></div>'
+      +'<div class="screen-content" id="platRegBody"><div style="color:#999;font-size:12px;padding:12px">Loading…</div></div>';
+    document.getElementById("homeScreen").parentNode.appendChild(s);
+  }
+  function regTile(){
+    if(document.getElementById("platRegTile")) return;
+    var about=document.getElementById("aboutScreen"); if(!about) return;
+    var host=about.querySelector(".copyright"); 
+    var wrap=document.createElement("div"); wrap.style.cssText="text-align:center;margin:18px 0 8px";
+    var b=document.createElement("button"); b.className="menu-btn"; b.id="platRegTile"; b.style.cssText="display:inline-flex;min-height:44px;padding:10px 18px"; b.textContent="Register · all players & General Admin";
+    b.onclick=function(){ regScreen(); W.showScreen("platRegScreen"); regLoad(); };
+    wrap.appendChild(b);
+    if(host&&host.parentNode) host.parentNode.insertBefore(wrap,host); else about.appendChild(wrap);
+  }
+  function regLoad(){
+    return acall({action:"list_register",pool_id:W.PLAT.pool,discipline:"tennis"}).then(function(r){
+      if(!r||!r.ok){ document.getElementById("platRegBody").innerHTML='<div style="color:#c00;padding:12px">'+esc((r&&r.error)||"Could not load the register.")+'</div>'; return; }
+      REG.players=r.players||[]; REG.clubs=r.clubs||[]; regRender();
+    });
+  }
+  W.platRegRender=function(){ regRender(); };
+  function regRender(){
+    var b=document.getElementById("platRegBody"); if(!b) return;
+    var q=(REG.q||"").toLowerCase();
+    var rows=REG.players.filter(function(p){ return !q || p.full_name.toLowerCase().indexOf(q)>=0; });
+    rows.sort(REG.sort==="rating" ? function(a,c){ return (c.current_rating||0)-(a.current_rating||0); } : function(a,c){ return a.full_name.localeCompare(c.full_name); });
+    var h=adminPanel()
+      +'<div style="display:flex;gap:8px;align-items:center;margin:10px 0"><input id="platRegQ" placeholder="Find a player…" value="'+esc(REG.q)+'" oninput="window.platRegQ(this.value)" style="flex:1;padding:10px 12px;border:1.5px solid #ddd;border-radius:10px;font-size:14px">'
+      +'<button class="menu-btn" style="min-height:40px;padding:8px 12px" onclick="window.platRegSort()">'+(REG.sort==="rating"?"Sort: rating":"Sort: name")+'</button></div>'
+      +'<div style="font-size:12px;color:#666;margin-bottom:8px">'+rows.length+' players · '+REG.clubs.length+' clubs · one rating each</div>';
+    rows.forEach(function(p){
+      h+='<div style="display:flex;align-items:center;gap:10px;padding:10px 12px;margin:6px 0;background:#fff;border:1px solid #e6e3ec;border-left:4px solid #6c3483;border-radius:10px">'
+        +'<div style="flex:1;min-width:0"><div style="font-weight:700;font-size:15px">'+esc(p.full_name)+'</div><div style="margin-top:2px">'+(p.clubs.length?p.clubs.map(pillHtml).join(""):'<span style="font-size:11px;color:#999">no club yet</span>')+'</div></div>'
+        +'<div style="text-align:right"><div style="font-weight:800;font-size:18px;color:#6c3483">'+(p.current_rating!=null?Math.round(p.current_rating):"–")+'</div><div style="font-size:10px;color:#999">seed '+(p.seed!=null?Math.round(p.seed):"–")+'</div></div>'
+        +(REG.role?'<div style="display:flex;flex-direction:column;gap:4px"><button class="menu-btn" style="min-height:30px;padding:4px 10px;font-size:12px" onclick="window.platRegEdit('+p.id+')">Edit</button><button style="min-height:30px;padding:4px 10px;font-size:12px;border:1px solid #c62828;color:#c62828;background:#fff;border-radius:8px;cursor:pointer" onclick="window.platRegDelete('+p.id+')">Delete</button></div>':'')+'</div>';
+    });
+    b.innerHTML=h;
+  }
+  function adminPanel(){
+    var h='<div style="margin:10px 0 14px;padding:12px;border:1px dashed #cbbfd8;border-radius:12px;background:#faf7fc">';
+    if(!REG.role){
+      h+='<div style="font-weight:800;color:#6c3483;margin-bottom:6px">General Admin</div>'
+        +'<div style="font-size:12px;color:#666;margin-bottom:8px">The register PIN (or master) opens the admin over every club: add or remove a club, set its colour, register a player, correct a seed, recompute.</div>'
+        +'<div style="display:flex;gap:8px"><input id="platRegPin" type="password" inputmode="numeric" placeholder="Register PIN" style="flex:1;padding:10px 12px;border:1.5px solid #ddd;border-radius:10px;font-size:14px"><button class="menu-btn" style="min-height:40px" onclick="window.platRegUnlock()">Open</button></div><div id="platRegMsg" style="font-size:12px;color:#c00;margin-top:6px"></div>';
+      return h+'</div>';
+    }
+    h+='<div style="display:flex;justify-content:space-between;align-items:center"><div style="font-weight:800;color:#6c3483">General Admin · '+(REG.role==="master"?"master":"register")+'</div><button class="menu-btn" style="min-height:32px;padding:4px 10px;font-size:12px" onclick="window.platRegLock()">Close</button></div>';
+    // clubs: colour + remove
+    h+='<div style="margin-top:10px;font-weight:700;font-size:13px;color:#444">Clubs</div>';
+    (REG.clubs||[]).forEach(function(c){
+      var p=clubPal(c.id);
+      h+='<div style="display:flex;align-items:center;gap:8px;padding:7px 0;border-bottom:1px solid #eee">'
+        +'<span style="width:16px;height:16px;border-radius:50%;background:'+p[0]+';flex:0 0 16px"></span>'
+        +'<span style="flex:1;font-weight:600">'+esc(c.name)+'</span>'
+        +'<button class="menu-btn" style="min-height:30px;padding:4px 10px;font-size:12px" onclick="window.platClubColour('+c.id+')">Colour</button>'
+        +'<button style="min-height:30px;padding:4px 10px;font-size:12px;border:1px solid #c62828;color:#c62828;background:#fff;border-radius:8px;cursor:pointer" onclick="window.platClubTeardown('+c.id+')">Delete…</button></div>'
+        +'<div id="platTd'+c.id+'"></div>';
+    });
+    h+='<div id="platSwatch"></div>';
+    // members first, groups second: a register can be filled before any group exists
+    h+='<div style="margin-top:14px;font-weight:700;font-size:13px;color:#444">Add a member</div>'
+      +'<div style="font-size:12px;color:#666;margin:4px 0 6px">Registered to <b>'+esc(W.PLAT.poolName||"this register")+'</b> with one starting rating. They appear in a group the first time they play there — no group needed now.</div>'
+      +'<div style="display:flex;gap:8px;flex-wrap:wrap"><input id="platPName" placeholder="Full name" style="flex:2;min-width:150px;padding:10px 12px;border:1.5px solid #ddd;border-radius:10px">'
+      +'<select id="platPSex" style="flex:0 0 80px;padding:10px;border:1.5px solid #ddd;border-radius:10px"><option value="M">M</option><option value="F">F</option></select>'
+      +'<input id="platPSeed" type="number" placeholder="Rating (blank = 1500 / 1300)" style="flex:1;min-width:120px;padding:10px 12px;border:1.5px solid #ddd;border-radius:10px"></div>'
+      +'<button class="menu-btn" style="margin-top:8px;width:100%" onclick="window.platAddPoolMember()">Add member</button>';
+    h+='<div style="margin-top:14px;font-weight:700;font-size:13px;color:#444">Add the whole club (paste from Excel)</div>'
+      +'<div style="font-size:12px;color:#666;margin:4px 0 6px">One per line: <b>Name, Gender, Rating</b> — tabs or commas. Gender M or F. Rating optional.</div>'
+      +'<textarea id="platPBulk" style="width:100%;min-height:120px;font-family:ui-monospace,monospace;font-size:12.5px;padding:9px;border:1.5px solid #ddd;border-radius:10px" placeholder="John Smith, M, 1350&#10;Sarah Jones, F, 1180"></textarea>'
+      +'<button class="menu-btn" style="margin-top:8px;width:100%" onclick="window.platBulkPoolMembers()">Add all pasted members</button>';
+    // new club
+    h+='<div style="margin-top:14px;font-weight:700;font-size:13px;color:#444">New group</div>'
+      +'<div style="font-size:12px;color:#666;margin:4px 0 6px">A group runs itself — its own code, colour, ladder and tournaments — and shares this register\'s ratings.</div>'
+      +'<div style="display:flex;gap:8px;flex-wrap:wrap"><input id="platNewName" placeholder="Group name" style="flex:2;min-width:150px;padding:10px 12px;border:1.5px solid #ddd;border-radius:10px"><input id="platNewPin" inputmode="numeric" placeholder="Its code" style="flex:1;min-width:100px;padding:10px 12px;border:1.5px solid #ddd;border-radius:10px"></div>'
+      +'<div style="margin-top:8px;font-size:12px;color:#666">Colour</div><div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:4px">'
+      +SWATCH.map(function(s,i){ return '<button onclick="window.platPickNew(\''+s+'\')" id="platNewSw'+i+'" style="width:26px;height:26px;border-radius:50%;background:'+s+';border:2px solid '+(i===0?'#333':'transparent')+';cursor:pointer"></button>'; }).join('')
+      +'</div><button class="menu-btn" style="margin-top:10px;width:100%" onclick="window.platNewClub()">Create group</button>';
+    // the safety net
+    h+='<div style="margin-top:14px;font-weight:700;font-size:13px;color:#444">Safety net</div>'
+      +'<div style="font-size:12px;color:#666;margin:4px 0 6px">A snapshot of a group is taken automatically just before its matches, its members or the group itself are removed — so a mistake can be put back even if nobody backed anything up. The ten most recent per group are kept.</div>'
+      +'<button class="menu-btn" style="width:100%" onclick="window.platBackups()">Show snapshots</button>'
+      +'<div id="platBk"></div>';
+    // recompute
+    h+='<div style="margin-top:14px;font-weight:700;font-size:13px;color:#444">Engine</div>'
+      +'<div style="font-size:12px;color:#666;margin:4px 0 6px">Replays every match in the register and rewrites all ratings. Needed after seed changes made in SQL; normal score entry recomputes by itself.</div>'
+      +'<button class="menu-btn" style="width:100%" onclick="window.platRecompute()">Recompute all ratings</button>';
+    h+='<div id="platRegMsg" style="font-size:12px;margin-top:8px"></div>';
+    return h+'</div>';
+  }
+  var NEWCOL=SWATCH[0];
+  W.platPickNew=function(c){ NEWCOL=c; SWATCH.forEach(function(s,i){ var e=document.getElementById("platNewSw"+i); if(e) e.style.borderColor=(s===c)?"#333":"transparent"; }); };
+  W.platNewClub=function(){
+    var m=document.getElementById("platRegMsg"); var name=(document.getElementById("platNewName").value||"").trim(), pin=(document.getElementById("platNewPin").value||"").trim();
+    if(!name){ m.style.color="#c00"; m.textContent="Club name required."; return; }
+    m.style.color="#666"; m.textContent="Creating…";
+    acall({action:"add_club",admin_pin:REG.pin,pool_id:W.PLAT.pool,name:name,club_admin_pin:pin,disciplines:["tennis"],colour:NEWCOL}).then(function(r){
+      if(!r||!r.ok){ m.style.color="#c00"; m.textContent=(r&&r.error)||"Failed."; return; }
+      m.style.color="#2e7d32"; m.textContent="Created "+name+" (club #"+r.club.id+"). Its admin PIN opens its own app.";
+      W.PLAT.clubs.push({id:r.club.id,name:r.club.name,colour:NEWCOL}); regLoad();
+    });
+  };
+  W.platClubColour=function(id){
+    var box=document.getElementById("platSwatch"); if(!box) return;
+    box.innerHTML='<div style="padding:8px 0;font-size:12px;color:#666">Colour for '+esc((REG.clubs.find(function(c){return c.id===id;})||{}).name)+'</div><div style="display:flex;flex-wrap:wrap;gap:6px">'
+      +SWATCH.map(function(s){ return '<button onclick="window.platSetColour('+id+',\''+s+'\')" style="width:26px;height:26px;border-radius:50%;background:'+s+';border:2px solid transparent;cursor:pointer"></button>'; }).join('')+'</div>';
+  };
+  W.platSetColour=function(id,col){
+    var m=document.getElementById("platRegMsg"); m.style.color="#666"; m.textContent="Saving colour…";
+    acall({action:"set_club_colour",club_id:id,admin_pin:REG.pin,colour:col}).then(function(r){
+      if(!r||!r.ok){ m.style.color="#c00"; m.textContent=(r&&r.error)||"Failed."; return; }
+      var c=(W.PLAT.clubs||[]).find(function(x){return x.id===id;}); if(c) c.colour=col;
+      var c2=(REG.clubs||[]).find(function(x){return x.id===id;}); if(c2) c2.colour=col;
+      m.style.color="#2e7d32"; m.textContent="Colour saved."; regRender();
+    });
+  };
+  /* p21: the teardown ladder — matches, then members, then the club. Each step counted and confirmed. */
+  W.platClubTeardown=function(id,note,noteCol){
+    var host=document.getElementById("platTd"+id); if(!host) return;
+    if(host.innerHTML && note==null){ host.innerHTML=""; return; }
+    host.innerHTML='<div style="padding:8px 0;font-size:12px;color:#666">Loading…</div>';
+    acall({action:"club_counts",club_id:id,admin_pin:REG.pin}).then(function(r){
+      if(!r||!r.ok){ host.innerHTML='<div style="color:#c00;font-size:12px;padding:6px 0">'+esc((r&&r.error)||"Could not read the club.")+'</div>'; return; }
+      var step=function(n,label,sub,fn,on){ return '<div style="display:flex;align-items:center;gap:8px;padding:6px 0">'
+        +'<span style="width:20px;height:20px;border-radius:50%;background:'+(on?"#c62828":"#ddd")+';color:#fff;font-size:11px;font-weight:800;display:flex;align-items:center;justify-content:center;flex:0 0 20px">'+n+'</span>'
+        +'<div style="flex:1;min-width:0"><div style="font-weight:600;font-size:13px;color:'+(on?"#222":"#999")+'">'+label+'</div><div style="font-size:11px;color:#888">'+sub+'</div></div>'
+        +'<button '+(on?'':'disabled ')+'style="min-height:30px;padding:4px 10px;font-size:12px;border:1px solid '+(on?"#c62828":"#ddd")+';color:'+(on?"#c62828":"#bbb")+';background:#fff;border-radius:8px;cursor:'+(on?"pointer":"default")+'" onclick="'+(on?fn:"")+'">Delete</button></div>'; };
+      var h='<div style="margin:6px 0 10px;padding:10px 12px;background:#fff;border:1px solid #f0d6d6;border-radius:10px">'
+        +'<div style="font-size:12px;color:#666;margin-bottom:4px">Deleting <b>'+esc(r.name)+'</b> — in order. Each step asks you to type the club name.</div>'
+        +'<div style="font-size:11.5px;color:#8a6d1a;background:#fff8e1;border:1px solid #f0e0a8;border-radius:8px;padding:7px 9px;margin:6px 0 8px">⚠ Nothing here can be undone. Take a backup first — Supabase → Table Editor → the table → Export as CSV, or a SQL dump of the plat_ tables.</div>'
+        +step(1,"Matches ("+r.matches+")","every match played here, and the pairs they created","window.platTdStep('+id+',1)", r.matches>0)
+        +step(2,"Members ("+r.members+")","unlinks everyone; people with no other club and no history leave the register","window.platTdStep('+id+',2)", r.matches===0 && r.members>0)
+        +step(3,"The club itself","ladders, tournaments and the club row","window.platTdStep('+id+',3)", r.matches===0 && r.members===0)
+        +'<div id="platTdMsg'+id+'" style="font-size:12px;margin-top:6px;color:'+(noteCol||"#666")+'">'+(note?esc(note):"")+'</div></div>';
+      host.innerHTML=h;
+    });
+  };
+  W.platTdStep=function(id,n){
+    var c=(REG.clubs||[]).find(function(x){return x.id===id;}); if(!c) return;
+    var what=(n===1?"every match at "+c.name:(n===2?"every membership of "+c.name:c.name+" itself"));
+    var backup=(n===1?"Have you backed up the matches?":(n===2?"Have you backed up the members?":"Have you backed up this club's data?"));
+    var typed=prompt("Delete "+what+"?\n\n"+backup+" Once this runs there is no undo — a backup is the only way back.\n\nType the club name exactly to confirm:","");
+    if(typed==null) return;
+    var m=document.getElementById("platTdMsg"+id); m.style.color="#666"; m.textContent="Working…";
+    var act=(n===1?"clear_club_matches":(n===2?"clear_club_members":"remove_club"));
+    acall({action:act,club_id:id,admin_pin:REG.pin,confirm_name:typed}).then(function(r){
+      if(!r||!r.ok){ m.style.color="#c00"; m.textContent=(r&&r.error)||"Failed."; return; }
+      var note;
+      if(n===1) note="Removed "+r.matches_removed+" matches and "+r.pairs_removed+" pairs; ratings recomputed.";
+      else if(n===2) note="Unlinked "+r.unlinked+"; "+r.people_removed+" left the register.";
+      else note="Removed "+r.removed+".";
+      REGMAP=null;
+      if(n===3){ W.PLAT.clubs=(W.PLAT.clubs||[]).filter(function(x){return x.id!==id;}); regLoad(); }
+      else { regLoad().then(function(){ W.platClubTeardown(id, note, "#2e7d32"); }); }
+    });
+  };
+  W.platClubRemove=function(id){
+    var c=(REG.clubs||[]).find(function(x){return x.id===id;}); if(!c) return;
+    var typed=prompt("Remove "+c.name+" from the register?\n\nA club with recorded matches cannot be removed — delete its matches first.\n\nMembers who belong to another club, or who appear in any pair, are kept. Anyone left with no club and no history is removed from the register too.\n\nType the club name exactly to confirm:","");
+    if(typed==null) return;
+    var m=document.getElementById("platRegMsg"); m.style.color="#666"; m.textContent="Removing…";
+    acall({action:"remove_club",club_id:id,admin_pin:REG.pin,confirm_name:typed}).then(function(r){
+      if(!r||!r.ok){ m.style.color="#c00"; m.textContent=(r&&r.error)||"Failed."; return; }
+      m.style.color="#2e7d32"; m.textContent="Removed "+r.removed+(r.people_removed?(" · "+r.people_removed+" member"+(r.people_removed===1?"":"s")+" left the register"):" · no members were left stranded")+".";
+      W.PLAT.clubs=(W.PLAT.clubs||[]).filter(function(x){return x.id!==id;}); regLoad();
+    });
+  };
+  W.platBackups=function(){
+    var host=document.getElementById("platBk"); if(!host) return;
+    if(host.innerHTML){ host.innerHTML=""; return; }
+    host.innerHTML='<div style="font-size:12px;color:#666;padding:6px 0">Loading…</div>';
+    acall({action:"list_backups",pool_id:W.PLAT.pool,admin_pin:REG.pin}).then(function(r){
+      if(!r||!r.ok){ host.innerHTML='<div style="color:#c00;font-size:12px;padding:6px 0">'+esc((r&&r.error)||"Could not read the snapshots.")+'</div>'; return; }
+      var bs=r.backups||[];
+      if(!bs.length){ host.innerHTML='<div style="font-size:12px;color:#666;padding:6px 0">No snapshots yet — one is taken the first time something is removed.</div>'; return; }
+      host.innerHTML=bs.map(function(b){
+        var c=b.counts||{};
+        return '<div style="display:flex;align-items:center;gap:8px;padding:8px 0;border-bottom:1px solid #eee">'
+          +'<div style="flex:1;min-width:0"><div style="font-weight:600;font-size:13px">'+esc(b.club_name||"")+'</div>'
+          +'<div style="font-size:11px;color:#888">'+esc(b.reason||"")+' · '+esc(String(b.created_at||"").slice(0,16).replace("T"," "))+'</div>'
+          +'<div style="font-size:11px;color:#888">'+(c.members||0)+' members · '+(c.pairs||0)+' pairs · '+(c.matches||0)+' matches</div></div>'
+          +'<button class="menu-btn" style="min-height:30px;padding:4px 10px;font-size:12px" onclick="window.platBkDownload('+b.id+')">Download</button>'
+          +'<button style="min-height:30px;padding:4px 10px;font-size:12px;border:1px solid #2e7d32;color:#2e7d32;background:#fff;border-radius:8px;cursor:pointer" onclick="window.platBkRestore('+b.id+',\''+esc(b.club_name||"").replace(/'/g,"\\'")+'\')">Put back</button></div>';
+      }).join("");
+    });
+  };
+  W.platBkDownload=function(id){
+    var m=document.getElementById("platRegMsg"); m.style.color="#666"; m.textContent="Fetching…";
+    acall({action:"get_backup",backup_id:id,admin_pin:REG.pin}).then(function(r){
+      if(!r||!r.ok){ m.style.color="#c00"; m.textContent=(r&&r.error)||"Failed."; return; }
+      try{
+        var blob=new Blob([JSON.stringify(r.backup,null,2)],{type:"application/json"});
+        var a=document.createElement("a"); a.href=URL.createObjectURL(blob);
+        a.download=(r.backup.club_name||"group").replace(/[^a-z0-9]+/gi,"-").toLowerCase()+"-"+String(r.backup.created_at||"").slice(0,10)+".json";
+        document.body.appendChild(a); a.click(); a.remove();
+        m.style.color="#2e7d32"; m.textContent="Downloaded — keep it somewhere safe.";
+      }catch(e){ m.style.color="#c00"; m.textContent="Could not save the file."; }
+    });
+  };
+  W.platBkRestore=function(id,name){
+    if(!confirm("Put "+name+" back from this snapshot?\n\nNothing is deleted — anything missing is added back: the group, its members, its pairs and its matches. Ratings are then recomputed.")) return;
+    var m=document.getElementById("platRegMsg"); m.style.color="#666"; m.textContent="Restoring — this can take a few seconds…";
+    acall({action:"restore_backup",backup_id:id,admin_pin:REG.pin}).then(function(r){
+      if(!r||!r.ok){ m.style.color="#c00"; m.textContent=(r&&r.error)||"Failed."; return; }
+      m.style.color="#2e7d32";
+      m.textContent="Put back "+r.club+" — "+r.members+" members, "+r.pairs_restored+" pairs, "+r.matches_restored+" matches.";
+      REGMAP=null; regLoad();
+    });
+  };
+  W.platRecompute=function(){
+    var m=document.getElementById("platRegMsg");
+    var cid=((REG.clubs||[])[0]||{}).id;
+    if(!cid){ m.style.color="#c00"; m.textContent="No clubs in this register yet — nothing to recompute."; return; }
+    m.style.color="#666"; m.textContent="Recomputing the whole register — this can take a few seconds…";
+    acall({action:"recompute",discipline:"tennis",club_id:cid,admin_pin:REG.pin}).then(function(r){
+      if(!r||!r.ok){ m.style.color="#c00"; m.textContent=(r&&r.error)||"Failed."; return; }
+      var e=r.engine||{}; m.style.color="#2e7d32"; m.textContent="Recomputed: "+(e.players||0)+" players, "+(e.moves||0)+" matches.";
+      REGMAP=null; regLoad();
+    });
+  };
+  W.platRegQ=function(v){ REG.q=v; var el=document.getElementById("platRegQ"); var pos=el?el.selectionStart:null; regRender(); var e2=document.getElementById("platRegQ"); if(e2){ e2.focus(); if(pos!=null) e2.setSelectionRange(pos,pos); } };
+  W.platRegSort=function(){ REG.sort=(REG.sort==="rating")?"name":"rating"; regRender(); };
+  W.platRegUnlock=function(){ var p=(document.getElementById("platRegPin")||{}).value||""; var m=document.getElementById("platRegMsg");
+    acall({action:"check_pin",admin_pin:p,pool_id:W.PLAT.pool}).then(function(r){ if(r&&r.ok&&(r.role==="master"||r.role==="pool")){ REG.pin=p; REG.role=r.role; regRender(); } else { m.textContent=(r&&r.role==="club")?"That is a club PIN — the register needs the register PIN or master.":"PIN not recognised."; } }); };
+  W.platRegLock=function(){ REG.pin=""; REG.role=""; regRender(); };
+  W.platAddPoolMember=function(){
+    var m=document.getElementById("platRegMsg");
+    var name=(document.getElementById("platPName").value||"").trim();
+    if(!name){ m.style.color="#c00"; m.textContent="Name required."; return; }
+    m.style.color="#666"; m.textContent="Adding…";
+    acall({action:"add_pool_member",pool_id:W.PLAT.pool,admin_pin:REG.pin,full_name:name,
+           gender:document.getElementById("platPSex").value,seed:document.getElementById("platPSeed").value}).then(function(r){
+      if(!r||!r.ok){ m.style.color="#c00"; m.textContent=(r&&r.error)||"Failed."; return; }
+      document.getElementById("platPName").value="";
+      m.style.color="#2e7d32"; m.textContent=(r.already_there? name+" is already in the register." : "Added "+name+" — they join a group the first time they play.");
+      REGMAP=null; regLoad();
+    });
+  };
+  W.platBulkPoolMembers=function(){
+    var m=document.getElementById("platRegMsg");
+    var raw=(document.getElementById("platPBulk")||{}).value||"";
+    var lines=raw.split("\n").map(function(l){return l.trim();}).filter(function(l){return l.length;});
+    if(!lines.length){ m.style.color="#c00"; m.textContent="Paste some rows first."; return; }
+    var rows=[],bad=null;
+    lines.forEach(function(l,i){ var p=l.split(/\t|,/).map(function(x){return x.trim();});
+      var g=(p[1]||"").toUpperCase().charAt(0);
+      if(!p[0]||(g!=="M"&&g!=="F")){ if(!bad) bad="Line "+(i+1)+": need Name, Gender (M/F)."; return; }
+      rows.push({full_name:p[0],gender:g,rating:p[2]}); });
+    if(bad){ m.style.color="#c00"; m.textContent=bad; return; }
+    m.style.color="#666"; m.textContent="Adding "+rows.length+"…";
+    acall({action:"bulk_add_pool_members",pool_id:W.PLAT.pool,admin_pin:REG.pin,rows:rows}).then(function(r){
+      if(!r||!r.ok){ m.style.color="#c00"; m.textContent=(r&&r.error)||"Failed."; return; }
+      document.getElementById("platPBulk").value="";
+      m.style.color="#2e7d32";
+      m.textContent="Added "+r.added+(r.already_there?(" · "+r.already_there+" already in the register"):"")+((r.failed&&r.failed.length)?(" · skipped "+r.failed.join(", ")):"");
+      REGMAP=null; regLoad();
+    });
+  };
+  W.platRegAdd=function(){
+    var name=(document.getElementById("platRegName").value||"").trim(), g=document.getElementById("platRegG").value, seed=document.getElementById("platRegSeed").value;
+    var cids=[].map.call(document.querySelectorAll(".platRegC:checked"),function(x){return parseInt(x.value,10);});
+    var m=document.getElementById("platRegMsg"); m.style.color="#c00";
+    if(!name){ m.textContent="Name required."; return; } if(!cids.length){ m.textContent="Tick at least one club."; return; }
+    m.style.color="#666"; m.textContent="Registering…";
+    acall({action:"add_member",club_id:cids[0],admin_pin:REG.pin,full_name:name,gender:g,seeds:{squash:(seed===""?null:Number(seed))}}).then(function(r){
+      if(!r||!r.ok){ m.style.color="#c00"; m.textContent=(r&&r.error)||"Failed."; return; }
+      var rest=cids.slice(1).map(function(c){ return acall({action:"add_membership",club_id:c,admin_pin:REG.pin,individual_id:r.member.id}); });
+      Promise.all(rest).then(function(){ m.style.color="#2e7d32"; m.textContent="Registered "+name+"."; regLoad(); });
+    });
+  };
+  W.platRegDelete=function(id){
+    var p=REG.players.find(function(x){return x.id===id;}); if(!p) return;
+    if(!confirm("Delete "+p.full_name+" from the register?\n\nRemoves them from "+(p.clubs.length?p.clubs.map(function(c){return c.name;}).join(", "):"the register")+". A player with recorded matches cannot be deleted.")) return;
+    var clubIds=p.clubs.length?p.clubs.map(function(c){return c.id;}):[(REG.clubs[0]||{}).id];
+    var i=0, err=null;
+    function next(){ if(i>=clubIds.length||err){ if(err) alert(err); regLoad(); return; }
+      acall({action:"delete_member",club_id:clubIds[i++],admin_pin:REG.pin,individual_id:id}).then(function(r){ if(!r||!r.ok) err=(r&&r.error)||"Delete failed."; next(); }); }
+    next();
+  };
+  W.platRegEdit=function(id){
+    var p=REG.players.find(function(x){return x.id===id;}); if(!p) return;
+    var cur=p.clubs.map(function(c){return c.id;});
+    var lines=REG.clubs.map(function(c){ return (cur.indexOf(c.id)>=0?"[x] ":"[ ] ")+c.id+" "+c.name; }).join("\n");
+    var ans=prompt(p.full_name+"\nClubs — type the club ids to belong to, comma-separated:\n"+lines, cur.join(","));
+    if(ans==null) return;
+    var want=ans.split(",").map(function(x){return parseInt(x.trim(),10);}).filter(function(x){return REG.clubs.some(function(c){return c.id===x;});});
+    var seedAns=prompt("Seed for "+p.full_name+" (blank = keep "+(p.seed!=null?Math.round(p.seed):"–")+")","");
+    var jobs=[];
+    want.forEach(function(c){ if(cur.indexOf(c)<0) jobs.push(acall({action:"add_membership",club_id:c,admin_pin:REG.pin,individual_id:id})); });
+    cur.forEach(function(c){ if(want.indexOf(c)<0) jobs.push(acall({action:"remove_membership",club_id:c,admin_pin:REG.pin,individual_id:id})); });
+    if(seedAns!=null && seedAns.trim()!=="" && (want[0]||cur[0])) jobs.push(acall({action:"edit_member",club_id:(want[0]||cur[0]),admin_pin:REG.pin,individual_id:id,seeds:{squash:Number(seedAns)}}).then(function(){ return acall({action:"recompute",discipline:"tennis",club_id:(want[0]||cur[0]),admin_pin:REG.pin}); }));
+    Promise.all(jobs).then(regLoad);
+  };
+
+  /* club / overall pages: a small chip on the hero back to the door */
+  /* p42: every screen's header carries the GROUP it belongs to. Someone who plays in two groups can open
+     Ratings and Ladders or Team Profile from either board; without this the sheets look identical. The
+     badge is added to the header bar itself, so it survives the title changing (a profile renames the h1). */
   function headerBadges(){
     var label = (W.PLAT.cid===0) ? ((W.PLAT.poolName||"Register")+" · Ledger") : (W.PLAT.name||"");
     if(!label) return;
-    var c=(W.PLAT.clubs||[]).find(function(x){return x.id===W.PLAT.cid;});
-    var col = (W.PLAT.cid===0) ? "rgba(255,255,255,.22)" : (W.PLAT.colour||colOf(W.PLAT.cid));   // the board's own colour, never a fallback
+    var col = (W.PLAT.cid===0) ? "rgba(255,255,255,.22)" : (W.PLAT.colour||clubPal(W.PLAT.cid)[0]);   // the board's own colour, never a fallback
     document.querySelectorAll(".screen .header").forEach(function(h){
-      if(h.querySelector(".platWhere")||h.closest("#homeScreen")) return;
+      if(h.querySelector(".platWhere")) return;
+      if(h.closest("#homeScreen")) return;                 // home already says it in the hero
       h.style.position=h.style.position||"relative";
       var b=document.createElement("span"); b.className="platWhere"; b.dataset.platKeep="1"; b.textContent=label;
-      // t7: byte-for-byte the padel spec, so the two legs cannot drift apart visually
       b.style.cssText="margin-left:auto;background:"+col+";color:#fff;border:1.5px solid rgba(255,255,255,.6);"
         +"border-radius:99px;padding:8px 18px;font-size:14.5px;font-weight:800;letter-spacing:.3px;white-space:nowrap;max-width:54%;"
         +"overflow:hidden;text-overflow:ellipsis;align-self:center;text-shadow:none;box-shadow:0 2px 6px rgba(0,0,0,.25)";
       h.appendChild(b);
     });
   }
-  /* t4: the ledger reads as a ledger — About sits under Recent Matches, as it does in padel, rather than
-     competing with the two screens people actually want. Done here, before the data lands, so nothing moves. */
-  function ledgerLayout(){
-    if(W.PLAT.cid!==0) return;
-    var about=null;
-    document.querySelectorAll("#homeScreen .menu-btn").forEach(function(b){ if(/aboutScreen/.test(b.getAttribute("onclick")||"")) about=b; });
-    if(!about) return;
-    var lower=document.querySelector("#homeScreen .home-lower");
-    var host=document.querySelector("#homeScreen .home-content")||document.getElementById("homeScreen");
-    var wrap=document.createElement("div"); wrap.id="platAboutWrap";
-    wrap.style.cssText="text-align:center;margin:18px auto 10px;max-width:1000px;width:100%";
-    about.style.cssText="display:inline-flex;min-height:40px;padding:8px 18px;font-size:13px;opacity:.85";
-    wrap.appendChild(about);
-    if(lower&&lower.parentNode) lower.parentNode.insertBefore(wrap, lower.nextSibling); else host.appendChild(wrap);
-    var st=document.createElement("style");
-    st.textContent="#homeScreen .menu-grid{grid-template-columns:1fr 1fr!important;max-width:1000px;margin-left:auto;margin-right:auto}";
-    document.head.appendChild(st);
+  function chip(){
+    var panel=document.querySelector("#homeScreen .hero-logo-panel"); if(!panel||document.getElementById("platChip")) return;
+    // p25: inside an organisation the way back is the club door; otherwise it is the register's own door.
+    var org=W.PLAT.orgId||0;
+    var a=document.createElement("button"); a.id="platChip"; a.textContent=(W.PLAT.orgId?"‹ Club":"‹ All clubs");
+    a.style.cssText="display:inline-block;margin:12px auto 0;background:rgba(255,255,255,.22);color:#fff;border:1.5px solid rgba(255,255,255,.75);padding:11px 26px;border-radius:99px;font-size:15px;font-weight:800;letter-spacing:.2px;cursor:pointer;text-shadow:none;box-shadow:0 2px 8px rgba(0,0,0,.2)";   // p97: bigger — it is the way back
+    a.onclick=function(){ var o=W.PLAT.orgId||0; var fromDoor=false; try{ fromDoor=(sessionStorage.getItem("plat_from_door_tennis")===String(W.PLAT.pool)); }catch(e){}
+      location.href = (o && !fromDoor) ? ("hub.html?org="+o) : ("plat-tennis.html?pool="+W.PLAT.pool); };   // back to where you came from: the sport door if that is how you arrived, else the club hub
+    panel.appendChild(a);
   }
-  try{ ledgerLayout(); }catch(e){}
-  /* t5: the ledger's member list, dressed like padel's — the initial is an OUTLINE in the group's colour
-     rather than a solid disc, the group is named on a pill, and the Men's/Ladies line goes (the pill is the
-     distinction). Group boards keep OTR's own list untouched. Tennis is the slots family, so a person's
-     groups come from their memberships, not from pairs. */
-  var TREG=null;
+  function entrySelect(){
+    var scr=document.getElementById("entryScreen"); if(!scr||document.getElementById("platEntryClub")) return;
+    var cs=W.PLAT.clubs||[]; if(!cs.length) return;
+    var box=document.createElement("div"); box.id="platEntryClub"; box.style.cssText="margin:10px 12px 0;padding:10px 12px;background:#f5f0fa;border:1px solid rgba(108,52,131,.35);border-radius:10px";
+    box.innerHTML='<label style="display:block;font-size:12px;font-weight:700;color:#6c3483;margin-bottom:6px">Club — where is this match being played?</label>'
+      +'<select onchange="window.platGo(parseInt(this.value,10))" style="width:100%;padding:10px 12px;border:1.5px solid #ddd;border-radius:10px;font-size:14px">'
+      +(W.PLAT.cid===0?'<option value="0" selected>— choose a club —</option>':'')
+      +cs.map(function(c){ return '<option value="'+c.id+'"'+(c.id===W.PLAT.cid?' selected':'')+'>'+esc(c.name)+'</option>'; }).join("")+'</select>';
+    var hdr=scr.querySelector(".header"); if(hdr&&hdr.nextSibling) scr.insertBefore(box,hdr.nextSibling); else scr.insertBefore(box,scr.firstChild);
+  }
+  W.platGo=function(id){ if(W.PLAT.landing || id!==W.PLAT.cid){ if(document.getElementById("entryScreen")&&document.getElementById("entryScreen").classList.contains("active")) location.hash="#enter"; go(id); } };
+  var _show=W.showScreen; W.showScreen=function(id){ _show(id); if(id==="entryScreen") entrySelect(); };
+  /* p18: OPR writes its install manifest at load, before the platform has told us the club's real name —
+     a first-time visitor who installed got an icon called "Club 2". Rewrite it once the name is known.
+     Same shape as OPR's own builder (marked hunk in the body), only the name/start_url are platform-aware. */
+  function fixManifest(){
+    try{
+      var name, url;
+      if(W.PLAT.landing){ name="OTR · "+(W.PLAT.poolName||"Clubs"); url="./plat-tennis.html?pool="+W.PLAT.pool; }
+      else if(W.PLAT.cid===0){ name="OTR · "+(W.PLAT.poolName||"Overall")+" · Ledger"; url="./plat-tennis.html?club=0&pool="+W.PLAT.pool; }
+      else { if(!W.PLAT.name) return; name="OTR · "+W.PLAT.name; url="./plat-tennis.html?club="+W.PLAT.cid; }
+      var shortN=(W.PLAT.landing?String(W.PLAT.poolName||"OTR Clubs"):(W.PLAT.cid===0?String((W.PLAT.poolName||"")+" Ledger").trim():String(W.PLAT.name||"OPR")));
+      if(shortN.length>12) shortN=shortN.slice(0,12);
+      // each app is scoped to its OWN page: with scope "./" an installed app covered the whole folder, so
+      // Chrome reported "already installed" for every other page in it.
+      var mf={ id:url, name:name, short_name:shortN, start_url:url, scope:"./plat-tennis.html", display:"standalone",
+               background_color:"#1c110a", theme_color:"#1c110a",
+               icons:[{src:"./icon-192.png",sizes:"192x192",type:"image/png"},{src:"./icon-512.png",sizes:"512x512",type:"image/png"}] };
+      var href="data:application/manifest+json,"+encodeURIComponent(JSON.stringify(mf));
+      var link=document.querySelector('link[rel="manifest"]');
+      if(!link){ link=document.createElement("link"); link.rel="manifest"; document.head.appendChild(link); }
+      link.href=href;
+    }catch(e){}
+  }
+  // p37: structure first, synchronously — no data needed, so no shift.
+  // p49: the Register tile belongs to a STANDALONE register only. If this pool sits under an organisation,
+  // its register is administered at the club door (hub.html) — one register, one admin. We know from the
+  // last visit whether this pool has an organisation, so the first frame is already right; a first-ever
+  // visit resolves it below, before anything is drawn.
+  try{ if(W.PLAT.cid===0 && !W.PLAT.landing){ ledgerTheme(); ledgerLayout(); if(!W.PLAT.orgCached) regTile(); } if(!W.PLAT.landing) chip(); }catch(e){}
+  /* an organisation's SPORT DOOR gets the same chip, back to the club hub — the way you came in */
+  function doorChip(){
+    if(!W.PLAT.landing || !W.PLAT.orgId || document.getElementById("platChip")) return;
+    var panel=document.querySelector("#homeScreen .hero-logo-panel"); if(!panel) return;
+    var a=document.createElement("button"); a.id="platChip"; a.dataset.platKeep="1"; a.textContent="\u2039 Club";
+    a.style.cssText="display:inline-block;margin:12px auto 0;background:rgba(255,255,255,.22);color:#fff;border:1.5px solid rgba(255,255,255,.75);padding:11px 26px;border-radius:99px;font-size:15px;font-weight:800;letter-spacing:.2px;cursor:pointer;text-shadow:none;box-shadow:0 2px 8px rgba(0,0,0,.2)";
+    a.onclick=function(){ location.href="hub.html?org="+W.PLAT.orgId; };
+    panel.appendChild(a);
+  }
+  /* The Admin pill: OPR hides its admin link on the About screen, which a board no longer shows. This puts
+     it under Recent Matches, where an organiser will look for it — and only on a group board, never on a
+     ledger, which is read-only. */
+  function adminPill(){
+    // organisation boards only: they no longer show About, which is where the parent hides its admin link.
+    if(W.PLAT.cid===0 || !W.PLAT.orgId || document.getElementById("platAdminPill")) return;
+    var lower=document.querySelector("#homeScreen .home-lower")
+           || document.getElementById("homeRecentList")
+           || document.querySelector("#homeScreen .home-content");
+    if(!lower) return;
+    var host=(lower.id==="homeRecentList") ? lower.parentElement : lower;
+    var wrap=document.createElement("div"); wrap.id="platAdminPill"; wrap.dataset.platKeep="1";
+    wrap.style.cssText="text-align:center;margin:16px auto 8px;max-width:1000px;width:100%";
+    var b=document.createElement("button");
+    b.textContent="Admin";
+    b.style.cssText="display:inline-flex;align-items:center;gap:7px;background:transparent;border:1.5px solid "+(W.PLAT.colour||clubPal(W.PLAT.cid)[0])+
+      ";color:"+clubPal(W.PLAT.cid)[0]+";border-radius:99px;padding:9px 22px;font-size:13.5px;font-weight:700;cursor:pointer";
+    b.onclick=function(){ if(typeof openAdmin==="function") openAdmin(); };
+    wrap.appendChild(b);
+    if(host && host.parentNode) host.parentNode.insertBefore(wrap, host.nextSibling);
+  }
+  /* The build, pinned to the corner of the screen — visible on every page without scrolling, so the first
+     question when something looks wrong ("which version am I actually running?") is answered at a glance. */
+  function buildTag(text){
+    try{
+      var t=document.getElementById("platBuildTag");
+      if(!t){ t=document.createElement("div"); t.id="platBuildTag"; document.body.appendChild(t); }
+      t.textContent=text;
+      t.style.cssText="position:fixed;top:0;right:0;z-index:99999;background:rgba(0,0,0,.62);color:#fff;"
+        +"font:700 10px/1.4 system-ui,sans-serif;letter-spacing:.4px;padding:3px 8px;border-bottom-left-radius:8px;pointer-events:none";
+    }catch(e){}
+  }
+  // the build tag is a debugging aid, not something a member should see: it appears only with ?build=1
+  try{ if(/[?&]build=1/.test(location.search)) buildTag("PLAT t42"); }catch(e){}
+  /* A plaque on the club's honour board opens that sport's ledger AT the person: ?player=<name> calls the
+     parent's own loadProfile, so nothing in the parent changes. If the name is not recognised the ledger
+     simply opens as it always did. */
+  function openNamedPlayer(){
+    try{
+      var m=(location.search||"").match(/[?&]player=([^&]+)/); if(!m) return;
+      var who=decodeURIComponent(m[1].replace(/\+/g," ")).trim(); if(!who) return;
+      var g=((location.search||"").match(/[?&]g=([MF])/)||[])[1]||"M";
+      var tries=0;
+      var go=function(){
+        if(typeof loadProfile==="function"){ try{ loadProfile(who,g); }catch(e){} return; }
+        if(tries++<40) setTimeout(go,150);
+      };
+      setTimeout(go,250);
+    }catch(e){}
+  }
+  /* A group is distinguished by its NAME pills and its match rows — never by repainting the board. The
+     OPR / OTR / OTR schemes are the products themselves and are left exactly as they are. (p64 themed whole
+     boards; that was wrong and is removed.) */
+  /* The one place a group's colour belongs on a board: the profile card, where the member's name and
+     ranking sit. Everything else — hero, headers, tables — stays the parent's own scheme. */
+  function profileCardTint(){
+    if(W.PLAT.cid===0) return;   // any group board — an organisation's or a standalone register's
+    var col=(W.PLAT.colour||colOf(W.PLAT.cid)), deep=tDark(col,0.45);
+    if(String(col||"").toLowerCase()==="#0F6E56") return;   // the product's own colour: keep the parent's exact shades
+    if(String(col||"").toLowerCase()==="#0F6E56") return;   // this group wears the product's own colour: leave the parent's exact shades
+    var st=document.getElementById("platCardTint")||document.createElement("style");
+    st.id="platCardTint";
+    st.textContent=".profile-card,.indiv-card{background:linear-gradient(135deg,"+col+","+deep+") !important}";
+    if(!st.parentNode) document.head.appendChild(st);
+  }
+  /* On a group's board the member list's initials take the GROUP's colour — the same colour as its pill.
+     Club group carries the sport's own colour, so its board looks exactly like the parent product.
+     Nothing else on the board changes: hero, headers and tables stay as the parent drew them. */
+  function groupAvatars(){
+    if(W.PLAT.cid===0) return;   // any group board — an organisation's or a standalone register's
+    var col=(W.PLAT.colour||colOf(W.PLAT.cid));
+    if(String(col||"").toLowerCase()==="#0F6E56") return;   // the product's own colour: keep the parent's exact shades
+    if(String(col||"").toLowerCase()==="#0F6E56") return;   // this group wears the product's own colour: leave the parent's exact shades
+    var st=document.getElementById("platAvatarTint")||document.createElement("style");
+    st.id="platAvatarTint";
+    st.textContent="#playerList .player-avatar,.player-avatar{background:"+col+" !important;color:#fff !important;border:none !important}";
+    if(!st.parentNode) document.head.appendChild(st);
+  }
+  /* THE GROUP'S COLOUR ON ITS OWN BOARD — the card with the member's name, and the soft tiles under it.
+     Earlier attempts used a CSS selector, but the parent's profile card is a plain div with an inline
+     gradient and no class, so nothing ever matched. This finds that div, exactly as the ledger does. */
+  function boardProfileTint(){
+    if(W.PLAT.cid===0) return;   // any group board — an organisation's or a standalone register's        // organisation boards; a standalone register is untouched
+    // OSR and OTR draw the profile card with a class inside profileScreen; OPR uses a classless div in
+    // partnershipsCard. Cover both, so one rule holds for every leg.
+    // Watch the PAGE, not one container: each parent puts this card on a different screen under a different
+    // id, and choosing one of them is how earlier passes kept missing whichever screen you were looking at.
+    var card=document.body; if(!card) return;
+    var col=(W.PLAT.colour||colOf(W.PLAT.cid)), deep=tDark(col,0.42);
+    if(String(col||"").toLowerCase()==="#0F6E56") return;   // the product's own colour: keep the parent's exact shades
+    if(String(col||"").toLowerCase()==="#0F6E56") return;   // this group wears the product's own colour: leave the parent's exact shades
+    var rgb=(function(h){ try{ var n=parseInt(h.slice(1),16); return ((n>>16)&255)+","+((n>>8)&255)+","+(n&255); }catch(e){ return "108,52,131"; } })(col);
+    var st=document.getElementById("platBoardWash")||document.createElement("style");
+    st.id="platBoardWash";
+    st.textContent=".stat-card{background:rgba("+rgb+",.12) !important}"
+      +".stat-value{color:"+tDark(col,0.25)+" !important}"
+      +"#chartSnap,[onclick*='chartSnap']{background:rgba("+rgb+",.10) !important;color:"+tDark(col,0.30)+" !important}"
+      +".profile-card,.indiv-card{background:linear-gradient(135deg,"+col+","+deep+") !important}";
+    if(!st.parentNode) document.head.appendChild(st);
+    var paint=function(){
+      var box=card.querySelector('div[style*="linear-gradient"]');
+      if(box && box.dataset.platBoard!=="1"){ box.style.background="linear-gradient(135deg,"+col+","+deep+")"; box.dataset.platBoard="1"; }
+      tintTiles(card, col);
+      // the section headings on the card ("Partnerships") are inline-styled in the parent's purple
+      try{ card.querySelectorAll('div[style*="color:#5b3a6e"],div[style*="color:#6c3483"]').forEach(function(h){
+        if(h.dataset.platHead==="1"||h.children.length) return; h.dataset.platHead="1"; h.style.color=tDark(col,0.2); }); }catch(e){}
+    };
+    new MutationObserver(paint).observe(card,{childList:true,subtree:true}); paint();
+  }
+  /* The stat tiles on a profile card are INLINE-styled divs with no class, so no stylesheet can reach them —
+     which is why they stayed purple through several attempts. They are tinted here, in the DOM, with the
+     same colour as the card above them. */
+  /* The five stat tiles wrap onto two rows on a phone because each carries a min-width. They are one row
+     of five in every other app, so hold them to one row and let them shrink. */
+  function oneRowTiles(root){
+    try{
+      root.querySelectorAll('div[style*="min-width:90px"]').forEach(function(t){
+        t.style.minWidth="0"; t.style.flex="1 1 0";
+        var p=t.parentElement;
+        if(p && p.dataset.platRow!=="1"){ p.dataset.platRow="1"; p.style.flexWrap="nowrap"; p.style.gap="4px"; }
+      });
+    }catch(e){}
+  }
+  function tintTiles(root, col){
+    oneRowTiles(root);
+    try{
+      var rgb=(function(h){ var n=parseInt(h.slice(1),16); return ((n>>16)&255)+","+((n>>8)&255)+","+(n&255); })(col);
+      var deep=darken(col,0.25);
+      root.querySelectorAll('div[style*="border-radius:10px"]').forEach(function(t){
+        var st=t.getAttribute("style")||"";
+        if(!/background:#/.test(st) || t.dataset.platTile==="1") return;
+        t.dataset.platTile="1";
+        t.style.background="rgba("+rgb+",.12)";
+        var v=t.firstElementChild; if(v) v.style.color=deep;
+      });
+      root.querySelectorAll('div[style*="background:#f5eef8"],div[style*="background:#f7f3fa"]').forEach(function(t){
+        if(t.dataset.platTile==="1") return; t.dataset.platTile="1"; t.style.background="rgba("+rgb+",.10)";
+      });
+    }catch(e){}
+  }
+  /* REPAINT BY SUBSTITUTION.
+     The parents draw their profile screens with INLINE styles — a classless gradient card, tiles with a pale
+     wash, headings in the product's accent — so no stylesheet and no single selector can reach them, and each
+     screen does it slightly differently. Rather than chase selectors screen by screen, this walks the page for
+     the parent's own colours and swaps them for the group's: gradients become the group's gradient, pale
+     washes become a faint wash of it, accent text becomes a deep shade of it. Anything it does not recognise
+     is left exactly as the parent drew it. */
+  var PARENT_INK = {grad: [["#063d2c", "#0F6E56"], ["#0F6E56", "#063d2c"]], wash: ["#cfe9df", "#d6e6df", "#e6f5ef", "#eef6f2"], line: ["rgba(15,110,86,.05)", "rgba(15,110,86,.07)", "rgba(15,110,86,.08)", "rgba(15,110,86,.10)", "rgba(15,110,86,.12)", "rgba(15,110,86,.14)", "rgba(15,110,86,.16)", "rgba(15,110,86,.22)", "rgba(15,110,86,.30)", "rgba(15,110,86,.35)"], strong: ["#0F6E56", "#12855F", "#1E8449", "#1e8449", "#2a6b56", "#3a6b5c"], muted: ["#5aa98d", "#7ba392", "#8fb3a8"]};
+  /* Extracted mechanically from the parent's own source: every inline colour it uses within its brand
+     hue, sorted into gradients, pale washes, faint outlines, accent text and secondary text. Near-black
+     text, greys and semantic colours (warning golds, win/loss reds and greens) are deliberately excluded
+     so only the product's chrome follows the group. */
+    /* A style the browser has already touched comes back NORMALISED — "#fdf3ec" becomes "rgb(253, 243, 236)"
+     and "rgba(15,110,86,.18)" becomes "rgba(211, 84, 0, 0.18)" — so matching the parent's literal text alone
+     misses any element another pass has styled. Each token is matched in both forms. */
+  function colourVariants(c){
+    var out=[c];
+    try{
+      if(c.charAt(0)==="#"){
+        var n=parseInt(c.slice(1),16), r=(n>>16)&255, g=(n>>8)&255, b=n&255;
+        out.push("rgb("+r+", "+g+", "+b+")", "rgb("+r+","+g+","+b+")");
+      } else if(/^rgba?\(/i.test(c)){
+        var p=c.replace(/[^0-9.,]/g,"").split(",").filter(function(x){return x!=="";});
+        if(p.length>=3){
+          var a=(p.length>3? String(Number(p[3])) : null);
+          out.push("rgb("+p[0]+", "+p[1]+", "+p[2]+")");
+          if(a!=null) out.push("rgba("+p[0]+", "+p[1]+", "+p[2]+", "+a+")");
+        }
+      }
+    }catch(e){}
+    return out;
+  }
+  function escRe(x){ return x.replace(/[.*+?^${}()|[\]\\]/g,"\\$&"); }
+  function repaint(root, col){
+    if(!root||!col) return;
+    if(String(col).toLowerCase()==="#0F6E56") return;   // the product's own colour: nothing to repaint
+    var deep=darken(col,0.42), mid=darken(col,0.25), soft=darken(col,0.12);
+    var rgb=(function(h){ try{ var n=parseInt(h.slice(1),16); return ((n>>16)&255)+","+((n>>8)&255)+","+(n&255); }catch(e){ return "0,0,0"; } })(col);
+    var els=root.querySelectorAll("[style]");
+    for(var i=0;i<els.length;i++){
+      var el=els[i];
+      
+      if(el.dataset.platKeep==="1" || (el.closest && el.closest('[data-plat-keep="1"]'))) continue;   // platform-drawn: leave it
+      var st=el.getAttribute("style")||"", out=st, hit=false;
+      PARENT_INK.grad.forEach(function(pair){
+        var re=new RegExp("linear-gradient\\(135deg,\\s*"+pair[0]+"\\s*,\\s*"+pair[1]+"\\s*\\)","ig");
+        if(re.test(out)){ out=out.replace(re,"linear-gradient(135deg,"+col+","+deep+")"); hit=true; }
+      });
+      PARENT_INK.wash.forEach(function(c){
+        colourVariants(c).forEach(function(v){
+          var re=new RegExp(escRe(v),"ig");
+          if(re.test(out)){ out=out.replace(re,"rgba("+rgb+",.10)"); hit=true; }
+        });
+      });
+      (PARENT_INK.line||[]).forEach(function(c){
+        colourVariants(c).forEach(function(v){
+          var re=new RegExp(escRe(v),"ig");
+          if(re.test(out)){ out=out.replace(re,"rgba("+rgb+",.30)"); hit=true; }
+        });
+      });
+      // an accent hex is swapped WHEREVER it appears — as text, as a solid button background, or in a
+      // border — otherwise a brand-coloured button survives on a group's page.
+      PARENT_INK.strong.forEach(function(c){
+        colourVariants(c).forEach(function(v){
+          var re=new RegExp(escRe(v),"ig");
+          if(re.test(out)){ out=out.replace(re, /color:\s*$/.test(out.split(v)[0]) ? mid : col); hit=true; }
+        });
+      });
+      PARENT_INK.muted.forEach(function(c){
+        colourVariants(c).forEach(function(v){
+          var re=new RegExp("color:\\s*"+escRe(v),"ig");
+          if(re.test(out)){ out=out.replace(re,"color:"+soft); hit=true; }
+        });
+      });
+      if(hit){ el.setAttribute("style", out); el.dataset.platPaint="1"; }
+    }
+  }
+  function platSchedule(fn){ if(_platJobs.indexOf(fn)<0) _platJobs.push(fn); }
+  function platRun(){
+    if(_platQueued) return; _platQueued=true;
+    (W.requestAnimationFrame||setTimeout)(function(){
+      _platQueued=false;
+      for(var i=0;i<_platJobs.length;i++){ try{ _platJobs[i](); }catch(e){} }
+    }, 16);
+  }
+  try{
+    platSchedule(function(){ oneRowTiles(document.body); });
+    new MutationObserver(platRun).observe(document.body,{childList:true,subtree:true});
+    platRun();
+  }catch(e){}
+  /* ===== THE SESSION CARD (p93) — a night's courts at a group, saved so anyone scores from their own phone.
+     Modelled on OBR's card: the big button opens a chooser — make tonight's courts, courts in play, or a plain
+     match. Pairings come from the group's current ratings (the same numbers the board shows); the engine sees
+     nothing but ordinary matches. Organisation boards and base-club registers only: Kloof–Sun Fun and Sandbox
+     keep the plain button until switched on. */
+  function watchAndPaint(colFn){
+    platSchedule(function(){ var c=colFn(); if(c) repaint(document.body, c); });
+    platRun();
+  }
+  // one row of five, on every screen and in every mode
+  /* One batched pass per frame. Three observers used to watch the whole page and each wrote styles that
+     woke the others — the page re-laid itself out continuously, which is the stutter and the jump. */
+  var _platQueued=false, _platJobs=[];
+  function sessCol(){ return (W.PLAT.cid && W.PLAT.colour) ? W.PLAT.colour : "#0F6E56"; }
+  function sessRgb(){ var h=sessCol(); try{ var n=parseInt(h.slice(1),16); return ((n>>16)&255)+","+((n>>8)&255)+","+(n&255); }catch(e){ return "15,110,86"; } }
+  function aboutPill(){
+    if(document.getElementById("platAboutPill")) return;
+    var host=document.getElementById("platAdminPill") || document.querySelector("#homeScreen .home-lower") || document.querySelector("#homeScreen .home-content");
+    if(!host) return;
+    var wrap=document.createElement("div"); wrap.id="platAboutPill"; wrap.dataset.platKeep="1";
+    wrap.style.cssText="text-align:center;margin:8px auto 10px;max-width:1000px;width:100%";
+    var b=document.createElement("button"); b.textContent="About OTR";
+    b.style.cssText="display:inline-flex;align-items:center;background:transparent;border:1.5px solid #9b80b3;color:#0F6E56;border-radius:99px;padding:8px 20px;font-size:13px;font-weight:700;cursor:pointer";
+    b.onclick=function(){ W.showScreen("aboutScreen"); };
+    wrap.appendChild(b);
+    if(host.parentNode) host.parentNode.insertBefore(wrap, host.nextSibling);
+  }
+  /* p96: a group inside a base-club register reads like an organisation group: About leaves the grid (the club
+     explains itself on the door), three tiles across, Admin and About under the recent matches. */
+  function baseClubGroup(){
+    if(!W.PLAT.cid || W.PLAT.orgId) return;
+    if(!(W.PLAT.clubs||[]).some(function(c){ return c.is_general; })) return;
+    try{ localStorage.setItem("plat_base_of_club_"+W.PLAT.cid,"1"); }catch(e){}
+    var st=document.getElementById("platBaseLayout")||document.createElement("style"); st.id="platBaseLayout";
+    st.textContent="#homeScreen .menu-btn[onclick*='aboutScreen']{display:none!important}#homeScreen .menu-grid{grid-template-columns:repeat(3,1fr)!important}";
+    if(!st.parentNode) document.head.appendChild(st);
+    // the Admin pill, as on an organisation board
+    if(!document.getElementById("platAdminPill")){
+      var lower=document.querySelector("#homeScreen .home-lower")||document.querySelector("#homeScreen .home-content"); if(!lower) return;
+      var wrap=document.createElement("div"); wrap.id="platAdminPill"; wrap.dataset.platKeep="1";
+      wrap.style.cssText="text-align:center;margin:16px auto 8px;max-width:1000px;width:100%";
+      var b=document.createElement("button"); b.textContent="Admin";
+      b.style.cssText="display:inline-flex;align-items:center;gap:7px;background:transparent;border:1.5px solid "+(W.PLAT.colour||clubPal(W.PLAT.cid)[0])+";color:"+clubPal(W.PLAT.cid)[0]+";border-radius:99px;padding:9px 22px;font-size:13.5px;font-weight:700;cursor:pointer";
+      b.onclick=function(){ if(typeof openAdmin==="function") openAdmin(); };
+      wrap.appendChild(b); if(lower.parentNode) lower.parentNode.insertBefore(wrap, lower.nextSibling);
+    }
+  }
+  /* p105: THE GROUP'S COLOUR THROUGH SCORE ENTRY. Every step of the entry flow — the Next buttons, the step dots,
+     the team cards and their numbers, the chosen-player boxes, the winning set boxes, the result cards, the club
+     selector — takes the group's colour, so a member always knows which board they are on. The club itself
+     (the product's own purple) is left exactly as the parent draws it. */
+  function entryTint(){
+    if(!W.PLAT.cid) return;
+    var col=(W.PLAT.colour||clubPal(W.PLAT.cid)[0]); if(String(col||"").toLowerCase()==="#0F6E56") return;
+    var rgb=sessRgb(), deep=darken(col,0.42), mid=darken(col,0.25);
+    var st=document.getElementById("platEntryTint")||document.createElement("style"); st.id="platEntryTint";
+    st.textContent=
+       "#entryScreen .btn-primary{background:"+col+"!important}#entryScreen .btn-primary:active{background:"+deep+"!important}"
+      +"#entryScreen .btn-success{background:"+col+"!important}"
+      +"#entryScreen .step-dot.active,#entryScreen .step-dot.done{background:"+col+"!important}"
+      +"#entryScreen .team-card{background:rgba("+rgb+",.10)!important;border-color:rgba("+rgb+",.32)!important}"
+      +"#entryScreen .team-label{color:"+mid+"!important}#entryScreen .team-label>span{background:"+col+"!important;color:#fff!important}"
+      +"#entryScreen .player-display.selected{border-color:"+col+"!important;background:rgba("+rgb+",.10)!important;color:"+mid+"!important}"
+      +"#entryScreen .set-input.winner{border-color:"+col+"!important;background:rgba("+rgb+",.12)!important}#entryScreen .set-input:focus{border-color:"+col+"!important}"
+      +"#entryScreen .result-card.winner{border-color:"+col+"!important;background:rgba("+rgb+",.12)!important}"
+      +"#entryScreen .result-sets,#entryScreen .winner-label{color:"+mid+"!important}"
+      +"#entryScreen .field select:focus,#entryScreen .field input:focus{border-color:"+col+"!important}"
+      +"#platEntryClub{background:rgba("+rgb+",.08)!important;border-color:rgba("+rgb+",.35)!important}#platEntryClub label{color:"+mid+"!important}"
+      +"#platEntryClub select:focus{border-color:"+col+"!important}";
+    if(!st.parentNode) document.head.appendChild(st);
+  }
+  /* ===== THE SESSION CARD (p93) — a night's courts at a group, saved so anyone scores from their own phone.
+     Modelled on OBR's card: the big button opens a chooser — make tonight's courts, courts in play, or a plain
+     match. Pairings come from the group's current ratings (the same numbers the board shows); the engine sees
+     nothing but ordinary matches. Organisation boards and base-club registers only: Kloof–Sun Fun and Sandbox
+     keep the plain button until switched on. */
+  function SFN(){ return "https://djmbnvikrdgnomjhtkgf.supabase.co/functions/v1/plat_session"; }
+  function scall(body){ body.discipline="tennis"; return fetch(SFN(),{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(body)}).then(function(r){return r.json();}); }
+  var SESS={members:[],ratings:{},picked:{},court:"level",out:"matches",open:[],pendingCourt:null,pairA:null};
+  /* Where the court card is switched on: every organisation board, every register with a base club, and the
+     registers named here. p106: Kloof–Sun Fun (pool 2) — the card only; nothing else on their boards changes. */
+  var SESSION_POOLS=[2];
+  function sessionScope(){
+    if(!W.PLAT.cid) return false;
+    if(W.PLAT.orgId) return true;
+    if(SESSION_POOLS.indexOf(Number(W.PLAT.pool))>=0) return true;
+    return (W.PLAT.clubs||[]).some(function(c){ return c.is_general; });
+  }
+  function w6040(a,b){ return Math.round(Math.max(a,b)*0.6+Math.min(a,b)*0.4); }
+  /* THE MATHS. Field sorted strongest first. LEVEL: blocks of four down the list, so like meets like.
+     MIXED: dealt snake-fashion so every court has a strong, a middling and a weaker player. Inside each four,
+     1 & 4 play 2 & 3 — the two pairs on a court are as close as that four allows. A leftover two (n mod 4 = 2)
+     become one pair with no opponents; the club arranges them on the night. */
+  function makeCourts(names, ratingOf, courtMode){
+    var sorted=names.slice().sort(function(a,b){ return (ratingOf(b)||0)-(ratingOf(a)||0); });
+    var nCourts=Math.floor(sorted.length/4), fours=[];
+    for(var i=0;i<nCourts;i++) fours.push([]);
+    if(courtMode==="mixed" && nCourts>1){
+      var idx=0, dir=1;
+      sorted.forEach(function(n,k){
+        if(k>=nCourts*4) return;
+        fours[idx].push(n);
+        if(dir===1){ if(idx===nCourts-1) dir=-1; else idx++; } else { if(idx===0) dir=1; else idx--; }
+      });
+    } else {
+      for(var j=0;j<nCourts*4;j++) fours[Math.floor(j/4)].push(sorted[j]);
+    }
+    var courts=fours.map(function(f,i){
+      f.sort(function(a,b){ return (ratingOf(b)||0)-(ratingOf(a)||0); });
+      return { court_no:i+1, t1p1:f[0], t1p2:f[3], t2p1:f[1], t2p2:f[2],
+               t1_rating:w6040(ratingOf(f[0])||0,ratingOf(f[3])||0), t2_rating:w6040(ratingOf(f[1])||0,ratingOf(f[2])||0) };
+    });
+    var rest=sorted.slice(nCourts*4);
+    if(rest.length===2) courts.push({ court_no:null, t1p1:rest[0], t1p2:rest[1], t2p1:null, t2p2:null, t1_rating:w6040(ratingOf(rest[0])||0,ratingOf(rest[1])||0), t2_rating:null, unmatched:true });
+    return courts;
+  }
+  /* SINGLES (tennis): a court is two players. LEVEL: neighbours down the list play each other. MIXED: within each
+     four the 1st plays the 3rd and the 2nd the 4th — a step apart rather than a neighbour. A leftover one sits out. */
+  function makeSinglesCourts(names, ratingOf, courtMode){
+    var sorted=names.slice().sort(function(a,b){ return (ratingOf(b)||0)-(ratingOf(a)||0); });
+    var courts=[], n=0;
+    if(courtMode==="mixed"){
+      for(var i=0;i+3<sorted.length;i+=4){ courts.push([sorted[i],sorted[i+2]]); courts.push([sorted[i+1],sorted[i+3]]); }
+      var rest=sorted.slice(Math.floor(sorted.length/4)*4); for(var j=0;j+1<rest.length;j+=2) courts.push([rest[j],rest[j+1]]);
+    } else {
+      for(var k=0;k+1<sorted.length;k+=2) courts.push([sorted[k],sorted[k+1]]);
+    }
+    return courts.map(function(c){ n++; return { court_no:n, t1p1:c[0], t1p2:null, t2p1:c[1], t2p2:null, t1_rating:Math.round(ratingOf(c[0])||0), t2_rating:Math.round(ratingOf(c[1])||0) }; });
+  }
+  W.platMakeSinglesCourts=makeSinglesCourts;
+  W.platMakeCourts=makeCourts;   // exposed so the maths can be checked outside the page
+  function sessStyle(){
+    var col=sessCol(), rgb=sessRgb(), deep=darken(col,0.42);
+    var st=document.getElementById("platSessStyle")||document.createElement("style"); st.id="platSessStyle";
+    st.textContent="#platSessScreen .team-card{background:rgba("+rgb+",.10)!important;border-color:rgba("+rgb+",.32)!important}"
+      +"#platSessScreen .team-label,#platSessScreen .team-label span[style]{color:"+col+"!important}"
+      +"#platSessScreen .team-label>span:first-child{background:"+col+"!important;color:#fff!important}"
+      +"#platSessScreen .mk-seg{background:rgba("+rgb+",.10)!important;border-color:rgba("+rgb+",.2)!important}"
+      +"#platSessScreen .mk-seg button.on{background:"+col+"!important;color:#fff!important}"
+      +"#platSessScreen .btn-primary{background:linear-gradient(180deg,"+col+","+deep+")!important}"
+      +"#platSessScreen .loading-spinner,#platSessScreen .empty-state .icon{color:"+col+"}";
+    if(!st.parentNode) document.head.appendChild(st);
+  }
+  function sessScreen(){
+    sessStyle();
+    if(document.getElementById("platSessScreen")) return;
+    var s=document.createElement("div"); s.id="platSessScreen"; s.className="screen hidden";
+    s.innerHTML='<div class="header"><button class="back-btn" onclick="window.platSessPlain()">&#8592;</button><h1>Tonight\u2019s session</h1></div>'
+      +'<div class="screen-content" id="platSessBody"></div>';
+    document.getElementById("homeScreen").parentNode.appendChild(s);
+    try{ headerBadges(); }catch(e){}
+  }
+  function pairLabel(a,b){ return b ? esc(a)+" & "+esc(b) : esc(a); }
+  function ratingPill(r){ return r==null?"":'<span data-plat-keep="1" style="display:inline-block;background:rgba('+sessRgb()+',.12);color:'+sessCol()+';border-radius:99px;padding:1px 8px;font-size:11px;font-weight:800;margin-left:6px">'+Math.round(r)+'</span>'; }
+  function chooser(){
+    sessScreen(); W.showScreen("platSessScreen");
+    var b=document.getElementById("platSessBody");
+    var tile=function(n,title,sub,fn,extraId){ return '<div class="team-card" style="cursor:pointer" onclick="'+fn+'">'
+      +'<div style="font-size:17px;font-weight:800;color:'+sessCol()+'">'+n+' \u00b7 '+title+'</div>'
+      +'<div style="font-size:13px;color:#555;margin-top:4px">'+sub+'</div>'+(extraId?'<div id="'+extraId+'" style="font-size:13px;color:#b9770e;font-weight:700;margin-top:4px">No courts in play right now</div>':'')+'</div>'; };
+    // p97: the plain road to score entry comes FIRST and wears the ✚ Enter button's own blue, so a member who just
+    // wants to enter a score is never confused by the card; the two card tiles sit beneath it in the card's colour.
+    b.innerHTML='<div style="font-size:13px;color:#4a235a;margin:0 0 10px;line-height:1.45">Pick who is here, and the app makes the courts from everyone\u2019s current rating \u2014 balanced pairs, balanced matches. The card is saved straight away, so anyone on either side enters the score from their own phone.</div>'
+      +tile(1,"Make tonight\u2019s courts","Who is here, level or mixed courts, matches or just the pairs.","window.platSessMake()")
+      +tile(2,"Courts in play \u2014 enter a result","Every court made today that has not been scored yet.","window.platSessOpen()","platSessCount")
+      +'<button class="btn btn-secondary" style="margin-top:4px" onclick="window.platSessPlain()">&larr; Back</button>';
+    scall({action:"list_open",club_id:W.PLAT.cid}).then(function(r){
+      var n=0; ((r&&r.sessions)||[]).forEach(function(s){ (s.courts||[]).forEach(function(k){ if(k.status==="open") n++; }); });
+      var el=document.getElementById("platSessCount"); if(el&&n) el.textContent=n+" court"+(n===1?"":"s")+" in play";
+    });
+  }
+  function backToNames(){
+    try{ document.querySelectorAll(".screen").forEach(function(s){ s.classList.remove("active"); s.classList.add("hidden"); });
+      var es=document.getElementById("entryScreen"); es.classList.remove("hidden"); es.classList.add("active"); W.scrollTo(0,0); }catch(e){}
+    try{ if(typeof renderStep2==="function") renderStep2(); }catch(e){}
+  }
+  W.platSessPlain=function(){ W.PLAT.sessionCourt=null; W.showScreen("entryScreen"); };
+  function loadMembers(){
+    return Promise.all([
+      // p94: THE WHOLE REGISTER, not the group's members: names live at the club, and a group has no members
+      // until someone plays there. plat_tennis_v_ratings holds every person for every group with THIS group's
+      // club-adjusted base (the number the board replays from); OPR's own cache refines it for anyone who has played here.
+      // the register for this board: the club-adjusted view first; if it refuses a column, ask for less; if it
+      // refuses the board, ask the register itself (pool). Whatever comes back that is a list is the list.
+      (function(){
+        var tries=["plat_tennis_v_ratings?club_id=eq."+W.PLAT.cid+"&select=full_name,gender,seed_rating&order=full_name.asc",
+                   "plat_tennis_v_ratings?club_id=eq."+W.PLAT.cid+"&select=full_name,seed_rating&order=full_name.asc",
+                   "plat_tennis_v_pool_individuals?pool_id=eq."+W.PLAT.pool+"&select=full_name,gender,seed_rating&order=full_name.asc",
+                   "plat_individuals?pool_id=eq."+W.PLAT.pool+"&select=full_name,gender&order=full_name.asc"];
+        var i=0; var next=function(){ if(i>=tries.length) return Promise.resolve([]);
+          return fetch(SBR(tries[i++])).then(function(r){return r.json();}).then(function(rows){ return Array.isArray(rows)?rows:next(); }).catch(next); };
+        return next(); })(),
+      (typeof OPR!=="undefined"&&OPR.load)?OPR.load().catch(function(){}):Promise.resolve()
+      ,fetch(SBR("plat_tennis_v_individuals?club_id=eq."+W.PLAT.cid+"&select=full_name")).then(function(r){return r.json();}).catch(function(){ return []; })
+    ]).then(function(res){
+      SESS.regulars={}; (Array.isArray(res[2])?res[2]:[]).forEach(function(m){ if(m.full_name) SESS.regulars[m.full_name]=1; });
+      if(SESS.pool==null) SESS.pool = Object.keys(SESS.regulars).length>=4 ? "regulars" : "all";   // a group with no history shows everyone
+      var rows=Array.isArray(res[0])?res[0]:[]; var seen={};
+      SESS.members=rows.filter(function(m){ if(!m.full_name||seen[m.full_name]) return false; seen[m.full_name]=1; return true; });
+      SESS.ratings={}; SESS.members.forEach(function(m){ var v=null; try{ v=OPR.indiv(m.full_name); }catch(e){}
+        if(v==null && m.seed_rating!=null) v=Number(m.seed_rating); SESS.ratings[m.full_name]=(v==null?null:v); });
+    });
+  }
+  W.platSessMake=function(){
+    var b=document.getElementById("platSessBody"); b.innerHTML='<div class="loading">Loading members\u2026</div>';
+    // the card's own details, seeded from page one where something was chosen there
+    try{ var ev=document.getElementById("matchEvent"), dt=document.getElementById("matchDate"), ty=document.getElementById("matchType"), sp=document.getElementById("setsPlayed");
+      SESS.event=(ev&&ev.value)||"Social"; SESS.date=(dt&&dt.value)||new Date().toISOString().slice(0,10);
+      SESS.type=(ty&&ty.value)||""; SESS.sets=(sp&&sp.value)?parseInt(sp.value,10):3;
+      var fm=document.getElementById("matchFormat"); SESS.format=(fm&&fm.value==="singles")?"singles":"doubles";   // t42: tennis plays singles too
+      SESS.events=[]; if(ev) Array.prototype.forEach.call(ev.options,function(o){ if(o.value) SESS.events.push(o.value); });
+      if(!SESS.events.length) SESS.events=["Social"];
+    }catch(e){ SESS.event="Social"; SESS.date=new Date().toISOString().slice(0,10); SESS.type=""; SESS.sets=3; SESS.events=["Social"]; }
+    SESS.divs=null; SESS.typeLocked=false;
+    loadMembers().then(function(){ SESS.picked={}; SESS.pairA=null; renderMake(); sessEventDivs(); });
+  };
+  W.platSessDetail=function(k,v){ SESS[k]=(k==="sets"?parseInt(v,10):v); if(k==="type") renderMake(); if(k==="event") sessEventDivs(); };
+  /* the tournament's divisions decide the type list, exactly as on page one: one division -> chosen for you */
+  function sessEventDivs(){
+    var ev=(SESS.event||"").trim(); SESS.divs=null;
+    if(!ev||ev==="Social"||ev==="Ladder Match"){ if(SESS.typeLocked){ SESS.type=""; SESS.typeLocked=false; } renderMake(); return; }
+    fetch(SBR("plat_tennis_tournaments?select=divisions&club_id=eq."+W.PLAT.cid+"&name=eq."+encodeURIComponent(ev)+"&limit=1")).then(function(r){return r.json();}).then(function(rows){
+      var d=rows&&rows[0]&&rows[0].divisions; if(typeof d==="string"){ var s=d.trim(); if(s.charAt(0)==="["){ try{ d=JSON.parse(s); }catch(e){ d=s.split(","); } } else d=s.split(","); }
+      d=Array.isArray(d)?d.map(function(x){return String(x).trim();}).filter(Boolean):[];
+      if(d.length){ SESS.divs=d; if(d.length===1){ SESS.type=d[0]; SESS.typeLocked=true; } else if(d.indexOf(SESS.type)<0){ SESS.type=""; } }
+      renderMake();
+    }).catch(function(){ renderMake(); });
+  }
+  function seg(id,opts,cur,fn){ return '<div class="mk-seg" style="margin:6px 0 12px">'+opts.map(function(o){ return '<button type="button" class="'+(o[0]===cur?'on':'')+'" onclick="'+fn+'(\''+o[0]+'\')">'+o[1]+'</button>'; }).join("")+'</div>'; }
+  function renderMake(){
+    var b=document.getElementById("platSessBody"); if(!b) return;
+    var q=(SESS.q||"").toLowerCase();
+    var picked=Object.keys(SESS.picked).filter(function(k){return SESS.picked[k];});
+    var want=(SESS.type==="Men's")?"M":(SESS.type==="Ladies"?"F":"");
+    var pool=SESS.pool||"all", nReg=Object.keys(SESS.regulars||{}).length;
+    var selS='width:100%;padding:10px 12px;border:1.5px solid #ddd;border-radius:10px;font-size:14px;background:#fff;margin-bottom:8px';
+    var opt=function(vals,cur){ return vals.map(function(v){ return '<option value="'+esc(String(v))+'"'+(String(v)===String(cur)?' selected':'')+'>'+esc(String(v))+'</option>'; }).join(""); };
+    var h='<div class="team-card"><div class="team-label"><span>1</span>The match</div>'
+      +'<div style="font-size:12px;color:#7a6688;margin:0 0 6px">Every court on this card takes these.</div>'
+      +'<label style="font-size:12px;color:#444">Event</label><select style="'+selS+'" onchange="window.platSessDetail(\'event\',this.value)">'+opt(SESS.events||["Social"],SESS.event)+'</select>'
+      +'<label style="font-size:12px;color:#444">Date</label><input type="date" value="'+esc(SESS.date||"")+'" style="'+selS+'" onchange="window.platSessDetail(\'date\',this.value)">'
+      +'<label style="font-size:12px;color:#444">Match type'+(SESS.divs?' <span style="color:#7a6688">\u2014 '+esc(SESS.event)+' runs '+esc(SESS.divs.join(", "))+'</span>':'')+'</label><select style="'+selS+'" onchange="window.platSessDetail(\'type\',this.value)"><option value=""'+(SESS.type?"":" selected")+'>Select type...</option>'+opt(SESS.divs||["Men's","Ladies","Mixed","All Sorts"],SESS.type)+'</select>'
+      +'<label style="font-size:12px;color:#444">Format</label>'+seg("format",[["doubles","Doubles"],["singles","Singles"]],SESS.format||"doubles","window.platSessFormat")
+      +'<label style="font-size:12px;color:#444">Sets played</label><select style="'+selS+';margin-bottom:0" onchange="window.platSessDetail(\'sets\',this.value)">'+opt([1,2,3],SESS.sets)+'</select></div>';
+    h+='<div class="team-card"><div class="team-label"><span>2</span>Courts</div>'+seg("court",[["level","Level"],["mixed","Mixed"],["self","Self selected"]],SESS.court,"window.platSessCourt")
+      +'<div style="font-size:12px;color:#7a6688;margin-top:-6px">Level: like plays like \u2014 for a field with a big spread. Mixed: every court gets a strong, a middling and a weaker player \u2014 for a close field. Self selected: you fill the courts yourself from the names you tick.</div></div>';
+    h+='<div class="team-card"><div class="team-label"><span>3</span>Who is here <span style="margin-left:auto;background:none;color:#0F6E56;width:auto;height:auto;font-size:12px">'+picked.length+' picked</span></div>'
+      +(want?'<div style="font-size:12px;color:#7a6688;margin:-4px 0 8px">'+(want==="M"?"Men only":"Ladies only")+' \u2014 from the match type above</div>':'')
+      +seg("pool",[["regulars","Regulars"+(nReg?" ("+nReg+")":"")],["all","Everyone"]],pool,"window.platSessPool")
+      +'<div style="font-size:12px;color:#7a6688;margin:-6px 0 8px">Regulars are the people who have played at this group. Everyone is the whole club.</div>'
+      +'<input placeholder="Find a name\u2026" value="'+esc(SESS.q||"")+'" oninput="window.platSessQ(this.value)" style="width:100%;padding:10px 12px;border:1.5px solid #ddd;border-radius:10px;font-size:14px;margin-bottom:8px">'
+      +'<div style="max-height:46vh;overflow-y:auto;-webkit-overflow-scrolling:touch">';
+    SESS.members.filter(function(m){
+      if(want && (m.gender||"").toUpperCase().charAt(0)!==want && !SESS.picked[m.full_name]) return false;
+      if(pool==="regulars" && !SESS.regulars[m.full_name] && !SESS.picked[m.full_name]) return false;
+      return !q||m.full_name.toLowerCase().split(/\s+/).some(function(w){ return w.indexOf(q)===0; }); }).forEach(function(m){
+      var on=!!SESS.picked[m.full_name], r=SESS.ratings[m.full_name];
+      h+='<label style="display:flex;align-items:center;gap:10px;padding:8px 4px;border-bottom:1px solid #f0ecf4;cursor:pointer">'
+        +'<input type="checkbox" '+(on?'checked':'')+' onchange="window.platSessPick(\''+esc(m.full_name).replace(/'/g,"\\'")+'\',this.checked)" style="width:18px;height:18px">'
+        +'<span style="flex:1;font-size:14px;font-weight:600">'+esc(m.full_name)+'</span>'
+        +'<span style="font-size:11px;color:#888">'+(m.gender||"")+'</span>'+ratingPill(r)+'</label>';
+    });
+    h+='</div></div>';
+    h+='<div class="team-card"><div class="team-label"><span>4</span>'+(SESS.court==="self"?"Fill the courts":"Generate")+'</div>'+seg("out",[["matches","Matches"],["pairs","Pairs only"]],SESS.out,"window.platSessOut")
+      +'<div style="font-size:12px;color:#7a6688;margin-top:-6px">Matches: pair v pair on each court. Pairs only: the pairs, and the club decides who plays whom on the day.</div>'
+      +(SESS.court==="self" ? selfSlots(picked) : '')
+      +'<div id="platSessErr" class="error-msg" style="display:none;margin-top:10px"></div>'
+      +'<button class="btn btn-primary" style="margin-top:12px" onclick="window.platSessGenerate()">'+(SESS.court==="self"?"Save the card":"Make the courts")+'</button>'
+      +'<button class="btn btn-secondary" style="margin-top:8px" onclick="window.platSessPlain()">&larr; Back</button></div>';
+    b.innerHTML=h;
+  }
+  /* SELF SELECTED: one row per court (or per pair), each slot a select over the ticked names. A name already
+     placed elsewhere is greyed in the other slots. Slots keep their values across re-renders. */
+  function selfSlots(picked){
+    SESS.self=SESS.self||{};
+    var per=(SESS.format==="singles")?2:((SESS.out==="pairs")?2:4), n=Math.floor(picked.length/per);
+    if(picked.length<per) return '<div style="font-size:13px;color:#b9770e;margin-top:10px">Tick at least '+per+' players above, then fill the '+(per===4?"courts":"pairs")+' here.</div>';
+    var used={}; Object.keys(SESS.self).forEach(function(k){ if(SESS.self[k]&&picked.indexOf(SESS.self[k])>=0) used[SESS.self[k]]=k; });
+    var sel=function(key){ var cur=(SESS.self[key]&&picked.indexOf(SESS.self[key])>=0)?SESS.self[key]:"";
+      return '<select onchange="window.platSessSlot(\''+key+'\',this.value)" style="flex:1;min-width:0;padding:9px 8px;border:1.5px solid #ddd;border-radius:9px;font-size:13px;background:#fff"><option value="">\u2014</option>'
+        +picked.map(function(nm){ var taken=used[nm]&&used[nm]!==key; return '<option value="'+esc(nm)+'"'+(nm===cur?' selected':'')+(taken?' disabled':'')+'>'+esc(nm)+(taken?' \u2713':'')+'</option>'; }).join("")+'</select>'; };
+    var h='<div style="margin-top:12px">';
+    for(var i=1;i<=n;i++){
+      h+='<div style="margin:8px 0;padding:10px;border:1px solid rgba('+sessRgb()+',.3);border-radius:12px;background:#fff">'
+        +'<div style="font-size:12px;font-weight:800;color:'+sessCol()+';margin-bottom:6px">'+(per===4?"Court ":"Pair ")+i+'</div>'
+        +'<div style="display:flex;gap:6px;align-items:center">'+sel("c"+i+"a")+(SESS.format==="singles"?'<span style="color:#999;font-size:12px;padding:0 2px">v</span>':'')+sel("c"+i+"b")+(per===4?'<span style="color:#999;font-size:12px;padding:0 2px">v</span>'+sel("c"+i+"c")+sel("c"+i+"d"):'')+'</div></div>';
+    }
+    if(picked.length%per) h+='<div style="font-size:12px;color:#7a6688;margin-top:6px">'+(picked.length%per)+' of the ticked players will not fit a '+(per===4?"court":"pair")+' \u2014 untick, or tick more.</div>';
+    return h+'</div>';
+  }
+  W.platSessSlot=function(key,v){ SESS.self=SESS.self||{}; SESS.self[key]=v; renderMake(); };
+  function selfRows(picked){
+    var singles=(SESS.format==="singles"), per=singles?2:((SESS.out==="pairs")?2:4), n=Math.floor(picked.length/per), rows=[], seen={}, missing=false;
+    for(var i=1;i<=n;i++){
+      var a=SESS.self["c"+i+"a"], b=SESS.self["c"+i+"b"], c=SESS.self["c"+i+"c"], d=SESS.self["c"+i+"d"];
+      var need=per===4?[a,b,c,d]:[a,b];
+      if(need.some(function(x){ return !x||picked.indexOf(x)<0; })){ missing=true; continue; }
+      need.forEach(function(x){ seen[x]=(seen[x]||0)+1; });
+      var r=function(x){ return SESS.ratings[x]||0; };
+      rows.push(singles ? {court_no:i,t1p1:a,t1p2:null,t2p1:b,t2p2:null,t1_rating:Math.round(r(a)),t2_rating:Math.round(r(b))}
+              : per===4 ? {court_no:i,t1p1:a,t1p2:b,t2p1:c,t2p2:d,t1_rating:w6040(r(a),r(b)),t2_rating:w6040(r(c),r(d))}
+                        : {court_no:null,t1p1:a,t1p2:b,t2p1:null,t2p2:null,t1_rating:w6040(r(a),r(b)),t2_rating:null});
+    }
+    var dup=Object.keys(seen).filter(function(k){ return seen[k]>1; });
+    return {rows:rows,missing:missing,dup:dup,expected:n};
+  }
+  W.platSessChooser=chooser;
+  W.platSessCourt=function(v){ SESS.court=v; renderMake(); };
+  W.platSessOut=function(v){ SESS.out=v; renderMake(); };
+  W.platSessPool=function(v){ SESS.pool=v; renderMake(); };
+  W.platSessFormat=function(v){ SESS.format=(v==="singles")?"singles":"doubles"; SESS.self={}; renderMake(); };
+  W.platSessQ=function(v){ SESS.q=v; var el=document.activeElement; var pos=el?el.selectionStart:null; renderMake(); var inp=document.querySelector("#platSessBody input[placeholder]"); if(inp){ inp.focus(); if(pos!=null) inp.setSelectionRange(pos,pos); } };
+  W.platSessPick=function(n,on){ SESS.picked[n]=on; var c=document.querySelector("#platSessBody .team-label span[style]"); if(c) c.textContent=Object.keys(SESS.picked).filter(function(k){return SESS.picked[k];}).length+" picked"; };
+  W.platSessGenerate=function(){
+    var err=document.getElementById("platSessErr");
+    var names=Object.keys(SESS.picked).filter(function(k){return SESS.picked[k];});
+    var say=function(m){ err.textContent=m; err.style.display="block"; };
+    if(!SESS.type) return say("Choose the match type first \u2014 Men's, Ladies, Mixed or All Sorts.");
+    if(names.length<4) return say("Pick at least four players.");
+    if(names.length%2) return say(SESS.format==="singles" ? "Pick an even number \u2014 singles courts need two. You have "+names.length+"." : "Pick an even number \u2014 pairs need partners. You have "+names.length+".");
+    if(names.some(function(n){ return SESS.ratings[n]==null; })) return say("A picked player has no rating yet \u2014 they need a starting rating first.");
+    try{ var tt=SESS.type||""; var wantG=tt==="Men's"?"M":(tt==="Ladies"?"F":"");
+      if(wantG){ var off=names.filter(function(n){ var m=SESS.members.find(function(x){return x.full_name===n;}); return m&&(m.gender||"").toUpperCase().charAt(0)!==wantG; });
+        if(off.length) return say(off.join(", ")+(off.length===1?" is":" are")+" not "+(wantG==="M"?"men":"ladies")+" \u2014 the card says "+tt+"."); } }catch(e){}
+    err.style.display="none";
+    var rows;
+    if(SESS.format==="singles" && SESS.court!=="self"){
+      rows=makeSinglesCourts(names,function(n){ return SESS.ratings[n]; },SESS.court);
+    } else
+    if(SESS.court==="self"){
+      var sr=selfRows(names);
+      if(sr.dup.length) return say(sr.dup.join(", ")+" appear"+(sr.dup.length===1?"s":"")+" more than once.");
+      if(sr.missing||!sr.rows.length) return say("Fill every slot of every "+(SESS.out==="pairs"?"pair":"court")+" \u2014 "+sr.expected+" to fill.");
+      rows=sr.rows;
+    } else {
+    var courts=makeCourts(names,function(n){ return SESS.ratings[n]; },SESS.court);
+    rows=courts;
+    if(SESS.out==="pairs"){
+      rows=[]; courts.forEach(function(k){
+        rows.push({court_no:null,t1p1:k.t1p1,t1p2:k.t1p2,t2p1:null,t2p2:null,t1_rating:k.t1_rating,t2_rating:null});
+        if(k.t2p1) rows.push({court_no:null,t1p1:k.t2p1,t1p2:k.t2p2,t2p1:null,t2p2:null,t1_rating:k.t2_rating,t2_rating:null});
+      });
+    }
+    }
+    var b=document.getElementById("platSessBody"); b.innerHTML='<div class="loading">Saving the card\u2026</div>';
+    var who=null; try{ who=(document.getElementById("submitterName")||{}).value||null; }catch(e){}
+    scall({action:"make_session",club_id:W.PLAT.cid,court_mode:SESS.court,output_mode:SESS.out,players:names,courts:rows,created_by:who,
+           event:SESS.event,session_date:SESS.date,match_type:SESS.type,sets:SESS.sets,format:SESS.format||"doubles"}).then(function(r){
+      if(!r||!r.ok){ renderMake(); say((r&&r.error)||"Could not save the card."); return; }
+      W.platSessOpen();
+    });
+  };
+  W.platSessOpen=function(){
+    var b=document.getElementById("platSessBody"); b.innerHTML='<div class="loading">Loading courts\u2026</div>';
+    Promise.all([scall({action:"list_open",club_id:W.PLAT.cid}), (SESS.members.length?Promise.resolve():loadMembers())]).then(function(res){
+      var r=res[0]; SESS.open=(r&&r.sessions)||[]; SESS.pairA=null; renderOpen();
+    });
+  };
+  /* The match TYPE follows from the four people: two men a side is Men's, two ladies a side is Ladies, a man and
+     a lady on each side is Mixed, and anything else is All Sorts — exactly the categories score entry offers. */
+  function genderOf(n){ var m=SESS.members.find(function(x){ return x.full_name===n; }); return (m&&m.gender)||""; }
+  function courtType(k){
+    var g=function(a,b){ return [genderOf(a),genderOf(b)].sort().join(""); };
+    if(!k.t1p2 && !k.t2p2){ var a=genderOf(k.t1p1), b=genderOf(k.t2p1); return (a==="M"&&b==="M")?"Men's":((a==="F"&&b==="F")?"Ladies":"Mixed"); }
+    var s1=g(k.t1p1,k.t1p2), s2=g(k.t2p1,k.t2p2);
+    if(s1==="MM"&&s2==="MM") return "Men's";
+    if(s1==="FF"&&s2==="FF") return "Ladies";
+    if(s1==="FM"&&s2==="FM") return "Mixed";
+    return "All Sorts";
+  }
+  function renderOpen(){
+    var b=document.getElementById("platSessBody"); if(!b) return;
+    var open=SESS.open.filter(function(s){ return (s.courts||[]).some(function(k){return k.status==="open";}); });
+    if(!open.length){
+      b.innerHTML='<div class="empty-state"><div class="icon">\ud83c\udfbe</div><p>No courts in play. Make tonight\u2019s courts, or enter a match without a session.</p></div>'
+        +'<button class="btn btn-primary" onclick="window.platSessMake()">Make tonight\u2019s courts</button>'
+        +'<button class="btn btn-secondary" style="margin-top:8px" onclick="window.platSessPlain()">&larr; Back</button>';
+      return;
+    }
+    var h="";
+    open.forEach(function(s){
+      var courts=(s.courts||[]).filter(function(k){return k.status==="open";});
+      var matched=courts.filter(function(k){return k.t2p1;}), loose=courts.filter(function(k){return !k.t2p1;});
+      h+='<div style="display:flex;gap:8px;margin:4px 0 10px"><button type="button" class="btn btn-secondary" style="flex:1;margin:0;padding:10px;font-size:13px" onclick="window.platSessPrint('+s.id+')">\ud83d\udda8 Print the card</button>'
+        +'<button type="button" class="btn btn-secondary" style="flex:1;margin:0;padding:10px;font-size:13px" onclick="window.platSessShare('+s.id+')">\ud83d\udcac Send as text</button></div>';
+      h+='<div style="display:flex;justify-content:space-between;align-items:baseline;margin:4px 0 8px"><div style="font-size:12px;color:#888"><b style="color:'+sessCol()+'">'+esc(s.event||"Social")+'</b> \u00b7 '+esc(s.session_date)+' \u00b7 '+esc(s.match_type||"")+' \u00b7 '+(s.sets||3)+' set'+((s.sets||3)===1?"":"s")+' \u00b7 '+(s.court_mode==="mixed"?"Mixed":(s.court_mode==="self"?"Self-selected":"Level"))+' courts \u00b7 '+((s.players||[]).length)+' players</div>'
+        +'<span style="font-size:11px;color:#c0392b;cursor:pointer;text-decoration:underline" onclick="window.platSessCancelAll('+s.id+')">cancel this card</span></div>';
+      matched.sort(function(a,b){ return (a.court_no||99)-(b.court_no||99); }).forEach(function(k){
+        h+='<div class="team-card" style="cursor:pointer" onclick="window.platSessScore('+k.id+')">'
+          +'<div style="font-size:12px;color:#888">Court '+(k.court_no||"")+' \u00b7 <b style="color:'+sessCol()+'">'+esc(courtType(k))+'</b></div>'
+          +'<div style="font-weight:700;color:#3a2348;margin-top:4px">'+pairLabel(k.t1p1,k.t1p2)+ratingPill(k.t1_rating)+'</div>'
+          +'<div style="font-size:12px;color:#888">v</div>'
+          +'<div style="font-weight:700;color:#3a2348">'+pairLabel(k.t2p1,k.t2p2)+ratingPill(k.t2_rating)+'</div>'
+          +'<div style="display:flex;gap:8px;margin-top:10px;align-items:center"><button type="button" class="btn btn-primary" style="flex:1;margin:0;padding:11px;font-size:14px" onclick="event.stopPropagation();window.platSessScore('+k.id+')">\u271a Enter score</button>'
+          +'<span style="font-size:11px;color:#c0392b;cursor:pointer;text-decoration:underline" onclick="event.stopPropagation();window.platSessCancel('+k.id+')">not played</span></div></div>';
+      });
+      if(loose.length){
+        h+='<div style="font-size:12px;font-weight:700;color:'+sessCol()+';margin:10px 0 6px">'+(matched.length?"Pairs without opponents":"Pairs")+' \u2014 tap two to put them on a court</div>';
+        loose.forEach(function(k){
+          var sel=(SESS.pairA===k.id);
+          h+='<div class="team-card" style="cursor:pointer;'+(sel?'border-color:'+sessCol()+'!important;background:rgba('+sessRgb()+',.22)!important':'')+'" onclick="window.platSessPair('+k.id+')">'
+            +'<div style="display:flex;align-items:center;gap:8px"><span style="flex:1;font-weight:700;color:#3a2348">'+pairLabel(k.t1p1,k.t1p2)+ratingPill(k.t1_rating)+'</span>'
+            +(sel?'<span style="font-size:11px;color:'+sessCol()+';font-weight:700">now tap their opponents</span>':'')
+            +'<span style="font-size:11px;color:#c0392b;cursor:pointer;text-decoration:underline" onclick="event.stopPropagation();window.platSessCancel('+k.id+')">out</span></div></div>';
+        });
+      }
+    });
+    h+='<button class="btn btn-secondary" style="margin-top:8px" onclick="window.platSessPlain()">&larr; Back</button>';
+    b.innerHTML=h;
+  }
+  /* p107: the card leaves the phone — a printable sheet for the noticeboard, or plain text for the club's WhatsApp.
+     Every open court, the pairs with their ratings, and the pairs still to be matched. */
+  function cardLines(s){
+    var courts=(s.courts||[]).filter(function(k){return k.status==="open";});
+    var matched=courts.filter(function(k){return k.t2p1;}).sort(function(a,b){ return (a.court_no||99)-(b.court_no||99); });
+    var loose=courts.filter(function(k){return !k.t2p1;});
+    return {matched:matched, loose:loose,
+      head:(W.PLAT.name||"")+" \u00b7 "+(s.event||"Social")+" \u00b7 "+(s.session_date||"")+" \u00b7 "+(s.match_type||"")+" \u00b7 "+(s.sets||3)+" set"+((s.sets||3)===1?"":"s")+" \u00b7 "+(s.court_mode==="mixed"?"Mixed":(s.court_mode==="self"?"Self-selected":"Level"))+" courts"};
+  }
+  W.platSessShare=function(id){
+    var s=SESS.open.find(function(x){return x.id===id;}); if(!s) return;
+    var c=cardLines(s), t="\ud83c\udfbe "+c.head+"\n\n";
+    c.matched.forEach(function(k){ t+="Court "+(k.court_no||"")+":  "+k.t1p1+" & "+k.t1p2+"  v  "+k.t2p1+" & "+k.t2p2+"\n"; });
+    if(c.loose.length){ t+="\nStill to be matched:\n"; c.loose.forEach(function(k){ t+="  "+k.t1p1+" & "+k.t1p2+"\n"; }); }
+    t+="\nEnter your score in the app: "+location.origin+location.pathname+"?club="+W.PLAT.cid;
+    var done=function(){ alert("Copied \u2014 paste it into the club's WhatsApp."); };
+    if(navigator.share){ navigator.share({title:"Court card",text:t}).catch(function(){}); return; }
+    if(navigator.clipboard&&navigator.clipboard.writeText){ navigator.clipboard.writeText(t).then(done,function(){ prompt("Copy this:",t); }); } else { prompt("Copy this:",t); }
+  };
+  W.platSessPrint=function(id){
+    var s=SESS.open.find(function(x){return x.id===id;}); if(!s) return;
+    var c=cardLines(s), col=sessCol();
+    var w=window.open("","_blank"); if(!w){ alert("Allow pop-ups to print the card."); return; }
+    var rows=c.matched.map(function(k){ return '<tr><td class="n">'+(k.court_no||"")+'</td><td>'+esc(k.t1p1)+' &amp; '+esc(k.t1p2)+'<span class="r">'+(k.t1_rating!=null?Math.round(k.t1_rating):"")+'</span></td><td class="v">v</td><td>'+esc(k.t2p1)+' &amp; '+esc(k.t2p2)+'<span class="r">'+(k.t2_rating!=null?Math.round(k.t2_rating):"")+'</span></td><td class="s">&nbsp;</td></tr>'; }).join("");
+    var loose=c.loose.length ? '<h2>Still to be matched</h2><ul>'+c.loose.map(function(k){ return '<li>'+esc(k.t1p1)+' &amp; '+esc(k.t1p2)+'<span class="r">'+(k.t1_rating!=null?Math.round(k.t1_rating):"")+'</span></li>'; }).join("")+'</ul>' : "";
+    w.document.write('<html><head><title>Court card \u2014 '+esc(W.PLAT.name||"")+'</title><style>'
+      +'body{font-family:-apple-system,Segoe UI,Roboto,Arial,sans-serif;margin:26px;color:#222}h1{font-size:22px;margin:0 0 2px;color:'+col+'}.meta{color:#666;font-size:13px;margin-bottom:18px}'
+      +'table{width:100%;border-collapse:collapse;font-size:15px}th{background:'+col+';color:#fff;padding:9px 10px;text-align:left;font-size:12px;letter-spacing:.4px;text-transform:uppercase}'
+      +'td{padding:12px 10px;border-bottom:1px solid #e5e5e5;vertical-align:middle}td.n{width:34px;font-weight:800;color:'+col+'}td.v{width:24px;color:#999;text-align:center}td.s{width:120px;border-left:1px dashed #ccc}'
+      +'.r{display:inline-block;margin-left:8px;font-size:11px;font-weight:700;color:'+col+';background:rgba('+sessRgb()+',.12);border-radius:99px;padding:1px 7px}'
+      +'h2{font-size:13px;letter-spacing:.4px;text-transform:uppercase;color:'+col+';margin:22px 0 6px}ul{margin:0;padding-left:18px;font-size:15px}li{margin:4px 0}'
+      +'.foot{margin-top:26px;font-size:12px;color:#777}@media print{@page{margin:14mm}}</style></head><body>'
+      +'<h1>'+esc(W.PLAT.name||"")+' \u2014 court card</h1><div class="meta">'+esc(c.head.replace((W.PLAT.name||"")+" \u00b7 ",""))+'</div>'
+      +'<table><thead><tr><th>Court</th><th>Pair 1</th><th></th><th>Pair 2</th><th>Score</th></tr></thead><tbody>'+rows+'</tbody></table>'+loose
+      +'<div class="foot">Enter scores in the app \u2014 the ratings update on the spot. OPR \u00b7 opr-online.com</div></body></html>');
+    w.document.close(); setTimeout(function(){ w.focus(); w.print(); },350);
+  };
+  W.platSessPair=function(id){
+    if(SESS.pairA==null){ SESS.pairA=id; renderOpen(); return; }
+    if(SESS.pairA===id){ SESS.pairA=null; renderOpen(); return; }
+    var a=SESS.pairA; SESS.pairA=null;
+    scall({action:"match_pairs",court_id:a,opp_court_id:id}).then(function(r){ if(!r||!r.ok) alert((r&&r.error)||"Could not match those pairs."); W.platSessOpen(); });
+  };
+  W.platSessCancel=function(id){ if(!confirm("This court was not played \u2014 take it off the card?")) return; scall({action:"cancel_court",court_id:id}).then(function(){ W.platSessOpen(); }); };
+  W.platSessCancelAll=function(id){ if(!confirm("Cancel the whole card? Courts already scored are unaffected.")) return; scall({action:"cancel_session",session_id:id}).then(function(){ W.platSessOpen(); }); };
+  /* A tap on a court opens the parent's own score entry with the four names in place. The parent still asks
+     for event, type and sets — those are the member's to choose. Nothing is filled in until a court is tapped. */
+  W.platSessScore=function(id){
+    var k=null, S=null; SESS.open.forEach(function(s){ (s.courts||[]).forEach(function(c){ if(c.id===id){ k=c; S=s; } }); });
+    if(!k||!k.t2p1) return;
+    var singlesCourt=(!k.t1p2 && !k.t2p2);
+    W.PLAT.sessionCourt={id:k.id,t1p1:k.t1p1,t1p2:k.t1p2,t2p1:k.t2p1,t2p2:k.t2p2,type:courtType(k)};
+    // p102: a tapped court goes to the SCORE SHEET. The card knows the four names and the type; whatever page one
+    // already said is kept (event, date, sets), and what it did not say gets the everyday answer: Social, today,
+    // the sets chosen on page one or 3. Back from the sheet leads to the names, then to page one, as always.
+    try{
+      var ed=(typeof entryData!=="undefined"&&entryData)?entryData:{};
+      var p1={}; try{ var ev=document.getElementById("matchEvent"), dt=document.getElementById("matchDate"), sp=document.getElementById("setsPlayed");
+        if(ev&&ev.value) p1.event=ev.value; if(dt&&dt.value) p1.date=dt.value; if(sp&&sp.value) p1.sets=parseInt(sp.value,10); }catch(e){}
+      // the CARD's details first; then page one; then the everyday defaults
+      var d={ date:((S&&S.session_date)||ed.date||p1.date||new Date().toISOString().slice(0,10)), type:((S&&S.match_type)||ed.type||courtType(k)),
+              sets:((S&&S.sets)||ed.sets||p1.sets||3), event:((S&&S.event)||ed.event||p1.event||"Social"), format:(singlesCourt?"singles":"doubles"),
+              t1p1:k.t1p1, t1p2:k.t1p2, t2p1:k.t2p1, t2p2:k.t2p2 };
+      if(typeof entryData!=="undefined"){ entryData=d; }
+      document.querySelectorAll(".screen").forEach(function(s){ s.classList.remove("active"); s.classList.add("hidden"); });
+      var es=document.getElementById("entryScreen"); es.classList.remove("hidden"); es.classList.add("active"); W.scrollTo(0,0);
+      if(typeof renderStep3==="function") renderStep3();
+      // p110: the Live Umpire, as on the names page — the four names are already in entryData, and the umpire
+      // returns to this sheet with the sets filled in, exactly as it does from a normal entry.
+      try{
+        var ec=document.getElementById("entryContent");
+        if(ec && typeof mkOpenFromEntry==="function" && !document.getElementById("platCourtUmpire")){
+          var ub=document.createElement("button"); ub.type="button"; ub.id="platCourtUmpire"; ub.className="btn"; ub.dataset.platKeep="1";
+          ub.textContent="\u25c9 Live Umpire (score this court live)";
+          ub.style.cssText="width:100%;margin-top:10px;background:linear-gradient(180deg,"+darken(sessCol(),0.15)+","+darken(sessCol(),0.55)+");color:#fff;border:1.5px solid rgba(196,224,0,.35)";
+          ub.onclick=function(){ try{ MK._pendingHc=null; }catch(e){} mkOpenFromEntry(); };
+          ec.appendChild(ub);
+        }
+      }catch(e){}
+    }catch(e){ W.PLAT._keepCourt=true; W.showScreen("entryScreen"); }
+  };
+  function sessionCard(){
+    if(!sessionScope()) return;
+    if(W.PLAT._sessHooked) return; W.PLAT._sessHooked=1;
+    // p99: the big button is the parent's own — no chooser in the way. The card is a pill at the top of the
+    // NAMES page (step 2): by then event, date, type and sets are known, and a member who never uses the
+    // card never sees more than one line.
+    var _rs2=W.renderStep2;
+    if(typeof _rs2==="function") W.renderStep2=function(){ _rs2.apply(this,arguments);
+      try{
+        /* p103: the names page carries nothing extra — the court doors are both on page one */
+      }catch(e){}
+      var k=W.PLAT.sessionCourt; if(!k) return;
+      [["t1p1",k.t1p1],["t1p2",k.t1p2],["t2p1",k.t2p1],["t2p2",k.t2p2]].forEach(function(p){
+        var v=document.getElementById(p[0]+"_val"), l=document.getElementById(p[0]+"_lbl"), bt=document.getElementById(p[0]+"_btn");
+        if(v) v.value=p[1]; if(l) l.textContent=p[1]; if(bt) bt.classList.add("selected"); });
+      try{ if(typeof odrUpdateCombined==="function") odrUpdateCombined(); }catch(e){} };
+    // a fresh entry from the home button starts clean
+    var _rs1=W.renderStep1;
+    if(typeof _rs1==="function") W.renderStep1=function(){
+      if(W.PLAT._keepCourt){ W.PLAT._keepCourt=false; } else { W.PLAT.sessionCourt=null; }
+      var r=_rs1.apply(this,arguments);
+      var after=function(){
+        try{
+          var host=document.getElementById("entryContent");
+          if(host && !document.getElementById("platCardsBtn")){
+            var wrap=document.createElement("div"); wrap.id="platCardsBtn"; wrap.dataset.platKeep="1";
+            wrap.style.cssText="margin-top:16px;padding-top:12px;border-top:1px dashed rgba("+sessRgb()+",.35)";
+            wrap.innerHTML='<div style="font-size:11.5px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;color:#8a7f9c;margin:0 0 8px;text-align:center">Or use a court card</div>';
+            var mk=function(label,fn){ var b=document.createElement("button"); b.type="button"; b.className="btn"; b.textContent=label;
+              b.style.cssText="margin-top:8px;background:rgba("+sessRgb()+",.10);color:"+darken(sessCol(),0.25)+";border:2px solid "+sessCol()+";font-weight:800"; b.onclick=fn; return b; };
+            wrap.appendChild(mk("\ud83c\udfbe Create a court card", function(){ sessScreen(); W.showScreen("platSessScreen"); W.platSessMake(); }));
+            wrap.appendChild(mk("\u271a Enter a court result", function(){ sessScreen(); W.showScreen("platSessScreen"); W.platSessOpen(); }));
+            host.appendChild(wrap);
+          }
+          // a court chosen from page one: its type goes into the select once the form is there
+          var k=W.PLAT.sessionCourt, sel=document.getElementById("matchType");
+          if(k&&sel&&k.type){ sel.value=k.type; }
+        }catch(e){}
+      };
+      Promise.resolve(r).then(after, after); return r; };
+    // after a successful submit, close the court on the card
+    var _ds=W.doSubmit;
+    if(typeof _ds==="function") W.doSubmit=function(btn){ var k=W.PLAT.sessionCourt; var p=_ds.apply(this,arguments);
+      return Promise.resolve(p).then(function(v){
+        try{ if(k && document.querySelector("#entryContent .success-icon")){ W.PLAT.sessionCourt=null; scall({action:"close_court",court_id:k.id}).catch(function(){}); } }catch(e){}
+        return v; }); };
+  }
   function tennisGroups(){
     if(TREG) return Promise.resolve(TREG);
     return fetch(PLATR("plat_admin"),{method:"POST",headers:{"Content-Type":"application/json"},
@@ -8269,36 +9712,10 @@ async function clRemove(id, label){
   function REST(p){ return "https://djmbnvikrdgnomjhtkgf.supabase.co/rest/v1/"+p; }
   function clubOf(id){ return (W.PLAT.clubs||[]).find(function(c){return c.id===id;}); }
   // the padel spec, copied exactly: small = a row or a name; large = standing on its own
-  function clubPill(c,small){ var p=(c&&c.colour)||"#185A33";
-    return '<span style="display:inline-block;background:'+p+';color:#fff;border-radius:99px;padding:'+(small?'1px 7px':'2px 9px')
-      +';font-size:'+(small?'9.5px':'11px')+';font-weight:700;margin:2px 3px 0 0;white-space:nowrap;vertical-align:middle">'+esc(c.name)+'</span>'; }
   function colOf(id){ var c=clubOf(id); return (c&&c.colour)||"#185A33"; }
 
   /* Recent Matches: each row edged in the group's colour, with the group named on a pill.
      Tennis stores PEOPLE in the match, so the group is simply the match's club_id. */
-  function recentColours(){
-    var list=document.getElementById("homeRecentList"); if(!list||!W.PLAT.pool) return;
-    var order=null;
-    fetch(REST("plat_matches?pool_id=eq."+W.PLAT.pool+"&discipline=eq.tennis&select=id,club_id&order=match_date.desc,id.desc&limit=15"))
-      .then(function(r){return r.json();}).then(function(rows){ order=Array.isArray(rows)?rows:[]; paint();
-        new MutationObserver(paint).observe(list,{childList:true}); }).catch(function(){});
-    function paint(){
-      if(!order) return;
-      list.querySelectorAll(".recent-item").forEach(function(el,i){
-        var m=order[i]; if(!m||el.querySelector(".platCp")) return;
-        var c=clubOf(m.club_id); if(!c) return;
-        var col=colOf(m.club_id);
-        el.style.borderLeft="4px solid "+col; el.style.borderRight="4px solid "+col;
-        var hd=el.querySelector(".match-header"); if(!hd) return;
-        var s=document.createElement("span"); s.className="platCp"; s.dataset.platKeep="1";
-        s.innerHTML='<span style="display:inline-block;background:#eee;color:#333;border-radius:99px;padding:1px 8px;font-size:10px;font-weight:700;margin-right:6px">'+esc(c.name)+'</span>';   // the parent's own pill look
-        hd.insertBefore(s,hd.firstChild);
-      });
-    }
-  }
-
-  /* A person's movement, by group. Tennis needs no pair lookup: the name stands in the match itself. */
-  var TDELTA=null;
   function deltas(){
     if(TDELTA) return Promise.resolve(TDELTA);
     return fetch(REST("plat_matches?pool_id=eq."+W.PLAT.pool+"&discipline=eq.tennis&select=club_id,t1p1,t1p2,t2p1,t2p2,rating_delta"))
@@ -8376,53 +9793,6 @@ async function clRemove(id, label){
   /* The Admin pill: OPR hides its admin link on the About screen, which a board no longer shows. This puts
      it under Recent Matches, where an organiser will look for it — and only on a group board, never on a
      ledger, which is read-only. */
-  function adminPill(){
-    // organisation boards only: they no longer show About, which is where the parent hides its admin link.
-    if(W.PLAT.cid===0 || !W.PLAT.orgId || document.getElementById("platAdminPill")) return;
-    var lower=document.querySelector("#homeScreen .home-lower")
-           || document.getElementById("homeRecentList")
-           || document.querySelector("#homeScreen .home-content");
-    if(!lower) return;
-    var host=(lower.id==="homeRecentList") ? lower.parentElement : lower;
-    var wrap=document.createElement("div"); wrap.id="platAdminPill"; wrap.dataset.platKeep="1";
-    wrap.style.cssText="text-align:center;margin:16px auto 8px;max-width:1000px;width:100%";
-    var b=document.createElement("button");
-    b.textContent="Admin";
-    b.style.cssText="display:inline-flex;align-items:center;gap:7px;background:transparent;border:1.5px solid "+(((W.PLAT.clubs||[]).find(function(c){return c.id===W.PLAT.cid;})||{}).colour||"#185A33")+
-      ";color:"+(((W.PLAT.clubs||[]).find(function(c){return c.id===W.PLAT.cid;})||{}).colour||"#185A33")+";border-radius:99px;padding:9px 22px;font-size:13.5px;font-weight:700;cursor:pointer";
-    b.onclick=function(){ if(typeof openAdmin==="function") openAdmin(); };
-    wrap.appendChild(b);
-    if(host && host.parentNode) host.parentNode.insertBefore(wrap, host.nextSibling);
-  }
-  /* The build, pinned to the corner of the screen — visible on every page without scrolling, so the first
-     question when something looks wrong ("which version am I actually running?") is answered at a glance. */
-  function buildTag(text){
-    try{
-      var t=document.getElementById("platBuildTag");
-      if(!t){ t=document.createElement("div"); t.id="platBuildTag"; document.body.appendChild(t); }
-      t.textContent=text;
-      t.style.cssText="position:fixed;top:0;right:0;z-index:99999;background:rgba(0,0,0,.62);color:#fff;"
-        +"font:700 10px/1.4 system-ui,sans-serif;letter-spacing:.4px;padding:3px 8px;border-bottom-left-radius:8px;pointer-events:none";
-    }catch(e){}
-  }
-  // the build tag is a debugging aid, not something a member should see: it appears only with ?build=1
-  try{ if(/[?&]build=1/.test(location.search)) buildTag("PLAT t39"); }catch(e){}
-  /* A plaque on the club's honour board opens that sport's ledger AT the person: ?player=<name> calls the
-     parent's own loadProfile, so nothing in the parent changes. If the name is not recognised the ledger
-     simply opens as it always did. */
-  function openNamedPlayer(){
-    try{
-      var m=(location.search||"").match(/[?&]player=([^&]+)/); if(!m) return;
-      var who=decodeURIComponent(m[1].replace(/\+/g," ")).trim(); if(!who) return;
-      var g=((location.search||"").match(/[?&]g=([MF])/)||[])[1]||"M";
-      var tries=0;
-      var go=function(){
-        if(typeof loadProfile==="function"){ try{ loadProfile(who,g); }catch(e){} return; }
-        if(tries++<40) setTimeout(go,150);
-      };
-      setTimeout(go,250);
-    }catch(e){}
-  }
   function tDark(hex,f){ try{ var n=parseInt(hex.slice(1),16),r=(n>>16)&255,g=(n>>8)&255,b=n&255,d=function(x){return Math.max(0,Math.round(x*(1-f)));};
     return "#"+[d(r),d(g),d(b)].map(function(x){return ("0"+x.toString(16)).slice(-2);}).join(""); }catch(e){ return hex; } }
   /* A group is distinguished by its NAME pills and its match rows — never by repainting the board. The
@@ -8430,183 +9800,45 @@ async function clRemove(id, label){
      boards; that was wrong and is removed.) */
   /* The one place a group's colour belongs on a board: the profile card, where the member's name and
      ranking sit. Everything else — hero, headers, tables — stays the parent's own scheme. */
-  function profileCardTint(){
-    if(W.PLAT.cid===0) return;   // any group board — an organisation's or a standalone register's
-    var col=(W.PLAT.colour||colOf(W.PLAT.cid)), deep=tDark(col,0.45);
-    if(String(col||"").toLowerCase()==="#0F6E56") return;   // the product's own colour: keep the parent's exact shades
-    if(String(col||"").toLowerCase()==="#0F6E56") return;   // this group wears the product's own colour: leave the parent's exact shades
-    var st=document.getElementById("platCardTint")||document.createElement("style");
-    st.id="platCardTint";
-    st.textContent=".profile-card,.indiv-card{background:linear-gradient(135deg,"+col+","+deep+") !important}";
-    if(!st.parentNode) document.head.appendChild(st);
-  }
-  /* On a group's board the member list's initials take the GROUP's colour — the same colour as its pill.
-     Club group carries the sport's own colour, so its board looks exactly like the parent product.
-     Nothing else on the board changes: hero, headers and tables stay as the parent drew them. */
-  function groupAvatars(){
-    if(W.PLAT.cid===0) return;   // any group board — an organisation's or a standalone register's
-    var col=(W.PLAT.colour||colOf(W.PLAT.cid));
-    if(String(col||"").toLowerCase()==="#0F6E56") return;   // the product's own colour: keep the parent's exact shades
-    if(String(col||"").toLowerCase()==="#0F6E56") return;   // this group wears the product's own colour: leave the parent's exact shades
-    var st=document.getElementById("platAvatarTint")||document.createElement("style");
-    st.id="platAvatarTint";
-    st.textContent="#playerList .player-avatar,.player-avatar{background:"+col+" !important;color:#fff !important;border:none !important}";
-    if(!st.parentNode) document.head.appendChild(st);
-  }
-  /* THE GROUP'S COLOUR ON ITS OWN BOARD — the card with the member's name, and the soft tiles under it.
-     Earlier attempts used a CSS selector, but the parent's profile card is a plain div with an inline
-     gradient and no class, so nothing ever matched. This finds that div, exactly as the ledger does. */
-  function boardProfileTint(){
-    if(W.PLAT.cid===0) return;   // any group board — an organisation's or a standalone register's        // organisation boards; a standalone register is untouched
-    // OSR and OTR draw the profile card with a class inside profileScreen; OPR uses a classless div in
-    // partnershipsCard. Cover both, so one rule holds for every leg.
-    // Watch the PAGE, not one container: each parent puts this card on a different screen under a different
-    // id, and choosing one of them is how earlier passes kept missing whichever screen you were looking at.
-    var card=document.body; if(!card) return;
-    var col=(W.PLAT.colour||colOf(W.PLAT.cid)), deep=tDark(col,0.42);
-    if(String(col||"").toLowerCase()==="#0F6E56") return;   // the product's own colour: keep the parent's exact shades
-    if(String(col||"").toLowerCase()==="#0F6E56") return;   // this group wears the product's own colour: leave the parent's exact shades
-    var rgb=(function(h){ try{ var n=parseInt(h.slice(1),16); return ((n>>16)&255)+","+((n>>8)&255)+","+(n&255); }catch(e){ return "108,52,131"; } })(col);
-    var st=document.getElementById("platBoardWash")||document.createElement("style");
-    st.id="platBoardWash";
-    st.textContent=".stat-card{background:rgba("+rgb+",.12) !important}"
-      +".stat-value{color:"+tDark(col,0.25)+" !important}"
-      +"#chartSnap,[onclick*='chartSnap']{background:rgba("+rgb+",.10) !important;color:"+tDark(col,0.30)+" !important}"
-      +".profile-card,.indiv-card{background:linear-gradient(135deg,"+col+","+deep+") !important}";
-    if(!st.parentNode) document.head.appendChild(st);
-    var paint=function(){
-      var box=card.querySelector('div[style*="linear-gradient"]');
-      if(box && box.dataset.platBoard!=="1"){ box.style.background="linear-gradient(135deg,"+col+","+deep+")"; box.dataset.platBoard="1"; }
-      tintTiles(card, col);
-      // the section headings on the card ("Partnerships") are inline-styled in the parent's purple
-      try{ card.querySelectorAll('div[style*="color:#5b3a6e"],div[style*="color:#6c3483"]').forEach(function(h){
-        if(h.dataset.platHead==="1"||h.children.length) return; h.dataset.platHead="1"; h.style.color=tDark(col,0.2); }); }catch(e){}
-    };
-    new MutationObserver(paint).observe(card,{childList:true,subtree:true}); paint();
-  }
-  /* The stat tiles on a profile card are INLINE-styled divs with no class, so no stylesheet can reach them —
-     which is why they stayed purple through several attempts. They are tinted here, in the DOM, with the
-     same colour as the card above them. */
-  /* The five stat tiles wrap onto two rows on a phone because each carries a min-width. They are one row
-     of five in every other app, so hold them to one row and let them shrink. */
-  function oneRowTiles(root){
-    try{
-      root.querySelectorAll('div[style*="min-width:90px"]').forEach(function(t){
-        t.style.minWidth="0"; t.style.flex="1 1 0";
-        var p=t.parentElement;
-        if(p && p.dataset.platRow!=="1"){ p.dataset.platRow="1"; p.style.flexWrap="nowrap"; p.style.gap="4px"; }
-      });
-    }catch(e){}
-  }
-  function tintTiles(root, col){
-    oneRowTiles(root);
-    try{
-      var rgb=(function(h){ var n=parseInt(h.slice(1),16); return ((n>>16)&255)+","+((n>>8)&255)+","+(n&255); })(col);
-      var deep=tDark(col,0.25);
-      root.querySelectorAll('div[style*="border-radius:10px"]').forEach(function(t){
-        var st=t.getAttribute("style")||"";
-        if(!/background:#/.test(st) || t.dataset.platTile==="1") return;
-        t.dataset.platTile="1";
-        t.style.background="rgba("+rgb+",.12)";
-        var v=t.firstElementChild; if(v) v.style.color=deep;
-      });
-      root.querySelectorAll('div[style*="background:#f5eef8"],div[style*="background:#f7f3fa"]').forEach(function(t){
-        if(t.dataset.platTile==="1") return; t.dataset.platTile="1"; t.style.background="rgba("+rgb+",.10)";
-      });
-    }catch(e){}
-  }
-  /* REPAINT BY SUBSTITUTION.
-     The parents draw their profile screens with INLINE styles — a classless gradient card, tiles with a pale
-     wash, headings in the product's accent — so no stylesheet and no single selector can reach them, and each
-     screen does it slightly differently. Rather than chase selectors screen by screen, this walks the page for
-     the parent's own colours and swaps them for the group's: gradients become the group's gradient, pale
-     washes become a faint wash of it, accent text becomes a deep shade of it. Anything it does not recognise
-     is left exactly as the parent drew it. */
-  var PARENT_INK = {grad: [["#063d2c", "#0F6E56"], ["#0F6E56", "#063d2c"]], wash: ["#cfe9df", "#d6e6df", "#e6f5ef", "#eef6f2"], line: ["rgba(15,110,86,.05)", "rgba(15,110,86,.07)", "rgba(15,110,86,.08)", "rgba(15,110,86,.10)", "rgba(15,110,86,.12)", "rgba(15,110,86,.14)", "rgba(15,110,86,.16)", "rgba(15,110,86,.22)", "rgba(15,110,86,.30)", "rgba(15,110,86,.35)"], strong: ["#0F6E56", "#12855F", "#1E8449", "#1e8449", "#2a6b56", "#3a6b5c"], muted: ["#5aa98d", "#7ba392", "#8fb3a8"]};
-  /* Extracted mechanically from the parent's own source: every inline colour it uses within its brand
-     hue, sorted into gradients, pale washes, faint outlines, accent text and secondary text. Near-black
-     text, greys and semantic colours (warning golds, win/loss reds and greens) are deliberately excluded
-     so only the product's chrome follows the group. */
-    /* A style the browser has already touched comes back NORMALISED — "#fdf3ec" becomes "rgb(253, 243, 236)"
-     and "rgba(211,84,0,.18)" becomes "rgba(211, 84, 0, 0.18)" — so matching the parent's literal text alone
-     misses any element another pass has styled. Each token is matched in both forms. */
-  function colourVariants(c){
-    var out=[c];
-    try{
-      if(c.charAt(0)==="#"){
-        var n=parseInt(c.slice(1),16), r=(n>>16)&255, g=(n>>8)&255, b=n&255;
-        out.push("rgb("+r+", "+g+", "+b+")", "rgb("+r+","+g+","+b+")");
-      } else if(/^rgba?\(/i.test(c)){
-        var p=c.replace(/[^0-9.,]/g,"").split(",").filter(function(x){return x!=="";});
-        if(p.length>=3){
-          var a=(p.length>3? String(Number(p[3])) : null);
-          out.push("rgb("+p[0]+", "+p[1]+", "+p[2]+")");
-          if(a!=null) out.push("rgba("+p[0]+", "+p[1]+", "+p[2]+", "+a+")");
-        }
-      }
-    }catch(e){}
-    return out;
-  }
-  function escRe(x){ return x.replace(/[.*+?^${}()|[\]\\]/g,"\\$&"); }
-  function repaint(root, col){
-    if(!root||!col) return;
-    if(String(col).toLowerCase()==="#0F6E56") return;   // the product's own colour: nothing to repaint
-    if(String(col).toLowerCase()==="#0F6E56") return;   // the product's own colour: nothing to repaint
-    var deep=tDark(col,0.42), mid=tDark(col,0.25), soft=tDark(col,0.12);
-    var rgb=(function(h){ try{ var n=parseInt(h.slice(1),16); return ((n>>16)&255)+","+((n>>8)&255)+","+(n&255); }catch(e){ return "0,0,0"; } })(col);
-    var els=root.querySelectorAll("[style]");
-    for(var i=0;i<els.length;i++){
-      var el=els[i];
-      
-      if(el.dataset.platKeep==="1" || (el.closest && el.closest('[data-plat-keep="1"]'))) continue;   // platform-drawn: leave it
-      var st=el.getAttribute("style")||"", out=st, hit=false;
-      PARENT_INK.grad.forEach(function(pair){
-        var re=new RegExp("linear-gradient\\(135deg,\\s*"+pair[0]+"\\s*,\\s*"+pair[1]+"\\s*\\)","ig");
-        if(re.test(out)){ out=out.replace(re,"linear-gradient(135deg,"+col+","+deep+")"); hit=true; }
-      });
-      PARENT_INK.wash.forEach(function(c){
-        colourVariants(c).forEach(function(v){
-          var re=new RegExp(escRe(v),"ig");
-          if(re.test(out)){ out=out.replace(re,"rgba("+rgb+",.10)"); hit=true; }
-        });
-      });
-      (PARENT_INK.line||[]).forEach(function(c){
-        colourVariants(c).forEach(function(v){
-          var re=new RegExp(escRe(v),"ig");
-          if(re.test(out)){ out=out.replace(re,"rgba("+rgb+",.30)"); hit=true; }
-        });
-      });
-      // an accent hex is swapped WHEREVER it appears — as text, as a solid button background, or in a
-      // border — otherwise a brand-coloured button survives on a group's page.
-      PARENT_INK.strong.forEach(function(c){
-        colourVariants(c).forEach(function(v){
-          var re=new RegExp(escRe(v),"ig");
-          if(re.test(out)){ out=out.replace(re, /color:\s*$/.test(out.split(v)[0]) ? mid : col); hit=true; }
-        });
-      });
-      PARENT_INK.muted.forEach(function(c){
-        colourVariants(c).forEach(function(v){
-          var re=new RegExp("color:\\s*"+escRe(v),"ig");
-          if(re.test(out)){ out=out.replace(re,"color:"+soft); hit=true; }
-        });
-      });
-      if(hit){ el.setAttribute("style", out); el.dataset.platPaint="1"; }
-    }
-  }
-  function watchAndPaint(colFn){
-    var run=function(){ try{ var c=colFn(); if(c) repaint(document.body, c); }catch(e){} };
-    new MutationObserver(run).observe(document.body,{childList:true,subtree:true});
-    run();
-  }
-  try{ new MutationObserver(function(){ try{ oneRowTiles(document.body); }catch(e){} }).observe(document.body,{childList:true,subtree:true}); }catch(e){}
   W.PLAT.ready.then(function(){
-    try{ if(W.PLAT.cid) localStorage.setItem("plat_org_of_club_"+W.PLAT.cid, W.PLAT.orgId ? "1" : "0"); }catch(e){}
-    fixManifest(); chip(); try{ headerBadges(); memberList(); groupMemberList(); recentColours(); profileExtras(); adminPill(); profileCardTint(); boardProfileTint(); groupAvatars(); openNamedPlayer(); }catch(e){}
+    elsewhereLine();
+    // p24: name known — reveal the title and remember it for the next visit's first frame
+    try{
+      if(W.PLAT.cid===0){
+        localStorage.setItem("plat_reg_org_"+(W.PLAT.pool||0), W.PLAT.orgId ? "1" : "0");
+        var tile=document.getElementById("platRegTile");
+        if(W.PLAT.orgId && tile){ var w=tile.parentElement; (w&&w.id!=="aboutScreen"?w:tile).remove(); }   // belongs to an org after all
+        if(!W.PLAT.orgId && !tile) regTile();                                                             // standalone: put it back
+      }
+      if(W.PLAT.cid===0 && W.PLAT.poolName) localStorage.setItem("plat_reg_name_"+(W.PLAT.pool||0), W.PLAT.poolName);
+      var hid=document.getElementById("platHideTitle"); if(hid) hid.remove();
+    }catch(e){}
+    try{ var ch=document.getElementById("platChip"); if(ch) ch.textContent=(W.PLAT.orgId?"‹ Club":"‹ All clubs"); }catch(e){}
+    try{ headerBadges(); }catch(e){}
+    try{ adminPill(); profileCardTint(); boardProfileTint(); groupAvatars(); openNamedPlayer(); }catch(e){}
+    try{ memberList(); groupMemberList(); profileExtras(); }catch(e){}   // t42: OTR-shaped profile pieces from t39
+    try{ baseClubGroup(); }catch(e){}
+    try{ entryTint(); }catch(e){}
+    try{ sessionCard(); }catch(e){}
+    // s41: the Recent Matches banner is the product's green on every board, whatever the group's colour
+    try{
+      var rb=document.querySelector("#homeScreen .home-recent-col > div:first-child");
+      if(rb){ rb.dataset.platKeep="1"; rb.style.background="#c4e000"; rb.style.color="#2a3000"; rb.style.borderColor="#C97E0A"; }
+      var stR=document.createElement("style"); stR.id="platRecentBanner";
+      stR.textContent="#homeScreen .home-recent-col > div:first-child{background:#c4e000!important;color:#2a3000!important;border-color:#C97E0A!important}";
+      document.head.appendChild(stR);
+    }catch(e){}
     try{ if(W.PLAT.cid!==0) watchAndPaint(function(){ return (W.PLAT.colour||""); }); }catch(e){}
-    var t=document.getElementById("heroTitle")||document.querySelector("#homeScreen h1");
-    if(t){ if(W.PLAT.cid===0) t.textContent="OTR · "+(W.PLAT.poolName||"Tennis")+" · Ledger";
-           else if(W.PLAT.name) t.textContent="OTR · "+W.PLAT.name; }
-    document.title=(t?t.textContent:"OTR");
+    try{ if(W.PLAT.cid) localStorage.setItem("plat_org_of_club_"+W.PLAT.cid, W.PLAT.orgId ? "1" : "0"); }catch(e){}
+    fixManifest();
+    var ht=document.getElementById("heroTitle");
+    if(W.PLAT.landing){ var t1="OTR · "+(W.PLAT.poolName||"Clubs"); if(ht) ht.textContent=t1; document.title=t1; landing(); try{ doorChip(); }catch(e){} return; }
+    if(W.PLAT.cid===0){ var t2="OTR · "+(W.PLAT.poolName||"Overall")+" · Ledger"; if(ht) ht.textContent=t2; document.title=t2; ledgerOnly(); }
+    else if(W.PLAT.name&&ht){ ht.textContent="OTR · "+W.PLAT.name; document.title="OTR · "+W.PLAT.name;
+      var sb=document.querySelector("#homeScreen .hero-logo-panel .sub, #homeScreen .sub");
+      if(sb && W.PLAT.poolName) sb.textContent=W.PLAT.poolName+" · Open Squash Ratings System"; }
+    // version tag at the foot of every screen (OPR only prints it on Home/About)
+    if(location.hash==="#enter"){ W.showScreen("entryScreen"); }
   });
 })();
 </script>
