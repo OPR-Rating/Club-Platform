@@ -943,6 +943,21 @@ st0.textContent += "html{overflow-y:scroll}";   // p98: the scrollbar's space is
           W.PLAT.parentId=CID?(pm[CID]||0):0;
           W.PLAT.kids=(W.PLAT.clubs||[]).filter(function(c){ return c.parent_id===CID && CID>0; }).map(function(c){return c.id;});
           W.PLAT.clubDoor=(CID>0 && !BOARDQ && W.PLAT.kids.length>0);
+          /* n29: WHO HAS ACTUALLY PLAYED HERE. A board listed every member, the ledger only those who have
+             played, so a registered-but-unplayed member sat in the board's ratings table and pushed everyone
+             else down a rank — Larry at 2 on Kloof, absent from the ledger, Dave 3 in one place and 4 in the
+             other. The board now counts the same people the ledger does. The PICKER still sees everyone:
+             somebody has to be pickable for their first match. */
+          if(CID>0){
+            _fetch(PLAT+"/rest/v1/plat_matches?club_id=eq."+CID+"&discipline=eq.padel&select=t1p1,t1p2,t2p1,t2p2",{headers:hdrs()})
+              .then(function(r){ return r.json(); })
+              .then(function(ms){
+                var set={}; (Array.isArray(ms)?ms:[]).forEach(function(m){
+                  [m.t1p1,m.t1p2,m.t2p1,m.t2p2].forEach(function(v){ if(!v) return;
+                    String(v).split(" & ").forEach(function(x){ x=x.trim(); if(x) set[x]=1; }); }); });
+                W.PLAT.playedHere=set;
+              }).catch(function(){ W.PLAT.playedHere=null; });
+          }
           if(CID>0){                                    // n13: my club's boards — its own and its groups
             var mine=W.PLAT.parentId||CID;
             W.PLAT.myClub=mine;
@@ -1087,6 +1102,18 @@ st0.textContent += "html{overflow-y:scroll}";   // p98: the scrollbar's space is
         // keep only the club's own people — members of the club board or its groups — so the list is the club's.
         // NAT n2: the engine's own seed query (select=id,full_name,seed_rating) is left whole — it feeds the
         // pool-wide replay above. Only the people LIST (it also asks for gender/current_rating) is trimmed.
+        /* n29: on a BOARD, the people list is those who have played here — the same rule the ledger follows.
+           Not the entry picker, the admin table or the boot load: those must still see every member. */
+        if(CID>0 && W.PLAT.playedHere && tbl==="individuals" && m[1].indexOf("gender")>=0 && m[1].indexOf("full_name=eq.")<0){
+          var hereNow=(function(){ try{ var a=document.querySelector(".screen.active"); return (a&&a.id)||""; }catch(e){ return ""; } })();
+          if(hereNow!=="" && hereNow!=="homeScreen" && hereNow!=="entryScreen" && hereNow!=="enterTournamentScreen"
+             && hereNow!=="adminScreen" && hereNow!=="clubLadderScreen" && hereNow!=="markerScreen"){
+            var played=W.PLAT.playedHere;
+            return _fetch(u,Object.assign({},init,{headers:h})).then(function(r){ return r.json().then(function(rows){
+              if(!Array.isArray(rows)) return jsonResp(rows,r.status);
+              return jsonResp(rows.filter(function(x){ return !x || x.full_name==null || played[String(x.full_name)]; }),200); }); });
+          }
+        }
         if(CID===0 && W.PLAT.natIds && W.PLAT.natNames && typeof W.PLAT.natNames==="object" && tbl==="individuals" && m[1].indexOf("gender")>=0){
           var names=W.PLAT.natNames;
           return _fetch(u,Object.assign({},init,{headers:h})).then(function(r){ return r.json().then(function(rows){
@@ -3438,7 +3465,7 @@ const CLUB_NAME = _club.name;  // shown in the logo as "OPR · <name>"
     link.setAttribute('href', href);
   }catch(e){ /* install stays on the static manifest — no functional impact */ }
 })();
-const OPR_VERSION = "OPR-DOUBLES v2026.09.03-56 · NAT fork n27 (of PLAT p117)";  // MANUAL PAIR CREATION REMOVED FROM ADMIN: Create a pair, Bulk create pairs and Re-derive all pairs are gone (they only made match-less ghost pairs, and Re-derive rewrote every stored initial club-wide). Pairs are born automatically at match entry. Current pairs list untouched; the underlying JS is left in place unreferenced, so no other code path changes. Includes v47 (set-score fix + double-tap guard) and all prior.
+const OPR_VERSION = "OPR-DOUBLES v2026.09.03-56 · NAT fork n30 (no voice) (of PLAT p117)";  // MANUAL PAIR CREATION REMOVED FROM ADMIN: Create a pair, Bulk create pairs and Re-derive all pairs are gone (they only made match-less ghost pairs, and Re-derive rewrote every stored initial club-wide). Pairs are born automatically at match entry. Current pairs list untouched; the underlying JS is left in place unreferenced, so no other code path changes. Includes v47 (set-score fix + double-tap guard) and all prior.
 // Explanation shown above the individual ladder. Open on load so it's read; collapsible
 // (state kept for the session) and scrolls away. Mechanics only — no outcome framing, so
 // members aren't nudged away from playing stronger opponents. Every clause maps to a real
@@ -9172,6 +9199,9 @@ async function clRemove(id, label){
       var tops=topClubs().sort(function(a,b){ return (b.is_general?1:0)-(a.is_general?1:0) || String(a.name).localeCompare(String(b.name)); });
       if(tops.length===1){ location.replace(PAGE+"?club="+tops[0].id+(isClubWithKids(tops[0].id)?"":"&board=1")); return; }
       try{ var m0=document.getElementById("platNoFlash"); if(m0) m0.remove(); }catch(e){}   /* n10 */
+      /* n28: standing at the register door IS arriving by it — stamp it here too, so a refresh or a pasted
+         link leaves the way back intact. Clubs' own people never come through here, so they never get it. */
+      try{ sessionStorage.setItem("plat_from_door_padel", String(W.PLAT.pool)); }catch(e){}
       var dn=document.createElement("div"); dn.id="platDoor";
       dn.style.cssText="max-width:620px;margin:0 auto;display:flex;flex-direction:column;gap:12px;padding:0 4px 8px";
       var h="";
@@ -9343,284 +9373,7 @@ async function clRemove(id, label){
     };
     W.selectModalPlayer=function(n){ return origSelect.call(this, bare(n)); };
   }
-  /* ---8<--- VOICE BLOCK START (self-contained: delete between the fences to remove voice entirely) */
-  /* ============================================================================================
-     n20: TALK THE SCORE IN.  "Murray and James versus Paul and Pete, six four, three six, six three"
-     fills the sheet — and stops. Nobody's rating moves until a person reads it and presses Enter, so the
-     worst a mishearing can cost is a retype. Three rules hold it together:
-       * names are matched against THIS CLUB's people only (a couple of dozen), never the register
-       * a full name always wins; a first name wins only if it is unique here; otherwise the slot is LEFT
-         EMPTY and said so — a confidently wrong name is the one thing that would make people distrust it
-       * the set scores are held until the score table exists, then typed into it
-     ============================================================================================ */
-  var VOICE={on:false,rec:null,sets:[],said:""};
-  function voiceSupported(){ return !!(W.SpeechRecognition || W.webkitSpeechRecognition); }
-  var NUMW={zero:0,oh:0,nil:0,love:0,one:1,won:1,two:2,to:2,too:2,three:3,four:4,for:4,fore:4,five:5,six:6,sex:6,
-            seven:7,eight:8,ate:8,nine:9,ten:10,eleven:11,twelve:12};
-  function words(t){ return String(t||"").toLowerCase().replace(/[^a-z0-9\s'-]/g," ").replace(/\s+/g," ").trim().split(" "); }
-  function norm(n){ return String(n||"").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"").replace(/[^a-z ]/g," ").replace(/\s+/g," ").trim(); }
-  /* the people this board may enter: its own club's, as the picker holds them */
-  function voiceNames(){
-    var names=[];
-    try{ var rows=document.querySelectorAll("#playerModalList .player-modal-item");
-         if(rows.length) names=Array.prototype.map.call(rows,function(x){ return bare(x.textContent.trim()); }); }catch(e){}
-    if(!names.length && typeof getPlayerList==="function"){
-      try{ names=(getPlayerList(entryData&&entryData.type)||[]).slice(); }catch(e){}
-    }
-    var out=[]; names.forEach(function(n){ String(n).split(" & ").forEach(function(x){ x=x.trim(); if(x&&out.indexOf(x)<0) out.push(x); }); });
-    return out;
-  }
-  /* one spoken name -> one person, or nothing. Never a guess. */
-  function matchName(said, pool){
-    var q=norm(said); if(!q) return {name:null,why:"nothing said"};
-    var exact=pool.filter(function(n){ return norm(n)===q; });
-    if(exact.length===1) return {name:exact[0]};
-    var whole=pool.filter(function(n){ return norm(n).split(" ").indexOf(q)>=0; });     // "murray" inside "Murray Aberdein"
-    if(whole.length===1) return {name:whole[0]};
-    if(whole.length>1) return {name:null,why:"\u201c"+said+"\u201d could be "+whole.slice(0,3).join(" or ")};
-    var starts=pool.filter(function(n){ return norm(n).split(" ").some(function(w){ return w.indexOf(q)===0; }); });
-    if(starts.length===1) return {name:starts[0]};
-    if(starts.length>1) return {name:null,why:"\u201c"+said+"\u201d could be "+starts.slice(0,3).join(" or ")};
-    return {name:null,why:"nobody here sounds like \u201c"+said+"\u201d"};
-  }
-  /* the sentence -> four slots and a list of set scores */
-  function voiceParse(transcript){
-    var w=words(transcript), pool=voiceNames();
-    var split=-1;
-    for(var i=0;i<w.length;i++){ if(/^(versus|vs|v|against|beat|played?|plays|play)$/.test(w[i])){ split=i; break; } }
-    var left = (split<0) ? w : w.slice(0,split);
-    var right= (split<0) ? []  : w.slice(split+1);
-    var nums=[], leftNames=[], rightNames=[];
-    /* n22: people do not always say "and". "Bruce Dave Murray and Paul" is four names run together, and
-       treating it as one long name finds nobody. So while gathering, after each word we ask whether what we
-       have so far is already somebody's whole name — if it is, and the next word starts a different person,
-       we close it off there. */
-    var POOL=pool.map(function(n){ return norm(n); });
-    function isWholeName(t){ return POOL.indexOf(norm(t))>=0; }
-    function startsSomeone(t){ var q=norm(t); return !!q && POOL.some(function(n){ return n.split(" ").some(function(w){ return w.indexOf(q)===0; }); }); }
-    function harvest(list,into){
-      var cur=[];
-      list.forEach(function(x){
-        if(/^\d+$/.test(x)){ nums.push(parseInt(x,10)); if(cur.length){ into.push(cur.join(" ")); cur=[]; } return; }
-        if(x in NUMW && nums.length+ (cur.length?0:0) >= 0 && /^(zero|oh|nil|love|one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve)$/.test(x)
-           && (nums.length || into.length>=1 || list===right)){ nums.push(NUMW[x]); if(cur.length){ into.push(cur.join(" ")); cur=[]; } return; }
-        if(/^(and|&|with|partner|partnered)$/.test(x)){ if(cur.length){ into.push(cur.join(" ")); cur=[]; } return; }
-        if(/^(set|sets|games?|score|scored|the|a|it|was|were|we|they|won|win|lost|to|by|our|their)$/.test(x)) return;
-        // n22: a name already complete, and this word begins someone else -> that was a whole person
-        if(cur.length && isWholeName(cur.join(" ")) && startsSomeone(x)){ into.push(cur.join(" ")); cur=[x]; return; }
-        // n22: this word alone is someone's full first-and-last, and we were mid-name -> close the last one
-        if(cur.length===1 && startsSomeone(cur[0]) && !isWholeName(cur.join(" ")+" "+x) && startsSomeone(x)
-           && !POOL.some(function(n){ return n.indexOf(norm(cur[0]+" "+x))===0; })){ into.push(cur[0]); cur=[x]; return; }
-        cur.push(x);
-      });
-      if(cur.length) into.push(cur.join(" "));
-    }
-    harvest(left,leftNames); harvest(right,rightNames);
-    /* n22: said without a "versus" — "Murray James Paul Pete" — the four names are the two pairs in order */
-    if(!rightNames.length && leftNames.length===4){ rightNames=leftNames.slice(2); leftNames=leftNames.slice(0,2); }
-    if(!rightNames.length && leftNames.length===2 && (entryData&&entryData.format==="singles")){ rightNames=[leftNames[1]]; leftNames=[leftNames[0]]; }
-    var slots=[], notes=[];
-    [[leftNames,"Team 1"],[rightNames,"Team 2"]].forEach(function(side){
-      var got=[];
-      side[0].forEach(function(raw){
-        var m=matchName(raw,pool);
-        if(m.name && got.indexOf(m.name)<0) got.push(m.name);
-        else if(!m.name) notes.push(side[1]+": "+m.why);
-      });
-      slots.push(got);
-    });
-    /* n22: the phone writes "six three" as 63 when it is said quickly. A two-digit number of 20 or more
-       cannot be a padel score, so it is the two digits run together. 10 to 19 are left alone — they are real
-       scores in a long tiebreak. */
-    var flat=[];
-    nums.forEach(function(n){
-      if(n>=20 && n<=99) { flat.push(Math.floor(n/10)); flat.push(n%10); }
-      else flat.push(n);
-    });
-    var sets=[];
-    for(var k=0;k+1<flat.length;k+=2) sets.push([flat[k],flat[k+1]]);
-    return {t1:slots[0]||[], t2:slots[1]||[], sets:sets, notes:notes, heard:String(transcript||"").trim()};
-  }
-  /* put a name in a slot exactly as tapping it would */
-  function fillSlot(target,name){
-    var v=document.getElementById(target+"_val"), l=document.getElementById(target+"_lbl"), b=document.getElementById(target+"_btn");
-    if(v) v.value=name; if(l) l.textContent=name; if(b) b.classList.add("selected");
-    try{ if(typeof odrUpdateCombined==="function") odrUpdateCombined(); }catch(e){}
-    return !!v;
-  }
-  function voiceApply(p){
-    var filled=0, want=(entryData&&entryData.format==="singles")?1:2;
-    ["t1p1","t1p2"].forEach(function(t,i){ if(i<want && p.t1[i]) filled+=fillSlot(t,p.t1[i])?1:0; });
-    ["t2p1","t2p2"].forEach(function(t,i){ if(i<want && p.t2[i]) filled+=fillSlot(t,p.t2[i])?1:0; });
-    VOICE.sets=p.sets||[];
-    voiceApplySets();                                   // if the score table is already on screen
-    var need=want*2, missing=need-filled;
-    var msg=[];
-    msg.push("Heard: \u201c"+p.heard+"\u201d");
-    if(filled) msg.push(filled+" of "+need+" names filled in.");
-    if(missing>0) msg.push(missing+" left for you to tap.");
-    if(p.sets.length) msg.push("Sets: "+p.sets.map(function(s){ return s[0]+"\u2013"+s[1]; }).join(", ")+".");
-    (p.notes||[]).forEach(function(n){ msg.push(n+"."); });
-    msg.push("Check it, then press Next as usual \u2014 nothing is saved until you do.");
-    voiceSay(msg.join(" "), missing>0||p.notes.length ? "#8a6d3b" : "#2e7d32");
-  }
-  function voiceApplySets(){
-    if(!VOICE.sets.length) return;
-    VOICE.sets.forEach(function(pair,i){
-      var a=document.getElementById("s"+(i+1)+"t1"), b=document.getElementById("s"+(i+1)+"t2");
-      if(a&&b){ a.value=pair[0]; b.value=pair[1];
-        try{ if(typeof hlWin==="function") hlWin(i+1); }catch(e){} }
-    });
-  }
-  function voiceSay(text,colour){
-    var box=document.getElementById("platVoiceMsg"); if(!box) return;
-    box.style.color=colour||"#555"; box.textContent=text;
-  }
-  W.platVoiceHandle=function(transcript){ var p=voiceParse(transcript); voiceApply(p); return p; };   // also the test door
-  /* n22: HOLD TO TALK. v1 listened for one phrase and stopped at the first pause, so a sentence with a breath
-     in it was cut in half and nobody could tell what it was waiting for. Now you hold the button down, it
-     shows the words as it hears them, and it works out the match when you let go. */
-  var HOLD={live:"",final:"",active:false,guard:null};
-  /* n27: TAP, DON'T HOLD. Holding looked simple and was not: a finger that slides, a browser that swallows
-     the release, a long-press menu — any of them left it listening with the button still lit. One tap starts,
-     one tap stops, the button says which it is, and it gives up by itself after 20 seconds if nobody taps. */
-  W.platVoiceHold=function(ev){ if(ev&&ev.preventDefault) ev.preventDefault(); W.platVoiceToggle(); };
-  W.platVoiceToggle=function(){
-    if(HOLD.active) return W.platVoiceRelease();
-    W.platVoiceStart(true);
-    clearTimeout(HOLD.guard);
-    HOLD.guard=setTimeout(function(){ if(HOLD.active) W.platVoiceRelease(); },20000);
-  };
-  W.platVoiceRelease=function(ev){
-    if(ev&&ev.preventDefault) ev.preventDefault();
-    if(!HOLD.active) return;
-    HOLD.active=false;
-    /* n23: stop() is a request, and on some phones the recogniser carries on regardless. Take the words we
-       have now, act on them, and shut it down hard a moment later if it has not gone quietly. */
-    var said=(HOLD.final+" "+HOLD.live).trim();
-    var rec=VOICE.rec;
-    try{ rec && rec.stop(); }catch(e){}
-    setTimeout(function(){ try{ if(VOICE.rec===rec && rec) rec.abort(); }catch(e){} },400);
-    VOICE.on=false; voiceButton(false);
-    HOLD.final=""; HOLD.live="";
-    if(said) W.platVoiceHandle(said);
-    else voiceSay("Nothing came through. Hold the button while you speak, or tap the names.","#8a6d3b");
-  };
-  W.platVoiceStart=function(){
-    if(!voiceSupported()){ voiceSay("This phone's browser cannot listen. Tap the names as usual.","#c00"); return; }
-    if(VOICE.on && VOICE.rec){ try{ VOICE.rec.stop(); }catch(e){} return; }
-    var R=W.SpeechRecognition||W.webkitSpeechRecognition, rec=new R();
-    /* n22: keep listening through pauses, and report as you go, so a normal sentence with a breath in the
-       middle of it survives and the speaker can see it is working. */
-    rec.lang="en-ZA"; rec.interimResults=true; rec.maxAlternatives=3; rec.continuous=true;
-    VOICE.rec=rec; VOICE.on=true; HOLD.active=true; HOLD.live=""; HOLD.final=""; voiceButton(true);
-    voiceSay("Listening \u2014 keep holding. Say who played and the set scores, then let go.","#6c3483");
-    rec.onresult=function(e){
-      /* n23: REBUILD, NEVER APPEND. Android re-sends every result it has so far on each update, so appending
-         multiplied the sentence — "Murray Murray Aberdein Murray Aberdein..." — and every repetition was then
-         parsed. The transcript is the whole result list, read fresh each time. */
-      if(!HOLD.active) return;                                  // a stray update after the finger lifted
-      /* n26: ONLY THE LAST DRAFT. The results list holds every interim version of the phrase being spoken —
-         "Murray", then "Murray Aberdein", then "Murray Aberdein Murray..." — so joining them all repeated the
-         sentence over and over. The finished pieces are joined; of the unfinished ones, only the newest counts. */
-      var fin="", live="";
-      for(var i=0;i<e.results.length;i++){
-        var txt=""; try{ txt=e.results[i][0].transcript; }catch(err){}
-        if(e.results[i].isFinal) fin+=" "+txt; else live=txt;          // live REPLACES, never accumulates
-      }
-      HOLD.final=fin.trim(); HOLD.live=String(live||"").trim();
-      var shown=(HOLD.final+" "+HOLD.live).trim();
-      if(shown) voiceSay("\u201c"+(shown.length>160?shown.slice(-160):shown)+"\u201d","#6c3483");
-    };
-    rec.onerror=function(e){ VOICE.on=false; HOLD.active=false; voiceButton(false);
-      if(e&&e.error==="no-speech"){ voiceSay("Nothing came through \u2014 hold the button and speak towards the phone.","#8a6d3b"); return; }
-      voiceSay((e&&e.error==="not-allowed") ? "The microphone is blocked for this site \u2014 allow it in the browser's settings."
-                                            : "Could not hear anything. Tap the names as usual.","#c00"); };
-    /* n23: the release handler has already read the words and acted; onend only tidies up, so a recogniser
-       that ends by itself (a long silence) cannot parse the same sentence a second time. */
-    rec.onend=function(){
-      VOICE.on=false; voiceButton(false);
-      if(!HOLD.active) return;
-      HOLD.active=false;
-      var said=(HOLD.final+" "+HOLD.live).trim();
-      HOLD.final=""; HOLD.live="";
-      if(said) W.platVoiceHandle(said);
-    };
-    try{ rec.start(); }catch(e){ VOICE.on=false; voiceButton(false); voiceSay("Could not start listening.","#c00"); }
-  };
-  function voiceButton(listening){
-    var b=document.getElementById("platVoiceBtn"); if(!b) return;
-    b.textContent = listening ? "\u25a0  Listening \u2014 tap when you are done" : "\u25cf  Tap and say the match";
-    b.style.background = listening ? "#c62828" : "#6c3483";
-    b.style.transform = listening ? "scale(0.99)" : "";
-  }
-  /* the button itself, above the player slots */
-  function voiceMount(){
-    /* n21: any board may talk its scores in — the club rung has nothing to do with it. (n20 gated this on
-       natMode(), so a plain register like Eswatini never saw the button and could not be used to test it.) */
-    if(!W.PLAT.cid) return;
-    var host=document.getElementById("entryContent"); if(!host) return;
-    if(document.getElementById("platVoiceWrap")) return;
-    if(!document.getElementById("t1p1_btn")) return;                    // only on the names step
-    var d=document.createElement("div"); d.id="platVoiceWrap"; d.style.cssText="margin:0 0 12px";
-    /* n22: the message stays with the slots; the button itself sits at the bottom of the screen, where a
-       thumb is while the other hand holds a racquet. */
-    d.innerHTML='<div style="font-size:11.5px;color:#8a7f9c;line-height:1.4">Tap the button, say it the way you would tell someone: '
-      +'\u201cMurray and James versus Paul and Pete, six four, three six, six three\u201d \u2014 then tap again. It fills the sheet in; you check it and press Next.</div>'
-      +'<div id="platVoiceMsg" style="font-size:12.5px;margin-top:7px;line-height:1.45"></div>';
-    host.insertBefore(d, host.firstChild);
-    /* n25: BOTH THINGS AT ONCE. Floating over the sheet (n22) hid the first player slot; sitting in the page
-       (n23) put it out of thumb reach at the top. So it floats at the bottom AND the sheet is given the same
-       amount of padding beneath it — the button is always under the thumb, and nothing is ever behind it. */
-    var btn=document.createElement("button");
-    btn.id="platVoiceBtn";
-    btn.style.cssText="width:100%;border:none;border-radius:999px;background:#6c3483;color:#fff;padding:16px 14px;"
-      +"font-size:16px;font-weight:800;cursor:pointer;box-shadow:0 6px 20px rgba(58,29,110,.35);"
-      +"touch-action:none;-webkit-user-select:none;user-select:none;-webkit-touch-callout:none";
-    btn.textContent="\u25cf  Tap and say the match";
-    var bar=document.getElementById("platVoiceBar");
-    if(!bar){
-      bar=document.createElement("div"); bar.id="platVoiceBar";
-      bar.style.cssText="position:fixed;left:12px;right:12px;bottom:calc(10px + env(safe-area-inset-bottom));z-index:9000";
-      document.body.appendChild(bar);
-    }
-    bar.innerHTML=""; bar.appendChild(btn); bar.style.display="";
-    function padForBar(){
-      var b=document.getElementById("platVoiceBar"); if(!b || b.style.display==="none") return;
-      var pad=(b.offsetHeight+52)+"px";          /* the bar, its gap from the edge, and room to breathe */
-      var sc=document.querySelector(".screen.active .screen-content");
-      var sk=document.querySelector(".screen.active");
-      if(sc) sc.style.paddingBottom=pad;
-      if(sk && sk!==sc) sk.style.paddingBottom=pad;   /* some steps hang their buttons outside the content box */
-    }
-    setTimeout(padForBar,0); setTimeout(padForBar,300);
-    /* it belongs to the names step: hide it, and give the padding back, anywhere else */
-    if(!W.__voiceWatch){
-      W.__voiceWatch=setInterval(function(){
-        var b=document.getElementById("platVoiceBar"); if(!b) return;
-        var onStep=!!document.getElementById("t1p1_btn") && !!document.getElementById("platVoiceWrap");
-        if(onStep){ if(b.style.display==="none"){ b.style.display=""; padForBar(); } }
-        else {
-          b.style.display="none";
-          ["​.screen.active .screen-content",".screen.active"].forEach(function(sel){
-            var el=document.querySelector(sel.replace("​","")); if(el && el.style.paddingBottom) el.style.paddingBottom="";
-          });
-        }
-      },400);
-    }
-    /* one family of events only — pointer where it exists, touch where it does not. Listening for both made
-       every press start twice. */
-    /* n27: one plain click handler — nothing to hold, nothing to slide off */
-    btn.addEventListener("click", function(ev){ ev.preventDefault(); W.platVoiceToggle(); });
-    if(!voiceSupported()){ var b=document.getElementById("platVoiceBtn"); if(b){ b.style.opacity=".5"; } }
-  }
-  /* mount it whenever the names step is drawn, and type the sets in when the table appears */
-  (function(){
-    var s2=W.renderStep2, s3=W.renderStep3;
-    if(typeof s2==="function") W.renderStep2=function(){ var r=s2.apply(this,arguments); setTimeout(voiceMount,0); return r; };
-    if(typeof s3==="function") W.renderStep3=function(){ var r=s3.apply(this,arguments); setTimeout(voiceApplySets,0); return r; };
-  })();
-  /* ---8<--- VOICE BLOCK END */
+  /* voice removed at build time */
 
   /* What has just been played, across the whole club — the door's own short list. */
   function doorRecent(scope){
@@ -10469,6 +10222,9 @@ async function clRemove(id, label){
   // n3: A CLUB NEVER LOOKS SIDEWAYS. Inside a club the chip climbs to the club's own door and no further;
   // the way to the other clubs exists only on the combined ledger and the register door, which are the
   // register owner's screens. So on a club door itself there is no chip at all.
+  function cameFromDoor(){
+    try{ return sessionStorage.getItem("plat_from_door_padel")===String(W.PLAT.pool); }catch(e){ return false; }
+  }
   function natChip(){
     var a=document.getElementById("platChip");
     var show=function(){ if(a) a.style.visibility="visible"; };   /* n10 */
@@ -10476,9 +10232,19 @@ async function clRemove(id, label){
     if(!natMode()){ show(); return; }   // a plain register: the parent's own chip is right
     // n7: inside a club the chip just says HOME — naming the club again is noise, you know where you are.
     // Only the register owner's combined ledger offers the way out to the other clubs.
-    if(W.PLAT.cid===0){ a.textContent="\u2039 Home"; show(); return; }   /* n12: one rung up is Home, on every ledger */
+    if(W.PLAT.cid===0){
+      /* n28: on a ledger, Home is the club you came from; for the register owner, arriving by the register
+         door, it is the door itself. */
+      if(!W.PLAT.nat && cameFromDoor()){ a.textContent="\u2039 All clubs"; a.onclick=function(){ location.href=PAGE+"?pool="+W.PLAT.pool; }; show(); return; }
+      a.textContent="\u2039 Home"; show(); return;
+    }
     if(W.PLAT.parentId){ a.textContent="\u2039 Home"; show(); return; }
     if(W.PLAT.board && isClubWithKids(W.PLAT.cid)){ a.textContent="\u2039 Home"; show(); return; }
+    /* n28: THE WAY BACK, FOR WHOEVER CAME THAT WAY. A club door has no chip — its members must never be
+       offered a door into the other clubs. But the register owner arrives THROUGH that door, and was then
+       stranded. Coming in from the register door is remembered for the visit, on that device only, so the
+       chip appears for the person who came that way and for nobody else. */
+    if(cameFromDoor()){ a.textContent="\u2039 All clubs"; a.onclick=function(){ location.href=PAGE+"?pool="+W.PLAT.pool; }; show(); return; }
     a.remove();   // a club with no club above it: nowhere to go but sideways, so no chip
   }
   /* NAT: the National grid toggle — on a club ledger, one tap to the national ledger; on the national ledger
@@ -11316,9 +11082,13 @@ async function clRemove(id, label){
         var cc=W.PLAT.colour;
         var st=document.getElementById("platInkCss") || document.createElement("style");
         st.id="platInkCss";
-        st.textContent=".rank-badge{background:"+cc+" !important}"
-          +".rank{color:"+cc+" !important}"
-          +".ladder-table .rank-badge.top,.rank-badge.top{background:"+cc+" !important}";
+        /* n29: rank 1 and 2 are a bright chip with dark text by design (gold, silver). Repainting only the
+           background left dark text on a dark blue disc — unreadable. So those two keep their own colours
+           entirely, and every other badge takes the board's colour with white on it. */
+        st.textContent=".rank-badge{background:"+cc+" !important;color:#fff !important}"
+          +".rank-badge.rank-1{background:#c4e000 !important;color:#1a1a1a !important}"
+          +".rank-badge.rank-2{background:#BDC3C7 !important;color:#1a1a1a !important}"
+          +".rank{color:"+cc+" !important}";
         if(!st.parentNode) document.head.appendChild(st);
       }
     }catch(e){}
