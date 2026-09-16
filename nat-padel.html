@@ -3438,7 +3438,7 @@ const CLUB_NAME = _club.name;  // shown in the logo as "OPR · <name>"
     link.setAttribute('href', href);
   }catch(e){ /* install stays on the static manifest — no functional impact */ }
 })();
-const OPR_VERSION = "OPR-DOUBLES v2026.09.03-56 · NAT fork n26 (of PLAT p117)";  // MANUAL PAIR CREATION REMOVED FROM ADMIN: Create a pair, Bulk create pairs and Re-derive all pairs are gone (they only made match-less ghost pairs, and Re-derive rewrote every stored initial club-wide). Pairs are born automatically at match entry. Current pairs list untouched; the underlying JS is left in place unreferenced, so no other code path changes. Includes v47 (set-score fix + double-tap guard) and all prior.
+const OPR_VERSION = "OPR-DOUBLES v2026.09.03-56 · NAT fork n27 (of PLAT p117)";  // MANUAL PAIR CREATION REMOVED FROM ADMIN: Create a pair, Bulk create pairs and Re-derive all pairs are gone (they only made match-less ghost pairs, and Re-derive rewrote every stored initial club-wide). Pairs are born automatically at match entry. Current pairs list untouched; the underlying JS is left in place unreferenced, so no other code path changes. Includes v47 (set-score fix + double-tap guard) and all prior.
 // Explanation shown above the individual ladder. Open on load so it's read; collapsible
 // (state kept for the session) and scrolls away. Mechanics only — no outcome framing, so
 // members aren't nudged away from playing stronger opponents. Every clause maps to a real
@@ -9480,8 +9480,17 @@ async function clRemove(id, label){
   /* n22: HOLD TO TALK. v1 listened for one phrase and stopped at the first pause, so a sentence with a breath
      in it was cut in half and nobody could tell what it was waiting for. Now you hold the button down, it
      shows the words as it hears them, and it works out the match when you let go. */
-  var HOLD={live:"",final:"",active:false};
-  W.platVoiceHold=function(ev){ if(ev&&ev.preventDefault) ev.preventDefault(); W.platVoiceStart(true); };
+  var HOLD={live:"",final:"",active:false,guard:null};
+  /* n27: TAP, DON'T HOLD. Holding looked simple and was not: a finger that slides, a browser that swallows
+     the release, a long-press menu — any of them left it listening with the button still lit. One tap starts,
+     one tap stops, the button says which it is, and it gives up by itself after 20 seconds if nobody taps. */
+  W.platVoiceHold=function(ev){ if(ev&&ev.preventDefault) ev.preventDefault(); W.platVoiceToggle(); };
+  W.platVoiceToggle=function(){
+    if(HOLD.active) return W.platVoiceRelease();
+    W.platVoiceStart(true);
+    clearTimeout(HOLD.guard);
+    HOLD.guard=setTimeout(function(){ if(HOLD.active) W.platVoiceRelease(); },20000);
+  };
   W.platVoiceRelease=function(ev){
     if(ev&&ev.preventDefault) ev.preventDefault();
     if(!HOLD.active) return;
@@ -9541,7 +9550,7 @@ async function clRemove(id, label){
   };
   function voiceButton(listening){
     var b=document.getElementById("platVoiceBtn"); if(!b) return;
-    b.textContent = listening ? "\u25a0  Listening \u2014 let go when done" : "\u25cf  Hold to say the match";
+    b.textContent = listening ? "\u25a0  Listening \u2014 tap when you are done" : "\u25cf  Tap and say the match";
     b.style.background = listening ? "#c62828" : "#6c3483";
     b.style.transform = listening ? "scale(0.99)" : "";
   }
@@ -9556,8 +9565,8 @@ async function clRemove(id, label){
     var d=document.createElement("div"); d.id="platVoiceWrap"; d.style.cssText="margin:0 0 12px";
     /* n22: the message stays with the slots; the button itself sits at the bottom of the screen, where a
        thumb is while the other hand holds a racquet. */
-    d.innerHTML='<div style="font-size:11.5px;color:#8a7f9c;line-height:1.4">Hold the microphone button and say it the way you would tell someone: '
-      +'\u201cMurray and James versus Paul and Pete, six four, three six, six three.\u201d Let go and it fills the sheet in \u2014 you check it and press Next.</div>'
+    d.innerHTML='<div style="font-size:11.5px;color:#8a7f9c;line-height:1.4">Tap the button, say it the way you would tell someone: '
+      +'\u201cMurray and James versus Paul and Pete, six four, three six, six three\u201d \u2014 then tap again. It fills the sheet in; you check it and press Next.</div>'
       +'<div id="platVoiceMsg" style="font-size:12.5px;margin-top:7px;line-height:1.45"></div>';
     host.insertBefore(d, host.firstChild);
     /* n25: BOTH THINGS AT ONCE. Floating over the sheet (n22) hid the first player slot; sitting in the page
@@ -9568,7 +9577,7 @@ async function clRemove(id, label){
     btn.style.cssText="width:100%;border:none;border-radius:999px;background:#6c3483;color:#fff;padding:16px 14px;"
       +"font-size:16px;font-weight:800;cursor:pointer;box-shadow:0 6px 20px rgba(58,29,110,.35);"
       +"touch-action:none;-webkit-user-select:none;user-select:none;-webkit-touch-callout:none";
-    btn.textContent="\u25cf  Hold to say the match";
+    btn.textContent="\u25cf  Tap and say the match";
     var bar=document.getElementById("platVoiceBar");
     if(!bar){
       bar=document.createElement("div"); bar.id="platVoiceBar";
@@ -9601,17 +9610,8 @@ async function clRemove(id, label){
     }
     /* one family of events only — pointer where it exists, touch where it does not. Listening for both made
        every press start twice. */
-    if(W.PointerEvent){
-      btn.addEventListener("pointerdown", W.platVoiceHold, {passive:false});
-      ["pointerup","pointercancel","pointerleave"].forEach(function(ev){ btn.addEventListener(ev, W.platVoiceRelease, {passive:false}); });
-    } else {
-      btn.addEventListener("touchstart", W.platVoiceHold, {passive:false});
-      ["touchend","touchcancel"].forEach(function(ev){ btn.addEventListener(ev, W.platVoiceRelease, {passive:false}); });
-      btn.addEventListener("mousedown", W.platVoiceHold);
-      btn.addEventListener("mouseup", W.platVoiceRelease);
-    }
-    /* a finger that slides off the button still ends the recording */
-    W.addEventListener("pointerup", function(){ if(HOLD.active) W.platVoiceRelease(); }, {passive:true});
+    /* n27: one plain click handler — nothing to hold, nothing to slide off */
+    btn.addEventListener("click", function(ev){ ev.preventDefault(); W.platVoiceToggle(); });
     if(!voiceSupported()){ var b=document.getElementById("platVoiceBtn"); if(b){ b.style.opacity=".5"; } }
   }
   /* mount it whenever the names step is drawn, and type the sets in when the table appears */
@@ -11308,6 +11308,20 @@ async function clRemove(id, label){
       document.head.appendChild(stR);
     }catch(e){}
     try{ if(W.PLAT.cid!==0) watchAndPaint(function(){ return (W.PLAT.colour||""); }); }catch(e){}
+    /* n27: THE BOARD'S COLOUR, IN THE STYLESHEET TOO. The repainter rewrites inline styles, but the ladder's
+       rank badges take their purple from a CSS rule, so on a blue group they stayed OPR purple — the colour is
+       how you know which board you are on, so it has to hold everywhere. */
+    try{
+      if(W.PLAT.cid && W.PLAT.colour && String(W.PLAT.colour).toLowerCase()!=="#6c3483"){
+        var cc=W.PLAT.colour;
+        var st=document.getElementById("platInkCss") || document.createElement("style");
+        st.id="platInkCss";
+        st.textContent=".rank-badge{background:"+cc+" !important}"
+          +".rank{color:"+cc+" !important}"
+          +".ladder-table .rank-badge.top,.rank-badge.top{background:"+cc+" !important}";
+        if(!st.parentNode) document.head.appendChild(st);
+      }
+    }catch(e){}
     try{ if(W.PLAT.cid) localStorage.setItem("plat_org_of_club_"+W.PLAT.cid, W.PLAT.orgId ? "1" : "0"); }catch(e){}
     fixManifest();
     var ht=document.getElementById("heroTitle");
