@@ -3484,7 +3484,7 @@ const CLUB_NAME = _club.name;  // shown in the logo as "OPR · <name>"
     link.setAttribute('href', href);
   }catch(e){ /* install stays on the static manifest — no functional impact */ }
 })();
-const OPR_VERSION = "OPR-DOUBLES v2026.09.03-56 · NAT fork n39b (no voice) (of PLAT p117)";  // MANUAL PAIR CREATION REMOVED FROM ADMIN: Create a pair, Bulk create pairs and Re-derive all pairs are gone (they only made match-less ghost pairs, and Re-derive rewrote every stored initial club-wide). Pairs are born automatically at match entry. Current pairs list untouched; the underlying JS is left in place unreferenced, so no other code path changes. Includes v47 (set-score fix + double-tap guard) and all prior.
+const OPR_VERSION = "OPR-DOUBLES v2026.09.03-56 · NAT fork n39c (no voice) (of PLAT p117)";  // MANUAL PAIR CREATION REMOVED FROM ADMIN: Create a pair, Bulk create pairs and Re-derive all pairs are gone (they only made match-less ghost pairs, and Re-derive rewrote every stored initial club-wide). Pairs are born automatically at match entry. Current pairs list untouched; the underlying JS is left in place unreferenced, so no other code path changes. Includes v47 (set-score fix + double-tap guard) and all prior.
 // Explanation shown above the individual ladder. Open on load so it's read; collapsible
 // (state kept for the session) and scrolls away. Mechanics only — no outcome framing, so
 // members aren't nudged away from playing stronger opponents. Every clause maps to a real
@@ -9454,6 +9454,13 @@ async function clRemove(id, label){
       +"#homeScreen .menu-btn{min-height:40px !important;padding:8px 12px !important;font-size:13px !important}"
       +"#platNatToggle{margin:12px auto 10px !important}"
       +"#platNatToggle button{padding:7px 15px !important;font-size:12.5px !important}"
+      /* n39c: THE LEDGER'S COLOUR, ALL THE WAY IN. The banner, the note under it and the section headings on
+         Ratings and Ladders were still OPR purple — the club's colour — on a ledger, which is the one place it
+         must not be: the charcoal is how you know you are looking across, not at a board. These come from the
+         parent's own stylesheet and inline styles, so they are named here rather than repainted. */
+      +".ladders-group-title{color:"+LEDGER[1]+" !important}"
+      +"#laddersScreen div[style*='background:#6c3483']{background:linear-gradient(135deg,"+LEDGER[0]+","+LEDGER[1]+") !important}"
+      +"#laddersScreen div[style*='rgba(108,52,131'],#laddersScreen div[style*='rgba(108, 52, 131']{background:rgba(0,0,0,.05) !important;border-color:rgba(0,0,0,.16) !important;color:#3a3340 !important}"
       +".ladder-table thead th,.ladder-table tr:first-child th,#playerList .header,#ladderScreen .header,#profileScreen .header,#clubLadderScreen .header{background:"+LEDGER[1]+" !important;color:#fff !important}"   /* n3: the ledger's charcoal runs through every table head, so a ledger never reads like a board */
       +".home-recent-col > div:first-child{background:"+LEDGER[1]+" !important;color:#fff !important;border-color:"+LEDGER[0]+" !important}"
       +"#playerList .player-gender{display:none}"   /* p17: the club pill is the distinction; gender line is noise here */
