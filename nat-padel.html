@@ -3484,7 +3484,7 @@ const CLUB_NAME = _club.name;  // shown in the logo as "OPR · <name>"
     link.setAttribute('href', href);
   }catch(e){ /* install stays on the static manifest — no functional impact */ }
 })();
-const OPR_VERSION = "OPR-DOUBLES v2026.09.03-56 · NAT fork n39d (no voice) (of PLAT p117)";  // MANUAL PAIR CREATION REMOVED FROM ADMIN: Create a pair, Bulk create pairs and Re-derive all pairs are gone (they only made match-less ghost pairs, and Re-derive rewrote every stored initial club-wide). Pairs are born automatically at match entry. Current pairs list untouched; the underlying JS is left in place unreferenced, so no other code path changes. Includes v47 (set-score fix + double-tap guard) and all prior.
+const OPR_VERSION = "OPR-DOUBLES v2026.09.03-56 · NAT fork n39g (no voice) (of PLAT p117)";  // MANUAL PAIR CREATION REMOVED FROM ADMIN: Create a pair, Bulk create pairs and Re-derive all pairs are gone (they only made match-less ghost pairs, and Re-derive rewrote every stored initial club-wide). Pairs are born automatically at match entry. Current pairs list untouched; the underlying JS is left in place unreferenced, so no other code path changes. Includes v47 (set-score fix + double-tap guard) and all prior.
 // Explanation shown above the individual ladder. Open on load so it's read; collapsible
 // (state kept for the session) and scrolls away. Mechanics only — no outcome framing, so
 // members aren't nudged away from playing stronger opponents. Every clause maps to a real
@@ -9401,6 +9401,8 @@ async function clRemove(id, label){
   }
   /* voice removed at build time */
 
+  /* n39e was a duplicate: the glue's own ladderBadges (below) has coloured these discs by club since p117.
+     It was never broken — an !important rule of mine was sitting on top of it. Removed; the original stands. */
   /* What has just been played, across the whole club — the door's own short list. */
   function doorRecent(scope){
     var box=document.getElementById("platDoorRecent"); if(!box||!W.PLAT.pool) return;
@@ -9464,13 +9466,14 @@ async function clRemove(id, label){
       /* n39d: and INSIDE a ladder. The rank discs, the "How a Rating is Calculated" panel and the search box
          were still wearing the club's purple on a ledger. Same rule as everywhere else: on a ledger the
          charcoal runs through, so you always know whether you are looking at a board or across them. */
-      +"#ladderScreen .rank-badge{background:"+LEDGER[1]+" !important;color:#fff !important}"
-      +"#ladderScreen .rank-badge.rank-1{background:#c4e000 !important;color:#1a1a1a !important}"
-      +"#ladderScreen .rank-badge.rank-2{background:#BDC3C7 !important;color:#1a1a1a !important}"
+      /* THE RANK DISCS ARE LEFT ALONE. ladderBadges paints each one in its pair's club colour — that is how a
+         combined table says who is whose. n39d put a charcoal !important over the lot and flattened it. */
       +"#ladderScreen div[style*='rgba(108,52,131'],#ladderScreen div[style*='rgba(108, 52, 131']{background:rgba(0,0,0,.05) !important;border-color:rgba(0,0,0,.18) !important;color:#33303a !important}"
       +"#ladderScreen div[style*='border-left:4px solid #3a1d6e'],#ladderScreen div[style*='border-left: 4px solid rgb(58, 29, 110)']{border-left-color:"+LEDGER[1]+" !important}"
       +"#ladderScreen input,#ladderScreen input:focus,#playerList input,#profileSearchScreen input{border-color:rgba(0,0,0,.22) !important;outline-color:"+LEDGER[1]+" !important}"
       +"#ladderScreen .rank{color:"+LEDGER[1]+" !important}"
+      /* n39g: the one line left behind — "Tap any player for their story." carries its own purple, inline */
+      +"#ladderScreen div[style*='#3a1d6e'],#ladderScreen div[style*='rgb(58, 29, 110)']{color:"+LEDGER[1]+" !important}"
       +".ladder-table thead th,.ladder-table tr:first-child th,#playerList .header,#ladderScreen .header,#profileScreen .header,#clubLadderScreen .header{background:"+LEDGER[1]+" !important;color:#fff !important}"   /* n3: the ledger's charcoal runs through every table head, so a ledger never reads like a board */
       +".home-recent-col > div:first-child{background:"+LEDGER[1]+" !important;color:#fff !important;border-color:"+LEDGER[0]+" !important}"
       +"#playerList .player-gender{display:none}"   /* p17: the club pill is the distinction; gender line is noise here */
@@ -9713,7 +9716,7 @@ async function clRemove(id, label){
     Array.prototype.forEach.call(document.querySelectorAll("#homeScreen .menu-btn"),function(b){ if(/tournamentScreen/.test(b.getAttribute("onclick")||"")) b.style.display="none"; });
     Array.prototype.forEach.call(document.querySelectorAll("button[onclick='openAdmin()']"),function(b){ b.style.display="none"; });
     var st=document.createElement("style"); st.textContent="#homeScreen .menu-grid{grid-template-columns:1fr 1fr !important}"; document.head.appendChild(st);
-    ledgerTheme(); ledgerLayout(); recentColours(); profilePills(); profileHero(); partnershipPills(); ladderBadges();
+    ledgerTheme(); ledgerLayout(); recentColours(); profilePills(); profileHero(); partnershipPills(); ladderBadges(); try{ ledgerPairTint(); }catch(e){}   /* n39g */
   }
   /* ===== REGISTER (Overall Ledger only): every player once, rating + club pills; General Admin behind the register PIN ===== */
   var REG={players:[],clubs:[],pin:"",role:"",sort:"name",q:""};
@@ -10452,6 +10455,42 @@ async function clRemove(id, label){
      boards; that was wrong and is removed.) */
   /* The one place a group's colour belongs on a board: the profile card, where the member's name and
      ranking sit. Everything else — hero, headers, tables — stays the parent's own scheme. */
+  /* n39g: A PAIR'S PROFILE WEARS ITS OWN CLUB'S COLOUR. profileCardTint paints a profile in the board's colour
+     and stands aside on a ledger — right for a board, wrong here: on a ledger the pair in front of you belongs
+     to one particular club, and the card was coming up in OPR purple whoever they were. Their pair name tells
+     us the board (the same map the rank discs use), so the card, its stat tiles and the match rows take that
+     club's colour. An individual's profile is left alone: a person can belong to several clubs, and their
+     pills already say which. */
+  function ledgerPairTint(){
+    if(W.PLAT.cid!==0) return;
+    var card=document.querySelector("#profileScreen .profile-card,#profileScreen .indiv-card"); if(!card) return;
+    var title=document.querySelector("#profileScreen h1,#profileScreen .header h1");
+    var nm=(title?title.textContent:"").trim();
+    if(!nm || nm.indexOf(" & ")<0){ var st0=document.getElementById("platPairTint"); if(st0) st0.remove(); return; }
+    pairClubs().then(function(map){
+      var cid=map[nm]; if(cid==null) return;
+      var col=clubPal(cid)[0]; if(!col) return;
+      var deep=darken(col,0.45);
+      var st=document.getElementById("platPairTint")||document.createElement("style");
+      st.id="platPairTint";
+      st.textContent="#profileScreen .profile-card,#profileScreen .indiv-card{background:linear-gradient(135deg,"+col+","+deep+") !important}"
+        +"#profileScreen .stat-box,#profileScreen .stat-card{background:rgba("+hexToRgb(col)+",.10) !important}"
+        +"#profileScreen .stat-box b,#profileScreen .stat-card b,#profileScreen .stat-box .v,#profileScreen .stat-value{color:"+deep+" !important}"
+        +"#profileScreen .section-title,#profileScreen .match-rating{color:"+deep+" !important}";
+      if(!st.parentNode) document.head.appendChild(st);
+    });
+  }
+  /* it has to run when a profile OPENS, not only when the page boots */
+  (function(){
+    ["loadProfile","loadProfileIndividual","loadProfilePartner"].forEach(function(fn){
+      var f=W[fn];
+      if(typeof f==="function") W[fn]=function(){ var out=f.apply(this,arguments);
+        setTimeout(function(){ try{ ledgerPairTint(); }catch(e){} },260);
+        setTimeout(function(){ try{ ledgerPairTint(); }catch(e){} },900);
+        return out; };
+    });
+  })();
+  function hexToRgb(h){ try{ var n=parseInt(String(h).slice(1),16); return ((n>>16)&255)+","+((n>>8)&255)+","+(n&255); }catch(e){ return "108,52,131"; } }
   function profileCardTint(){
     if(W.PLAT.cid===0) return;   // any group board — an organisation's or a standalone register's
     var col=(W.PLAT.colour||clubPal(W.PLAT.cid)[0]), deep=darken(col,0.45);
