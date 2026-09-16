@@ -3484,7 +3484,7 @@ const CLUB_NAME = _club.name;  // shown in the logo as "OPR · <name>"
     link.setAttribute('href', href);
   }catch(e){ /* install stays on the static manifest — no functional impact */ }
 })();
-const OPR_VERSION = "OPR-DOUBLES v2026.09.03-56 · NAT fork n38 (of PLAT p117)";  // MANUAL PAIR CREATION REMOVED FROM ADMIN: Create a pair, Bulk create pairs and Re-derive all pairs are gone (they only made match-less ghost pairs, and Re-derive rewrote every stored initial club-wide). Pairs are born automatically at match entry. Current pairs list untouched; the underlying JS is left in place unreferenced, so no other code path changes. Includes v47 (set-score fix + double-tap guard) and all prior.
+const OPR_VERSION = "OPR-DOUBLES v2026.09.03-56 · NAT fork n39 (of PLAT p117)";  // MANUAL PAIR CREATION REMOVED FROM ADMIN: Create a pair, Bulk create pairs and Re-derive all pairs are gone (they only made match-less ghost pairs, and Re-derive rewrote every stored initial club-wide). Pairs are born automatically at match entry. Current pairs list untouched; the underlying JS is left in place unreferenced, so no other code path changes. Includes v47 (set-score fix + double-tap guard) and all prior.
 // Explanation shown above the individual ladder. Open on load so it's read; collapsible
 // (state kept for the session) and scrolls away. Mechanics only — no outcome framing, so
 // members aren't nudged away from playing stronger opponents. Every clause maps to a real
@@ -10470,7 +10470,11 @@ async function clRemove(id, label){
          club admin standing on another club's ledger would manage that club. And reload the list with the
          code in hand, or the room would still show what the unlocked page had fetched for everyone. */
       var okRole = r && r.ok && (r.role==="master" || r.role==="pool" || (r.role==="club" && r.club_admin));
-      if (okRole && r.role==="club" && W.PLAT.nat && Number(r.club_id)!==Number(W.PLAT.nat)) okRole=false;
+      /* n39: a CLUB's code opens the club's own room, and only from THAT CLUB'S OWN LEDGER. The test asked
+         "is this the wrong club?" and skipped itself where there was no club at all — so on the ALL
+         REGISTERED CLUBS ledger a club code opened the room. It sees only its own people, but it has no
+         business being in a room opened from the register's ledger. Now: no club context, no club code. */
+      if (okRole && r.role==="club" && Number(r.club_id||0)!==Number(W.PLAT.nat||0)) okRole=false;
       if (okRole){ REG.pin=p; REG.role=r.role; REG.clubId=r.club_id||0; REG.clubName=r.club_name||""; regRender(); regLoad(); } else { m.textContent=(r&&r.role==="club")?"That is a club PIN — the register needs the register PIN or master.":"PIN not recognised."; } }); };
   W.platRegLock=function(){ REG.pin=""; REG.role=""; regRender(); };
   W.platAddPoolMember=function(){
