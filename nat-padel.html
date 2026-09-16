@@ -3465,7 +3465,7 @@ const CLUB_NAME = _club.name;  // shown in the logo as "OPR · <name>"
     link.setAttribute('href', href);
   }catch(e){ /* install stays on the static manifest — no functional impact */ }
 })();
-const OPR_VERSION = "OPR-DOUBLES v2026.09.03-56 · NAT fork n32 (of PLAT p117)";  // MANUAL PAIR CREATION REMOVED FROM ADMIN: Create a pair, Bulk create pairs and Re-derive all pairs are gone (they only made match-less ghost pairs, and Re-derive rewrote every stored initial club-wide). Pairs are born automatically at match entry. Current pairs list untouched; the underlying JS is left in place unreferenced, so no other code path changes. Includes v47 (set-score fix + double-tap guard) and all prior.
+const OPR_VERSION = "OPR-DOUBLES v2026.09.03-56 · NAT fork n33 (of PLAT p117)";  // MANUAL PAIR CREATION REMOVED FROM ADMIN: Create a pair, Bulk create pairs and Re-derive all pairs are gone (they only made match-less ghost pairs, and Re-derive rewrote every stored initial club-wide). Pairs are born automatically at match entry. Current pairs list untouched; the underlying JS is left in place unreferenced, so no other code path changes. Includes v47 (set-score fix + double-tap guard) and all prior.
 // Explanation shown above the individual ladder. Open on load so it's read; collapsible
 // (state kept for the session) and scrolls away. Mechanics only — no outcome framing, so
 // members aren't nudged away from playing stronger opponents. Every clause maps to a real
@@ -9207,8 +9207,10 @@ async function clRemove(id, label){
       var h="";
       h += '<div style="margin:2px 2px 2px;font-size:11.5px;letter-spacing:.1em;text-transform:uppercase;color:#8a7f9c;font-weight:700">Clubs</div>';
       h += tops.map(function(c){ var n=kidsOf(c.id).length; return natCard(isClubWithKids(c.id)?("platGo("+c.id+")"):("platGoBoard("+c.id+")"), c.name, n?("The club · "+n+(n===1?" group":" groups")+" · own door, ledger and members"):"The club — open to every member · ratings, pairs, scores, tournaments", clubPal(c.id)); }).join("");
-      h += '<div style="margin:14px 2px 2px;font-size:11.5px;letter-spacing:.1em;text-transform:uppercase;color:#8a7f9c;font-weight:700">Combined clubs</div>';
-      h += natCard("platGo(0)", "Combined Clubs", "Every player across every club — one rating each · ladders and stats", LEDGER);
+      /* n33: the register's name comes from the register, so it can be changed in one place and everything
+         follows — the card, the toggle, the headings. */
+      h += '<div style="margin:14px 2px 2px;font-size:11.5px;letter-spacing:.1em;text-transform:uppercase;color:#8a7f9c;font-weight:700">Every club</div>';
+      h += natCard("platGo(0)", (W.PLAT.poolName||"All clubs"), "Every player across every club \u2014 one rating each \u00b7 ladders and stats", LEDGER);
       h += '<div id="platDoorRecent" style="margin-top:6px"></div>';
       h += '<div style="text-align:center;font-size:12px;color:#7a6f8a;margin:8px 0 14px;line-height:1.5">One player base · one rating per player<br>Each club keeps its own door, groups, ledger and members</div>';
       h += '<div style="text-align:center;color:#b3a9c4;font-size:10px;letter-spacing:.5px;margin:0 0 10px">'+esc((typeof OPR_VERSION!=="undefined"?OPR_VERSION:""))+'</div>';
@@ -9294,8 +9296,12 @@ async function clRemove(id, label){
     html += natCard("platGoBoard("+C+")", "General play", "Matches outside the groups — open to every member · ratings, pairs, scores, tournaments", clubPal(C));
     html += '<div style="margin:10px 2px 2px;font-size:11.5px;letter-spacing:.1em;text-transform:uppercase;color:#8a7f9c;font-weight:700">Groups</div>';
     html += '<div style="display:flex;flex-wrap:wrap;gap:10px">'+kids.map(pill).join("")+'</div>';
-    html += '<div style="margin:14px 2px 2px;font-size:11.5px;letter-spacing:.1em;text-transform:uppercase;color:#8a7f9c;font-weight:700">Club ledger</div>';
-    html += natCard("platGoClubLedger("+C+")", "Club ledger", "Every player who has played here — one rating each · ladders and stats", LEDGER);
+    /* n33: NAME THE LEDGER. "Club ledger" told you what kind of thing it was, not whose — and gave no hint
+       that the register's own ledger is one tap further. Both are now said plainly. */
+    html += '<div style="margin:14px 2px 2px;font-size:11.5px;letter-spacing:.1em;text-transform:uppercase;color:#8a7f9c;font-weight:700">Ledgers</div>';
+    html += natCard("platGoClubLedger("+C+")", (W.PLAT.name||"Club")+" ledger",
+      "Every match played at "+(W.PLAT.name||"the club")+" \u2014 its general play and all its groups. One rating each \u00b7 ladders and stats. "
+      +esc(W.PLAT.poolName||"The register")+" is one tap from there.", LEDGER);
     html += '<div id="platDoorRecent" style="margin-top:6px"></div>';
     html += '<div style="text-align:center;margin:14px 0 6px"><button data-plat-keep="1" onclick="showScreen(\'aboutScreen\')" style="display:inline-flex;align-items:center;background:transparent;border:1.5px solid #9b80b3;color:#6c3483;border-radius:99px;padding:8px 20px;font-size:13px;font-weight:700;cursor:pointer">About OPR</button></div>';
     html += '<div style="text-align:center;color:#b3a9c4;font-size:10px;letter-spacing:.5px;margin:0 0 10px">'+esc((typeof OPR_VERSION!=="undefined"?OPR_VERSION:""))+'</div>';
@@ -9516,7 +9522,7 @@ async function clRemove(id, label){
      the organiser adds him again. So beneath the list, the people who are registered here and have not played
      yet are named, with the rule said plainly. Tap a name for their profile and starting rating. The table and
      its ranking are untouched. */
-  var WAITING=null;
+  var WAITING=null, WAITSEED=null;
   /* n31: THE WHOLE CLUB, NOT JUST THIS BOARD. A member registered through club admin belongs to the club's
      own board, so on a group's list he was nowhere to be found — which is the very complaint this note
      exists to answer. So: everyone registered anywhere in this club who has not yet played anywhere in it. */
@@ -9526,7 +9532,7 @@ async function clRemove(id, label){
     var boards=(W.PLAT.myBoards&&W.PLAT.myBoards.length)?W.PLAT.myBoards:[W.PLAT.cid];
     var B="https://djmbnvikrdgnomjhtkgf.supabase.co/rest/v1/";
     return Promise.all([
-      fetch(B+"plat_padel_v_individuals?club_id=in.("+boards.join(",")+")&select=full_name").then(function(r){ return r.json(); }),
+      fetch(B+"plat_padel_v_individuals?club_id=in.("+boards.join(",")+")&select=full_name,seed_rating").then(function(r){ return r.json(); }),
       fetch(B+"plat_matches?club_id=in.("+boards.join(",")+")&discipline=eq.padel&select=t1p1,t1p2,t2p1,t2p2").then(function(r){ return r.json(); })
     ]).then(function(res){
       var members=Array.isArray(res[0])?res[0]:[], ms=Array.isArray(res[1])?res[1]:[];
@@ -9534,6 +9540,7 @@ async function clRemove(id, label){
       ms.forEach(function(m){ [m.t1p1,m.t1p2,m.t2p1,m.t2p2].forEach(function(v){ if(!v) return;
         String(v).split(" & ").forEach(function(x){ x=x.trim(); if(x) played[x]=1; }); }); });
       var seen={};
+      WAITSEED={}; members.forEach(function(r){ if(r && r.full_name!=null && WAITSEED[r.full_name]==null) WAITSEED[r.full_name]=r.seed_rating; });
       WAITING=members.map(function(r){ return String(r.full_name||""); })
         .filter(function(n){ if(!n||played[n]||seen[n]) return false; seen[n]=1; return true; })
         .sort(function(a,b){ return a.localeCompare(b); });
@@ -9552,14 +9559,23 @@ async function clRemove(id, label){
       var d=document.createElement("div"); d.id="platWaiting"; d.dataset.platKeep="1";
       d.style.cssText="margin:2px 4px 10px";
       var n=names.length;
+      /* n33: the board's colour, here too — this pill sat in OPR purple on a teal board */
+      var pc=clubPal(W.PLAT.cid)[0]||"#6c3483";
+      var tint=(function(h){ try{ var n=parseInt(String(h).slice(1),16); return ((n>>16)&255)+","+((n>>8)&255)+","+(n&255); }catch(e){ return "108,52,131"; } })(pc);
       d.innerHTML='<button onclick="window.platWaitingToggle()" style="width:100%;display:flex;align-items:center;gap:8px;'
-        +'background:#f3eef7;border:1px solid #e0d4ea;border-radius:999px;padding:9px 14px;font-size:12.5px;color:#6c3483;'
+        +'background:rgba('+tint+',.08);border:1px solid rgba('+tint+',.28);border-radius:999px;padding:9px 14px;font-size:12.5px;color:'+pc+';'
         +'font-weight:700;cursor:pointer;text-align:left">'
         +'<span style="flex:1">'+n+(n===1?" member":" members")+' still to record a match</span>'
         +'<span id="platWaitingCaret" style="font-size:11px;opacity:.8">\u25be</span></button>'
-        +'<div id="platWaitingBody" style="display:none;padding:9px 14px 2px;font-size:12.5px;color:#5a5168;line-height:1.7">'
-        +'A rating and a place in the table appear with their first match.<div style="margin-top:6px">'
-        +names.map(function(nm){ return '<a href="#" onclick="event.preventDefault();window.platOpenWaiting(\''+String(nm).replace(/'/g,"\\'")+'\')" style="color:#6c3483;font-weight:700;text-decoration:none;white-space:nowrap">'+esc(nm)+'</a>'; }).join('<span style="color:#b9aecb">  \u00b7  </span>')
+        +'<div id="platWaitingBody" style="display:none;padding:9px 14px 2px;font-size:12.5px;color:#5a5168;line-height:1.9">'
+        +'Each one starts on the rating shown. It becomes a place in the table with their first match.<div style="margin-top:6px">'
+        /* n33: WITH THEIR STARTING RATING. "What's my number?" is the next question after "where am I?", and
+           without it the organiser gets asked twice instead of once. */
+        +names.map(function(nm){
+            var r=(WAITSEED&&WAITSEED[nm]!=null)?WAITSEED[nm]:null;
+            return '<a href="#" onclick="event.preventDefault();window.platOpenWaiting(\''+String(nm).replace(/'/g,"\\'")+'\')" style="color:'+pc+';font-weight:700;text-decoration:none;white-space:nowrap">'+esc(nm)
+              +(r!=null?('<span style="font-weight:600;opacity:.75"> \u00b7 '+esc(String(r))+'</span>'):'')+'</a>';
+          }).join('<span style="color:#b9aecb">  \u00b7  </span>')
         +'</div></div>';
       h.parentNode.insertBefore(d, h);
     });
@@ -10610,13 +10626,13 @@ async function clRemove(id, label){
     var h="";
     if(W.PLAT.nat){
       h += btn((W.PLAT.natName||"Club")+" ledger", true, PAGE+"?club=0&pool="+W.PLAT.pool+"&nat="+W.PLAT.nat);
-      h += btn("Combined Clubs", false, PAGE+"?club=0&pool="+W.PLAT.pool);
+      h += btn((W.PLAT.poolName||"All clubs"), false, PAGE+"?club=0&pool="+W.PLAT.pool);   /* n33 */
     } else {
       // n5: on the combined ledger, offer the way back to the club ledger you were last in — remembered for
       // this visit only, so the register owner arriving fresh simply sees the one button.
       var last=null; try{ last=sessionStorage.getItem("nat_last_club_"+W.PLAT.pool); }catch(e){}
       if(last){ var bits=last.split("|"); h += btn((bits[1]||"Club")+" ledger", false, PAGE+"?club=0&pool="+W.PLAT.pool+"&nat="+bits[0]); }
-      h += btn("Combined Clubs", true, PAGE+"?club=0&pool="+W.PLAT.pool);
+      h += btn((W.PLAT.poolName||"All clubs"), true, PAGE+"?club=0&pool="+W.PLAT.pool);   /* n33 */
     }
     box.innerHTML=h; host.insertBefore(box, host.firstChild);
   }
