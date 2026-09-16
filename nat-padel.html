@@ -958,6 +958,25 @@ st0.textContent += "html{overflow-y:scroll}";   // p98: the scrollbar's space is
                 W.PLAT.playedHere=set;
               }).catch(function(){ W.PLAT.playedHere=null; });
           }
+          /* n36: THE CLUB'S NAME STAYS IN THE ADDRESS. The page resolves ?club=north-coast to a number to run
+             on, which then sat in the address bar — handing a visitor "26" and inviting them to try 24. The
+             number is read once, at parse, and never again, so once the page is up we put the name back. It
+             protects nothing on its own (?club=24 still opens Kloof); it simply stops us doing the guessing
+             for them. */
+          if(CID>0){
+            _fetch(PLAT+"/rest/v1/nat_club_slugs?club_id=eq."+CID+"&is_current=is.true&select=slug",{headers:hdrs()})
+              .then(function(r){ return r.json(); })
+              .then(function(rows){
+                var sl=(Array.isArray(rows)&&rows[0])?rows[0].slug:null; if(!sl) return;
+                W.PLAT.slug=sl;
+                try{ localStorage.setItem("nat_slug_"+String(sl).toLowerCase(), String(CID)); }catch(e){}
+                try{
+                  var u=new URLSearchParams(location.search);
+                  if(u.get("club")!==sl){ u.set("club", sl);
+                    history.replaceState(null,"",location.pathname+"?"+u.toString()+(location.hash||"")); }
+                }catch(e){}
+              }).catch(function(){});
+          }
           if(CID>0){                                    // n13: my club's boards — its own and its groups
             var mine=W.PLAT.parentId||CID;
             W.PLAT.myClub=mine;
@@ -3465,7 +3484,7 @@ const CLUB_NAME = _club.name;  // shown in the logo as "OPR · <name>"
     link.setAttribute('href', href);
   }catch(e){ /* install stays on the static manifest — no functional impact */ }
 })();
-const OPR_VERSION = "OPR-DOUBLES v2026.09.03-56 · NAT fork n35 (of PLAT p117)";  // MANUAL PAIR CREATION REMOVED FROM ADMIN: Create a pair, Bulk create pairs and Re-derive all pairs are gone (they only made match-less ghost pairs, and Re-derive rewrote every stored initial club-wide). Pairs are born automatically at match entry. Current pairs list untouched; the underlying JS is left in place unreferenced, so no other code path changes. Includes v47 (set-score fix + double-tap guard) and all prior.
+const OPR_VERSION = "OPR-DOUBLES v2026.09.03-56 · NAT fork n37 (of PLAT p117)";  // MANUAL PAIR CREATION REMOVED FROM ADMIN: Create a pair, Bulk create pairs and Re-derive all pairs are gone (they only made match-less ghost pairs, and Re-derive rewrote every stored initial club-wide). Pairs are born automatically at match entry. Current pairs list untouched; the underlying JS is left in place unreferenced, so no other code path changes. Includes v47 (set-score fix + double-tap guard) and all prior.
 // Explanation shown above the individual ladder. Open on load so it's read; collapsible
 // (state kept for the session) and scrolls away. Mechanics only — no outcome framing, so
 // members aren't nudged away from playing stronger opponents. Every clause maps to a real
@@ -9201,7 +9220,7 @@ async function clRemove(id, label){
       try{ var m0=document.getElementById("platNoFlash"); if(m0) m0.remove(); }catch(e){}   /* n10 */
       /* n28: standing at the register door IS arriving by it — stamp it here too, so a refresh or a pasted
          link leaves the way back intact. Clubs' own people never come through here, so they never get it. */
-      try{ sessionStorage.setItem("plat_from_door_padel", String(W.PLAT.pool)); }catch(e){}
+      markOwnerDevice();                                   /* n37 */
       var dn=document.createElement("div"); dn.id="platDoor";
       dn.style.cssText="max-width:620px;margin:0 auto;display:flex;flex-direction:column;gap:12px;padding:0 4px 8px";
       var h="";
@@ -9302,7 +9321,7 @@ async function clRemove(id, label){
     html += natCard("platGoClubLedger("+C+")", (W.PLAT.name||"Club")+" ledger",
       /* n35: say what it holds, not what kind of thing it is — Andre's wording */
       "Every match played at "+(W.PLAT.name||"the club")+" Club \u2014 updated current \u2014 includes all general play and groups, profiles, ladders and stats."
-      +(cameFromDoor() ? (" Also \u2014 "+(W.PLAT.poolName||"the register")+" is one tap from there.") : ""), LEDGER);   /* not said to a club */
+, LEDGER);   /* n37: a club door never mentions the register */
     html += '<div id="platDoorRecent" style="margin-top:6px"></div>';
     html += '<div style="text-align:center;margin:14px 0 6px"><button data-plat-keep="1" onclick="showScreen(\'aboutScreen\')" style="display:inline-flex;align-items:center;background:transparent;border:1.5px solid #9b80b3;color:#6c3483;border-radius:99px;padding:8px 20px;font-size:13px;font-weight:700;cursor:pointer">About OPR</button></div>';
     html += '<div style="text-align:center;color:#b3a9c4;font-size:10px;letter-spacing:.5px;margin:0 0 10px">'+esc((typeof OPR_VERSION!=="undefined"?OPR_VERSION:""))+'</div>';
@@ -10587,9 +10606,22 @@ async function clRemove(id, label){
   // n3: A CLUB NEVER LOOKS SIDEWAYS. Inside a club the chip climbs to the club's own door and no further;
   // the way to the other clubs exists only on the combined ledger and the register door, which are the
   // register owner's screens. So on a club door itself there is no chip at all.
-  function cameFromDoor(){
-    try{ return sessionStorage.getItem("plat_from_door_padel")===String(W.PLAT.pool); }catch(e){ return false; }
-  }
+  /* n37: WHOSE DEVICE IS THIS? The route to the register's own screens belongs to the register owner and to
+     nobody else. It was remembered for the browser session, which made it true on Andre's screen and false on
+     a club's — correct, but impossible to see the difference from one's own phone. It is now marked on the
+     DEVICE: opening the register door or the register ledger once sets it and it stays. A club's members
+     never open either, so their phones never carry it, and a club admin's phone shows no route no matter how
+     long they use the app. To check what a club sees, open a private window. */
+  /* n37: THE REGISTER'S SCREENS ARE REACHED FROM THE REGISTER'S SCREENS. NOTHING ELSE.
+     Remembering "this person came in by the door" was true on the owner's phone and false on a club's — the
+     right answer, and an invisible one: on his own screen the owner sees the route on a club page and cannot
+     tell whether a club sees it too. Doubt like that is worse than the small convenience it bought. So the
+     rule is now positional and needs no memory: you are AT the register door or the register ledger, or you
+     are not. A club door, a group board and a club ledger carry no route to the register, on any device, ever.
+     The owner reaches it as he always does — combined.html, the ?pool= door, or his bookmark. */
+  function atRegisterLevel(){ return (W.PLAT.landing && natMode()) || (W.PLAT.cid===0 && !W.PLAT.nat); }
+  function markOwnerDevice(){ /* n37: nothing is remembered any more */ }
+  function cameFromDoor(){ return atRegisterLevel(); }
   function natChip(){
     var a=document.getElementById("platChip");
     var show=function(){ if(a) a.style.visibility="visible"; };   /* n10 */
@@ -10609,8 +10641,7 @@ async function clRemove(id, label){
        offered a door into the other clubs. But the register owner arrives THROUGH that door, and was then
        stranded. Coming in from the register door is remembered for the visit, on that device only, so the
        chip appears for the person who came that way and for nobody else. */
-    if(cameFromDoor()){ a.textContent="\u2039 All clubs"; a.onclick=function(){ location.href=PAGE+"?pool="+W.PLAT.pool; }; show(); return; }
-    a.remove();   // a club with no club above it: nowhere to go but sideways, so no chip
+    a.remove();   /* n37: a club has nowhere to go but sideways — so no chip, on any device */
   }
   /* NAT: the National grid toggle — on a club ledger, one tap to the national ledger; on the national ledger
      reached from a club, one tap back to the club's ledger. Sits under the hero, on the ledger only. */
@@ -11484,7 +11515,7 @@ async function clRemove(id, label){
          is where combined.html lands, so arriving that way left every club door afterwards looking like a
          member's, with no way back. Stamp it here too. A club's own ledger (nat set) does not count: that is
          where a club admin stands. */
-      if(!W.PLAT.nat){ try{ sessionStorage.setItem("plat_from_door_padel", String(W.PLAT.pool)); }catch(e){} }
+      if(!W.PLAT.nat) markOwnerDevice();                    /* n37 */
     }
     else if(W.PLAT.name&&ht){ var _bn=(W.PLAT.board&&isClubWithKids(W.PLAT.cid))?(W.PLAT.name+" · General play"):W.PLAT.name;   /* n3 */
       /* n3: the parent writes 'OPR · '+CLUB_NAME into the hero from its own window.onload, which can land
