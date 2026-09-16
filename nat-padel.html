@@ -3484,7 +3484,7 @@ const CLUB_NAME = _club.name;  // shown in the logo as "OPR · <name>"
     link.setAttribute('href', href);
   }catch(e){ /* install stays on the static manifest — no functional impact */ }
 })();
-const OPR_VERSION = "OPR-DOUBLES v2026.09.03-56 · NAT fork n39c (no voice) (of PLAT p117)";  // MANUAL PAIR CREATION REMOVED FROM ADMIN: Create a pair, Bulk create pairs and Re-derive all pairs are gone (they only made match-less ghost pairs, and Re-derive rewrote every stored initial club-wide). Pairs are born automatically at match entry. Current pairs list untouched; the underlying JS is left in place unreferenced, so no other code path changes. Includes v47 (set-score fix + double-tap guard) and all prior.
+const OPR_VERSION = "OPR-DOUBLES v2026.09.03-56 · NAT fork n39d (no voice) (of PLAT p117)";  // MANUAL PAIR CREATION REMOVED FROM ADMIN: Create a pair, Bulk create pairs and Re-derive all pairs are gone (they only made match-less ghost pairs, and Re-derive rewrote every stored initial club-wide). Pairs are born automatically at match entry. Current pairs list untouched; the underlying JS is left in place unreferenced, so no other code path changes. Includes v47 (set-score fix + double-tap guard) and all prior.
 // Explanation shown above the individual ladder. Open on load so it's read; collapsible
 // (state kept for the session) and scrolls away. Mechanics only — no outcome framing, so
 // members aren't nudged away from playing stronger opponents. Every clause maps to a real
@@ -9461,6 +9461,16 @@ async function clRemove(id, label){
       +".ladders-group-title{color:"+LEDGER[1]+" !important}"
       +"#laddersScreen div[style*='background:#6c3483']{background:linear-gradient(135deg,"+LEDGER[0]+","+LEDGER[1]+") !important}"
       +"#laddersScreen div[style*='rgba(108,52,131'],#laddersScreen div[style*='rgba(108, 52, 131']{background:rgba(0,0,0,.05) !important;border-color:rgba(0,0,0,.16) !important;color:#3a3340 !important}"
+      /* n39d: and INSIDE a ladder. The rank discs, the "How a Rating is Calculated" panel and the search box
+         were still wearing the club's purple on a ledger. Same rule as everywhere else: on a ledger the
+         charcoal runs through, so you always know whether you are looking at a board or across them. */
+      +"#ladderScreen .rank-badge{background:"+LEDGER[1]+" !important;color:#fff !important}"
+      +"#ladderScreen .rank-badge.rank-1{background:#c4e000 !important;color:#1a1a1a !important}"
+      +"#ladderScreen .rank-badge.rank-2{background:#BDC3C7 !important;color:#1a1a1a !important}"
+      +"#ladderScreen div[style*='rgba(108,52,131'],#ladderScreen div[style*='rgba(108, 52, 131']{background:rgba(0,0,0,.05) !important;border-color:rgba(0,0,0,.18) !important;color:#33303a !important}"
+      +"#ladderScreen div[style*='border-left:4px solid #3a1d6e'],#ladderScreen div[style*='border-left: 4px solid rgb(58, 29, 110)']{border-left-color:"+LEDGER[1]+" !important}"
+      +"#ladderScreen input,#ladderScreen input:focus,#playerList input,#profileSearchScreen input{border-color:rgba(0,0,0,.22) !important;outline-color:"+LEDGER[1]+" !important}"
+      +"#ladderScreen .rank{color:"+LEDGER[1]+" !important}"
       +".ladder-table thead th,.ladder-table tr:first-child th,#playerList .header,#ladderScreen .header,#profileScreen .header,#clubLadderScreen .header{background:"+LEDGER[1]+" !important;color:#fff !important}"   /* n3: the ledger's charcoal runs through every table head, so a ledger never reads like a board */
       +".home-recent-col > div:first-child{background:"+LEDGER[1]+" !important;color:#fff !important;border-color:"+LEDGER[0]+" !important}"
       +"#playerList .player-gender{display:none}"   /* p17: the club pill is the distinction; gender line is noise here */

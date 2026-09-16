@@ -31,18 +31,22 @@
   <div class="box">
     <span class="dot"></span><span class="dot"></span><span class="dot"></span>
     <h1>Combined Clubs</h1>
-    <p id="msg">Opening the ledger…</p>
+    <p id="msg">Opening your clubs…</p>
   </div>
 <script>
 (function(){
   var q = new URLSearchParams(location.search);
   var pool = parseInt(q.get("pool") || "13", 10) || 0;      // 13 unless told otherwise
   if (!pool) { document.getElementById("msg").textContent = "No register named."; return; }
-  var to = "./nat-padel.html?club=0&pool=" + pool;
+  /* 16 Sep, evening: this used to open the LEDGER, which is a dead end — the ledger has no club list, by
+     design, because every club can reach it. The REGISTER DOOR is the owner's own page: it lists the clubs,
+     and the ledger is one card on it. So this is the address to bookmark or install: everything is one tap
+     from here, and no club ever has it. */
+  var to = "./nat-padel.html?pool=" + pool;
   // replace, not assign: Back goes where you actually came from, not around this signpost again
   location.replace(to);
   setTimeout(function(){
-    document.getElementById("msg").innerHTML = 'If nothing happens, <a href="' + to + '">open the ledger</a>.';
+    document.getElementById("msg").innerHTML = 'If nothing happens, <a href="' + to + '">open your clubs</a>.';
   }, 1500);
 })();
 </script>
