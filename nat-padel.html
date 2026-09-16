@@ -3438,7 +3438,7 @@ const CLUB_NAME = _club.name;  // shown in the logo as "OPR · <name>"
     link.setAttribute('href', href);
   }catch(e){ /* install stays on the static manifest — no functional impact */ }
 })();
-const OPR_VERSION = "OPR-DOUBLES v2026.09.03-56 · NAT fork n19 (of PLAT p117)";  // MANUAL PAIR CREATION REMOVED FROM ADMIN: Create a pair, Bulk create pairs and Re-derive all pairs are gone (they only made match-less ghost pairs, and Re-derive rewrote every stored initial club-wide). Pairs are born automatically at match entry. Current pairs list untouched; the underlying JS is left in place unreferenced, so no other code path changes. Includes v47 (set-score fix + double-tap guard) and all prior.
+const OPR_VERSION = "OPR-DOUBLES v2026.09.03-56 · NAT fork n21 (of PLAT p117)";  // MANUAL PAIR CREATION REMOVED FROM ADMIN: Create a pair, Bulk create pairs and Re-derive all pairs are gone (they only made match-less ghost pairs, and Re-derive rewrote every stored initial club-wide). Pairs are born automatically at match entry. Current pairs list untouched; the underlying JS is left in place unreferenced, so no other code path changes. Includes v47 (set-score fix + double-tap guard) and all prior.
 // Explanation shown above the individual ladder. Open on load so it's read; collapsible
 // (state kept for the session) and scrolls away. Mechanics only — no outcome framing, so
 // members aren't nudged away from playing stronger opponents. Every clause maps to a real
@@ -9343,6 +9343,165 @@ async function clRemove(id, label){
     };
     W.selectModalPlayer=function(n){ return origSelect.call(this, bare(n)); };
   }
+  /* ============================================================================================
+     n20: TALK THE SCORE IN.  "Murray and James versus Paul and Pete, six four, three six, six three"
+     fills the sheet — and stops. Nobody's rating moves until a person reads it and presses Enter, so the
+     worst a mishearing can cost is a retype. Three rules hold it together:
+       * names are matched against THIS CLUB's people only (a couple of dozen), never the register
+       * a full name always wins; a first name wins only if it is unique here; otherwise the slot is LEFT
+         EMPTY and said so — a confidently wrong name is the one thing that would make people distrust it
+       * the set scores are held until the score table exists, then typed into it
+     ============================================================================================ */
+  var VOICE={on:false,rec:null,sets:[],said:""};
+  function voiceSupported(){ return !!(W.SpeechRecognition || W.webkitSpeechRecognition); }
+  var NUMW={zero:0,oh:0,nil:0,love:0,one:1,won:1,two:2,to:2,too:2,three:3,four:4,for:4,fore:4,five:5,six:6,sex:6,
+            seven:7,eight:8,ate:8,nine:9,ten:10,eleven:11,twelve:12};
+  function words(t){ return String(t||"").toLowerCase().replace(/[^a-z0-9\s'-]/g," ").replace(/\s+/g," ").trim().split(" "); }
+  function norm(n){ return String(n||"").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"").replace(/[^a-z ]/g," ").replace(/\s+/g," ").trim(); }
+  /* the people this board may enter: its own club's, as the picker holds them */
+  function voiceNames(){
+    var names=[];
+    try{ var rows=document.querySelectorAll("#playerModalList .player-modal-item");
+         if(rows.length) names=Array.prototype.map.call(rows,function(x){ return bare(x.textContent.trim()); }); }catch(e){}
+    if(!names.length && typeof getPlayerList==="function"){
+      try{ names=(getPlayerList(entryData&&entryData.type)||[]).slice(); }catch(e){}
+    }
+    var out=[]; names.forEach(function(n){ String(n).split(" & ").forEach(function(x){ x=x.trim(); if(x&&out.indexOf(x)<0) out.push(x); }); });
+    return out;
+  }
+  /* one spoken name -> one person, or nothing. Never a guess. */
+  function matchName(said, pool){
+    var q=norm(said); if(!q) return {name:null,why:"nothing said"};
+    var exact=pool.filter(function(n){ return norm(n)===q; });
+    if(exact.length===1) return {name:exact[0]};
+    var whole=pool.filter(function(n){ return norm(n).split(" ").indexOf(q)>=0; });     // "murray" inside "Murray Aberdein"
+    if(whole.length===1) return {name:whole[0]};
+    if(whole.length>1) return {name:null,why:"\u201c"+said+"\u201d could be "+whole.slice(0,3).join(" or ")};
+    var starts=pool.filter(function(n){ return norm(n).split(" ").some(function(w){ return w.indexOf(q)===0; }); });
+    if(starts.length===1) return {name:starts[0]};
+    if(starts.length>1) return {name:null,why:"\u201c"+said+"\u201d could be "+starts.slice(0,3).join(" or ")};
+    return {name:null,why:"nobody here sounds like \u201c"+said+"\u201d"};
+  }
+  /* the sentence -> four slots and a list of set scores */
+  function voiceParse(transcript){
+    var w=words(transcript), pool=voiceNames();
+    var split=-1;
+    for(var i=0;i<w.length;i++){ if(/^(versus|vs|v|against|beat|played?|plays|play)$/.test(w[i])){ split=i; break; } }
+    var left = (split<0) ? w : w.slice(0,split);
+    var right= (split<0) ? []  : w.slice(split+1);
+    var nums=[], leftNames=[], rightNames=[];
+    function harvest(list,into){
+      var cur=[];
+      list.forEach(function(x){
+        if(/^\d+$/.test(x)){ nums.push(parseInt(x,10)); if(cur.length){ into.push(cur.join(" ")); cur=[]; } return; }
+        if(x in NUMW && nums.length+ (cur.length?0:0) >= 0 && /^(zero|oh|nil|love|one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve)$/.test(x)
+           && (nums.length || into.length>=1 || list===right)){ nums.push(NUMW[x]); if(cur.length){ into.push(cur.join(" ")); cur=[]; } return; }
+        if(/^(and|&|with|partner|partnered)$/.test(x)){ if(cur.length){ into.push(cur.join(" ")); cur=[]; } return; }
+        if(/^(set|sets|games?|score|scored|the|a|it|was|were|we|they|won|win|lost|to|by|our|their)$/.test(x)) return;
+        cur.push(x);
+      });
+      if(cur.length) into.push(cur.join(" "));
+    }
+    harvest(left,leftNames); harvest(right,rightNames);
+    var slots=[], notes=[];
+    [[leftNames,"Team 1"],[rightNames,"Team 2"]].forEach(function(side){
+      var got=[];
+      side[0].forEach(function(raw){
+        var m=matchName(raw,pool);
+        if(m.name && got.indexOf(m.name)<0) got.push(m.name);
+        else if(!m.name) notes.push(side[1]+": "+m.why);
+      });
+      slots.push(got);
+    });
+    var sets=[];
+    for(var k=0;k+1<nums.length;k+=2) sets.push([nums[k],nums[k+1]]);
+    return {t1:slots[0]||[], t2:slots[1]||[], sets:sets, notes:notes, heard:String(transcript||"").trim()};
+  }
+  /* put a name in a slot exactly as tapping it would */
+  function fillSlot(target,name){
+    var v=document.getElementById(target+"_val"), l=document.getElementById(target+"_lbl"), b=document.getElementById(target+"_btn");
+    if(v) v.value=name; if(l) l.textContent=name; if(b) b.classList.add("selected");
+    try{ if(typeof odrUpdateCombined==="function") odrUpdateCombined(); }catch(e){}
+    return !!v;
+  }
+  function voiceApply(p){
+    var filled=0, want=(entryData&&entryData.format==="singles")?1:2;
+    ["t1p1","t1p2"].forEach(function(t,i){ if(i<want && p.t1[i]) filled+=fillSlot(t,p.t1[i])?1:0; });
+    ["t2p1","t2p2"].forEach(function(t,i){ if(i<want && p.t2[i]) filled+=fillSlot(t,p.t2[i])?1:0; });
+    VOICE.sets=p.sets||[];
+    voiceApplySets();                                   // if the score table is already on screen
+    var need=want*2, missing=need-filled;
+    var msg=[];
+    msg.push("Heard: \u201c"+p.heard+"\u201d");
+    if(filled) msg.push(filled+" of "+need+" names filled in.");
+    if(missing>0) msg.push(missing+" left for you to tap.");
+    if(p.sets.length) msg.push("Sets: "+p.sets.map(function(s){ return s[0]+"\u2013"+s[1]; }).join(", ")+".");
+    (p.notes||[]).forEach(function(n){ msg.push(n+"."); });
+    msg.push("Check it, then press Next as usual \u2014 nothing is saved until you do.");
+    voiceSay(msg.join(" "), missing>0||p.notes.length ? "#8a6d3b" : "#2e7d32");
+  }
+  function voiceApplySets(){
+    if(!VOICE.sets.length) return;
+    VOICE.sets.forEach(function(pair,i){
+      var a=document.getElementById("s"+(i+1)+"t1"), b=document.getElementById("s"+(i+1)+"t2");
+      if(a&&b){ a.value=pair[0]; b.value=pair[1];
+        try{ if(typeof hlWin==="function") hlWin(i+1); }catch(e){} }
+    });
+  }
+  function voiceSay(text,colour){
+    var box=document.getElementById("platVoiceMsg"); if(!box) return;
+    box.style.color=colour||"#555"; box.textContent=text;
+  }
+  W.platVoiceHandle=function(transcript){ var p=voiceParse(transcript); voiceApply(p); return p; };   // also the test door
+  W.platVoiceStart=function(){
+    if(!voiceSupported()){ voiceSay("This phone's browser cannot listen. Tap the names as usual.","#c00"); return; }
+    if(VOICE.on && VOICE.rec){ try{ VOICE.rec.stop(); }catch(e){} return; }
+    var R=W.SpeechRecognition||W.webkitSpeechRecognition, rec=new R();
+    rec.lang="en-ZA"; rec.interimResults=false; rec.maxAlternatives=3; rec.continuous=false;
+    VOICE.rec=rec; VOICE.on=true; voiceButton(true);
+    voiceSay("Listening \u2014 say who played and the set scores.","#6c3483");
+    rec.onresult=function(e){
+      var best=null;
+      try{ best=e.results[0][0].transcript; }catch(err){}
+      VOICE.on=false; voiceButton(false);
+      if(!best){ voiceSay("Nothing came through. Try again, or tap the names.","#c00"); return; }
+      W.platVoiceHandle(best);
+    };
+    rec.onerror=function(e){ VOICE.on=false; voiceButton(false);
+      voiceSay((e&&e.error==="not-allowed") ? "The microphone is blocked for this site \u2014 allow it in the browser's settings."
+                                            : "Could not hear anything. Tap the names as usual.","#c00"); };
+    rec.onend=function(){ VOICE.on=false; voiceButton(false); };
+    try{ rec.start(); }catch(e){ VOICE.on=false; voiceButton(false); voiceSay("Could not start listening.","#c00"); }
+  };
+  function voiceButton(listening){
+    var b=document.getElementById("platVoiceBtn"); if(!b) return;
+    b.textContent = listening ? "\u25a0  Listening \u2014 tap to stop" : "\u25cf  Say the match instead";
+    b.style.background = listening ? "#c62828" : "#6c3483";
+  }
+  /* the button itself, above the player slots */
+  function voiceMount(){
+    /* n21: any board may talk its scores in — the club rung has nothing to do with it. (n20 gated this on
+       natMode(), so a plain register like Eswatini never saw the button and could not be used to test it.) */
+    if(!W.PLAT.cid) return;
+    var host=document.getElementById("entryContent"); if(!host) return;
+    if(document.getElementById("platVoiceWrap")) return;
+    if(!document.getElementById("t1p1_btn")) return;                    // only on the names step
+    var d=document.createElement("div"); d.id="platVoiceWrap"; d.style.cssText="margin:0 0 12px";
+    d.innerHTML='<button id="platVoiceBtn" onclick="window.platVoiceStart()" style="width:100%;border:none;border-radius:12px;'
+      +'background:#6c3483;color:#fff;padding:12px 14px;font-size:15px;font-weight:800;cursor:pointer">\u25cf  Say the match instead</button>'
+      +'<div style="font-size:11.5px;color:#8a7f9c;margin-top:5px;line-height:1.4">Say it the way you would tell someone: '
+      +'\u201cMurray and James versus Paul and Pete, six four, three six, six three.\u201d It fills the sheet in \u2014 you check it and press Next.</div>'
+      +'<div id="platVoiceMsg" style="font-size:12.5px;margin-top:7px;line-height:1.45"></div>';
+    host.insertBefore(d, host.firstChild);
+    if(!voiceSupported()){ var b=document.getElementById("platVoiceBtn"); if(b){ b.style.opacity=".5"; } }
+  }
+  /* mount it whenever the names step is drawn, and type the sets in when the table appears */
+  (function(){
+    var s2=W.renderStep2, s3=W.renderStep3;
+    if(typeof s2==="function") W.renderStep2=function(){ var r=s2.apply(this,arguments); setTimeout(voiceMount,0); return r; };
+    if(typeof s3==="function") W.renderStep3=function(){ var r=s3.apply(this,arguments); setTimeout(voiceApplySets,0); return r; };
+  })();
+
   /* What has just been played, across the whole club — the door's own short list. */
   function doorRecent(scope){
     var box=document.getElementById("platDoorRecent"); if(!box||!W.PLAT.pool) return;
