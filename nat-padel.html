@@ -3465,7 +3465,7 @@ const CLUB_NAME = _club.name;  // shown in the logo as "OPR · <name>"
     link.setAttribute('href', href);
   }catch(e){ /* install stays on the static manifest — no functional impact */ }
 })();
-const OPR_VERSION = "OPR-DOUBLES v2026.09.03-56 · NAT fork n33 (of PLAT p117)";  // MANUAL PAIR CREATION REMOVED FROM ADMIN: Create a pair, Bulk create pairs and Re-derive all pairs are gone (they only made match-less ghost pairs, and Re-derive rewrote every stored initial club-wide). Pairs are born automatically at match entry. Current pairs list untouched; the underlying JS is left in place unreferenced, so no other code path changes. Includes v47 (set-score fix + double-tap guard) and all prior.
+const OPR_VERSION = "OPR-DOUBLES v2026.09.03-56 · NAT fork n35 (of PLAT p117)";  // MANUAL PAIR CREATION REMOVED FROM ADMIN: Create a pair, Bulk create pairs and Re-derive all pairs are gone (they only made match-less ghost pairs, and Re-derive rewrote every stored initial club-wide). Pairs are born automatically at match entry. Current pairs list untouched; the underlying JS is left in place unreferenced, so no other code path changes. Includes v47 (set-score fix + double-tap guard) and all prior.
 // Explanation shown above the individual ladder. Open on load so it's read; collapsible
 // (state kept for the session) and scrolls away. Mechanics only — no outcome framing, so
 // members aren't nudged away from playing stronger opponents. Every clause maps to a real
@@ -9300,8 +9300,9 @@ async function clRemove(id, label){
        that the register's own ledger is one tap further. Both are now said plainly. */
     html += '<div style="margin:14px 2px 2px;font-size:11.5px;letter-spacing:.1em;text-transform:uppercase;color:#8a7f9c;font-weight:700">Ledgers</div>';
     html += natCard("platGoClubLedger("+C+")", (W.PLAT.name||"Club")+" ledger",
-      "Every match played at "+(W.PLAT.name||"the club")+" \u2014 its general play and all its groups. One rating each \u00b7 ladders and stats. "
-      +esc(W.PLAT.poolName||"The register")+" is one tap from there.", LEDGER);
+      /* n35: say what it holds, not what kind of thing it is — Andre's wording */
+      "Every match played at "+(W.PLAT.name||"the club")+" Club \u2014 updated current \u2014 includes all general play and groups, profiles, ladders and stats."
+      +(cameFromDoor() ? (" Also \u2014 "+(W.PLAT.poolName||"the register")+" is one tap from there.") : ""), LEDGER);   /* not said to a club */
     html += '<div id="platDoorRecent" style="margin-top:6px"></div>';
     html += '<div style="text-align:center;margin:14px 0 6px"><button data-plat-keep="1" onclick="showScreen(\'aboutScreen\')" style="display:inline-flex;align-items:center;background:transparent;border:1.5px solid #9b80b3;color:#6c3483;border-radius:99px;padding:8px 20px;font-size:13px;font-weight:700;cursor:pointer">About OPR</button></div>';
     html += '<div style="text-align:center;color:#b3a9c4;font-size:10px;letter-spacing:.5px;margin:0 0 10px">'+esc((typeof OPR_VERSION!=="undefined"?OPR_VERSION:""))+'</div>';
@@ -10625,6 +10626,11 @@ async function clRemove(id, label){
     // North Coast is, which is the one thing a club must never see from inside its own ledger.
     var h="";
     if(W.PLAT.nat){
+      /* n34: A CLUB NEVER REACHES THE REGISTER'S LEDGER. The toggle offered it from a club ledger, which is a
+         door into every other club's business — the one thing that must not exist for a club. It is offered
+         only to somebody who came in by the register door or its ledger this visit, which is the register
+         owner and nobody else. On a club's own screens there is nothing to toggle, so no row is drawn. */
+      if(!cameFromDoor()) return;
       h += btn((W.PLAT.natName||"Club")+" ledger", true, PAGE+"?club=0&pool="+W.PLAT.pool+"&nat="+W.PLAT.nat);
       h += btn((W.PLAT.poolName||"All clubs"), false, PAGE+"?club=0&pool="+W.PLAT.pool);   /* n33 */
     } else {
