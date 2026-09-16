@@ -3484,7 +3484,7 @@ const CLUB_NAME = _club.name;  // shown in the logo as "OPR · <name>"
     link.setAttribute('href', href);
   }catch(e){ /* install stays on the static manifest — no functional impact */ }
 })();
-const OPR_VERSION = "OPR-DOUBLES v2026.09.03-56 · NAT fork n37 (of PLAT p117)";  // MANUAL PAIR CREATION REMOVED FROM ADMIN: Create a pair, Bulk create pairs and Re-derive all pairs are gone (they only made match-less ghost pairs, and Re-derive rewrote every stored initial club-wide). Pairs are born automatically at match entry. Current pairs list untouched; the underlying JS is left in place unreferenced, so no other code path changes. Includes v47 (set-score fix + double-tap guard) and all prior.
+const OPR_VERSION = "OPR-DOUBLES v2026.09.03-56 · NAT fork n38 (of PLAT p117)";  // MANUAL PAIR CREATION REMOVED FROM ADMIN: Create a pair, Bulk create pairs and Re-derive all pairs are gone (they only made match-less ghost pairs, and Re-derive rewrote every stored initial club-wide). Pairs are born automatically at match entry. Current pairs list untouched; the underlying JS is left in place unreferenced, so no other code path changes. Includes v47 (set-score fix + double-tap guard) and all prior.
 // Explanation shown above the individual ladder. Open on load so it's read; collapsible
 // (state kept for the session) and scrolls away. Mechanics only — no outcome framing, so
 // members aren't nudged away from playing stronger opponents. Every clause maps to a real
@@ -9321,7 +9321,7 @@ async function clRemove(id, label){
     html += natCard("platGoClubLedger("+C+")", (W.PLAT.name||"Club")+" ledger",
       /* n35: say what it holds, not what kind of thing it is — Andre's wording */
       "Every match played at "+(W.PLAT.name||"the club")+" Club \u2014 updated current \u2014 includes all general play and groups, profiles, ladders and stats."
-, LEDGER);   /* n37: a club door never mentions the register */
+      +" Also \u2014 "+(W.PLAT.poolName||"All Registered Clubs")+" is one tap from there.", LEDGER);   /* n38 */
     html += '<div id="platDoorRecent" style="margin-top:6px"></div>';
     html += '<div style="text-align:center;margin:14px 0 6px"><button data-plat-keep="1" onclick="showScreen(\'aboutScreen\')" style="display:inline-flex;align-items:center;background:transparent;border:1.5px solid #9b80b3;color:#6c3483;border-radius:99px;padding:8px 20px;font-size:13px;font-weight:700;cursor:pointer">About OPR</button></div>';
     html += '<div style="text-align:center;color:#b3a9c4;font-size:10px;letter-spacing:.5px;margin:0 0 10px">'+esc((typeof OPR_VERSION!=="undefined"?OPR_VERSION:""))+'</div>';
@@ -10630,9 +10630,17 @@ async function clRemove(id, label){
     // n7: inside a club the chip just says HOME — naming the club again is noise, you know where you are.
     // Only the register owner's combined ledger offers the way out to the other clubs.
     if(W.PLAT.cid===0){
-      /* n28: on a ledger, Home is the club you came from; for the register owner, arriving by the register
-         door, it is the door itself. */
-      if(!W.PLAT.nat && cameFromDoor()){ a.textContent="\u2039 All clubs"; a.onclick=function(){ location.href=PAGE+"?pool="+W.PLAT.pool; }; show(); return; }
+      /* n38: on the ALL REGISTERED CLUBS ledger, Home is the club ledger you came from — never the register
+         door, which is the owner's own page and is reached by its address alone. Arriving fresh, there is
+         nowhere above to go, so no chip. */
+      if(!W.PLAT.nat){
+        var last=null; try{ last=sessionStorage.getItem("nat_last_club_"+W.PLAT.pool); }catch(e){}
+        if(last){ var bits=last.split("|");
+          a.textContent="\u2039 "+((bits[1]||"Club")+" ledger");
+          a.onclick=function(){ location.href=PAGE+"?club=0&pool="+W.PLAT.pool+"&nat="+bits[0]; };
+          show(); return; }
+        a.remove(); return;
+      }
       a.textContent="\u2039 Home"; show(); return;
     }
     if(W.PLAT.parentId){ a.textContent="\u2039 Home"; show(); return; }
@@ -10657,11 +10665,11 @@ async function clRemove(id, label){
     // North Coast is, which is the one thing a club must never see from inside its own ledger.
     var h="";
     if(W.PLAT.nat){
-      /* n34: A CLUB NEVER REACHES THE REGISTER'S LEDGER. The toggle offered it from a club ledger, which is a
-         door into every other club's business — the one thing that must not exist for a club. It is offered
-         only to somebody who came in by the register door or its ledger this visit, which is the register
-         owner and nobody else. On a club's own screens there is nothing to toggle, so no row is drawn. */
-      if(!cameFromDoor()) return;
+      /* n38: TWO DIFFERENT PLACES, AND ONLY ONE IS PRIVATE.
+         The ALL REGISTERED CLUBS LEDGER is what the register is for — one player, one rating, seen across every
+         club — and every club reaches it from their own ledger. That is the whole point and n34 wrongly took it
+         away. What a club must never land on is the REGISTER DOOR (?pool=), the owner's page of club cards:
+         that is reached by its own address and from nowhere else. */
       h += btn((W.PLAT.natName||"Club")+" ledger", true, PAGE+"?club=0&pool="+W.PLAT.pool+"&nat="+W.PLAT.nat);
       h += btn((W.PLAT.poolName||"All clubs"), false, PAGE+"?club=0&pool="+W.PLAT.pool);   /* n33 */
     } else {
