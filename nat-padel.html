@@ -3413,7 +3413,7 @@ const CLUB_NAME = _club.name;  // shown in the logo as "OPR · <name>"
     link.setAttribute('href', href);
   }catch(e){ /* install stays on the static manifest — no functional impact */ }
 })();
-const OPR_VERSION = "OPR-DOUBLES v2026.09.03-56 · NAT fork n14 (of PLAT p117)";  // MANUAL PAIR CREATION REMOVED FROM ADMIN: Create a pair, Bulk create pairs and Re-derive all pairs are gone (they only made match-less ghost pairs, and Re-derive rewrote every stored initial club-wide). Pairs are born automatically at match entry. Current pairs list untouched; the underlying JS is left in place unreferenced, so no other code path changes. Includes v47 (set-score fix + double-tap guard) and all prior.
+const OPR_VERSION = "OPR-DOUBLES v2026.09.03-56 · NAT fork n16 (of PLAT p117)";  // MANUAL PAIR CREATION REMOVED FROM ADMIN: Create a pair, Bulk create pairs and Re-derive all pairs are gone (they only made match-less ghost pairs, and Re-derive rewrote every stored initial club-wide). Pairs are born automatically at match entry. Current pairs list untouched; the underlying JS is left in place unreferenced, so no other code path changes. Includes v47 (set-score fix + double-tap guard) and all prior.
 // Explanation shown above the individual ladder. Open on load so it's read; collapsible
 // (state kept for the session) and scrolls away. Mechanics only — no outcome framing, so
 // members aren't nudged away from playing stronger opponents. Every clause maps to a real
@@ -9278,9 +9278,17 @@ async function clRemove(id, label){
     if(typeof origFilter!=="function" || typeof origSelect!=="function" || typeof origOpen!=="function") { W.__natPicker=false; return; }
     var MINE=[];                                  // the club's own names, captured as the picker opens
     W.openNamePicker=function(label,names,onPick){ MINE=(names||[]).slice(); return origOpen.call(this,label,names,onPick); };
-    var origModal=W.openPlayerModal;              // the score sheet's own opener (target, players, exclude)
-    if(typeof origModal==="function") W.openPlayerModal=function(t,players,exclude){
-      MINE=(players||[]).filter(function(p){ return !(exclude||[]).includes(p); }); return origModal.apply(this,arguments); };
+    /* n15: THE SCORE SHEET'S OWN OPENER TAKES (fieldId, label) — NOT a list of players. Wrapping it as if it
+       took the list threw on the first tap, before the modal opened: that was the dead dropdown. It builds
+       its own list, so take it from what it renders and never touch its arguments. */
+    var origModal=W.openPlayerModal;
+    if(typeof origModal==="function") W.openPlayerModal=function(){
+      var out=origModal.apply(this,arguments);
+      var grab=function(){ var rows=document.querySelectorAll("#playerModalList .player-modal-item");
+        if(rows.length){ MINE=Array.prototype.map.call(rows,function(x){ return bare(x.textContent.trim()); }); } };
+      setTimeout(grab,0); setTimeout(grab,120);      // it may load its pairs first
+      return out;
+    };
     W.filterModalPlayers=function(){
       var box=document.getElementById("playerModalSearch"); if(!box) return origFilter.apply(this,arguments);
       var q=String(box.value||"").toLowerCase().trim();
@@ -9602,9 +9610,11 @@ async function clRemove(id, label){
     if(host&&host.parentNode) host.parentNode.insertBefore(wrap,host); else about.appendChild(wrap);
   }
   function regLoad(){
-    return acall({action:"list_register",pool_id:W.PLAT.pool,discipline:"padel"}).then(function(r){
+    /* n15: SEND THE CODE WITH THE LIST. Without it the server cannot know 6002 is North Coast's, so it
+       answered with the whole register — 44 players, 4 clubs — while the admin held a club code. */
+    return acall({action:"list_register",pool_id:W.PLAT.pool,discipline:"padel",admin_pin:REG.pin}).then(function(r){
       if(!r||!r.ok){ document.getElementById("platRegBody").innerHTML='<div style="color:#c00;padding:12px">'+esc((r&&r.error)||"Could not load the register.")+'</div>'; return; }
-      REG.players=r.players||[]; REG.clubs=r.clubs||[]; regRender();
+      REG.players=r.players||[]; REG.clubs=r.clubs||[]; regRender(); try{ directoryLoad(); }catch(e){}   /* n15 */
     });
   }
   W.platRegRender=function(){ regRender(); };
@@ -9697,15 +9707,46 @@ async function clRemove(id, label){
       +'<div style="display:flex;gap:8px;flex-wrap:wrap"><input id="platNewName" placeholder="Group name" style="flex:2;min-width:150px;padding:10px 12px;border:1.5px solid #ddd;border-radius:10px"><input id="platNewPin" inputmode="numeric" placeholder="Its code" style="flex:1;min-width:100px;padding:10px 12px;border:1.5px solid #ddd;border-radius:10px"></div>'
       +'<div style="margin-top:8px;font-size:12px;color:#666">Colour</div><div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:4px">'
       +SWATCH.map(function(s,i){ return '<button onclick="window.platPickNew(\''+s+'\')" id="platNewSw'+i+'" style="width:26px;height:26px;border-radius:50%;background:'+s+';border:2px solid '+(i===0?'#333':'transparent')+';cursor:pointer"></button>'; }).join('')
+      /* n15: a club must be reachable by the other clubs in the register — name, mobile, email, taken at the
+         moment it is onboarded. Groups are reached through their club, so they have no contact of their own. */
+      +((REG.role==="club") ? '' :
+        '<div id="platNewContact" style="margin-top:10px">'
+        +'<div style="font-size:12px;color:#666;margin:2px 0 6px">Who do the other clubs call? (a new club only)</div>'
+        +'<div style="display:flex;gap:8px;flex-wrap:wrap">'
+        +'<input id="platNewCName" placeholder="Contact name" style="flex:2;min-width:140px;padding:10px 12px;border:1.5px solid #ddd;border-radius:10px">'
+        +'<input id="platNewCPhone" placeholder="Mobile" style="flex:1;min-width:120px;padding:10px 12px;border:1.5px solid #ddd;border-radius:10px">'
+        +'</div><input id="platNewCEmail" placeholder="Email (optional)" style="width:100%;margin-top:8px;padding:10px 12px;border:1.5px solid #ddd;border-radius:10px"></div>')
       +'</div><button class="menu-btn" style="margin-top:10px;width:100%" onclick="window.platNewClub()">Create</button>';
     // the safety net
     h+='<div style="margin-top:14px;font-weight:700;font-size:13px;color:#444">Safety net</div>'
       +'<div style="font-size:12px;color:#666;margin:4px 0 6px">A snapshot of a group is taken automatically just before its matches, its members or the group itself are removed — so a mistake can be put back even if nobody backed anything up. The ten most recent per group are kept.</div>'
       +'<button class="menu-btn" style="width:100%" onclick="window.platBackups()">Show snapshots</button>'
+      /* n16: snapshots were only ever taken automatically, the moment before something destructive. This one
+         is taken because you asked — before a busy evening, or a change you are unsure of. */
+      +'<div style="font-size:12px;color:#666;margin:10px 0 6px">'
+      +((REG.role==="club")
+        ? 'Take a copy of '+esc(REG.clubName||"this club")+' now \u2014 its General play board and each of its groups, with their members, pairs and matches.'
+        : 'Take a copy of the whole register now \u2014 every club and group, with their members, pairs and matches.')
+      +'</div>'
+      +'<button class="menu-btn" style="width:100%" onclick="window.platBackupNow()">'
+      +((REG.role==="club") ? 'Back up this club now' : 'Back up the whole register now')+'</button>' 
       +'<div id="platBk"></div>';
-    // recompute
+    /* n15: THE CLUB DIRECTORY. Clubs in one register have to reach each other — a fixture, a dispute, a
+       player at the wrong court. Everyone sees every club's contact; a club edits only its own. */
+    h+='<div style="margin-top:16px;font-weight:700;font-size:13px;color:#444">Clubs in this register</div>'
+      +'<div style="font-size:12px;color:#666;margin:4px 0 6px">Who to contact at each club. Yours is the one you can change.</div>'
+      +'<div id="platDirectory" style="font-size:13px"><span style="color:#888">Loading…</span></div>';
+
+    // recompute — n15: replays the whole register, so only the register code may run it
     h+='<div style="margin-top:14px;font-weight:700;font-size:13px;color:#444">Engine</div>'
       +'<div style="font-size:12px;color:#666;margin:4px 0 6px">Replays every match in the register and rewrites all ratings. Needed after seed changes made in SQL; normal score entry recomputes by itself.</div>'
+      /* n16: a wrong score is wrong for EVERYONE who played against those players, so whoever finds it should
+         be able to put it right — a club admin included. The replay is register-wide by nature (one rating per
+         person, one replay that produces it), and correcting a match in a Control Room already fires exactly
+         this. So the button stands for a club code too; it just says plainly what it touches. */
+      +((REG.role==="club")
+        ? '<div style="font-size:12px;color:#8a6d3b;background:#fdf6e3;border:1px solid #f0e2c0;border-radius:10px;padding:9px 11px;margin-bottom:8px">This replays <b>every match in the register</b>, not just '+esc(REG.clubName||"this club")+'\u2019s — everyone shares one rating, so a correction has to reach all of them. Safe to run: it rewrites ratings from the matches on record and changes no match.</div>'
+        : '')
       +'<button class="menu-btn" style="width:100%" onclick="window.platRecompute()">Recompute all ratings</button>';
     h+='<div id="platRegMsg" style="font-size:12px;margin-top:8px"></div>';
     return h+'</div>';
@@ -9719,6 +9760,8 @@ async function clRemove(id, label){
     m.style.color="#666"; m.textContent="Creating…";
     var body={action:"add_club",admin_pin:REG.pin,pool_id:W.PLAT.pool,name:name,club_admin_pin:pin,disciplines:["padel"],colour:NEWCOL};
     if(par) body.parent_id=par;
+    else { var gv=function(id){ var el=document.getElementById(id); return el?(el.value||"").trim():""; };   /* n15 */
+           body.contact_name=gv("platNewCName"); body.phone=gv("platNewCPhone"); body.email=gv("platNewCEmail"); }
     acall(body).then(function(r){
       if(!r||!r.ok){ m.style.color="#c00"; m.textContent=(r&&r.error)||"Failed."; return; }
       m.style.color="#2e7d32";
@@ -9834,9 +9877,56 @@ async function clRemove(id, label){
       REGMAP=null; regLoad();
     });
   };
-  W.platRecompute=function(){
+  /* n15: the directory's rows, loaded after the room is drawn */
+  function directoryLoad(){
+    var box=document.getElementById("platDirectory"); if(!box) return;
+    acall({action:"list_club_contacts",pool_id:W.PLAT.pool,admin_pin:REG.pin}).then(function(r){
+      var box2=document.getElementById("platDirectory"); if(!box2) return;
+      if(!r||!r.ok){ box2.innerHTML='<span style="color:#c00">'+esc((r&&r.error)||"Could not load the directory.")+'</span>'; return; }
+      var mineId=(REG.role==="club")?Number(REG.clubId):0;
+      box2.innerHTML=(r.clubs||[]).map(function(c){
+        var isMine=(REG.role!=="club")||Number(c.id)===mineId;
+        var line=[c.contact_name,c.phone,c.email].filter(Boolean).join(" · ");
+        return '<div style="display:flex;align-items:center;gap:9px;padding:8px 0;border-bottom:1px solid #eee">'
+          +'<span style="width:12px;height:12px;border-radius:50%;background:'+clubPal(c.id)[0]+';flex:0 0 12px"></span>'
+          +'<span style="flex:1;min-width:0"><span style="font-weight:700">'+esc(c.name)+'</span>'
+          +'<span style="display:block;color:'+(line?"#555":"#aaa")+';font-size:12px">'+esc(line||"No contact yet")+'</span></span>'
+          +(c.phone?'<a href="tel:'+esc(String(c.phone).replace(/[^0-9+]/g,""))+'" style="text-decoration:none;border:1px solid #6c3483;color:#6c3483;border-radius:8px;padding:4px 10px;font-size:12px;font-weight:700">Call</a>':'')
+          +(isMine?'<button class="menu-btn" style="min-height:30px;padding:4px 10px;font-size:12px" onclick="window.platEditContact('+c.id+')">Edit</button>':'')
+          +'</div>';
+      }).join("")||'<span style="color:#888">No clubs yet.</span>';
+    });
+  }
+  W.platEditContact=function(id){
+    var nm=prompt("Contact name at this club"); if(nm===null) return;
+    var ph=prompt("Mobile number"); if(ph===null) return;
+    var em=prompt("Email (leave blank if none)"); if(em===null) em="";
+    acall({action:"set_club_contact",admin_pin:REG.pin,club_id:id,pool_id:W.PLAT.pool,
+           contact_name:nm,phone:ph,email:em}).then(function(r){
+      var m=document.getElementById("platRegMsg");
+      if(!r||!r.ok){ if(m){ m.style.color="#c00"; m.textContent=(r&&r.error)||"Could not save the contact."; } return; }
+      if(m){ m.style.color="#2e7d32"; m.textContent="Contact saved."; }
+      directoryLoad();
+    });
+  };
+  /* n16: a backup because you asked for one — the same rows, in the same shape, as the automatic snapshots,
+     so Show snapshots lists them and Put back restores them unchanged. */
+  W.platBackupNow=function(){
     var m=document.getElementById("platRegMsg");
-    var cid=((REG.clubs||[])[0]||{}).id;
+    var what=(REG.role==="club") ? (REG.clubName||"this club") : "the whole register";
+    m.style.color="#666"; m.textContent="Photographing "+what+"\u2026";
+    acall({action:"backup_now",pool_id:W.PLAT.pool,admin_pin:REG.pin}).then(function(r){
+      if(!r||!r.ok){ m.style.color="#c00"; m.textContent=(r&&r.error)||"Could not take the backup."; return; }
+      var n=r.taken||0; m.style.color="#2e7d32";
+      m.textContent="Backed up "+n+(n===1?" board":" boards")+" of "+what+"."
+        +((r.failed&&r.failed.length)?(" "+r.failed.length+" could not be read."):"")
+        +" Find them under Show snapshots.";
+    });
+  };
+  W.platRecompute=function(){
+    /* n16: run it on a board this code owns — the register guard refuses any other, and rightly so */
+    var m=document.getElementById("platRegMsg");
+    var cid=(REG.role==="club" && REG.clubId) ? REG.clubId : ((REG.clubs||[])[0]||{}).id;   /* n16: a board this code owns */
     if(!cid){ m.style.color="#c00"; m.textContent="No clubs in this register yet — nothing to recompute."; return; }
     m.style.color="#666"; m.textContent="Recomputing the whole register — this can take a few seconds…";
     acall({action:"recompute",discipline:"padel",club_id:cid,admin_pin:REG.pin}).then(function(r){
