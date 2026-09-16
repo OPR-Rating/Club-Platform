@@ -3438,7 +3438,7 @@ const CLUB_NAME = _club.name;  // shown in the logo as "OPR · <name>"
     link.setAttribute('href', href);
   }catch(e){ /* install stays on the static manifest — no functional impact */ }
 })();
-const OPR_VERSION = "OPR-DOUBLES v2026.09.03-56 · NAT fork n22 (of PLAT p117)";  // MANUAL PAIR CREATION REMOVED FROM ADMIN: Create a pair, Bulk create pairs and Re-derive all pairs are gone (they only made match-less ghost pairs, and Re-derive rewrote every stored initial club-wide). Pairs are born automatically at match entry. Current pairs list untouched; the underlying JS is left in place unreferenced, so no other code path changes. Includes v47 (set-score fix + double-tap guard) and all prior.
+const OPR_VERSION = "OPR-DOUBLES v2026.09.03-56 · NAT fork n23 (of PLAT p117)";  // MANUAL PAIR CREATION REMOVED FROM ADMIN: Create a pair, Bulk create pairs and Re-derive all pairs are gone (they only made match-less ghost pairs, and Re-derive rewrote every stored initial club-wide). Pairs are born automatically at match entry. Current pairs list untouched; the underlying JS is left in place unreferenced, so no other code path changes. Includes v47 (set-score fix + double-tap guard) and all prior.
 // Explanation shown above the individual ladder. Open on load so it's read; collapsible
 // (state kept for the session) and scrolls away. Mechanics only — no outcome framing, so
 // members aren't nudged away from playing stronger opponents. Every clause maps to a real
@@ -9485,7 +9485,16 @@ async function clRemove(id, label){
     if(ev&&ev.preventDefault) ev.preventDefault();
     if(!HOLD.active) return;
     HOLD.active=false;
-    try{ VOICE.rec && VOICE.rec.stop(); }catch(e){}
+    /* n23: stop() is a request, and on some phones the recogniser carries on regardless. Take the words we
+       have now, act on them, and shut it down hard a moment later if it has not gone quietly. */
+    var said=(HOLD.final+" "+HOLD.live).trim();
+    var rec=VOICE.rec;
+    try{ rec && rec.stop(); }catch(e){}
+    setTimeout(function(){ try{ if(VOICE.rec===rec && rec) rec.abort(); }catch(e){} },400);
+    VOICE.on=false; voiceButton(false);
+    HOLD.final=""; HOLD.live="";
+    if(said) W.platVoiceHandle(said);
+    else voiceSay("Nothing came through. Hold the button while you speak, or tap the names.","#8a6d3b");
   };
   W.platVoiceStart=function(){
     if(!voiceSupported()){ voiceSay("This phone's browser cannot listen. Tap the names as usual.","#c00"); return; }
@@ -9497,26 +9506,32 @@ async function clRemove(id, label){
     VOICE.rec=rec; VOICE.on=true; HOLD.active=true; HOLD.live=""; HOLD.final=""; voiceButton(true);
     voiceSay("Listening \u2014 keep holding. Say who played and the set scores, then let go.","#6c3483");
     rec.onresult=function(e){
+      /* n23: REBUILD, NEVER APPEND. Android re-sends every result it has so far on each update, so appending
+         multiplied the sentence — "Murray Murray Aberdein Murray Aberdein..." — and every repetition was then
+         parsed. The transcript is the whole result list, read fresh each time. */
+      if(!HOLD.active) return;                                  // a stray update after the finger lifted
       var fin="", live="";
-      for(var i=e.resultIndex;i<e.results.length;i++){
+      for(var i=0;i<e.results.length;i++){
         var txt=""; try{ txt=e.results[i][0].transcript; }catch(err){}
         if(e.results[i].isFinal) fin+=" "+txt; else live+=" "+txt;
       }
-      if(fin.trim()) HOLD.final=(HOLD.final+" "+fin).trim();
-      HOLD.live=live.trim();
+      HOLD.final=fin.trim(); HOLD.live=live.trim();
       var shown=(HOLD.final+" "+HOLD.live).trim();
-      if(shown) voiceSay("\u201c"+shown+"\u201d","#6c3483");
+      if(shown) voiceSay("\u201c"+(shown.length>160?shown.slice(-160):shown)+"\u201d","#6c3483");
     };
     rec.onerror=function(e){ VOICE.on=false; HOLD.active=false; voiceButton(false);
       if(e&&e.error==="no-speech"){ voiceSay("Nothing came through \u2014 hold the button and speak towards the phone.","#8a6d3b"); return; }
       voiceSay((e&&e.error==="not-allowed") ? "The microphone is blocked for this site \u2014 allow it in the browser's settings."
                                             : "Could not hear anything. Tap the names as usual.","#c00"); };
+    /* n23: the release handler has already read the words and acted; onend only tidies up, so a recogniser
+       that ends by itself (a long silence) cannot parse the same sentence a second time. */
     rec.onend=function(){
-      VOICE.on=false; HOLD.active=false; voiceButton(false);
+      VOICE.on=false; voiceButton(false);
+      if(!HOLD.active) return;
+      HOLD.active=false;
       var said=(HOLD.final+" "+HOLD.live).trim();
       HOLD.final=""; HOLD.live="";
-      if(!said){ voiceSay("Nothing came through. Hold the button while you speak, or tap the names.","#8a6d3b"); return; }
-      W.platVoiceHandle(said);
+      if(said) W.platVoiceHandle(said);
     };
     try{ rec.start(); }catch(e){ VOICE.on=false; voiceButton(false); voiceSay("Could not start listening.","#c00"); }
   };
@@ -9541,27 +9556,29 @@ async function clRemove(id, label){
       +'\u201cMurray and James versus Paul and Pete, six four, three six, six three.\u201d Let go and it fills the sheet in \u2014 you check it and press Next.</div>'
       +'<div id="platVoiceMsg" style="font-size:12.5px;margin-top:7px;line-height:1.45"></div>';
     host.insertBefore(d, host.firstChild);
-    var bar=document.getElementById("platVoiceBar");
-    if(!bar){
-      bar=document.createElement("div"); bar.id="platVoiceBar";
-      bar.style.cssText="position:fixed;left:12px;right:12px;bottom:calc(12px + env(safe-area-inset-bottom));z-index:9999";
-      bar.innerHTML='<button id="platVoiceBtn" style="width:100%;border:none;border-radius:999px;background:#6c3483;color:#fff;'
-        +'padding:16px 14px;font-size:16px;font-weight:800;cursor:pointer;box-shadow:0 6px 20px rgba(58,29,110,.35);'
-        +'touch-action:none;-webkit-user-select:none;user-select:none">\u25cf  Hold to say the match</button>';
-      document.body.appendChild(bar);
-      var btn=document.getElementById("platVoiceBtn");
-      ["pointerdown","touchstart"].forEach(function(ev){ btn.addEventListener(ev, W.platVoiceHold, {passive:false}); });
-      ["pointerup","pointercancel","pointerleave","touchend","touchcancel"].forEach(function(ev){ btn.addEventListener(ev, W.platVoiceRelease, {passive:false}); });
+    /* n23: the button sits IN the page, not floating over it. Fixed to the screen it covered the first
+       player slot — the very thing you are trying to watch. In flow, directly under the instructions, it is
+       still under the thumb when the sheet is scrolled to the top, and it hides nothing. */
+    var btn=document.createElement("button");
+    btn.id="platVoiceBtn";
+    btn.style.cssText="width:100%;border:none;border-radius:999px;background:#6c3483;color:#fff;padding:15px 14px;"
+      +"font-size:16px;font-weight:800;cursor:pointer;box-shadow:0 4px 14px rgba(58,29,110,.28);margin:10px 0 2px;"
+      +"touch-action:none;-webkit-user-select:none;user-select:none;-webkit-touch-callout:none";
+    btn.textContent="\u25cf  Hold to say the match";
+    d.insertBefore(btn, d.firstChild);
+    /* one family of events only — pointer where it exists, touch where it does not. Listening for both made
+       every press start twice. */
+    if(W.PointerEvent){
+      btn.addEventListener("pointerdown", W.platVoiceHold, {passive:false});
+      ["pointerup","pointercancel","pointerleave"].forEach(function(ev){ btn.addEventListener(ev, W.platVoiceRelease, {passive:false}); });
+    } else {
+      btn.addEventListener("touchstart", W.platVoiceHold, {passive:false});
+      ["touchend","touchcancel"].forEach(function(ev){ btn.addEventListener(ev, W.platVoiceRelease, {passive:false}); });
+      btn.addEventListener("mousedown", W.platVoiceHold);
+      btn.addEventListener("mouseup", W.platVoiceRelease);
     }
-    bar.style.display="";
-    /* it belongs to the names step only — take it away when that screen is left */
-    if(!W.__voiceWatch){
-      W.__voiceWatch=setInterval(function(){
-        var b=document.getElementById("platVoiceBar"); if(!b) return;
-        var onStep=!!document.getElementById("t1p1_btn") && !!document.getElementById("platVoiceWrap");
-        b.style.display = onStep ? "" : "none";
-      },500);
-    }
+    /* a finger that slides off the button still ends the recording */
+    W.addEventListener("pointerup", function(){ if(HOLD.active) W.platVoiceRelease(); }, {passive:true});
     if(!voiceSupported()){ var b=document.getElementById("platVoiceBtn"); if(b){ b.style.opacity=".5"; } }
   }
   /* mount it whenever the names step is drawn, and type the sets in when the table appears */
