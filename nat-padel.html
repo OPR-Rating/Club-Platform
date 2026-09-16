@@ -795,6 +795,31 @@
   var ANON="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRqbWJudmlrcmRnbm9tamh0a2dmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODUzOTE0MzEsImV4cCI6MjEwMDk2NzQzMX0.vR8xlVFjV6jXW-pAclGjM74HqmWSKVpsacFjM-dCIJI";
   var DISC="padel";
   var q=new URLSearchParams(location.search);
+  // n18: A DOOR WITH THE CLUB'S NAME ON IT. ?club=southbroom is what goes on a poster or an installed icon;
+  // the page still runs on the number. A slug seen before is remembered, so it costs nothing after the first
+  // visit; a slug we have not seen is looked up once and the address becomes the number.
+  (function(){
+    var raw=(q.get("club")||"").trim();
+    if(!raw || /^\d+$/.test(raw)) return;
+    var known=null; try{ known=localStorage.getItem("nat_slug_"+raw.toLowerCase()); }catch(e){}
+    if(known && /^\d+$/.test(known)){
+      q.set("club", known);
+      try{ history.replaceState(null,"",location.pathname+"?"+q.toString()+(location.hash||"")); }catch(e){}
+      return;
+    }
+    // not seen before: resolve it, remember it, and come back on the number
+    document.documentElement.style.visibility="hidden";
+    fetch(PLAT+"/rest/v1/nat_club_slugs?slug=eq."+encodeURIComponent(raw.toLowerCase())+"&select=club_id",{headers:hdrs()})
+      .then(function(r){ return r.json(); })
+      .then(function(rows){
+        var id=(Array.isArray(rows)&&rows[0])?String(rows[0].club_id):"";
+        if(!id){ document.documentElement.style.visibility=""; return; }   // unknown name: let the page fall back
+        try{ localStorage.setItem("nat_slug_"+raw.toLowerCase(), id); }catch(e){}
+        var u=new URLSearchParams(location.search); u.set("club", id);
+        location.replace(location.pathname+"?"+u.toString()+(location.hash||""));
+      })
+      .catch(function(){ document.documentElement.style.visibility=""; });
+  })();
   var CID=parseInt(q.get("club")||"0",10)||0;
   var POOLQ=parseInt(q.get("pool")||"0",10)||0;
   var CLUB_TABLES={tournaments:1,tournament_entries:1,tournament_fixtures:1,tournament_archive:1,club_ladder:1,club_ladder_state:1};
@@ -3413,7 +3438,7 @@ const CLUB_NAME = _club.name;  // shown in the logo as "OPR · <name>"
     link.setAttribute('href', href);
   }catch(e){ /* install stays on the static manifest — no functional impact */ }
 })();
-const OPR_VERSION = "OPR-DOUBLES v2026.09.03-56 · NAT fork n16 (of PLAT p117)";  // MANUAL PAIR CREATION REMOVED FROM ADMIN: Create a pair, Bulk create pairs and Re-derive all pairs are gone (they only made match-less ghost pairs, and Re-derive rewrote every stored initial club-wide). Pairs are born automatically at match entry. Current pairs list untouched; the underlying JS is left in place unreferenced, so no other code path changes. Includes v47 (set-score fix + double-tap guard) and all prior.
+const OPR_VERSION = "OPR-DOUBLES v2026.09.03-56 · NAT fork n19 (of PLAT p117)";  // MANUAL PAIR CREATION REMOVED FROM ADMIN: Create a pair, Bulk create pairs and Re-derive all pairs are gone (they only made match-less ghost pairs, and Re-derive rewrote every stored initial club-wide). Pairs are born automatically at match entry. Current pairs list untouched; the underlying JS is left in place unreferenced, so no other code path changes. Includes v47 (set-score fix + double-tap guard) and all prior.
 // Explanation shown above the individual ladder. Open on load so it's read; collapsible
 // (state kept for the session) and scrolls away. Mechanics only — no outcome framing, so
 // members aren't nudged away from playing stronger opponents. Every clause maps to a real
@@ -9258,18 +9283,32 @@ async function clRemove(id, label){
      who matches is offered beneath them, marked, so a visitor can be entered without ever listing the
      country. Choosing one is enough: entering the match makes them a member of this board, and from then on
      they are in the club's own list. Nothing is registered and no rating is touched by the picker. */
-  var REGALL=null, REGFETCH=null;
+  var REGALL=null, REGFETCH=null, REGCLUB={};   /* n17: name -> the club they play for */
   function regAll(){
     if(REGALL) return Promise.resolve(REGALL);
     if(REGFETCH) return REGFETCH;
-    REGFETCH=fetch("https://djmbnvikrdgnomjhtkgf.supabase.co/rest/v1/plat_padel_v_pool_individuals?pool_id=eq."+W.PLAT.pool+"&select=full_name,gender&order=full_name.asc")
-      .then(function(r){ return r.json(); })
-      .then(function(rows){ REGALL=(Array.isArray(rows)?rows:[]).map(function(r){ return {name:String(r.full_name||""),gender:r.gender}; }).filter(function(r){ return r.name; }); return REGALL; })
-      .catch(function(){ REGALL=[]; return REGALL; });
+    /* n17: alongside the names, WHICH CLUB each person plays for — a board tells us its club through the
+       ladder we already hold, so the picker can say "Dave Keal · Monday Club", the same thing his pill says,
+       instead of the vague "elsewhere". Shown only for people who are not ours. */
+    REGFETCH=Promise.all([
+      fetch("https://djmbnvikrdgnomjhtkgf.supabase.co/rest/v1/plat_padel_v_pool_individuals?pool_id=eq."+W.PLAT.pool+"&select=full_name,gender&order=full_name.asc").then(function(r){ return r.json(); }),
+      fetch("https://djmbnvikrdgnomjhtkgf.supabase.co/rest/v1/plat_padel_v_individuals?pool_id=eq."+W.PLAT.pool+"&select=full_name,club_id").then(function(r){ return r.json(); }).catch(function(){ return []; })
+    ]).then(function(res){
+      var rows=res[0], boards=res[1];
+      (Array.isArray(boards)?boards:[]).forEach(function(bd){
+        if(!bd || !bd.full_name || REGCLUB[bd.full_name]) return;
+        var c=(W.PLAT.clubs||[]).find(function(x){ return Number(x.id)===Number(bd.club_id); }); if(!c) return;
+        var top=c.parent_id ? (W.PLAT.clubs||[]).find(function(x){ return Number(x.id)===Number(c.parent_id); }) : c;
+        if(top) REGCLUB[bd.full_name]=top.name;
+      });
+      REGALL=(Array.isArray(rows)?rows:[]).map(function(r){ return {name:String(r.full_name||""),gender:r.gender}; }).filter(function(r){ return r.name; });
+      return REGALL;
+    }).catch(function(){ REGALL=[]; return REGALL; });
     return REGFETCH;
   }
-  var AWAY=" \u00b7 elsewhere in the register";
+  var AWAY=" \u00b7 ";                                  /* n17: the marker is the person's own club */
   function bare(n){ var i=String(n).indexOf(AWAY); return i<0 ? String(n) : String(n).slice(0,i); }
+  function away(n){ return n + AWAY + (REGCLUB[n] || "elsewhere in the register"); }
   function pickerPatch(){
     if(!natMode() || !W.PLAT.cid || W.PLAT.cid===0) return;
     if(W.__natPicker) return; W.__natPicker=true;
@@ -9298,7 +9337,7 @@ async function clRemove(id, label){
       if(q.length<3){ W.renderModalList(near); return; }
       var have={}; mine.forEach(function(n){ have[bare(n)]=1; });
       regAll().then(function(all){
-        var extra=(all||[]).filter(function(p){ return !have[p.name] && hit(p.name); }).map(function(p){ return p.name+AWAY; });
+        var extra=(all||[]).filter(function(p){ return !have[p.name] && hit(p.name); }).map(function(p){ return away(p.name); });
         W.renderModalList(near.concat(extra.slice(0,25)));
       });
     };
@@ -9655,6 +9694,7 @@ async function clRemove(id, label){
         +'<span style="width:16px;height:16px;border-radius:50%;background:'+p[0]+';flex:0 0 16px"></span>'
         +'<span style="flex:1;min-width:0"><span style="font-weight:600">'+esc(c.name)+'</span>'
         +(sub?'<span style="display:block;font-size:11.5px;color:#777">'+esc(sub)+'</span>':'')+'</span>'
+        +'<button class="menu-btn" style="min-height:30px;padding:4px 10px;font-size:12px" onclick="window.platRenameBoard('+c.id+')">Rename</button>'   /* n17: correcting a name was missing */
         +'<button class="menu-btn" style="min-height:30px;padding:4px 10px;font-size:12px" onclick="window.platClubColour('+c.id+')">Colour</button>'
         +'<button style="min-height:30px;padding:4px 10px;font-size:12px;border:1px solid #c62828;color:#c62828;background:#fff;border-radius:8px;cursor:pointer" onclick="window.platClubTeardown('+c.id+')">Delete\u2026</button></div>'
         +'<div id="platTd'+c.id+'"></div>';
@@ -9765,8 +9805,12 @@ async function clRemove(id, label){
     acall(body).then(function(r){
       if(!r||!r.ok){ m.style.color="#c00"; m.textContent=(r&&r.error)||"Failed."; return; }
       m.style.color="#2e7d32";
-      m.textContent="Created "+name+" \u2014 "+(par?("a group of "+((REG.clubs.find(function(c){return c.id===par;})||{}).name||"the club")):"a club in this register")
-        +". Its door is nat-padel.html?club="+r.club.id+(pin?(", its code is "+pin):"")+".";
+      /* n18: the whole address, so it can be sent to the club without anyone working out what its number is */
+      var door=DOOR_BASE+"?club="+((r.club&&r.club.slug)||r.club.id);
+      m.innerHTML=esc("Created "+name+" \u2014 "+(par?("a group of "+((REG.clubs.find(function(c){return c.id===par;})||{}).name||"the club")):"a club in this register")+".")
+        +'<div style="margin-top:6px;color:#6c3483;word-break:break-all">'+esc(door)+'</div>'
+        +(pin?('<div style="margin-top:2px">Its code is <b>'+esc(pin)+'</b>.</div>'):'')
+        +'<button class="menu-btn" style="margin-top:6px;min-height:30px;padding:4px 12px;font-size:12px" onclick="window.platCopyDoor(\''+door.replace(/'/g,"")+'\')">Copy the address</button>';
       W.PLAT.clubs.push({id:r.club.id,name:r.club.name,colour:NEWCOL,parent_id:par||null}); regLoad();
     });
   };
@@ -9886,17 +9930,45 @@ async function clRemove(id, label){
       var mineId=(REG.role==="club")?Number(REG.clubId):0;
       box2.innerHTML=(r.clubs||[]).map(function(c){
         var isMine=(REG.role!=="club")||Number(c.id)===mineId;
-        var line=[c.contact_name,c.phone,c.email].filter(Boolean).join(" · ");
+        var line=[c.contact_name,c.phone,c.email].filter(Boolean).join(" \u00b7 ");
+        /* n18: the club's door, in full, ready to send — the number is a thing nobody can remember */
+        var door=DOOR_BASE+"?club="+(c.slug||c.id);
+        /* n19: addresses the club used to go by — still working, so nobody's saved link or icon is dead */
+        var also=(c.also_known_as||[]);
         return '<div style="display:flex;align-items:center;gap:9px;padding:8px 0;border-bottom:1px solid #eee">'
           +'<span style="width:12px;height:12px;border-radius:50%;background:'+clubPal(c.id)[0]+';flex:0 0 12px"></span>'
           +'<span style="flex:1;min-width:0"><span style="font-weight:700">'+esc(c.name)+'</span>'
-          +'<span style="display:block;color:'+(line?"#555":"#aaa")+';font-size:12px">'+esc(line||"No contact yet")+'</span></span>'
+          +'<span style="display:block;color:'+(line?"#555":"#aaa")+';font-size:12px">'+esc(line||"No contact yet")+'</span>'
+          +'<span style="display:block;color:#6c3483;font-size:11.5px;word-break:break-all;margin-top:2px">'+esc(door)+'</span>'
+          +(also.length?('<span style="display:block;color:#9a8fae;font-size:11px;margin-top:1px">also answers to '+esc(also.join(", "))+'</span>'):'')
+          +'</span>'
+          +'<button class="menu-btn" style="min-height:30px;padding:4px 10px;font-size:12px" onclick="window.platCopyDoor(\''+door.replace(/'/g,"")+'\')">Copy</button>'
+          +(isMine?('<button class="menu-btn" style="min-height:30px;padding:4px 10px;font-size:12px" onclick="window.platSetSlug('+c.id+',\''+String(c.slug||"").replace(/'/g,"")+'\')">Address</button>'):'')
           +(c.phone?'<a href="tel:'+esc(String(c.phone).replace(/[^0-9+]/g,""))+'" style="text-decoration:none;border:1px solid #6c3483;color:#6c3483;border-radius:8px;padding:4px 10px;font-size:12px;font-weight:700">Call</a>':'')
           +(isMine?'<button class="menu-btn" style="min-height:30px;padding:4px 10px;font-size:12px" onclick="window.platEditContact('+c.id+')">Edit</button>':'')
           +'</div>';
       }).join("")||'<span style="color:#888">No clubs yet.</span>';
     });
   }
+  var DOOR_BASE=(function(){ try{ return location.origin+location.pathname; }catch(e){ return "nat-padel.html"; } })();
+  W.platCopyDoor=function(u){
+    var m=document.getElementById("platRegMsg");
+    var done=function(){ if(m){ m.style.color="#2e7d32"; m.textContent="Address copied \u2014 send it to the club."; } };
+    try{ navigator.clipboard.writeText(u).then(done,function(){ prompt("Copy this address:", u); }); }
+    catch(e){ prompt("Copy this address:", u); }
+  };
+  /* n18: a club's short name in the address. Changing it retires the old one, so it is said plainly first. */
+  W.platSetSlug=function(id,cur){
+    var v=prompt("Short name for this club's address\n\nLetters, digits and hyphens — southbroom, west-coast.\nThe old address stops working when you change it.", cur||"");
+    if(v===null) return; v=String(v).trim().toLowerCase();
+    if(!v || v===cur) return;
+    var m=document.getElementById("platRegMsg");
+    acall({action:"set_club_slug",admin_pin:REG.pin,club_id:id,pool_id:W.PLAT.pool,slug:v}).then(function(r){
+      if(!r||!r.ok){ if(m){ m.style.color="#c00"; m.textContent=(r&&r.error)||"Could not set the address."; } return; }
+      if(m){ m.style.color="#2e7d32"; m.textContent="Address is now "+DOOR_BASE+"?club="+r.slug; }
+      directoryLoad();
+    });
+  };
   W.platEditContact=function(id){
     var nm=prompt("Contact name at this club"); if(nm===null) return;
     var ph=prompt("Mobile number"); if(ph===null) return;
@@ -9911,6 +9983,36 @@ async function clRemove(id, label){
   };
   /* n16: a backup because you asked for one — the same rows, in the same shape, as the automatic snapshots,
      so Show snapshots lists them and Put back restores them unchanged. */
+  /* n17: renaming was missing from the room — you could recolour a club but not correct its name. */
+  W.platRenameBoard=function(id){
+    var cur=((REG.clubs||[]).find(function(c){ return Number(c.id)===Number(id); })||{}).name||"";
+    var v=prompt("New name for "+cur, cur); if(v===null) return; v=String(v).trim();
+    if(!v || v===cur) return;
+    var m=document.getElementById("platRegMsg");
+    acall({action:"rename_club",admin_pin:REG.pin,club_id:id,pool_id:W.PLAT.pool,name:v}).then(function(r){
+      if(!r||!r.ok){ if(m){ m.style.color="#c00"; m.textContent=(r&&r.error)||"Could not rename."; } return; }
+      (W.PLAT.clubs||[]).forEach(function(c){ if(Number(c.id)===Number(id)) c.name=v; });
+      if(m){ m.style.color="#2e7d32"; m.textContent="Renamed to "+v+". The new name shows everywhere at once."; }
+      regLoad();
+      /* n19: the name has changed everywhere; the ADDRESS has not, and should only change if they want it to.
+         Offer the matching one — and say plainly that the old address keeps working either way, because it is
+         already on posters and inside installed icons. */
+      if(r.suggested_slug){
+        var keepMsg="The address is still "+DOOR_BASE+"?club="+(r.current_slug||id)
+          +"\n\nAdd "+DOOR_BASE+"?club="+r.suggested_slug+" as well?"
+          +"\n\nThe old address keeps working either way — nothing anyone has saved or installed will break.";
+        if(confirm(keepMsg)){
+          acall({action:"set_club_slug",admin_pin:REG.pin,club_id:id,pool_id:W.PLAT.pool,slug:r.suggested_slug}).then(function(r2){
+            if(m){ if(r2&&r2.ok){ m.style.color="#2e7d32";
+                     m.textContent="Renamed to "+v+". New address "+DOOR_BASE+"?club="+r2.slug
+                       +((r2.kept&&r2.kept.length)?("; "+r2.kept.join(", ")+" still works."):"."); }
+                   else { m.style.color="#c00"; m.textContent=(r2&&r2.error)||"Renamed, but the address could not be added."; } }
+            directoryLoad();
+          });
+        }
+      }
+    });
+  };
   W.platBackupNow=function(){
     var m=document.getElementById("platRegMsg");
     var what=(REG.role==="club") ? (REG.clubName||"this club") : "the whole register";
