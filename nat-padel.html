@@ -3484,7 +3484,7 @@ const CLUB_NAME = _club.name;  // shown in the logo as "OPR · <name>"
     link.setAttribute('href', href);
   }catch(e){ /* install stays on the static manifest — no functional impact */ }
 })();
-const OPR_VERSION = "OPR-DOUBLES v2026.09.03-56 · NAT fork n39g (no voice) (of PLAT p117)";  // MANUAL PAIR CREATION REMOVED FROM ADMIN: Create a pair, Bulk create pairs and Re-derive all pairs are gone (they only made match-less ghost pairs, and Re-derive rewrote every stored initial club-wide). Pairs are born automatically at match entry. Current pairs list untouched; the underlying JS is left in place unreferenced, so no other code path changes. Includes v47 (set-score fix + double-tap guard) and all prior.
+const OPR_VERSION = "OPR-DOUBLES v2026.09.03-56 · NAT fork n41 (no voice) (of PLAT p117)";  // MANUAL PAIR CREATION REMOVED FROM ADMIN: Create a pair, Bulk create pairs and Re-derive all pairs are gone (they only made match-less ghost pairs, and Re-derive rewrote every stored initial club-wide). Pairs are born automatically at match entry. Current pairs list untouched; the underlying JS is left in place unreferenced, so no other code path changes. Includes v47 (set-score fix + double-tap guard) and all prior.
 // Explanation shown above the individual ladder. Open on load so it's read; collapsible
 // (state kept for the session) and scrolls away. Mechanics only — no outcome framing, so
 // members aren't nudged away from playing stronger opponents. Every clause maps to a real
@@ -9311,17 +9311,38 @@ async function clRemove(id, label){
       return '<button onclick="window.platGo('+c.id+')" style="flex:1 1 calc(50% - 5px);min-width:0;display:flex;align-items:center;justify-content:center;gap:8px;'
         +'background:linear-gradient(135deg,'+p[0]+','+p[1]+');color:#fff;border:none;border-radius:99px;padding:12px 16px;font-size:14px;font-weight:800;cursor:pointer;'
         +'box-shadow:0 2px 6px rgba(58,29,110,.20);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+esc(c.name)+'</button>'; };
+    /* n41: ONE SHAPE FOR ALL THREE. General play and the ledger were big illustrated cards while the groups
+       were little pills, so the groups — the thing most people are actually looking for — read as an
+       afterthought. Now every section is a BRACKET: a tinted panel that explains what the thing is, with the
+       pill (or pills) sitting inside it. The pills are identical in shape and size; only their colours differ,
+       which is what a member is scanning for. */
+    var tintOf=function(hex,a){ try{ var n=parseInt(String(hex).slice(1),16);
+      return "rgba("+((n>>16)&255)+","+((n>>8)&255)+","+(n&255)+","+a+")"; }catch(e){ return "rgba(108,52,131,"+a+")"; } };
+    var bracket=function(label,tint,border,note,pills){
+      return '<div style="background:'+tint+';border:1px solid '+border+';border-radius:16px;padding:12px 13px 13px">'
+        +'<div style="font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:#6f6680;font-weight:800;margin:0 2px 8px">'+esc(label)+'</div>'
+        +'<div style="display:flex;flex-wrap:wrap;gap:9px">'+pills+'</div>'
+        +(note?'<div style="font-size:12.5px;color:#5c5468;line-height:1.5;margin:10px 2px 0">'+note+'</div>':'')
+        +'</div>';
+    };
+    var onePill=function(onclick,text,pal,full){
+      return '<button onclick="window.'+onclick+'" style="'+(full?'flex:1 1 100%':'flex:1 1 calc(50% - 5px)')+';min-width:0;display:flex;align-items:center;justify-content:center;'
+        +'background:linear-gradient(135deg,'+pal[0]+','+pal[1]+');color:#fff;border:none;border-radius:99px;padding:12px 16px;font-size:14px;font-weight:800;cursor:pointer;'
+        +'box-shadow:0 2px 6px rgba(58,29,110,.20);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+esc(text)+'</button>';
+    };
+    var cPal=clubPal(C);
     var html="";
-    html += natCard("platGoBoard("+C+")", "General play", "Matches outside the groups — open to every member · ratings, pairs, scores, tournaments", clubPal(C));
-    html += '<div style="margin:10px 2px 2px;font-size:11.5px;letter-spacing:.1em;text-transform:uppercase;color:#8a7f9c;font-weight:700">Groups</div>';
-    html += '<div style="display:flex;flex-wrap:wrap;gap:10px">'+kids.map(pill).join("")+'</div>';
-    /* n33: NAME THE LEDGER. "Club ledger" told you what kind of thing it was, not whose — and gave no hint
-       that the register's own ledger is one tap further. Both are now said plainly. */
-    html += '<div style="margin:14px 2px 2px;font-size:11.5px;letter-spacing:.1em;text-transform:uppercase;color:#8a7f9c;font-weight:700">Ledgers</div>';
-    html += natCard("platGoClubLedger("+C+")", (W.PLAT.name||"Club")+" ledger",
-      /* n35: say what it holds, not what kind of thing it is — Andre's wording */
-      "Every match played at "+(W.PLAT.name||"the club")+" Club \u2014 updated current \u2014 includes all general play and groups, profiles, ladders and stats."
-      +" Also \u2014 "+(W.PLAT.poolName||"All Registered Clubs")+" is one tap from there.", LEDGER);   /* n38 */
+    html += bracket("The club", tintOf(cPal[0],.08), tintOf(cPal[0],.22),
+      "Matches outside the groups \u2014 open to every member. Ratings, pairs, scores and tournaments for the club itself.",
+      onePill("platGoBoard("+C+")","General play",cPal,true));
+    html += bracket(kids.length===1?"Group":"Groups", "rgba(0,0,0,.035)", "rgba(0,0,0,.10)",
+      kids.length ? "Each group runs its own board, ladder, tournaments and court cards. You join one by playing there."
+                  : "No groups yet \u2014 the club plays as General play until one is made.",
+      kids.map(function(c){ return onePill("platGo("+c.id+")", c.name, clubPal(c.id), kids.length===1); }).join(""));
+    html += bracket("Ledger", "rgba(26,26,26,.06)", "rgba(26,26,26,.16)",
+      "Every match played at "+esc(W.PLAT.name||"the club")+" \u2014 updated current \u2014 includes all general play and groups, profiles, ladders and stats."
+        +" Also \u2014 "+esc(W.PLAT.poolName||"All Registered Clubs")+" is one tap from there.",
+      onePill("platGoClubLedger("+C+")", (W.PLAT.name||"Club")+" ledger", LEDGER, true));
     html += '<div id="platDoorRecent" style="margin-top:6px"></div>';
     html += '<div style="text-align:center;margin:14px 0 6px"><button data-plat-keep="1" onclick="showScreen(\'aboutScreen\')" style="display:inline-flex;align-items:center;background:transparent;border:1.5px solid #9b80b3;color:#6c3483;border-radius:99px;padding:8px 20px;font-size:13px;font-weight:700;cursor:pointer">About OPR</button></div>';
     html += '<div style="text-align:center;color:#b3a9c4;font-size:10px;letter-spacing:.5px;margin:0 0 10px">'+esc((typeof OPR_VERSION!=="undefined"?OPR_VERSION:""))+'</div>';
