@@ -83,14 +83,14 @@
 <header class="hero"><div class="wrap">
   <div class="hero-logo"><span class="balls"><i></i><i></i><i></i></span><span class="word">O P R</span></div>
   <div class="eyebrow">Welcome to your club</div>
-  <h1>One club. One rating. Your groups.</h1>
+  <h1>One rating. Every club you play at.</h1>
   <div class="club" id="clubName">&nbsp;</div>
 </div></header>
 
 <div class="wrap">
   <div class="card intro">
-    <p><b>Welcome — this is <span class="cn">your club</span> on OPR, in one package.</b> You're registered once, you carry one padel rating, and you can play in any of the club's groups — whichever you join, whenever you're there.</p>
-    <span class="storyline">Every match you play, anywhere in the club, tells the same story.</span>
+    <p><b>Welcome — this is <span class="cn">your club</span> on OPR, in one package.</b> You're registered once, you carry one padel rating, and it comes with you — to any group at your club, and to any other club that shares your register.</p>
+    <span class="storyline">Every match you play, wherever you play it, tells the same story.</span>
     <p style="margin-top:9px;">Add it to your phone, enter your scores after each match, and watch your rating build. Your organisers handle the rest — all you do is <b>play, have fun, and enjoy the padel.</b></p>
   </div>
 
@@ -150,7 +150,7 @@
       <summary><span class="badge">🎾</span> Inside the app <span class="chev">›</span></summary>
       <div class="inner">
         <div class="step"><span class="n">1</span><p><b>Enter your match scores</b> — pick the four names, enter the sets. No PIN needed.</p></div>
-        <div class="step"><span class="n">2</span><p><b>Follow your rating and form</b> match by match. It's the same number wherever in the club you play.</p></div>
+        <div class="step"><span class="n">2</span><p><b>Follow your rating and form</b> match by match. It's the same number wherever you play — your club, its groups, or another club in the register.</p></div>
         <div class="step"><span class="n">3</span><p><b>See how you play with each partner</b> — every pairing rated on its own.</p></div>
         <div class="step"><span class="n">4</span><p><b>Climb your group's ladder</b> and issue your challenges.</p></div>
         <div class="step"><span class="n">5</span><p><b>Enter the tournaments</b> — at your group or across the whole club — and follow the draws live.</p></div>
@@ -165,12 +165,12 @@
     <details class="card">
       <summary><span class="badge opr">🏛</span> Club admin — the register <span class="chev">›</span></summary>
       <div class="inner">
-        <p style="margin-bottom:10px;">Opens with the club's register code, from the club ledger. This is where the club itself is looked after.</p>
+        <p style="margin-bottom:10px;">Opens with the club's own code, from the club ledger. This is where the club itself is looked after — its members and its groups.</p>
         <div class="step"><span class="n">1</span><p><b>Add members</b> — one at a time, or paste the whole club from a spreadsheet (name, gender, starting rating).</p></div>
         <div class="step"><span class="n">2</span><p><b>Starting ratings</b> — one default for everyone (1500 men / 1300 ladies), or a graded list from your coach.</p></div>
-        <div class="step"><span class="n">3</span><p><b>Create groups</b> — name, colour, its own code — and hand each group its link.</p></div>
+        <div class="step"><span class="n">3</span><p><b>Create groups</b> — name, colour, its own code — and hand each group its link. (New <i>clubs</i> are created by the register administrator, so the register always knows who is in it.)</p></div>
         <div class="step"><span class="n">4</span><p><b>Safety net</b> — snapshots before anything drastic, and a one-tap put-back.</p></div>
-        <div class="note">A member is registered once. They appear in a group the first time they play there.</div>
+        <div class="note">A member is registered once — for the whole register, not just your club. If they are already registered at another club in it, the app says so and offers that person rather than making a second one: same player, same rating. They appear in one of your groups the first time they play there.</div>
       </div>
     </details>
     <details class="card">
@@ -181,7 +181,7 @@
         <div class="step"><span class="n">2</span><p><b>Tournaments</b> — Banded Swiss, Knockout with Plate, or Round Robin; Men's, Ladies, Mixed and All Sorts divisions.</p></div>
         <div class="step"><span class="n">3</span><p><b>Handicap days</b> — every match balanced by rating, just for fun; nobody's rating moves.</p></div>
         <div class="step"><span class="n">4</span><p><b>The ladder</b> — challenges, positions, seasons.</p></div>
-        <div class="step"><span class="n">5</span><p><b>Fix a match</b> — correct a score or delete it; ratings recompute by themselves.</p></div>
+        <div class="step"><span class="n">5</span><p><b>Fix a match</b> — correct a score or delete it within a week of it being played; ratings recompute by themselves. After that it belongs to everyone's history, so the register administrator does it.</p></div>
         <div class="note">The club itself is a group too — a club-wide tournament runs from the club's own board.</div>
       </div>
     </details>
@@ -204,18 +204,68 @@
     var mf={id:url,name:"OPR · "+n,short_name:(n.length>12?n.slice(0,12):n),start_url:url,scope:"./",display:"standalone",background_color:"#5B2BD6",theme_color:"#5B2BD6",
       icons:[{src:"./icon-192.png",sizes:"192x192",type:"image/png"},{src:"./icon-512.png",sizes:"512x512",type:"image/png"}]};
     var l=document.createElement("link"); l.rel="manifest"; l.href="data:application/manifest+json,"+encodeURIComponent(JSON.stringify(mf)); document.head.appendChild(l); }catch(e){} }
+  /* 2026-09-16: THE PACK FOLLOWS THE REGISTER IT IS SENT FOR.
+     A register may now hold several independent CLUBS, each with its own groups, all sharing one player base
+     — so a person is registered once and carries one rating wherever they play. Those registers run on
+     nat-padel.html and their clubs have an address with their own name in it (?club=southbroom). A register
+     without that rung is untouched and keeps plat-padel.html, so this one file serves both. */
+  var APPFILE="plat-padel.html", CLUBKEY=null;
+  function doorOf(idOrSlug){ return base+APPFILE+"?club="+idOrSlug; }
+  function learnShape(poolId){
+    return Promise.all([
+      get("nat_club_parent?select=group_id,club_id").catch(function(){ return []; }),
+      get("nat_club_slugs?select=slug,club_id,is_current").catch(function(){ return []; })
+    ]).then(function(r){
+      var par=Array.isArray(r[0])?r[0]:[], slugs=Array.isArray(r[1])?r[1]:[];
+      var parentOf={}, kids={}, slugOf={};
+      par.forEach(function(x){ parentOf[x.group_id]=x.club_id; (kids[x.club_id]=kids[x.club_id]||[]).push(x.group_id); });
+      slugs.forEach(function(x){ if(x.is_current!==false) slugOf[x.club_id]=x.slug; });
+      return {parentOf:parentOf,kids:kids,slugOf:slugOf,any:par.length>0};
+    });
+  }
+  var SHAPE={parentOf:{},kids:{},slugOf:{},any:false};
   var clubQ=parseInt(q.get("club")||"0",10)||0;
   if(clubQ){
     // CLUB MODE — welcome.html?club=N — for a group or a club in a flat register (Kloof–Sun Fun): the pack is
     // that club's own. The register it belongs to is explained as "the register", not as "the club".
-    var appC=base+"plat-padel.html?club="+clubQ;
-    document.getElementById("lnkApp").href=appC; document.getElementById("lnkLaptop").href=appC;
     get("plat_clubs?id=eq."+clubQ+"&select=id,pool_id,name,colour,is_general").then(function(rows){
       var c=(rows&&rows[0])||null; if(!c){ setName("your club"); return; }
+      return learnShape(c.pool_id).then(function(sh){
+      SHAPE=sh;
+      if(sh.any) APPFILE="nat-padel.html";                       // this register has clubs and groups
+      var appC=doorOf(sh.slugOf[c.id]||c.id);                    // the club's own address, name and all
+      document.getElementById("lnkApp").href=appC; document.getElementById("lnkLaptop").href=appC;
       setName(c.name); manifest(c.name,appC);
       if(c.colour) document.getElementById("tagClub").style.background=c.colour;
       return Promise.all([ get("plat_pools?id=eq."+c.pool_id+"&select=name"), get("plat_clubs?pool_id=eq."+c.pool_id+"&select=id,name,colour,is_general&order=id") ]).then(function(res){
         var pname=(res[0]&&res[0][0]&&res[0][0].name)||"the register", all=Array.isArray(res[1])?res[1]:[];
+        /* THE THREE TIERS, told from where this pack's reader actually stands. In a register with the club
+           rung: my club (or my group), the groups beside me, and the register we all share. */
+        if(SHAPE.any){
+          var myClubId=SHAPE.parentOf[c.id]||c.id;
+          var myClub=all.filter(function(x){ return x.id===myClubId; })[0]||c;
+          var myGroups=all.filter(function(x){ return SHAPE.parentOf[x.id]===myClubId; })
+                          .sort(function(a,b){ return String(a.name).localeCompare(String(b.name)); });
+          var otherClubs=all.filter(function(x){ return x.id!==myClubId && !SHAPE.parentOf[x.id]; }).length;
+          var tiersN=document.querySelectorAll(".tier");
+          var a=tiersN[0]; a.querySelector(".tag").textContent="Your club";
+          a.querySelector(".m").innerHTML='<b>'+esc(myClub.name)+'</b>Open to every member \u2014 play here any time, with anyone, no group needed. Your club\u2019s own door: <span style="color:#5B2BD6;font-weight:700;word-break:break-all">'+esc(doorOf(SHAPE.slugOf[myClub.id]||myClub.id))+'</span>';
+          var bt=tiersN[1]; bt.querySelector(".tag").textContent="Groups";
+          bt.querySelector(".m").innerHTML='<b>The crowds you play with</b>'+(myGroups.length
+              ? 'Each has its own colour, pairs, ladder, tournaments and court cards. You join one simply by playing there.'
+              : 'None yet \u2014 your organiser can make them, each with its own colour and code.')
+            +'<div class="pills" id="groupPills"></div>';
+          document.getElementById("groupPills").innerHTML=myGroups.map(function(g){
+            return '<a class="pill" href="'+doorOf(g.id)+'" style="background:'+esc(g.colour||"#455a64")+'">'+esc(g.name)+'</a>'; }).join("");
+          var ct=tiersN[2]; ct.querySelector(".tag").textContent="The register";
+          ct.querySelector(".m").innerHTML='<b>'+esc(pname)+'</b>'
+            +(otherClubs
+              ? esc(otherClubs===1?'One other club shares':(otherClubs+' other clubs share'))+' this register with you. Everyone in it is registered <b>once</b> and carries <b>one rating</b>, so a player who turns out at more than one club has the same number everywhere \u2014 and each club keeps its own door, its own groups and its own ledger.'
+              : 'Your club has this register to itself for now. When another club joins it, a player at both keeps one rating \u2014 no second registration, no second number.');
+          var one1=document.querySelector(".oneline");
+          if(one1) one1.textContent="Clubs and groups rank you. They never change your rating \u2014 that belongs to you, and it moves only when you play. The colour tells you where you are.";
+          return;
+        }
         var baseClub=all.find(function(x){return x.is_general;});
         var others=all.filter(function(x){ return x.id!==c.id && !x.is_general; }).sort(function(a,b){return String(a.name).localeCompare(String(b.name));});
         // first tier: THIS club
@@ -233,6 +283,7 @@
         // third tier: the ledger, and the door link if there is one
         var t3=tiers[2]; t3.querySelector(".m").innerHTML='<b>Everyone, one rating each</b>Every player across '+esc(pname)+' in one list, with ladders and stats across every board. <a href="'+base+'plat-padel.html?pool='+c.pool_id+'" style="color:#5B2BD6;font-weight:700;text-decoration:none">Open the register \u203a</a>';
         var one=document.querySelector(".oneline"); if(one) one.textContent="Clubs and groups rank you. They never change your rating \u2014 that belongs to you, and it moves only when you play. The colour tells you where you are.";
+      });
       });
     }).catch(function(){ setName("your club"); });
     return;
