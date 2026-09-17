@@ -733,7 +733,8 @@
   .player-display .arrow { color: #888; font-size: 12px; }
 </style>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script>
+<script>/* newapp */ window.NEWAPP=true;
+
 /* ============================================================================
    NAT EARLY SNIPPET — nat-padel.html  VERSION: NAT-PADEL v2026.09.15-n2  (n2: A RATING IS NATIONAL — the club ledger rebuilt the rating from the club's matches alone, so one person read three numbers; the engine's replay is now pool-wide on every ledger and only the lists are club-scoped.)\n   NAT-PADEL v2026.09.15-n1  (THE NATIONAL REGISTER FORK of PLAT p117.
    plat-padel.html is not touched. Changes, each marked NAT:
@@ -3464,7 +3465,7 @@ const CLUB_NAME = _club.name;  // shown in the logo as "OPR · <name>"
 // unaffected; this fixes the far commoner "install from the app page" route.
 (function(){
   try{
-    const url = './nat-padel.html?club=' + CLUB_ID;   // NAT MARKED HUNK: install reopens the fork
+    const url = './nat2-padel.html?club=' + CLUB_ID;   // NAT MARKED HUNK: install reopens the fork
     const mf = {
       name: 'OPR · ' + CLUB_NAME,
       short_name: (String(CLUB_NAME).length > 12 ? String(CLUB_NAME).slice(0,12) : String(CLUB_NAME)) || 'OPR',
@@ -3484,7 +3485,7 @@ const CLUB_NAME = _club.name;  // shown in the logo as "OPR · <name>"
     link.setAttribute('href', href);
   }catch(e){ /* install stays on the static manifest — no functional impact */ }
 })();
-const OPR_VERSION = "OPR-DOUBLES v2026.09.03-56 · NAT fork n42 (no voice) (of PLAT p117)";  // MANUAL PAIR CREATION REMOVED FROM ADMIN: Create a pair, Bulk create pairs and Re-derive all pairs are gone (they only made match-less ghost pairs, and Re-derive rewrote every stored initial club-wide). Pairs are born automatically at match entry. Current pairs list untouched; the underlying JS is left in place unreferenced, so no other code path changes. Includes v47 (set-score fix + double-tap guard) and all prior.
+const OPR_VERSION = "OPR-DOUBLES v2026.09.03-56 · NAT fork n50 (no voice) (of PLAT p117)";  // MANUAL PAIR CREATION REMOVED FROM ADMIN: Create a pair, Bulk create pairs and Re-derive all pairs are gone (they only made match-less ghost pairs, and Re-derive rewrote every stored initial club-wide). Pairs are born automatically at match entry. Current pairs list untouched; the underlying JS is left in place unreferenced, so no other code path changes. Includes v47 (set-score fix + double-tap guard) and all prior.
 // Explanation shown above the individual ladder. Open on load so it's read; collapsible
 // (state kept for the session) and scrolls away. Mechanics only — no outcome framing, so
 // members aren't nudged away from playing stronger opponents. Every clause maps to a real
@@ -9459,6 +9460,224 @@ async function clRemove(id, label){
     setTimeout(fire,320);
   }
 
+  /* ============================================================================================
+     n50: THE NEW HOME. Until now the door and the place page lived in a separate file, so every action
+     handed over to this app and you landed back in the old home screen — two sites pretending to be one.
+     They are the same page from here. The parent's home screen is emptied and the new one drawn in its
+     place, and every button calls the app's OWN functions, so nothing navigates and nothing bounces.
+     Everything behind the home screen — the score sheet, the ladders, profiles, tournaments, the card —
+     is the app as it has always been.
+     ============================================================================================ */
+  var NEW={data:null};
+  function nhFetch(){
+    if(NEW.data) return Promise.resolve(NEW.data);
+    var B=SBREST(), boards=(W.PLAT.myBoards&&W.PLAT.myBoards.length)?W.PLAT.myBoards:[W.PLAT.cid];
+    var inList="club_id=in.("+boards.join(",")+")";
+    return Promise.all([
+      fetch(B+"plat_matches?"+inList+"&discipline=eq.padel&select=id,club_id,match_date,match_type,t1p1,t1p2,t2p1,t2p2,t1_sets,t2_sets,rating_delta&order=match_date.desc,id.desc&limit=120").then(J),
+      fetch(B+"plat_player_results?"+inList+"&discipline=eq.padel&select=name,club_id,current_rating,initial_rating,sets_played,sets_won&order=current_rating.desc&limit=60").then(J),
+      fetch(B+"plat_padel_v_individuals?"+inList+"&select=full_name,current_rating,seed_rating").then(J).catch(function(){ return []; }),
+      fetch(B+"plat_padel_tournaments?"+inList+"&select=id,name,club_id,active,archived").then(J).catch(function(){ return []; })
+    ]).then(function(r){
+      NEW.data={matches:r[0]||[],pairs:r[1]||[],people:r[2]||[],
+                tour:(r[3]||[]).filter(function(x){ return x.active&&!x.archived; })[0]||null};
+      return NEW.data;
+    }).catch(function(){ NEW.data={matches:[],pairs:[],people:[],tour:null}; return NEW.data; });
+  }
+  function SBREST(){ return "https://djmbnvikrdgnomjhtkgf.supabase.co/rest/v1/"; }
+  function J(r){ return r.json(); }
+  function ago(d){ return (Date.now()-new Date(d).getTime())/86400000; }
+  function inits(n){ return String(n||"").split(/[\s&]+/).filter(Boolean).slice(0,2).map(function(w){ return w[0]; }).join("").toUpperCase(); }
+
+  function nhMovers(ms){
+    var sum={};
+    ms.forEach(function(m){
+      if(ago(m.match_date)>7) return;
+      var d=(m.rating_delta!=null)?+m.rating_delta:0; if(!d) return;
+      [[m.t1p1,d],[m.t1p2,d],[m.t2p1,-d],[m.t2p2,-d]].forEach(function(p){
+        if(!p[0]) return; String(p[0]).split(" & ").forEach(function(x){ x=x.trim(); if(x) sum[x]=(sum[x]||0)+p[1]; });
+      });
+    });
+    return Object.keys(sum).map(function(n){ return {name:n,move:sum[n]}; })
+      .sort(function(a,b){ return Math.abs(b.move)-Math.abs(a.move); }).slice(0,3);
+  }
+  function nhCSS(){
+    if(document.getElementById("nhCss")) return;
+    var st=document.createElement("style"); st.id="nhCss";
+    st.textContent=
+      "#nh{max-width:520px;margin:0 auto;padding:0 0 30px;font-family:inherit}"
+     +"#nh .band{color:#fff;padding:15px 16px 18px;position:relative;overflow:hidden;border-radius:0 0 18px 18px}"
+     +"#nh .band.opr{background:url('./header_bg2.png') center/cover,linear-gradient(105deg,#1d0a41,#5b17ac 52%,#047fdd)}"
+     +"#nh .mark{display:inline-flex;align-items:center;gap:9px;font-size:11px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;opacity:.95}"
+     +"#nh .mark .logo{font-size:17px;letter-spacing:.06em;text-transform:none;background:rgba(255,255,255,.14);border:1px solid rgba(255,255,255,.34);border-radius:9px;padding:2px 9px}"
+     +"#nh h1{font-size:25px;line-height:1.1;margin:9px 0 3px;font-weight:800}"
+     +"#nh .sub{font-size:12.5px;opacity:.88}"
+     +"#nh .pulse{display:flex;gap:7px;flex-wrap:wrap;margin-top:11px}"
+     +"#nh .pulse span,#nh .pulse a{background:rgba(255,255,255,.16);border:1px solid rgba(255,255,255,.3);border-radius:99px;padding:5px 11px;font-size:12px;font-weight:700;color:#fff;text-decoration:none}"
+     +"#nh .brk{background:#fff;border:1px solid #e6e0ee;border-radius:16px;margin:12px 12px 0;overflow:hidden}"
+     +"#nh .brk h2{font-size:11px;letter-spacing:.11em;text-transform:uppercase;color:#6f6780;font-weight:800;margin:0;padding:12px 14px 2px}"
+     +"#nh .rows{padding:4px 6px}"
+     +"#nh .row{display:flex;align-items:center;gap:11px;padding:9px 8px;width:100%;background:none;border:none;text-align:left;font:inherit;color:inherit;cursor:pointer}"
+     +"#nh .row+.row{border-top:1px solid #efeaf5}"
+     +"#nh .av{width:34px;height:34px;border-radius:50%;flex:0 0 34px;display:grid;place-items:center;color:#fff;font-size:12.5px;font-weight:800}"
+     +"#nh .nm{flex:1;min-width:0}#nh .nm b{display:block;font-size:14.5px}#nh .nm span{display:block;font-size:11.5px;color:#6f6780;margin-top:1px}"
+     +"#nh .val{text-align:right}#nh .val b{display:block;font-size:15px;font-weight:800}#nh .val span{display:block;font-size:11px;color:#6f6780}"
+     +"#nh .up{color:#1f8a4c}#nh .dn{color:#c0392b}"
+     +"#nh .more{display:block;width:100%;text-align:center;padding:10px;border:none;border-top:1px solid #efeaf5;background:#fcfbfd;font:inherit;font-size:12.5px;font-weight:800;color:var(--nhc,#6c3483);cursor:pointer}"
+     +"#nh .doit{display:flex;gap:9px;padding:12px 12px 2px;overflow-x:auto;scrollbar-width:none}#nh .doit::-webkit-scrollbar{display:none}"
+     +"#nh .doit button{flex:0 0 104px;border:1px solid #e6e0ee;background:#fff;border-radius:14px;padding:13px 6px;font:inherit;font-weight:700;font-size:12.5px;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:7px;line-height:1.25;text-align:center}"
+     +"#nh .doit button.primary{color:#fff;border-color:transparent}"
+     +"#nh .doit svg{width:22px;height:22px;stroke:currentColor;fill:none;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round}"
+     +"#nh .tiles{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:12px 12px 0}"
+     +"#nh .tile{background:#fff;border:1px solid #e6e0ee;border-radius:16px;padding:13px}"
+     +"#nh .tile .k{font-size:10.5px;letter-spacing:.1em;text-transform:uppercase;color:#6f6780;font-weight:800}"
+     +"#nh .tile .v{font-size:23px;font-weight:800;margin-top:5px}#nh .tile .n{font-size:11.5px;color:#6f6780;margin-top:2px}"
+     +"#nh .kind{font-size:11px;letter-spacing:.09em;text-transform:uppercase;color:#8a8196;font-weight:800;padding:9px 8px 2px}";
+    document.head.appendChild(st);
+  }
+  function nhWrap(){
+    var host=document.getElementById("homeScreen"); if(!host) return null;
+    Array.prototype.forEach.call(host.children,function(el){ if(el.id!=="nh") el.style.display="none"; });
+    var w=document.getElementById("nh");
+    if(!w){ w=document.createElement("div"); w.id="nh"; host.insertBefore(w,host.firstChild); }
+    return w;
+  }
+  function nhInk(hex){ document.documentElement.style.setProperty("--nhc",hex||"#6c3483"); }
+  function nhDeep(h,f){ try{ var n=parseInt(String(h).slice(1),16),r=(n>>16)&255,g=(n>>8)&255,b=n&255;
+    f=f||.42; return "#"+((1<<24)+((r*(1-f)|0)<<16)+((g*(1-f)|0)<<8)+(b*(1-f)|0)).toString(16).slice(1); }catch(e){ return "#3a1d6e"; } }
+
+  /* the brackets, all calling the app's own screens */
+  function nhMoversBrk(d,ink){
+    var mv=nhMovers(d.matches); if(!mv.length) return "";
+    return '<div class="brk"><h2>Movers this week</h2><div class="rows">'
+      + mv.map(function(m){ return '<button class="row" onclick="window.nhPlayer(\''+String(m.name).replace(/'/g,"\\'")+'\')">'
+          +'<span class="av" style="background:'+ink+'">'+esc(inits(m.name))+'</span>'
+          +'<span class="nm"><b>'+esc(m.name)+'</b><span>'+(m.move>=0?"climbing":"giving ground")+'</span></span>'
+          +'<span class="val"><b class="'+(m.move>=0?"up":"dn")+'">'+(m.move>0?"+":"")+Math.round(m.move)+'</b><span>rating</span></span></button>'; }).join("")
+      +'</div><button class="more" onclick="showScreen(\'laddersScreen\')">See the full ratings and ladders \u2192</button></div>';
+  }
+  function nhFormBrk(d,ink){
+    var hot=(d.pairs||[]).filter(function(p){ return (p.sets_played||0)>=3; })
+      .map(function(p){ return {name:p.name,pct:Math.round(100*(p.sets_won||0)/(p.sets_played||1)),move:Math.round((p.current_rating||0)-(p.initial_rating||0))}; })
+      .sort(function(a,b){ return b.pct-a.pct||b.move-a.move; }).slice(0,2);
+    if(!hot.length) return "";
+    return '<div class="brk"><h2>In form</h2><div class="rows">'
+      + hot.map(function(p){ return '<button class="row" onclick="window.nhPlayer(\''+String(p.name).replace(/'/g,"\\'")+'\')">'
+          +'<span class="av" style="background:'+ink+'">'+esc(inits(p.name))+'</span>'
+          +'<span class="nm"><b>'+esc(p.name)+'</b><span>'+p.pct+'% of sets won</span></span>'
+          +'<span class="val"><b class="'+(p.move>=0?"up":"dn")+'">'+(p.move>0?"+":"")+p.move+'</b><span>since start</span></span></button>'; }).join("")
+      +'</div><button class="more" onclick="loadLadder(\'mens\',\"Men\u2019s Pairs\")">Every pair \u2192</button></div>';
+  }
+  function nhMatchesBrk(d,n){
+    var ms=(d.matches||[]).slice(0,n||4); if(!ms.length) return "";
+    return '<div class="brk"><h2>Just played</h2><div class="rows">'
+      + ms.map(function(m){
+          var a=[m.t1p1,m.t1p2].filter(Boolean).join(" & "), b=[m.t2p1,m.t2p2].filter(Boolean).join(" & ");
+          var bd=(W.PLAT.clubs||[]).find(function(c){ return Number(c.id)===Number(m.club_id); });
+          return '<div class="row"><span class="nm"><b>'+esc(a)+'</b><span>'+esc(b)+'</span></span>'
+            +'<span class="val"><b>'+((m.t1_sets==null)?"":(m.t1_sets+"\u2013"+m.t2_sets))+'</b>'
+            +'<span style="color:'+((bd&&bd.colour)||"#8a8196")+'">'+esc(bd?bd.name:"")+'</span></span></div>'; }).join("")
+      +'</div></div>';
+  }
+  function nhTourBrk(d){
+    if(!d.tour) return "";
+    return '<div class="brk"><h2>'+esc(d.tour.name)+' \u00b7 running now</h2><div class="rows">'
+      +'<div class="row"><span class="av" style="background:#c4a000">\u{1F3C6}</span>'
+      +'<span class="nm"><b>'+esc(d.tour.name)+'</b><span>open \u00b7 tap for the sheet</span></span></div>'
+      +'</div><button class="more" onclick="showScreen(\'tournamentsScreen\')">Open the tournament \u2192</button></div>';
+  }
+  function nhActions(ink,deep){
+    var ic={score:'<svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>',
+            card:'<svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="1.6"/><path d="M3 12h18M12 4v16"/></svg>',
+            lad:'<svg viewBox="0 0 24 24"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/></svg>',
+            cup:'<svg viewBox="0 0 24 24"><path d="M7 4h10v4a5 5 0 0 1-10 0V4Z"/><path d="M17 5h3v2a3 3 0 0 1-3 3M7 5H4v2a3 3 0 0 0 3 3"/><path d="M12 13v4M9 21h6"/></svg>',
+            per:'<svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="3.4"/><path d="M5 20c1.2-3.4 4-5 7-5s5.8 1.6 7 5"/></svg>'};
+    return '<div class="doit">'
+      +'<button class="primary" style="background:linear-gradient(135deg,'+ink+','+deep+')" onclick="window.nhGo(\'entry\')">'+ic.score+'Enter a score</button>'
+      +'<button onclick="window.nhGo(\'card\')">'+ic.card+'Court card</button>'
+      +'<button onclick="showScreen(\'laddersScreen\')">'+ic.lad+'Ratings &amp; ladders</button>'
+      +'<button onclick="showScreen(\'tournamentsScreen\')">'+ic.cup+'Tournaments</button>'
+      +'<button onclick="window.nhGo(\'profiles\')">'+ic.per+'Profiles</button>'
+      +'</div>';
+  }
+  W.nhGo=function(what){
+    try{
+      if(what==="entry"){ var b=document.querySelector("#homeScreen .btn-enter"); if(b){ b.click(); return; } }
+      if(what==="profiles" && typeof showProfileSearch==="function"){ showProfileSearch(); return; }
+      if(what==="card"){ var c=Array.prototype.filter.call(document.querySelectorAll("button"),function(x){ return /court card/i.test(x.textContent||""); })[0];
+        if(c){ c.click(); return; } }
+    }catch(e){}
+  };
+  W.nhPlayer=function(n){ try{ if(typeof loadProfile==="function") loadProfile(n,""); }catch(e){} };
+
+  /* the club's FRONT DOOR — the club's introduction, in OPR's own colours */
+  function newClubDoor(){
+    var w=nhWrap(); if(!w) return;
+    nhCSS(); nhInk("#6c3483");
+    var C=W.PLAT.cid, kids=kidsOf(C).sort(function(a,b){ return String(a.name).localeCompare(String(b.name)); });
+    nhFetch().then(function(d){
+      var wk=(d.matches||[]).filter(function(m){ return ago(m.match_date)<=7; }).length;
+      var mv=nhMovers(d.matches||[]);
+      var row=function(name,col,sub,href){
+        return '<button class="row" onclick="location.href=\''+href+'\'">'
+          +'<span class="av" style="background:'+col+'">'+esc(inits(name))+'</span>'
+          +'<span class="nm"><b>'+esc(name)+'</b><span>'+esc(sub)+'</span></span>'
+          +'<span class="val"><b style="color:#cfc6da">\u203a</b></span></button>';
+      };
+      var places='<div class="kind">The club</div>'
+        + row(W.PLAT.name+" \u2014 general play", "#6c3483", "Open to every member \u00b7 matches outside the groups", PAGE+"?club="+C+"&board=1");
+      if(kids.length){
+        places+='<div class="kind">Groups \u00b7 each runs itself</div>';
+        kids.forEach(function(g){
+          var n=(d.matches||[]).filter(function(m){ return Number(m.club_id)===Number(g.id); }).length;
+          places+=row(g.name, clubPal(g.id)[0], n?(n+" recent "+(n===1?"match":"matches")):"its own board, ladder and card", PAGE+"?club="+g.id);
+        });
+      }
+      w.innerHTML =
+        '<div class="band opr"><div class="mark"><span class="logo">OPR</span>Open Padel Ratings</div>'
+        + '<h1>'+esc(W.PLAT.name||"")+'</h1>'
+        + '<div class="sub">'+esc(W.PLAT.poolName||"")+'</div>'
+        + '<div class="pulse"><span>'+wk+(wk===1?' match':' matches')+' this week</span>'
+        + (mv[0]?('<span>biggest move '+(mv[0].move>0?"+":"")+Math.round(mv[0].move)+' \u00b7 '+esc(String(mv[0].name).split(" ")[0])+'</span>'):'')
+        + (d.tour?('<span>'+esc(d.tour.name)+' running</span>'):'')+'</div></div>'
+        + '<div class="brk"><h2>Where you play</h2><div class="rows">'+places+'</div></div>'
+        + nhMoversBrk(d,"#6c3483") + nhFormBrk(d,"#6c3483") + nhTourBrk(d) + nhMatchesBrk(d,3)
+        + '<div class="brk"><h2>Ledgers</h2><div class="rows">'
+        + '<button class="row" onclick="window.platGoClubLedger('+C+')"><span class="av" style="background:#2f2f2f">\u2261</span>'
+        + '<span class="nm"><b>'+esc(W.PLAT.name)+' ledger</b><span>every match at the club \u2014 general play and every group</span></span>'
+        + '<span class="val"><b style="color:#cfc6da">\u203a</b></span></button></div></div>';
+    });
+  }
+
+  /* the place page — a board's home, entirely replaced */
+  function newPlaceHome(){
+    var w=nhWrap(); if(!w) return;
+    nhCSS();
+    var ink=(W.PLAT.colour||"#6c3483"), deep=nhDeep(ink); nhInk(ink);
+    var club=(W.PLAT.parentId?(W.PLAT.clubs||[]).find(function(c){ return c.id===W.PLAT.parentId; }):null);
+    nhFetch().then(function(all){
+      var mine=(all.matches||[]).filter(function(m){ return Number(m.club_id)===Number(W.PLAT.cid); });
+      var d={matches:mine,pairs:(all.pairs||[]).filter(function(p){ return Number(p.club_id)===Number(W.PLAT.cid); }),
+             people:all.people,tour:all.tour};
+      var wk=mine.filter(function(m){ return ago(m.match_date)<=7; }).length;
+      var mv=nhMovers(mine);
+      var people={}; mine.forEach(function(m){ [m.t1p1,m.t1p2,m.t2p1,m.t2p2].forEach(function(v){ if(v) String(v).split(" & ").forEach(function(x){ people[x.trim()]=1; }); }); });
+      w.innerHTML =
+        '<div class="band" style="background:linear-gradient(135deg,'+ink+','+deep+')">'
+        + '<div class="mark"><span class="logo">OPR</span>'+esc(club?club.name:(W.PLAT.poolName||"Open Padel Ratings"))+'</div>'
+        + '<h1>'+esc(W.PLAT.name||"")+'</h1>'
+        + '<div class="sub">'+(W.PLAT.parentId?"Its own board, ladder, tournaments and court cards":"Open to every member \u2014 matches outside the groups")+'</div>'
+        + '<div class="pulse">'+(club?('<a href="'+PAGE+'?club='+club.id+'">\u2039 '+esc(club.name)+'</a>'):'')
+        + '<span>'+wk+(wk===1?' match':' matches')+' this week</span>'
+        + (mv[0]?('<span>biggest move '+(mv[0].move>0?"+":"")+Math.round(mv[0].move)+'</span>'):'')+'</div></div>'
+        + '<div class="tiles">'
+        + '<div class="tile"><div class="k">This week</div><div class="v">'+wk+'</div><div class="n">matches here</div></div>'
+        + '<div class="tile"><div class="k">Playing</div><div class="v">'+Object.keys(people).length+'</div><div class="n">with a match on record</div></div>'
+        + '</div>'
+        + nhActions(ink,deep)
+        + nhMoversBrk(d,ink) + nhFormBrk(d,ink) + nhTourBrk(d) + nhMatchesBrk(d,4);
+    });
+  }
   /* What has just been played, across the whole club — the door's own short list. */
   function doorRecent(scope){
     var box=document.getElementById("platDoorRecent"); if(!box||!W.PLAT.pool) return;
@@ -10425,14 +10644,14 @@ async function clRemove(id, label){
   function fixManifest(){
     try{
       var name, url;
-      if(W.PLAT.landing){ name="OPR · "+(W.PLAT.poolName||"Clubs"); url="./nat-padel.html?pool="+W.PLAT.pool; }
-      else if(W.PLAT.cid===0){ name="OPR · "+((W.PLAT.nat?W.PLAT.natName:W.PLAT.poolName)||"Overall")+" · Ledger"; url="./nat-padel.html?club=0&pool="+W.PLAT.pool+(W.PLAT.nat?("&nat="+W.PLAT.nat):""); }   // NAT
-      else { if(!W.PLAT.name) return; name="OPR · "+W.PLAT.name; url="./nat-padel.html?club="+W.PLAT.cid; }
+      if(W.PLAT.landing){ name="OPR · "+(W.PLAT.poolName||"Clubs"); url="./nat2-padel.html?pool="+W.PLAT.pool; }
+      else if(W.PLAT.cid===0){ name="OPR · "+((W.PLAT.nat?W.PLAT.natName:W.PLAT.poolName)||"Overall")+" · Ledger"; url="./nat2-padel.html?club=0&pool="+W.PLAT.pool+(W.PLAT.nat?("&nat="+W.PLAT.nat):""); }   // NAT
+      else { if(!W.PLAT.name) return; name="OPR · "+W.PLAT.name; url="./nat2-padel.html?club="+W.PLAT.cid; }
       var shortN=(W.PLAT.landing?String(W.PLAT.poolName||"OPR Clubs"):(W.PLAT.cid===0?String((W.PLAT.poolName||"")+" Ledger").trim():String(W.PLAT.name||"OPR")));
       if(shortN.length>12) shortN=shortN.slice(0,12);
       // each app is scoped to its OWN page: with scope "./" an installed app covered the whole folder, so
       // Chrome reported "already installed" for every other page in it.
-      var mf={ id:url, name:name, short_name:shortN, start_url:url, scope:"./nat-padel.html", display:"standalone",
+      var mf={ id:url, name:name, short_name:shortN, start_url:url, scope:"./nat2-padel.html", display:"standalone",
                background_color:"#1c110a", theme_color:"#1c110a",
                icons:[{src:"./icon-192.png",sizes:"192x192",type:"image/png"},{src:"./icon-512.png",sizes:"512x512",type:"image/png"}] };
       var href="data:application/manifest+json,"+encodeURIComponent(JSON.stringify(mf));
@@ -11284,6 +11503,8 @@ async function clRemove(id, label){
     if(W.PLAT.landing){ var t1="OPR · "+(W.PLAT.poolName||"Clubs"); if(ht) ht.textContent=t1; document.title=t1; landing(); try{ doorChip(); }catch(e){} return; }
     // NAT: a club with groups opens on its DOOR (its board is ?club=C&board=1)
     if(W.PLAT.clubDoor){ var t3="OPR · "+(W.PLAT.name||"Club"); if(ht) ht.textContent=t3; document.title=t3;
+      if(W.NEWAPP){ try{ newClubDoor(); }catch(e){} return; }   /* n50: the new front door */
+      if(W.NEWAPP){ try{ newClubDoor(); }catch(e){} return; }
       var sb3=document.querySelector("#homeScreen .hero-logo-panel .sub, #homeScreen .sub"); if(sb3 && W.PLAT.poolName) sb3.textContent=W.PLAT.poolName+" · Open Padel Ratings System";
       clubDoor();
       /* n11: the door's About has an Admin link that only reaches the club board's own admin — which you get
@@ -11298,7 +11519,8 @@ async function clRemove(id, label){
          where a club admin stands. */
       if(!W.PLAT.nat) markOwnerDevice();                    /* n37 */
     }
-    else if(W.PLAT.name&&ht){ var _bn=(W.PLAT.board&&isClubWithKids(W.PLAT.cid))?(W.PLAT.name+" · General play"):W.PLAT.name;   /* n3 */
+    else if(W.PLAT.name&&ht){
+      if(W.NEWAPP){ try{ newPlaceHome(); }catch(e){} }   /* n50: the board's home is the new place page */ var _bn=(W.PLAT.board&&isClubWithKids(W.PLAT.cid))?(W.PLAT.name+" · General play"):W.PLAT.name;   /* n3 */
       /* n3: the parent writes 'OPR · '+CLUB_NAME into the hero from its own window.onload, which can land
          after this. Rather than guess the order, hold the title for a few frames — whoever writes last, the
          board still names itself. */
