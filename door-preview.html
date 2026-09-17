@@ -55,6 +55,7 @@
   .val span{display:block;font-size:12px;font-weight:800}
   .up{color:var(--ok)} .dn{color:var(--down)}
   .more{display:block;text-align:center;padding:10px;border-top:1px solid var(--line);font-size:12.5px;font-weight:800;color:var(--club);text-decoration:none;background:#fcfbfd}
+    .kind{font-size:11px;letter-spacing:.09em;text-transform:uppercase;color:#8a8196;font-weight:800;padding:9px 8px 3px}
   .empty{padding:10px 14px 14px;font-size:12.5px;color:var(--mute);line-height:1.5}
 
   /* v2 — tiles */
@@ -79,9 +80,12 @@
 <body>
 <div class="bar">
   <b>Front door</b>
-  <button id="b1" class="on" onclick="pick(1)">1 · Glimpses</button>
-  <button id="b2" onclick="pick(2)">2 · Scoreboard</button>
-  <button id="b3" onclick="pick(3)">3 · Quiet</button>
+  <button id="b1" class="on" onclick="pick(1)">Front door</button>
+  <button id="b2" onclick="pick(2)">Scoreboard door</button>
+  <button id="b3" onclick="pick(3)">Quiet door</button>
+  <span style="width:1px;height:20px;background:#e6e0ee;margin:0 3px"></span>
+  <button id="p0" onclick="place(0)">→ General play</button>
+  <button id="p1" onclick="place(1)">→ A group</button>
   <span class="who" id="who">loading…</span>
 </div>
 <div class="wrap" id="wrap"><div class="load">Reading the club…</div></div>
@@ -98,6 +102,10 @@
   function get(p){ return fetch(SB+"/rest/v1/"+p,{headers:{apikey:KEY,Authorization:"Bearer "+KEY}}).then(function(r){ return r.json(); }); }
   function esc(s){ return String(s==null?"":s).replace(/[&<>"]/g,function(c){ return {"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;"}[c]; }); }
   function initials(n){ return String(n||"").split(/[\s&]+/).filter(Boolean).slice(0,2).map(function(w){ return w[0]; }).join("").toUpperCase(); }
+  function paint(hex){
+    document.documentElement.style.setProperty("--club", hex||"#6c3483");
+    document.documentElement.style.setProperty("--club-deep", dark(hex||"#6c3483",.42));
+  }
   function dark(hex,f){ try{ var n=parseInt(hex.slice(1),16),r=(n>>16)&255,g=(n>>8)&255,b=n&255;
     r=Math.round(r*(1-f)); g=Math.round(g*(1-f)); b=Math.round(b*(1-f));
     return "#"+((1<<24)+(r<<16)+(g<<8)+b).toString(16).slice(1); }catch(e){ return "#4a235a"; } }
@@ -113,8 +121,10 @@
     return first.then(function(rows){
       if(!rows||!rows.length) throw new Error("club not found");
       D.club=rows[0]; D.pool=rows[0].pool_id;
-      document.documentElement.style.setProperty("--club", D.club.colour||"#6c3483");
-      document.documentElement.style.setProperty("--club-deep", dark(D.club.colour||"#6c3483",.42));
+      /* the FRONT DOOR is the club's introduction, not one of its boards, so it wears OPR's own colours.
+         A colour only takes over once a place has been chosen: general play is OPR purple by default, a
+         group is its own. That way the colour always tells you where you are, and the door stays neutral. */
+      paint("#6c3483");
       return get("nat_club_parent?club_id=eq."+D.club.id+"&select=group_id");
     }).then(function(kids){
       D.boards=[D.club.id].concat((kids||[]).map(function(k){ return k.group_id; }));
@@ -222,11 +232,15 @@
         +'<div class="nm"><b>'+esc(name)+'</b><span>'+esc(sub)+'</span></div>'
         +'<span class="val"><b style="font-size:17px;color:#cfc6da">\u203a</b></span></div>';
     };
-    var h=pill(D.club.name+" \u2014 general play", D.club.colour||"#6c3483", "Matches outside the groups, open to every member");
-    (D.groups||[]).forEach(function(g){
-      var n=D.matches.filter(function(m){ return Number(m.club_id)===Number(g.id); }).length;
-      h+=pill(g.name, g.colour||"#455a64", n?(n+" recent "+(n===1?"match":"matches")):"its own board, ladder and card");
-    });
+    var h='<div class="kind">The club</div>'
+      + pill(D.club.name+" \u2014 general play", "#6c3483", "Open to every member \u00b7 matches outside the groups");
+    if((D.groups||[]).length){
+      h+='<div class="kind">Groups \u00b7 each runs itself</div>';
+      (D.groups||[]).forEach(function(g){
+        var n=D.matches.filter(function(m){ return Number(m.club_id)===Number(g.id); }).length;
+        h+=pill(g.name, g.colour||"#455a64", n?(n+" recent "+(n===1?"match":"matches")):"its own board, ladder and card");
+      });
+    }
     return '<div class="brk"><h2>Where you play</h2><div class="rows">'+h+'</div></div>';
   }
   function tourBrk(){
@@ -280,9 +294,31 @@
   }
 
   /* ---------- the three doors ---------- */
+  /* everything on a place page is that place's own: its matches, its movers, its pairs */
+  function scoped(){
+    if(PLACE==null) return {matches:D.matches, label:null, colour:"#6c3483"};
+    var id=(PLACE===0)?D.club.id:(((D.groups||[])[0]||{}).id);
+    var nm=(PLACE===0)?(D.club.name+" \u2014 general play"):(((D.groups||[])[0]||{}).name||"Group");
+    var col=(PLACE===0)?"#6c3483":((((D.groups||[])[0]||{}).colour)||"#1f7a8c");
+    return {matches:D.matches.filter(function(m){ return Number(m.club_id)===Number(id); }), label:nm, colour:col};
+  }
   function render(){
     var w=document.getElementById("wrap"), h="";
     document.getElementById("who").textContent=D.club.name+(D.example?" · example data":" · live data");
+    if(PLACE!=null){
+      var sc=scoped(), keep=D.matches;
+      D.matches=sc.matches.length?sc.matches:D.matches; movers();
+      h = '<div class="band"><div class="mark"><i></i>OPR \u00b7 '+esc(D.club.name)+'</div>'
+        + '<h1>'+esc(sc.label)+'</h1>'
+        + '<div class="sub">'+(PLACE===0?"Open to every member \u2014 matches outside the groups":"Its own board, ladder, tournaments and court cards")+'</div>'
+        + '<div class="pulse"><span>'+sc.matches.length+' matches on record</span>'
+        + (D.movers[0]?('<span>biggest move '+(D.movers[0].move>0?"+":"")+Math.round(D.movers[0].move)+'</span>'):'')
+        + '</div></div>'
+        + moversBrk() + formBrk() + tourBrk() + matchesBrk(4)
+        + '<div class="foot">This is the page BEHIND the door \u2014 same shape, this place\u2019s colour and this place\u2019s figures.</div>';
+      D.matches=keep; movers();
+      w.innerHTML=h; return;
+    }
     if(V===1){
       h = band("A glimpse of each thing, and a way in.")
         + placesBrk() + moversBrk() + formBrk() + tourBrk() + matchesBrk(3) + elsewhere();
@@ -296,7 +332,22 @@
     h += '<div class="foot">Preview only \u00b7 nothing here is live \u00b7 real figures from '+esc(D.club.name)+'</div>';
     w.innerHTML=h;
   }
-  window.pick=function(n){ V=n; [1,2,3].forEach(function(i){ document.getElementById("b"+i).className=(i===n?"on":""); }); if(D.club) render(); };
+  /* PLACE: null = the front door; 0 = general play; 1.. = a group. The page after the door is the same
+     "glimpses" shape, in that place's colour, and scoped to that place's matches — which is what keeps a
+     group as autonomous as it is today. */
+  var PLACE=null;
+  window.pick=function(n){ V=n; PLACE=null; paint("#6c3483");
+    [1,2,3].forEach(function(i){ document.getElementById("b"+i).className=(i===n?"on":""); });
+    ["p0","p1"].forEach(function(id){ document.getElementById(id).className=""; });
+    if(D.club) render(); };
+  window.place=function(i){
+    PLACE=i;
+    [1,2,3].forEach(function(k){ document.getElementById("b"+k).className=""; });
+    document.getElementById("p0").className=(i===0?"on":"");
+    document.getElementById("p1").className=(i===1?"on":"");
+    var col=(i===0)?"#6c3483":(((D.groups||[])[0]||{}).colour||"#1f7a8c");
+    paint(col); render();
+  };
   pick(V);
   load();
 })();
