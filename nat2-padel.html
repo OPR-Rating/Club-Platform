@@ -10219,39 +10219,73 @@ async function clRemove(id, label){
     p.style.display=open?"none":"block";
     b.innerHTML=(open?"\u25B8":"\u25BE")+" Chart Snapshot";
   };
-  /* the same tallies plat makes, from this person's own matches */
-  function meChartBlock(me,st,all){
-    if(!st.matches.length) return "";
-    var cW=0,ccW=0,ccL=0,cL=0,oppSum=0,oppN=0;
+  /* n70: SIX AXES THAT SAY SOMETHING ABOUT HOW SOMEBODY PLAYS.
+     Out: "Active" (a count of turning up, and its "club average" is meaningless once a club has groups that
+     play at different rates) and the old "Opp Str" (fixed scale (r-1200)/8, so every strong club pins at the
+     top). Out too: Scrap and Compose, which were close wins and the absence of close losses — the same thing
+     measured twice.
+     In: Clutch (the close matches, one honest number), Opposition (where your opponents sit AMONG YOUR OWN
+     BOARD, as a percentile, so it means the same at any club), Consistency (how steady your per-match moves
+     are — the player who rarely has a disaster), Momentum (which way the last eight weeks have gone).
+     Matches played moves to the figures row, where a count belongs. None of this touches a rating. */
+  function meAxes(me,st,all){
+    var clamp=function(v){ return Math.max(0,Math.min(100,v)); };
     var ratingOf={}; (all.people||[]).forEach(function(p){ if(p.full_name) ratingOf[p.full_name]=(p.current_rating!=null?p.current_rating:p.seed_rating); });
+
+    var cW=0,ccW=0,ccL=0,cL=0,oppSum=0,oppN=0,deltas=[],recent=0,recentN=0;
     st.matches.forEach(function(m){
       var t1=halves(m.t1p1).concat(halves(m.t1p2)), mineIsT1=(t1.indexOf(me)>=0);
       var sf=mineIsT1?(+m.t1_sets||0):(+m.t2_sets||0), sa=mineIsT1?(+m.t2_sets||0):(+m.t1_sets||0);
       var gf=mineIsT1?(+m.t1_games||0):(+m.t2_games||0), ga=mineIsT1?(+m.t2_games||0):(+m.t1_games||0);
       var won=sf>sa, setMargin=Math.abs(sf-sa), gMargin=Math.abs(gf-ga);
-      var close=(setMargin<=1)||(gMargin>0&&gMargin<=3);
+      var close=(setMargin<=1)||(gMargin>0&&gMargin<=3);          // plat's own test, unchanged
       if(won){ if(close) ccW++; else cW++; } else { if(close) ccL++; else cL++; }
-      var opp=mineIsT1?halves(m.t2p1).concat(halves(m.t2p2)):t1.slice();
-      if(mineIsT1) opp=halves(m.t2p1).concat(halves(m.t2p2));
-      else opp=halves(m.t1p1).concat(halves(m.t1p2));
-      opp.forEach(function(n){ var r=ratingOf[n]; if(r!=null){ oppSum+=r; oppN++; } });
+      (mineIsT1?halves(m.t2p1).concat(halves(m.t2p2)):halves(m.t1p1).concat(halves(m.t1p2)))
+        .forEach(function(n){ var r=ratingOf[n]; if(r!=null){ oppSum+=r; oppN++; } });
+      var d=(m.rating_delta!=null?+m.rating_delta:0)*(mineIsT1?1:-1);
+      deltas.push(d);
+      if(ago(m.match_date)<=56){ recent+=d; recentN++; }
     });
-    var totM=cW+ccW+ccL+cL, avgOpp=oppN>0?Math.round(oppSum/oppN):null;
-    /* "Active" is measured against the club's average, exactly as plat does */
-    var counts={};
-    (all.matches||[]).forEach(function(m){
-      [m.t1p1,m.t1p2,m.t2p1,m.t2p2].forEach(function(v){ halves(v).forEach(function(x){ counts[x]=(counts[x]||0)+1; }); }); });
-    var vals=Object.keys(counts).map(function(k){ return counts[k]; }).filter(function(v){ return v>0; });
-    var clubAvgM=vals.length?(vals.reduce(function(a,b){ return a+b; },0)/vals.length):0;
-    var clamp=function(v){ return Math.max(0,Math.min(100,v)); };
-    var setsPlayed=st.setsW+st.setsL, setsWon=st.setsW, matches=st.matches.length;
-    var gdps=st.gdn?(st.gd/st.gdn):0;
-    var axes=[["Win %",setsPlayed>0?clamp(setsWon/setsPlayed*100):0],
-              ["Scrap",totM>0?clamp(ccW/totM*100+(cW/totM*100)*0.4):0],
-              ["Compose",totM>0?clamp(100-(ccL/totM*100)):50],
-              ["Opp Str",avgOpp!=null?clamp((avgOpp-1200)/8):50],
-              ["Active",clubAvgM>0?clamp(matches/clubAvgM*50):clamp(matches*8)],
-              ["Pt Eff",clamp(50+gdps*12)]];
+
+    var setsPlayed=st.setsW+st.setsL;
+    var closeN=ccW+ccL, gdps=st.gdn?(st.gd/st.gdn):0;
+
+    /* OPPOSITION: a percentile among the people on the boards this person plays at — 50 is the middle of
+       their own group, 90 means they are usually up against the strongest there. */
+    var boardIds=Object.keys(st.boards).map(Number);
+    var peers=(all.people||[]).filter(function(p){ return boardIds.indexOf(Number(p.club_id))>=0; })
+      .map(function(p){ return (p.current_rating!=null?p.current_rating:p.seed_rating); })
+      .filter(function(v){ return v!=null; }).sort(function(a,b){ return a-b; });
+    var avgOpp=oppN?(oppSum/oppN):null, oppPct=50;
+    if(avgOpp!=null && peers.length>1){
+      var below=peers.filter(function(v){ return v<avgOpp; }).length;
+      oppPct=clamp(below/(peers.length-1)*100);
+    }
+
+    /* CONSISTENCY: the spread of the per-match moves. A steady player sits high; one who swings wildly does
+       not. 0 spread reads 100; a spread of 25 rating points a match or more reads 0. */
+    var cons=50;
+    if(deltas.length>=3){
+      var mean=deltas.reduce(function(a,b){ return a+b; },0)/deltas.length;
+      var sd=Math.sqrt(deltas.reduce(function(a,b){ return a+(b-mean)*(b-mean); },0)/deltas.length);
+      cons=clamp(100-(sd/25)*100);
+    }
+
+    /* MOMENTUM: the last eight weeks, in rating points. +50 and better reads full; -50 and worse reads nil. */
+    var mom = recentN ? clamp(50+recent) : 50;
+
+    return {axes:[["Win %", setsPlayed>0?clamp(st.setsW/setsPlayed*100):0],
+                  ["Clutch", closeN>0?clamp(ccW/closeN*100):50],
+                  ["Margin", clamp(50+gdps*12)],
+                  ["Opposition", oppPct],
+                  ["Consistency", cons],
+                  ["Momentum", mom]],
+            donut:{cW:cW,ccW:ccW,ccL:ccL,cL:cL}, recentN:recentN, recent:Math.round(recent)};
+  }
+
+  function meChartBlock(me,st,all){
+    if(!st.matches.length) return "";
+    var A=meAxes(me,st,all), d=A.donut;
     var key=function(c,t,v){ return '<span><span style="display:inline-block;width:8px;height:8px;background:'+c+';border-radius:2px"></span> '+t+' '+v+'</span>'; };
     return '<div style="margin:12px 12px 0">'
       +'<button type="button" onclick="window.meChartToggle(this)" style="width:100%;text-align:left;background:#f6f0fa;'
@@ -10260,15 +10294,20 @@ async function clRemove(id, label){
       +'<div id="meChartSnap" style="display:none;background:#f6f0fa;border-radius:12px;padding:14px;margin-top:10px">'
       +'<div style="font-weight:800;color:var(--nhc,#6c3483);font-size:15px;text-align:center;margin-bottom:2px">Overall Performance</div>'
       +'<div style="font-size:10px;color:#6b5a78;text-align:center;margin-bottom:10px;line-height:1.5">'
-      +'<b>Win %</b> games won \u00b7 <b>Scrap</b> winning, esp. close \u00b7 <b>Compose</b> few close losses \u00b7 '
-      +'<b>Opp Str</b> strength of opponents \u00b7 <b>Active</b> matches vs club average \u00b7 <b>Pt Eff</b> point margin per set</div>'
+      +'<b>Win %</b> sets won \u00b7 <b>Clutch</b> the close matches won \u00b7 <b>Margin</b> points per set \u00b7 '
+      +'<b>Opposition</b> how strong your opponents are for your board \u00b7 <b>Consistency</b> how steady your results are \u00b7 '
+      +'<b>Momentum</b> the last eight weeks</div>'
       +'<div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;justify-content:center">'
-      +'<div style="flex:1 1 200px;min-width:180px;text-align:center">'+meRadarSVG(axes)+'</div>'
-      +'<div style="flex:1;min-width:150px;text-align:center">'+meDonutSVG(cW,ccW,ccL,cL)
+      +'<div style="flex:1 1 200px;min-width:180px;text-align:center">'+meRadarSVG(A.axes)+'</div>'
+      +'<div style="flex:1;min-width:150px;text-align:center">'+meDonutSVG(d.cW,d.ccW,d.ccL,d.cL)
       +'<div style="display:flex;flex-wrap:wrap;gap:4px 10px;justify-content:center;margin-top:6px;font-size:10px;color:#5a4636">'
-      + key("#1e8449","Clear win",cW) + key("#7ed957","Close win",ccW)
-      + key("#ffb84d","Close loss",ccL) + key("#c0392b","Clear loss",cL)
-      +'</div></div></div></div></div>';
+      + key("#1e8449","Clear win",d.cW) + key("#7ed957","Close win",d.ccW)
+      + key("#ffb84d","Close loss",d.ccL) + key("#c0392b","Clear loss",d.cL)
+      +'</div></div></div>'
+      +'<div style="font-size:10.5px;color:#6b5a78;text-align:center;margin-top:10px">'
+      + A.recentN + (A.recentN===1?" match":" matches") + ' in the last eight weeks \u00b7 '
+      + (A.recent>0?"+":"") + A.recent + ' rating in that time</div>'
+      +'</div></div>';
   }
   function newMePage(){
     var w=nhWrap(); if(!w) return;
@@ -10305,7 +10344,8 @@ async function clRemove(id, label){
         + nhActions(col,deep);
 
       h+='<div class="five">'
-        + [[st.matches.length,"Matches"],[st.setsW+st.setsL,"Sets"],[st.setsW,"Sets won"],[pct+"%","Win %"],[(gd>0?"+":"")+gd.toFixed(2),"Game diff/set"]]
+        + [[st.matches.length,"Matches"],[st.matches.filter(function(m){ return ago(m.match_date)<=56; }).length,"Last 8 weeks"],
+           [st.setsW+"/"+(st.setsW+st.setsL),"Sets won"],[pct+"%","Win %"],[(gd>0?"+":"")+gd.toFixed(2),"Game diff/set"]]
             .map(function(x){ return '<div class="fig"><b>'+esc(String(x[0]))+'</b><span>'+esc(x[1])+'</span></div>'; }).join("")
         +'</div>'
         + meChartBlock(me,st,all)            /* n69: plat's Chart Snapshot, below the five figures */
