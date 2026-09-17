@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<title>OPR · front door — preview</title>
+<title>OPR · club door</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,600;9..144,700&family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
@@ -87,15 +87,7 @@
 </style>
 </head>
 <body>
-<div class="bar">
-  <b>Front door</b>
-  <button id="b1" class="on" onclick="pick(1)">1 · Front door</button>
-  <button id="p0" onclick="place(0)">2 · General play</button>
-  <button id="p1" onclick="place(1)">2 · A group</button>
-  <span style="width:1px;height:20px;background:#e6e0ee;margin:0 3px"></span>
-  <button id="b3" onclick="pick(3)">door · quiet</button>
-  <span class="who" id="who">loading…</span>
-</div>
+
 <div class="wrap" id="wrap"><div class="load">Reading the club…</div></div>
 
 <script>
@@ -108,6 +100,12 @@
   var D={club:null,boards:[],pool:null,matches:[],movers:[],pairs:[],tour:null,example:false};
 
   function get(p){ return fetch(SB+"/rest/v1/"+p,{headers:{apikey:KEY,Authorization:"Bearer "+KEY}}).then(function(r){ return r.json(); }); }
+  /* THE LINKS ARE REAL. This page is a door onto the app that already exists — every glimpse goes to the
+     screen that owns it, in the right place, so nothing here duplicates the app's own work. */
+  var APP="./nat-padel.html";
+  function boardHref(id){ return APP+"?club="+id; }
+  function ledgerHref(){ return APP+"?club=0&pool="+D.pool+"&nat="+D.club.id; }
+  function hereId(){ return (PLACE==null)?D.club.id:((PLACE===0)?D.club.id:((((D.groups||[])[0])||{}).id||D.club.id)); }
   function esc(s){ return String(s==null?"":s).replace(/[&<>"]/g,function(c){ return {"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;"}[c]; }); }
   function initials(n){ return String(n||"").split(/[\s&]+/).filter(Boolean).slice(0,2).map(function(w){ return w[0]; }).join("").toUpperCase(); }
   function paint(hex){
@@ -220,7 +218,7 @@
         return '<div class="row"><div class="av">'+esc(initials(m.name))+'</div>'
           +'<div class="nm"><b>'+esc(m.name)+'</b><span>'+(m.move>=0?"climbing":"giving ground")+'</span></div>'
           +'<div class="val"><b class="'+cls+'">'+(m.move>0?"+":"")+Math.round(m.move)+'</b><span class="nm">rating</span></div></div>';
-      }).join("")+'</div><a class="more" href="#">See the full ratings and ladders \u2192</a></div>';
+      }).join("")+'</div><a class="more" href="'+boardHref(hereId())+'#ladders">See the full ratings and ladders \u2192</a></div>';
   }
   function formBrk(){
     var hot=D.pairs.filter(function(p){ return (p.sets_played||0)>=3; })
@@ -232,7 +230,7 @@
         return '<div class="row"><div class="av">'+esc(initials(p.name))+'</div>'
           +'<div class="nm"><b>'+esc(p.name)+'</b><span>'+p.pct+'% of sets won</span></div>'
           +'<div class="val"><b class="'+(p.move>=0?"up":"dn")+'">'+(p.move>0?"+":"")+p.move+'</b><span class="nm">since start</span></div></div>';
-      }).join("")+'</div><a class="more" href="#">Every pair \u2192</a></div>';
+      }).join("")+'</div><a class="more" href="'+boardHref(hereId())+'#ladders">Every pair \u2192</a></div>';
   }
   /* WHERE YOU PLAY — the club's own board and its groups, told apart plainly. A member belongs to a group;
      this is the part of the door most people are actually looking for. */
@@ -265,7 +263,7 @@
         }).join("")
       : '<div class="row"><div class="av">\u{1F3C6}</div><div class="nm"><b>'+esc(D.tour.name)+'</b><span>under way \u00b7 no results in yet</span></div></div>';
     return '<div class="brk"><h2>'+esc(D.tour.name)+' \u00b7 standing now '+tag()+'</h2><div class="rows">'+body
-      +'</div><a class="more" href="#">Open the tournament \u2192</a></div>';
+      +'</div><a class="more" href="'+boardHref(D.tour?D.tour.club_id:hereId())+'#tournaments">Open the tournament \u2192</a></div>';
   }
   function matchesBrk(n){
     var ms=D.matches.slice(0,n||3);
@@ -276,12 +274,12 @@
         var board=(D.allClubs||[]).filter(function(c){ return Number(c.id)===Number(m.club_id); })[0];
         return '<div class="row"><div class="nm"><b>'+esc(a)+'</b><span>'+esc(b)+'</span></div>'
           +'<div class="val"><b>'+(m.t1_sets==null?"":m.t1_sets+"\u2013"+m.t2_sets)+'</b><span class="nm" style="color:'+((board&&board.colour)||"#888")+'">'+esc(board?board.name:"")+'</span></div></div>';
-      }).join("")+'</div><a class="more" href="#">All recent matches \u2192</a></div>';
+      }).join("")+'</div><a class="more" href="'+boardHref(hereId())+'">All recent matches \u2192</a></div>';
   }
   function elsewhere(){
     var others=(D.allClubs||[]).filter(function(c){ return Number(c.id)!==Number(D.club.id) && D.boards.indexOf(c.id)<0; }).length;
     if(!others) return "";
-    return '<a class="elsewhere" href="#"><b>See what\u2019s happening elsewhere \u2192</b>'
+    return '<a class="elsewhere" href="'+APP+'?club=0&pool='+D.pool+'"><b>See what\u2019s happening elsewhere \u2192</b>'
       +'<span>Every registered club in one ledger \u2014 one rating each, wherever they play.</span></a>';
   }
   function actions(){
@@ -314,7 +312,80 @@
   /* A LIVE MEMBER, NOT A CATEGORY. The player who has moved most this week, with their real rating, their
      level and the shape of their last dozen matches. It is the thing people actually tap: a face and a story
      rather than a table. Tapping opens their profile. */
+  /* WHAT IS WORTH TELLING THIS WEEK — not always the same face. "Top mover" alone repeats: the strongest
+     player drifts up most weeks and the bracket becomes wallpaper. So several stories are worked out and the
+     most notable one wins: a first-time pairing that came off, an upset over a much stronger pair, a run of
+     wins, somebody who has climbed a whole level, or — failing all of those — the biggest move. Each carries
+     its own line of numbers, so it reads as a story rather than a label. */
+  function stories(){
+    var out=[], wk=D.matches.filter(function(m){ return days(m.match_date)<=7; });
+    var rateOf={}; (D.pairs||[]).forEach(function(p){ rateOf[p.name]=p.current_rating||0; });
+    var seen={}; (D.matches||[]).forEach(function(m){
+      var a=[m.t1p1,m.t1p2].filter(Boolean).join(" & "), b=[m.t2p1,m.t2p2].filter(Boolean).join(" & ");
+      [a,b].forEach(function(n){ if(n) seen[n]=(seen[n]||0)+1; });
+    });
+    wk.forEach(function(m){
+      var a=[m.t1p1,m.t1p2].filter(Boolean).join(" & "), b=[m.t2p1,m.t2p2].filter(Boolean).join(" & ");
+      if(!a||!b) return;
+      var aWon=(m.t1_sets||0)>(m.t2_sets||0), win=aWon?a:b, lose=aWon?b:a;
+      var gap=Math.round((rateOf[lose]||0)-(rateOf[win]||0));
+      if(gap>=40) out.push({kind:"Upset of the week", who:win, line:"beat "+lose+", rated "+gap+" higher",
+                            stat:(m.t1_sets||0)+"\u2013"+(m.t2_sets||0), foot:"sets", weight:gap});
+      if((seen[win]||0)<=1) out.push({kind:"New pairing that worked", who:win, line:"first time together \u2014 and they won",
+                            stat:(m.t1_sets||0)+"\u2013"+(m.t2_sets||0), foot:"sets", weight:55});
+    });
+    /* a run: the same pair winning three or more in a row, most recent first */
+    var runs={};
+    D.matches.forEach(function(m){
+      var a=[m.t1p1,m.t1p2].filter(Boolean).join(" & "), b=[m.t2p1,m.t2p2].filter(Boolean).join(" & ");
+      var aWon=(m.t1_sets||0)>(m.t2_sets||0);
+      [[a,aWon],[b,!aWon]].forEach(function(p){
+        if(!p[0]) return; runs[p[0]]=runs[p[0]]||{n:0,live:true};
+        if(!runs[p[0]].live) return;
+        if(p[1]) runs[p[0]].n++; else runs[p[0]].live=false;
+      });
+    });
+    Object.keys(runs).forEach(function(k){ if(runs[k].n>=3)
+      out.push({kind:"On a run", who:k, line:runs[k].n+" wins in a row and counting", stat:runs[k].n, foot:"straight", weight:40+runs[k].n*6}); });
+    /* a whole level gained */
+    (D.movers||[]).forEach(function(mv){
+      var ind=(D.people||[]).filter(function(p){ return p.full_name===mv.name; })[0];
+      if(!ind) return;
+      var now=Math.floor((ind.current_rating||0)/200*10)/10, was=Math.floor(((ind.current_rating||0)-mv.move)/200*10)/10;
+      if(mv.move>0 && Math.floor(now)>Math.floor(was))
+        out.push({kind:"Reached a new level", who:mv.name, line:"now level "+now.toFixed(1)+", up from "+was.toFixed(1),
+                  stat:"+"+Math.round(mv.move), foot:"this week", weight:70});
+    });
+    if(D.movers[0]) out.push({kind:"Biggest move", who:D.movers[0].name, line:"the week\u2019s largest swing at the club",
+      stat:(D.movers[0].move>0?"+":"")+Math.round(D.movers[0].move), foot:"this week", weight:Math.min(35,Math.abs(D.movers[0].move))});
+    out.sort(function(a,b){ return b.weight-a.weight; });
+    return out[0]||null;
+  }
   function featuredBrk(){
+    var st=stories(); if(!st) return "";
+    var who=st.who, first=String(who).split(" ")[0];
+    var isPair=String(who).indexOf(" & ")>=0;
+    var ind=(D.people||[]).filter(function(p){ return p.full_name===who; })[0];
+    var rating=ind?Math.round(ind.current_rating||ind.seed_rating||0):null;
+    var wk=D.matches.filter(function(m){ return days(m.match_date)<=7; });
+    var played=wk.filter(function(m){ return [m.t1p1,m.t1p2,m.t2p1,m.t2p2].filter(Boolean).join(" | ").indexOf(first)>=0; }).length;
+    var mv=(D.movers||[]).filter(function(x){ return x.name===who; })[0];
+    var line=isPair?"":trail(who);
+    return '<div class="brk"><h2>'+esc(st.kind)+' '+tag()+'</h2>'
+      +'<div class="rows"><div class="row" style="align-items:flex-start">'
+      +'<div class="av" style="width:44px;height:44px;flex:0 0 44px;font-size:14px">'+esc(initials(who))+'</div>'
+      +'<div class="nm"><b style="font-size:16px">'+esc(who)+'</b>'
+      +'<span>'+esc(st.line)+'</span>'
+      +'<span style="margin-top:4px">'
+        +(rating?('rating '+rating+' \u00b7 '):'')
+        +(mv?(((mv.move>0?"+":"")+Math.round(mv.move))+' this week \u00b7 '):'')
+        +played+(played===1?' match':' matches')+' in seven days</span>'
+      +(line?('<svg class="spark" viewBox="0 0 220 34" preserveAspectRatio="none" style="margin-top:6px">'+line+'</svg>'):'')
+      +'</div>'
+      +'<div class="val"><b style="font-size:19px">'+esc(String(st.stat))+'</b><span class="nm">'+esc(st.foot)+'</span></div>'
+      +'</div></div><a class="more" href="'+boardHref(hereId())+'">Open '+esc(isPair?"the pair":first)+'\u2019s profile \u2192</a></div>';
+  }
+  function _unusedFeatured(){
     var m=D.movers[0]; if(!m) return "";
     var ind=(D.people||[]).filter(function(p){ return p.full_name===m.name; })[0];
     var rating=ind?Math.round(ind.current_rating||ind.seed_rating||0):null;
@@ -348,7 +419,7 @@
     return '<path d="'+dpath+'" fill="none" stroke="var(--club)" stroke-width="2" stroke-linejoin="round" opacity=".85"/>';
   }
   function ledgerLink(){
-    return '<a class="elsewhere" href="#" style="border-style:solid;border-color:#e6e0ee"><b>'+esc(D.club.name)+' ledger \u2192</b>'
+    return '<a class="elsewhere" href="'+ledgerHref()+'" style="border-style:solid;border-color:#e6e0ee"><b>'+esc(D.club.name)+' ledger \u2192</b>'
       +'<span>Every match at the club \u2014 general play and every group \u2014 one rating each, profiles, ladders and stats.</span></a>';
   }
   function tiles(){
@@ -375,7 +446,7 @@
   }
   function render(){
     var w=document.getElementById("wrap"), h="";
-    document.getElementById("who").textContent=D.club.name+(D.example?" · example data":" · live data");
+    /* live page: no preview badge */
     if(PLACE!=null){
       var sc=scoped(), keep=D.matches;
       D.matches=sc.matches.length?sc.matches:D.matches; movers();
@@ -418,15 +489,10 @@
     probe.src="./header_bg2.png";
     window.__bannerProbe=probe;
   })();
-  window.pick=function(n){ V=n; PLACE=null; paint("#6c3483");
-    [1,3].forEach(function(i){ var el=document.getElementById("b"+i); if(el) el.className=(i===n?"on":""); });
-    ["p0","p1"].forEach(function(id){ document.getElementById(id).className=""; });
-    if(D.club) render(); };
+  window.pick=function(n){ V=n; PLACE=null; paint("#6c3483"); if(D.club) render(); };
   window.place=function(i){
     PLACE=i;
-    [1,3].forEach(function(k){ var el=document.getElementById("b"+k); if(el) el.className=""; });
-    document.getElementById("p0").className=(i===0?"on":"");
-    document.getElementById("p1").className=(i===1?"on":"");
+
     var col=(i===0)?"#6c3483":(((D.groups||[])[0]||{}).colour||"#1f7a8c");
     paint(col); render();
   };
