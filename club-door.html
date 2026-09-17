@@ -98,7 +98,14 @@
   var KEY="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRqbWJudmlrcmRnbm9tamh0a2dmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODUzOTE0MzEsImV4cCI6MjEwMDk2NzQzMX0.vR8xlVFjV6jXW-pAclGjM74HqmWSKVpsacFjM-dCIJI";
   var q=new URLSearchParams(location.search);
   var want=(q.get("club")||"north-coast").trim();
+  /* THE FLOW, END TO END. This page is the door AND the place page:
+       club-door.html?club=<a club>   the club's front door — where you play, glimpses
+       club-door.html?club=<a group>  that group's page — its colour, its figures, its actions
+     Only the buttons inside a place page leave for nat-padel.html, which is where the score sheet, the
+     ladders and the card actually live. Tapping a group used to jump straight to the old board, which is why
+     the page we had been looking at never appeared. */
   var V=parseInt(q.get("v")||"1",10)||1;
+  var PLACEQ=(q.get("place")||"").toLowerCase();   /* place=general opens the club's own board */
   var D={club:null,boards:[],pool:null,matches:[],movers:[],pairs:[],tour:null,example:false};
 
   function get(p){ return fetch(SB+"/rest/v1/"+p,{headers:{apikey:KEY,Authorization:"Bearer "+KEY}}).then(function(r){ return r.json(); }); }
@@ -128,10 +135,21 @@
                            return id?get("plat_clubs?id=eq."+id+"&select=id,name,colour,pool_id"):[]; });
     return first.then(function(rows){
       if(!rows||!rows.length) throw new Error("club not found");
-      D.club=rows[0]; D.pool=rows[0].pool_id;
-      /* the FRONT DOOR is the club's introduction, not one of its boards, so it wears OPR's own colours.
-         A colour only takes over once a place has been chosen: general play is OPR purple by default, a
-         group is its own. That way the colour always tells you where you are, and the door stays neutral. */
+      var asked=rows[0];
+      /* Was a GROUP asked for? Then the club above it is the context and we open straight onto that group's
+         page. A club opens its front door. Either way the club's boards are what everything is read from. */
+      return get("nat_club_parent?group_id=eq."+asked.id+"&select=club_id").then(function(par){
+        if(par && par.length){
+          D.openGroupId=asked.id;
+          return get("plat_clubs?id=eq."+par[0].club_id+"&select=id,name,colour,pool_id")
+            .then(function(cl){ return (cl&&cl.length)?cl[0]:asked; });
+        }
+        return asked;
+      });
+    }).then(function(club){
+      D.club=club; D.pool=club.pool_id;
+      /* the FRONT DOOR is the club's introduction, not one of its boards, so it wears OPR's own colours;
+         a place page takes the place's colour, set in render(). */
       paint("#6c3483");
       return get("nat_club_parent?club_id=eq."+D.club.id+"&select=group_id");
     }).then(function(kids){
@@ -148,15 +166,18 @@
       D.matches=res[0]||[]; D.pairs=res[1]||[]; D.allClubs=res[3]||[]; D.people=res[4]||[];
       var t=(res[2]||[]).filter(function(x){ return x.active && !x.archived; });
       D.tour=t.length?t[0]:null;
-      /* the groups under this club, in their own colours — a member belongs to a group, not to a board id */
       D.groups=(D.allClubs||[]).filter(function(c){ return D.boards.indexOf(c.id)>=0 && Number(c.id)!==Number(D.club.id); });
-      /* and, if a tournament is running, how it actually stands */
-      /* the standings, when there is a tournament — then finish, always. (An earlier version returned this
-         promise and never got to render: the page sat on "loading" whenever a club had one running.) */
+      /* opened for a group: that group becomes the place, and its colour takes over */
+      if(PLACEQ==="general") PLACE=0;
+      if(D.openGroupId){
+        var idx=D.groups.map(function(g){ return Number(g.id); }).indexOf(Number(D.openGroupId));
+        if(idx>=0){ D.groups.unshift(D.groups.splice(idx,1)[0]); PLACE=1; }
+      }
       var after=function(){
         movers();
         D.example = D.matches.length < 5;
         if(D.example) exampleData();
+        if(PLACE!=null) paint(PLACE===0?"#6c3483":((D.groups[0]||{}).colour||"#1f7a8c"));
         render();
       };
       if(D.tour){
@@ -245,12 +266,12 @@
         +'<span class="val"><b style="font-size:17px;color:#cfc6da">\u203a</b></span></a>';
     };
     var h='<div class="kind">The club</div>'
-      + pill(D.club.name+" \u2014 general play", "#6c3483", "Open to every member \u00b7 matches outside the groups", boardHref(D.club.id));
+      + pill(D.club.name+" \u2014 general play", "#6c3483", "Open to every member \u00b7 matches outside the groups", "?club="+D.club.id+"&place=general");
     if((D.groups||[]).length){
       h+='<div class="kind">Groups \u00b7 each runs itself</div>';
       (D.groups||[]).forEach(function(g){
         var n=D.matches.filter(function(m){ return Number(m.club_id)===Number(g.id); }).length;
-        h+=pill(g.name, g.colour||"#455a64", n?(n+" recent "+(n===1?"match":"matches")):"its own board, ladder and card", boardHref(g.id));
+        h+=pill(g.name, g.colour||"#455a64", n?(n+" recent "+(n===1?"match":"matches")):"its own board, ladder and card", "?club="+g.id);
       });
     }
     return '<div class="brk"><h2>Where you play</h2><div class="rows">'+h+'</div></div>';
@@ -459,7 +480,8 @@
       h = '<div class="band"><div class="mark"><i></i>OPR \u00b7 '+esc(D.club.name)+'</div>'
         + '<h1>'+esc(sc.label)+'</h1>'
         + '<div class="sub">'+(PLACE===0?"Open to every member \u2014 matches outside the groups":"Its own board, ladder, tournaments and court cards")+'</div>'
-        + '<div class="pulse"><span>'+sc.matches.length+' matches on record</span>'
+        + '<div class="pulse"><a href="?club='+D.club.id+'" style="color:#fff;text-decoration:none;background:rgba(255,255,255,.18);border:1px solid rgba(255,255,255,.3);border-radius:99px;padding:5px 11px;font-size:12px;font-weight:700">\u2039 '+esc(D.club.name)+'</a>'
+        + '<span>'+sc.matches.length+' matches on record</span>'
         + (D.movers[0]?('<span>biggest move '+(D.movers[0].move>0?"+":"")+Math.round(D.movers[0].move)+'</span>'):'')
         + '</div></div>'
         /* THE PLACE PAGE is the scoreboard shape: what the place looks like at a glance, then the two things
