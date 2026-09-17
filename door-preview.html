@@ -32,9 +32,17 @@
 
   /* the coloured band — the only strong colour on the page */
   .band{background:linear-gradient(135deg,var(--club),var(--club-deep));color:#fff;padding:16px 16px 20px;position:relative;overflow:hidden}
+  /* the FRONT DOOR wears OPR ITSELF — header_bg2.png, the same banner the app has always used, rather than
+     my approximation of it. The gradient behind is only a stand-in while the image loads, taken from the
+     image's own colours (deep violet #1d0a41 through #5b17ac to azure #047fdd). */
+  .band.opr{background:linear-gradient(105deg,#1d0a41 0%,#44107e 38%,#5b17ac 52%,#228ce0 72%,#047fdd 100%)}
+  .band.opr.img{background-image:url("./header_bg2.png");background-size:cover;background-position:center}
+  .band.opr::after{background:rgba(255,255,255,.08)}
   .band::after{content:"";position:absolute;right:-40px;top:-60px;width:190px;height:190px;border-radius:50%;background:rgba(255,255,255,.07)}
-  .mark{display:inline-flex;align-items:center;gap:7px;font-size:12px;font-weight:800;letter-spacing:.14em;text-transform:uppercase;opacity:.92}
-  .mark i{width:8px;height:8px;border-radius:50%;background:var(--ball);display:block;box-shadow:0 0 8px rgba(216,234,51,.7)}
+  .mark{display:inline-flex;align-items:center;gap:9px;font-size:11.5px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;opacity:.95}
+  .mark .logo{font-family:Fraunces,Georgia,serif;font-weight:700;font-size:19px;letter-spacing:.06em;text-transform:none;
+    background:rgba(255,255,255,.14);border:1px solid rgba(255,255,255,.34);border-radius:9px;padding:3px 9px;line-height:1.1}
+  .mark i{width:7px;height:7px;border-radius:50%;background:var(--ball);display:block;box-shadow:0 0 8px rgba(216,234,51,.75)}
   .band h1{font-family:Fraunces,Georgia,serif;font-size:27px;line-height:1.08;margin:10px 0 3px;letter-spacing:-.2px}
   .band .sub{font-size:12.5px;opacity:.85}
   .band .pulse{display:flex;gap:7px;flex-wrap:wrap;margin-top:13px}
@@ -80,12 +88,11 @@
 <body>
 <div class="bar">
   <b>Front door</b>
-  <button id="b1" class="on" onclick="pick(1)">Front door</button>
-  <button id="b2" onclick="pick(2)">Scoreboard door</button>
-  <button id="b3" onclick="pick(3)">Quiet door</button>
+  <button id="b1" class="on" onclick="pick(1)">1 · Front door</button>
+  <button id="p0" onclick="place(0)">2 · General play</button>
+  <button id="p1" onclick="place(1)">2 · A group</button>
   <span style="width:1px;height:20px;background:#e6e0ee;margin:0 3px"></span>
-  <button id="p0" onclick="place(0)">→ General play</button>
-  <button id="p1" onclick="place(1)">→ A group</button>
+  <button id="b3" onclick="pick(3)">door · quiet</button>
   <span class="who" id="who">loading…</span>
 </div>
 <div class="wrap" id="wrap"><div class="load">Reading the club…</div></div>
@@ -196,7 +203,7 @@
     if(D.movers[0]) pulse.push("biggest move "+(D.movers[0].move>0?"+":"")+Math.round(D.movers[0].move)+" · "+D.movers[0].name.split(" ")[0]);
     if(D.tour) pulse.push(D.tour.name+" running");
     if(!pulse.length) pulse.push("waiting on the first match");
-    return '<div class="band"><div class="mark"><i></i>OPR \u00b7 Open Padel Ratings</div>'
+    return '<div class="band opr img"><div class="mark"><span class="logo">OPR</span><i></i>Open Padel Ratings</div>'
       +'<h1>'+esc(D.club.name)+'</h1>'
       +'<div class="sub">'+esc(kicker)+'</div>'
       +'<div class="pulse">'+pulse.map(function(p){ return '<span>'+esc(p)+'</span>'; }).join("")+'</div></div>';
@@ -281,12 +288,26 @@
     return '<div class="doit"><button class="primary">'+ic.score+'Enter a score</button>'
       +'<button>'+ic.lad+'Ratings</button><button>'+ic.cup+'Tournaments</button></div>';
   }
+  /* the two things people come to do, and the way to the club's whole record */
+  function placeActions(){
+    var ic={score:'<svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>',
+            card:'<svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="1.6"/><path d="M3 12h18M12 4v16"/></svg>',
+            cup:'<svg viewBox="0 0 24 24"><path d="M7 4h10v4a5 5 0 0 1-10 0V4Z"/><path d="M17 5h3v2a3 3 0 0 1-3 3M7 5H4v2a3 3 0 0 0 3 3"/><path d="M12 13v4M9 21h6"/></svg>'};
+    return '<div class="doit"><button class="primary">'+ic.score+'Enter a score</button>'
+      +'<button>'+ic.card+'Court card</button>'
+      +'<button>'+ic.cup+'Tournaments</button></div>';
+  }
+  function ledgerLink(){
+    return '<a class="elsewhere" href="#" style="border-style:solid;border-color:#e6e0ee"><b>'+esc(D.club.name)+' ledger \u2192</b>'
+      +'<span>Every match at the club \u2014 general play and every group \u2014 one rating each, profiles, ladders and stats.</span></a>';
+  }
   function tiles(){
+    var where=(PLACE==null)?D.club.name:(scoped().label||D.club.name);
     var played7=D.matches.filter(function(m){ return days(m.match_date)<=7; }).length;
     var people={}; D.matches.forEach(function(m){ [m.t1p1,m.t1p2,m.t2p1,m.t2p2].forEach(function(v){ if(v) String(v).split(" & ").forEach(function(x){ people[x.trim()]=1; }); }); });
     var top=D.pairs[0];
     return '<div class="tiles">'
-      +'<div class="tile"><div class="k">This week</div><div class="v">'+played7+'</div><div class="n">matches at '+esc(D.club.name)+'</div></div>'
+      +'<div class="tile"><div class="k">This week</div><div class="v">'+played7+'</div><div class="n">matches at '+esc(where)+'</div></div>'
       +'<div class="tile"><div class="k">Playing</div><div class="v">'+Object.keys(people).length+'</div><div class="n">members with a match on record</div></div>'
       +'<div class="tile"><div class="k">Top pair</div><div class="v" style="font-size:15px;line-height:1.25">'+esc(top?top.name:"\u2014")+'</div><div class="n">'+(top?Math.round(top.current_rating):"")+'</div></div>'
       +'<div class="tile"><div class="k">Biggest move</div><div class="v '+(D.movers[0]&&D.movers[0].move<0?"dn":"up")+'">'+(D.movers[0]?((D.movers[0].move>0?"+":"")+Math.round(D.movers[0].move)):"\u2014")+'</div><div class="n">'+esc(D.movers[0]?D.movers[0].name:"")+'</div></div>'
@@ -314,8 +335,11 @@
         + '<div class="pulse"><span>'+sc.matches.length+' matches on record</span>'
         + (D.movers[0]?('<span>biggest move '+(D.movers[0].move>0?"+":"")+Math.round(D.movers[0].move)+'</span>'):'')
         + '</div></div>'
-        + moversBrk() + formBrk() + tourBrk() + matchesBrk(4)
-        + '<div class="foot">This is the page BEHIND the door \u2014 same shape, this place\u2019s colour and this place\u2019s figures.</div>';
+        /* THE PLACE PAGE is the scoreboard shape: what the place looks like at a glance, then the two things
+           you came to do, then each glimpse with its way into the full table. Ratings and ladders are not a
+           tile here — the Movers bracket IS the way in, which is the point of a glimpse. */
+        + tiles() + placeActions() + moversBrk() + formBrk() + tourBrk() + matchesBrk(4) + ledgerLink()
+        + '<div class="foot">Behind the door \u2014 this place\u2019s colour, this place\u2019s figures.</div>';
       D.matches=keep; movers();
       w.innerHTML=h; return;
     }
@@ -336,13 +360,21 @@
      "glimpses" shape, in that place's colour, and scoped to that place's matches — which is what keeps a
      group as autonomous as it is today. */
   var PLACE=null;
+  /* the banner is a real file on the site; if it is not beside this preview, fall back to the gradient
+     rather than showing a broken band */
+  (function(){
+    var probe=new Image();
+    probe.onerror=function(){ document.querySelectorAll(".band.opr.img").forEach(function(el){ el.classList.remove("img"); }); };
+    probe.src="./header_bg2.png";
+    window.__bannerProbe=probe;
+  })();
   window.pick=function(n){ V=n; PLACE=null; paint("#6c3483");
-    [1,2,3].forEach(function(i){ document.getElementById("b"+i).className=(i===n?"on":""); });
+    [1,3].forEach(function(i){ var el=document.getElementById("b"+i); if(el) el.className=(i===n?"on":""); });
     ["p0","p1"].forEach(function(id){ document.getElementById(id).className=""; });
     if(D.club) render(); };
   window.place=function(i){
     PLACE=i;
-    [1,2,3].forEach(function(k){ document.getElementById("b"+k).className=""; });
+    [1,3].forEach(function(k){ var el=document.getElementById("b"+k); if(el) el.className=""; });
     document.getElementById("p0").className=(i===0?"on":"");
     document.getElementById("p1").className=(i===1?"on":"");
     var col=(i===0)?"#6c3483":(((D.groups||[])[0]||{}).colour||"#1f7a8c");
