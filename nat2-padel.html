@@ -9532,10 +9532,25 @@ async function clRemove(id, label){
 
   /* n52: a mover carries the colour of the board they were playing at, not the page's colour — on a club
      door the movers come from several groups at once, and the disc is the only thing that can say which. */
+  /* n62: A QUIET WEEK IS NOT AN EMPTY PAGE. Everything here looked at the last seven days, so a club that
+     last played ten days ago showed no movers, no charts and no upset — which is exactly what North Coast
+     looked like beside Kloof. The window now stretches to cover the most recent matches that exist, and the
+     headings say which period they are describing. */
+  var NHWIN=7;
+  function nhWindow(ms){
+    var recent=(ms||[]).filter(function(m){ return ago(m.match_date)<=7; });
+    if(recent.length>=2){ NHWIN=7; return 7; }
+    var d=(ms||[]).map(function(m){ return ago(m.match_date); }).sort(function(a,b){ return a-b; });
+    if(!d.length){ NHWIN=7; return 7; }
+    NHWIN=Math.max(7,Math.ceil(d[Math.min(3,d.length-1)])+1);
+    return NHWIN;
+  }
+  function nhWhen(){ return (NHWIN<=7)?"this week":("last "+NHWIN+" days"); }
   function nhMovers(ms){
     var sum={}, board={};
+    nhWindow(ms);
     ms.forEach(function(m){
-      if(ago(m.match_date)>7) return;
+      if(ago(m.match_date)>NHWIN) return;
       var d=(m.rating_delta!=null)?+m.rating_delta:0; if(!d) return;
       [[m.t1p1,d],[m.t1p2,d],[m.t2p1,-d],[m.t2p2,-d]].forEach(function(p){
         if(!p[0]) return; String(p[0]).split(" & ").forEach(function(x){ x=x.trim(); if(!x) return;
@@ -9580,9 +9595,9 @@ async function clRemove(id, label){
      +/* n60: the page was white cards and grey type, which read as unfinished rather than calm. Each bracket now
    carries a thin edge in the board's colour and a tinted heading strip, so the page belongs to the group you
    are standing in. The tint is the same colour at 7%, so it never fights the numbers. */
-      "#nh .brk{background:#fff;border:1px solid #e6e0ee;border-left:4px solid var(--nhc,#6c3483);border-radius:14px;margin:12px 12px 0;overflow:hidden;box-shadow:0 1px 3px rgba(26,16,48,.05)}"
+      "#nh .brk{background:#fff;border:1px solid #e6e0ee;border-left:4px solid var(--nhc,#6c3483);border-right:4px solid var(--nhc,#6c3483);border-radius:14px;margin:12px 12px 0;overflow:hidden;box-shadow:0 1px 3px rgba(26,16,48,.05)}"
      +"#nh .brk h2{background:var(--nhtint,rgba(108,52,131,.07));border-bottom:1px solid #efeaf5;color:var(--nhdeep,#4a4256)}"
-     +"#nh .tile{border-left:4px solid var(--nhc,#6c3483)}"
+     
      +"#nh .tile .k{color:var(--nhdeep,#6f6780)}"
      +"#nh .more{color:var(--nhc,#6c3483);background:var(--nhtint,#fcfbfd)}"
      +"#nh .brk h2{font-size:12.5px;letter-spacing:.08em;text-transform:uppercase;font-weight:800;margin:0;padding:11px 14px 10px}"
@@ -9599,7 +9614,7 @@ async function clRemove(id, label){
      +"#nh .doit button.primary{color:#fff;border-color:transparent}"
      +"#nh .doit svg{width:22px;height:22px;stroke:currentColor;fill:none;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round}"
      +"#nh .tiles{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:12px 12px 0}"
-     +"#nh .tile{background:#fff;border:1px solid #e6e0ee;border-radius:16px;padding:13px}"
+     +"#nh .tile{background:#fff;border:1px solid #e6e0ee;border-left:4px solid var(--nhc,#6c3483);border-right:4px solid var(--nhc,#6c3483);border-radius:14px;padding:13px}"
      +"#nh .tile .k{font-size:10.5px;letter-spacing:.1em;text-transform:uppercase;color:#6f6780;font-weight:800}"
      +"#nh .tile .v{font-size:23px;font-weight:800;margin-top:5px}#nh .tile .n{font-size:11.5px;color:#6f6780;margin-top:2px}"
      +"#nh .kind{font-size:11px;letter-spacing:.09em;text-transform:uppercase;color:#8a8196;font-weight:800;padding:9px 8px 2px}"
@@ -9649,14 +9664,14 @@ async function clRemove(id, label){
   }
   function nhMoversBrk(d,ink,scope){
     var mv=nhMovers(d.matches); if(!mv.length) return "";
-    return '<div class="brk"><h2 style="display:flex;align-items:center;gap:8px">Movers this week '+nhTag()+'</h2><div class="rows">'
+    return '<div class="brk"><h2 style="display:flex;align-items:center;gap:8px">Movers '+nhWhen()+' '+nhTag()+'</h2><div class="rows">'
       + mv.map(function(m){
           /* the disc wears the colour of the board where the move happened — never the page's colour */
           var col=m.club?clubPal(m.club)[0]:ink, where=m.club?nhBoardName(m.club):"";
           return '<div class="row">'
           +'<span class="av" style="background:'+col+'">'+esc(inits(m.name))+'</span>'
           +'<span class="nm"><b>'+esc(m.name)+'</b><span>'+(m.move>=0?"climbing":"giving ground")+(where?(" \u00b7 "+esc(where)):"")+'</span></span>'
-          +'<span class="val"><b class="'+(m.move>=0?"up":"dn")+'">'+(m.move>0?"\u25b2 +":"\u25bc ")+Math.round(m.move)+'</b><span>this week</span></span></div>'; }).join("")
+          +'<span class="val"><b class="'+(m.move>=0?"up":"dn")+'">'+(m.move>0?"\u25b2 +":"\u25bc ")+Math.round(m.move)+'</b><span>'+nhWhen()+'</span></span></div>'; }).join("")
       +'</div><button class="more" onclick="window.nhGo(\'profiles\')">See player profiles here \u2192</button></div>';
   }
   function nhFormBrk(d,ink,scope){
@@ -9730,7 +9745,7 @@ async function clRemove(id, label){
     var ms=d.matches||[], all=nhMovers(ms);
     var up=all.filter(function(x){ return x.move>0; })[0] || null;
     var dn=all.filter(function(x){ return x.move<0; })[0] || null;
-    return nhOneChart(up,ms,ink,"Biggest climb this week") + nhOneChart(dn,ms,ink,"Steepest fall this week");
+    return nhOneChart(up,ms,ink,"Biggest climb "+nhWhen()) + nhOneChart(dn,ms,ink,"Steepest fall "+nhWhen());
   }
   /* a match row goes nowhere: the triangle opens the SET SCORES, green for the set won, red for the one lost */
   W.nhSets=function(id){
@@ -9769,9 +9784,9 @@ async function clRemove(id, label){
      today is not exactly what it was on the night, and the alternative is storing ratings per match. */
   function nhUpset(d){
     var rate={}; (d.pairs||[]).forEach(function(p){ rate[p.name]=p.current_rating||0; });
-    var best=null;
+    var best=null; nhWindow(d.matches||[]);
     (d.matches||[]).forEach(function(m){
-      if(ago(m.match_date)>7) return;
+      if(ago(m.match_date)>NHWIN) return;
       var a=[m.t1p1,m.t1p2].filter(Boolean).join(" & "), b=[m.t2p1,m.t2p2].filter(Boolean).join(" & ");
       if(!a||!b||rate[a]==null||rate[b]==null) return;
       var aWon=(+m.t1_sets||0)>(+m.t2_sets||0), win=aWon?a:b, lose=aWon?b:a;
@@ -9782,8 +9797,9 @@ async function clRemove(id, label){
   }
   /* n59: what came off the court cards this week, kept apart so an organiser sees the evening in one place */
   function nhCardBrk(d){
-    var ms=(d.matches||[]).filter(function(m){ return ago(m.match_date)<=7 && /court|card|session/i.test(String(m.event||"")); });
-    var head='<div class="brk"><h2 style="display:flex;align-items:center;gap:8px">This week\u2019s card matches '+nhTag()+'</h2>';
+    nhWindow(d.matches||[]);
+    var ms=(d.matches||[]).filter(function(m){ return ago(m.match_date)<=NHWIN && /court|card|session/i.test(String(m.event||"")); });
+    var head='<div class="brk"><h2 style="display:flex;align-items:center;gap:8px">Card matches \u00b7 '+nhWhen()+' '+nhTag()+'</h2>';
     if(!ms.length) return head+'<div style="padding:8px 14px 14px;font-size:12.5px;color:#5f5770;line-height:1.5">'
       +'Nothing off a court card this week. Matches entered from a card show here, so an evening\u2019s play reads in one place.</div></div>';
     return head+'<div class="rows">'
@@ -9971,7 +9987,7 @@ async function clRemove(id, label){
     nhCSS(); nhInk("#6c3483"); nhHeaderSkin("#3a1d6e","#1d0a41");
     var C=W.PLAT.cid, kids=kidsOf(C).sort(function(a,b){ return String(a.name).localeCompare(String(b.name)); });
     nhFetch().then(function(d){
-      var wk=(d.matches||[]).filter(function(m){ return ago(m.match_date)<=7; }).length;
+      nhWindow(d.matches||[]); var wk=(d.matches||[]).filter(function(m){ return ago(m.match_date)<=NHWIN; }).length;
       var mv=nhMovers(d.matches||[]);
       var row=function(name,col,sub,href){
         return '<button class="row" onclick="location.href=\''+href+'\'">'
@@ -9979,8 +9995,12 @@ async function clRemove(id, label){
           +'<span class="nm"><b>'+esc(name)+'</b><span>'+esc(sub)+'</span></span>'
           +'<span class="val"><b style="color:#cfc6da">\u203a</b></span></button>';
       };
+      /* n63: the club's own row sits on a light shade of its colour, so the eye separates "the club" from
+         "its groups" without another heading doing the work. */
       var places='<div class="kind">The club</div>'
-        + row(W.PLAT.name+" \u2014 general play", "#6c3483", "Open to every member \u00b7 matches outside the groups", PAGE+"?club="+C+"&board=1");
+        + '<div style="background:var(--nhtint,rgba(108,52,131,.07));border:1px solid rgba(108,52,131,.16);border-radius:12px;margin:2px 4px 4px;padding:2px 4px">'
+        + row(W.PLAT.name+" \u2014 general play", "#6c3483", "Open to every member \u00b7 matches outside the groups", PAGE+"?club="+C+"&board=1")
+        + '</div>';
       if(kids.length){
         places+='<div class="kind">Groups \u00b7 each runs itself</div>';
         kids.forEach(function(g){
@@ -10020,7 +10040,7 @@ async function clRemove(id, label){
              people:all.people,tour:all.tour};
       NHEG=false;
       if(mine.length<5){ d=nhExample(); mine=d.matches; }   /* n52 */
-      var wk=mine.filter(function(m){ return ago(m.match_date)<=7; }).length;
+      nhWindow(mine); var wk=mine.filter(function(m){ return ago(m.match_date)<=NHWIN; }).length;
       var mv=nhMovers(mine), top=(d.pairs||[])[0];
       var people={}; mine.forEach(function(m){ [m.t1p1,m.t1p2,m.t2p1,m.t2p2].forEach(function(v){ if(v) String(v).split(" & ").forEach(function(x){ people[x.trim()]=1; }); }); });
       w.innerHTML =
@@ -10029,19 +10049,19 @@ async function clRemove(id, label){
         + '<h1>'+esc(W.PLAT.name||"")+'</h1>'
         + '<div class="sub">'+(W.PLAT.parentId?"Its own board, ladder, tournaments and court cards":"Open to every member \u2014 matches outside the groups")+'</div>'
         + '<div class="pulse">'+(club?('<a href="'+PAGE+'?club='+club.id+'">\u2039 '+esc(club.name)+'</a>'):'')
-        + '<span>'+wk+(wk===1?' match':' matches')+' this week</span>'
+        + '<span>'+wk+(wk===1?' match':' matches')+' '+nhWhen()+'</span>'
         /* n58: no mover named in the band — it repeated the same person on every screen. A count instead. */
         + '<span>'+((d.matches||[]).length)+' on record</span>'+'</div></div>'
         /* n52: four tiles, as the place page had before — top pair and biggest move are the two people read */
         + '<div class="tiles">'
-        + '<div class="tile"><div class="k">This week</div><div class="v">'+wk+'</div><div class="n">matches here</div></div>'
+        + '<div class="tile"><div class="k">'+esc(nhWhen().replace("this week","This week"))+'</div><div class="v">'+wk+'</div><div class="n">matches here</div></div>'
         + '<div class="tile"><div class="k">Playing</div><div class="v">'+Object.keys(people).length+'</div><div class="n">with a match on record</div></div>'
         + '<div class="tile"><div class="k">Top pair</div><div class="v" style="font-size:15px;line-height:1.25">'+esc(top?top.name:"\u2014")+'</div><div class="n">'+(top?Math.round(top.current_rating):"")+'</div></div>'
         /* n59: the move was already said twice on this page; the upset is a different story each week */
         + (function(){ var u=nhUpset(d);
             return '<div class="tile"><div class="k">Biggest upset</div>'
               +'<div class="v" style="font-size:15px;line-height:1.25">'+esc(u?u.who:"\u2014")+'</div>'
-              +'<div class="n">'+esc(u?("beat a pair rated "+u.gap+" higher"):"none this week")+'</div></div>'; })()
+              +'<div class="n">'+esc(u?("beat a pair rated "+u.gap+" higher"):("none "+nhWhen()))+'</div></div>'; })()
         + '</div>'
         + nhActions(ink,deep)
         + '<div class="cols">'+nhCharts(d,ink)+nhMoversBrk(d,ink,"board") + nhFormBrk(d,ink,"board") + nhTourBrk(d) + nhMatchesBrk(d,5,"board") + nhCardBrk(d)+'</div>'
