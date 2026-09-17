@@ -9595,11 +9595,9 @@ async function clRemove(id, label){
      +/* n60: the page was white cards and grey type, which read as unfinished rather than calm. Each bracket now
    carries a thin edge in the board's colour and a tinted heading strip, so the page belongs to the group you
    are standing in. The tint is the same colour at 7%, so it never fights the numbers. */
-      "#nh .brk{background:#fff;border:1px solid #e6e0ee;border-left:4px solid var(--nhc,#6c3483);border-right:4px solid var(--nhc,#6c3483);border-radius:14px;margin:12px 12px 0;overflow:hidden;box-shadow:0 1px 3px rgba(26,16,48,.05)}"
-     +"#nh .brk h2{background:var(--nhtint,rgba(108,52,131,.07));border-bottom:1px solid #efeaf5;color:var(--nhdeep,#4a4256)}"
-     
-     +"#nh .tile .k{color:var(--nhdeep,#6f6780)}"
-     +"#nh .more{color:var(--nhc,#6c3483);background:var(--nhtint,#fcfbfd)}"
+      "#nh .brk{background:#fff;border:1px solid #e6e0ee;border-radius:14px;margin:12px 12px 0;overflow:hidden;box-shadow:0 1px 3px rgba(26,16,48,.05)}"
+     +"#nh .brk h2{color:#4a4256}"
+     +"#nh .more{color:var(--nhc,#6c3483);background:#fcfbfd}"
      +"#nh .brk h2{font-size:12.5px;letter-spacing:.08em;text-transform:uppercase;font-weight:800;margin:0;padding:11px 14px 10px}"
      +"#nh .rows{padding:4px 6px}"
      +"#nh .row{display:flex;align-items:center;gap:11px;padding:9px 8px;width:100%;background:none;border:none;text-align:left;font:inherit;color:inherit;cursor:pointer}"
@@ -9614,7 +9612,7 @@ async function clRemove(id, label){
      +"#nh .doit button.primary{color:#fff;border-color:transparent}"
      +"#nh .doit svg{width:22px;height:22px;stroke:currentColor;fill:none;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round}"
      +"#nh .tiles{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:12px 12px 0}"
-     +"#nh .tile{background:#fff;border:1px solid #e6e0ee;border-left:4px solid var(--nhc,#6c3483);border-right:4px solid var(--nhc,#6c3483);border-radius:14px;padding:13px}"
+     +"#nh .tile{background:#fff;border:1px solid #e6e0ee;border-radius:14px;padding:13px}"
      +"#nh .tile .k{font-size:10.5px;letter-spacing:.1em;text-transform:uppercase;color:#6f6780;font-weight:800}"
      +"#nh .tile .v{font-size:23px;font-weight:800;margin-top:5px}#nh .tile .n{font-size:11.5px;color:#6f6780;margin-top:2px}"
      +"#nh .kind{font-size:11px;letter-spacing:.09em;text-transform:uppercase;color:#8a8196;font-weight:800;padding:9px 8px 2px}"
@@ -9993,7 +9991,10 @@ async function clRemove(id, label){
         return '<button class="row" onclick="location.href=\''+href+'\'">'
           +'<span class="av" style="background:'+col+'">'+esc(inits(name))+'</span>'
           +'<span class="nm"><b>'+esc(name)+'</b><span>'+esc(sub)+'</span></span>'
-          +'<span class="val"><b style="color:#cfc6da">\u203a</b></span></button>';
+          /* n64: the little \u203a was too quiet to read as "tap here". A round chevron in the board's colour
+           says it plainly, without shouting. */
+        +'<span class="val"><span style="display:inline-grid;place-items:center;width:28px;height:28px;border-radius:50%;'
+        +'background:'+col+';color:#fff;font-size:15px;font-weight:800;line-height:1">\u203a</span></span></button>';
       };
       /* n63: the club's own row sits on a light shade of its colour, so the eye separates "the club" from
          "its groups" without another heading doing the work. */
