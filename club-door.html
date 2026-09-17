@@ -53,6 +53,7 @@
   .brk > h2 .tag{margin-left:auto;font-size:10.5px;letter-spacing:.04em;text-transform:none;color:#8a6d3b;background:#fdf6e3;border:1px solid #f0e2c0;border-radius:99px;padding:2px 8px;font-weight:700}
   .rows{padding:6px 6px 4px}
   .row{display:flex;align-items:center;gap:11px;padding:9px 8px;border-radius:12px}
+  a.row{display:flex}
   .row + .row{border-top:1px solid var(--line)}
   .av{width:34px;height:34px;border-radius:50%;flex:0 0 34px;display:grid;place-items:center;color:#fff;font-size:12.5px;font-weight:800;background:var(--club)}
   .nm{flex:1;min-width:0}
@@ -74,8 +75,9 @@
   .tile .n{font-size:11.5px;color:var(--mute);margin-top:2px;line-height:1.35}
   .doit{display:flex;gap:9px;margin:12px 0 0;padding:0 12px 2px;overflow-x:auto;scrollbar-width:none}
   .doit::-webkit-scrollbar{display:none}
-  .doit button{flex:0 0 104px;border:none;border-radius:14px;padding:13px 6px;background:#fff;border:1px solid var(--line);font:inherit;font-weight:700;font-size:12.5px;cursor:pointer;color:var(--ink);display:flex;flex-direction:column;align-items:center;gap:7px;text-align:center;line-height:1.25}
-  .doit button.primary{background:linear-gradient(135deg,var(--club),var(--club-deep));color:#fff;border-color:transparent}
+  .doit a{text-decoration:none}
+  .doit a,.doit button{flex:0 0 104px;border:none;border-radius:14px;padding:13px 6px;background:#fff;border:1px solid var(--line);font:inherit;font-weight:700;font-size:12.5px;cursor:pointer;color:var(--ink);display:flex;flex-direction:column;align-items:center;gap:7px;text-align:center;line-height:1.25}
+  .doit a.primary,.doit button.primary{background:linear-gradient(135deg,var(--club),var(--club-deep));color:#fff;border-color:transparent}
   .doit svg{width:22px;height:22px;stroke:currentColor;fill:none;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round}
 
   .elsewhere{display:block;margin:14px 12px 0;padding:12px 14px;border:1px dashed #cfc6da;border-radius:14px;background:#fff;text-decoration:none;color:inherit}
@@ -218,7 +220,7 @@
         return '<div class="row"><div class="av">'+esc(initials(m.name))+'</div>'
           +'<div class="nm"><b>'+esc(m.name)+'</b><span>'+(m.move>=0?"climbing":"giving ground")+'</span></div>'
           +'<div class="val"><b class="'+cls+'">'+(m.move>0?"+":"")+Math.round(m.move)+'</b><span class="nm">rating</span></div></div>';
-      }).join("")+'</div><a class="more" href="'+boardHref(hereId())+'#ladders">See the full ratings and ladders \u2192</a></div>';
+      }).join("")+'</div><a class="more" href="'+boardHref(hereId())+'&go=ladders">See the full ratings and ladders \u2192</a></div>';
   }
   function formBrk(){
     var hot=D.pairs.filter(function(p){ return (p.sets_played||0)>=3; })
@@ -230,23 +232,25 @@
         return '<div class="row"><div class="av">'+esc(initials(p.name))+'</div>'
           +'<div class="nm"><b>'+esc(p.name)+'</b><span>'+p.pct+'% of sets won</span></div>'
           +'<div class="val"><b class="'+(p.move>=0?"up":"dn")+'">'+(p.move>0?"+":"")+p.move+'</b><span class="nm">since start</span></div></div>';
-      }).join("")+'</div><a class="more" href="'+boardHref(hereId())+'#ladders">Every pair \u2192</a></div>';
+      }).join("")+'</div><a class="more" href="'+boardHref(hereId())+'&go=ladder&t=mens">Every pair \u2192</a></div>';
   }
   /* WHERE YOU PLAY — the club's own board and its groups, told apart plainly. A member belongs to a group;
      this is the part of the door most people are actually looking for. */
   function placesBrk(){
-    var pill=function(name,col,sub){
-      return '<div class="row"><span class="av" style="background:'+esc(col)+'">'+esc(initials(name))+'</span>'
+    /* these are the way IN, so they are links — not decoration. Each opens that board. */
+    var pill=function(name,col,sub,href){
+      return '<a class="row" href="'+href+'" style="text-decoration:none;color:inherit">'
+        +'<span class="av" style="background:'+esc(col)+'">'+esc(initials(name))+'</span>'
         +'<div class="nm"><b>'+esc(name)+'</b><span>'+esc(sub)+'</span></div>'
-        +'<span class="val"><b style="font-size:17px;color:#cfc6da">\u203a</b></span></div>';
+        +'<span class="val"><b style="font-size:17px;color:#cfc6da">\u203a</b></span></a>';
     };
     var h='<div class="kind">The club</div>'
-      + pill(D.club.name+" \u2014 general play", "#6c3483", "Open to every member \u00b7 matches outside the groups");
+      + pill(D.club.name+" \u2014 general play", "#6c3483", "Open to every member \u00b7 matches outside the groups", boardHref(D.club.id));
     if((D.groups||[]).length){
       h+='<div class="kind">Groups \u00b7 each runs itself</div>';
       (D.groups||[]).forEach(function(g){
         var n=D.matches.filter(function(m){ return Number(m.club_id)===Number(g.id); }).length;
-        h+=pill(g.name, g.colour||"#455a64", n?(n+" recent "+(n===1?"match":"matches")):"its own board, ladder and card");
+        h+=pill(g.name, g.colour||"#455a64", n?(n+" recent "+(n===1?"match":"matches")):"its own board, ladder and card", boardHref(g.id));
       });
     }
     return '<div class="brk"><h2>Where you play</h2><div class="rows">'+h+'</div></div>';
@@ -263,7 +267,7 @@
         }).join("")
       : '<div class="row"><div class="av">\u{1F3C6}</div><div class="nm"><b>'+esc(D.tour.name)+'</b><span>under way \u00b7 no results in yet</span></div></div>';
     return '<div class="brk"><h2>'+esc(D.tour.name)+' \u00b7 standing now '+tag()+'</h2><div class="rows">'+body
-      +'</div><a class="more" href="'+boardHref(D.tour?D.tour.club_id:hereId())+'#tournaments">Open the tournament \u2192</a></div>';
+      +'</div><a class="more" href="'+boardHref(D.tour?D.tour.club_id:hereId())+'&go=tournaments">Open the tournament \u2192</a></div>';
   }
   function matchesBrk(n){
     var ms=D.matches.slice(0,n||3);
@@ -300,13 +304,15 @@
             cup:'<svg viewBox="0 0 24 24"><path d="M7 4h10v4a5 5 0 0 1-10 0V4Z"/><path d="M17 5h3v2a3 3 0 0 1-3 3M7 5H4v2a3 3 0 0 0 3 3"/><path d="M12 13v4M9 21h6"/></svg>',
             per:'<svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="3.4"/><path d="M5 20c1.2-3.4 4-5 7-5s5.8 1.6 7 5"/></svg>',
             led:'<svg viewBox="0 0 24 24"><path d="M4 5a2 2 0 0 1 2-2h13v16H6a2 2 0 0 0-2 2V5Z"/><path d="M8 7h7M8 11h7"/></svg>'};
+    var B=boardHref(hereId()), a=function(href,cls,icon,label){
+      return '<a class="'+cls+'" href="'+href+'">'+icon+label+'</a>'; };
     return '<div class="doit">'
-      +'<button class="primary">'+ic.score+'Enter a score</button>'
-      +'<button>'+ic.card+'Court card</button>'
-      +'<button>'+ic.lad+'Ratings &amp; ladders</button>'
-      +'<button>'+ic.cup+'Tournaments</button>'
-      +'<button>'+ic.per+'Profiles</button>'
-      +'<button>'+ic.led+'Ledger</button>'
+      +a(B+'&go=entry','primary',ic.score,'Enter a score')
+      +a(B+'&go=card','',ic.card,'Court card')
+      +a(B+'&go=ladders','',ic.lad,'Ratings &amp; ladders')
+      +a(B+'&go=tournaments','',ic.cup,'Tournaments')
+      +a(B+'&go=profiles','',ic.per,'Profiles')
+      +a(ledgerHref(),'',ic.led,'Ledger')
       +'</div>';
   }
   /* A LIVE MEMBER, NOT A CATEGORY. The player who has moved most this week, with their real rating, their
@@ -383,7 +389,7 @@
       +(line?('<svg class="spark" viewBox="0 0 220 34" preserveAspectRatio="none" style="margin-top:6px">'+line+'</svg>'):'')
       +'</div>'
       +'<div class="val"><b style="font-size:19px">'+esc(String(st.stat))+'</b><span class="nm">'+esc(st.foot)+'</span></div>'
-      +'</div></div><a class="more" href="'+boardHref(hereId())+'">Open '+esc(isPair?"the pair":first)+'\u2019s profile \u2192</a></div>';
+      +'</div></div><a class="more" href="'+boardHref(hereId())+'&go=player&name='+encodeURIComponent(who)+'">Open '+esc(isPair?"the pair":first)+'\u2019s profile \u2192</a></div>';
   }
   function _unusedFeatured(){
     var m=D.movers[0]; if(!m) return "";
