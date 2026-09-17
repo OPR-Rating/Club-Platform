@@ -9615,6 +9615,8 @@ async function clRemove(id, label){
      +"#nh .tile{background:#fff;border:1px solid #e6e0ee;border-radius:14px;padding:13px}"
      +"#nh .tile .k{font-size:10.5px;letter-spacing:.1em;text-transform:uppercase;color:#6f6780;font-weight:800}"
      +"#nh .tile .v{font-size:23px;font-weight:800;margin-top:5px}#nh .tile .n{font-size:11.5px;color:#6f6780;margin-top:2px}"
+     +"#nh .shaded{background:var(--nhtint,rgba(108,52,131,.07));border-radius:12px}"
+     +"#nh .shaded .row{border-top:none}"
      +"#nh .kind{font-size:11px;letter-spacing:.09em;text-transform:uppercase;color:#8a8196;font-weight:800;padding:9px 8px 2px}"
      /* n53: A LAPTOP IS NOT A BIG PHONE. On a wide screen the single column left the page mostly empty, so the
         brackets sit two abreast, the band spreads, and the tiles run four across. Same pieces, more room. */
@@ -9944,7 +9946,8 @@ async function clRemove(id, label){
       /* the first-frame mask is "#homeScreen > *:not(#nh)", which outranks a plain "#homeScreen > *".
          The ledger keeps its own page, so everything in it is revealed with a rule that outranks the mask. */
       sv.textContent="html body #homeScreen > *{visibility:visible!important}"
-        +".nhband{color:#fff;padding:15px 16px 17px;border-radius:0 0 18px 18px;background:linear-gradient(135deg,#2f2f2f,#141414);max-width:1080px;margin:0 auto 6px}"
+        +".nhband{color:#fff;padding:15px 16px 17px;border-radius:0;background:linear-gradient(135deg,#2f2f2f,#141414);width:100%;margin:0 0 8px;box-sizing:border-box}"
+        +"@media(min-width:880px){.nhband{border-radius:0 0 18px 18px}}"
         +".nhband .mark{display:inline-flex;align-items:center;gap:9px;font-size:11px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;opacity:.95}"
         +".nhband .mark .logo{font-size:17px;letter-spacing:.06em;text-transform:none;background:rgba(255,255,255,.14);border:1px solid rgba(255,255,255,.34);border-radius:9px;padding:2px 9px}"
         +".nhband h1{font-size:25px;line-height:1.1;margin:9px 0 3px;font-weight:800}"
@@ -9999,7 +10002,9 @@ async function clRemove(id, label){
       /* n63: the club's own row sits on a light shade of its colour, so the eye separates "the club" from
          "its groups" without another heading doing the work. */
       var places='<div class="kind">The club</div>'
-        + '<div style="background:var(--nhtint,rgba(108,52,131,.07));border:1px solid rgba(108,52,131,.16);border-radius:12px;margin:2px 4px 4px;padding:2px 4px">'
+        /* the shade is a background on the row itself, not a box around it — a box added padding and pushed
+           the avatar and the chevron out of line with the groups below. */
+        + '<div class="shaded">'
         + row(W.PLAT.name+" \u2014 general play", "#6c3483", "Open to every member \u00b7 matches outside the groups", PAGE+"?club="+C+"&board=1")
         + '</div>';
       if(kids.length){
