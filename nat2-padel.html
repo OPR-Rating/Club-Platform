@@ -9563,6 +9563,7 @@ async function clRemove(id, label){
     var fire=function(){
       tries++;
       try{
+        if(go==="me"){ try{ newMePage(); return true; }catch(e){ return false; } }
         if(go==="admin"){
           if(W.PLAT.cid===0){ var t=document.getElementById("platRegTile");
             if(t){ showScreen("aboutScreen"); setTimeout(function(){ t.click(); },80); return true; } return false; }
@@ -9823,6 +9824,40 @@ async function clRemove(id, label){
     });
     return pts;
   }
+  /* n68: A LINE WITH NO NUMBERS ON IT IS A DECORATION. Every chart here now carries the figures that make it
+     readable: where it started, where it ended, and the high and low it touched, with a dot on the last
+     point. The series is turned into real RATINGS wherever the person's current rating is known, so the
+     numbers on the chart are the numbers on their profile. */
+  function nhChart(vals,col,endLabel){
+    if(!vals || vals.length<2) return "";
+    var lo=Math.min.apply(null,vals), hi=Math.max.apply(null,vals), sp=(hi-lo)||1;
+    var W2=260, H=74, top=12, bot=58, step=W2/(vals.length-1);
+    var y=function(v){ return (bot-((v-lo)/sp)*(bot-top)).toFixed(1); };
+    var line=vals.map(function(v,i){ return (i?"L":"M")+(i*step).toFixed(1)+","+y(v); }).join(" ");
+    var gid="g"+Math.abs(Math.round(Math.random()*1e6));
+    var last=vals[vals.length-1], first=vals[0];
+    return '<svg viewBox="0 0 '+W2+' '+H+'" preserveAspectRatio="none" style="display:block;width:100%;height:74px;overflow:visible">'
+      +'<defs><linearGradient id="'+gid+'" x1="0" y1="0" x2="0" y2="1">'
+      +'<stop offset="0" stop-color="'+col+'" stop-opacity=".26"/><stop offset="1" stop-color="'+col+'" stop-opacity="0"/></linearGradient></defs>'
+      +'<line x1="0" y1="'+y(hi)+'" x2="'+W2+'" y2="'+y(hi)+'" stroke="#e6e0ee" stroke-width="1" stroke-dasharray="3 3"/>'
+      +'<line x1="0" y1="'+y(lo)+'" x2="'+W2+'" y2="'+y(lo)+'" stroke="#e6e0ee" stroke-width="1" stroke-dasharray="3 3"/>'
+      +'<path d="'+line+' L'+W2+','+H+' L0,'+H+' Z" fill="url(#'+gid+')"/>'
+      +'<path d="'+line+'" fill="none" stroke="'+col+'" stroke-width="2.4" stroke-linejoin="round"/>'
+      +'<circle cx="'+((vals.length-1)*step).toFixed(1)+'" cy="'+y(last)+'" r="3.4" fill="'+col+'"/>'
+      +'<text x="2" y="'+(+y(hi)-4)+'" font-size="9" fill="#8a8196">high '+Math.round(hi)+'</text>'
+      +'<text x="2" y="'+(+y(lo)+11)+'" font-size="9" fill="#8a8196">low '+Math.round(lo)+'</text>'
+      +'</svg>'
+      +'<div style="display:flex;justify-content:space-between;font-size:11.5px;color:#5f5770;margin-top:2px">'
+      +'<span>started '+Math.round(first)+'</span>'
+      +'<span style="font-weight:800;color:'+col+'">'+esc(endLabel||("now "+Math.round(last)))+'</span></div>';
+  }
+  /* a cumulative run of deltas, expressed as the ratings they produced */
+  function nhAsRatings(trail,currentRating){
+    if(!trail || !trail.length) return [];
+    if(currentRating==null) return trail.slice();
+    var end=trail[trail.length-1];
+    return [currentRating-end].concat(trail.map(function(v){ return currentRating-end+v; }));
+  }
   function nhOneChart(mv,ms,ink,title){
     if(!mv) return "";
     var pts=nhTrail(mv.name,ms);
@@ -9830,13 +9865,10 @@ async function clRemove(id, label){
     var body;
     if(pts.length<2){ body='<div style="font-size:12px;color:#6f6780;padding:10px 4px">Not enough rated matches yet to draw a line.</div>'; }
     else {
-      var lo=Math.min.apply(null,pts), hi=Math.max.apply(null,pts), sp=(hi-lo)||1, step=260/(pts.length-1);
-      var line=pts.map(function(v,i){ return (i?"L":"M")+(i*step).toFixed(1)+","+(60-((v-lo)/sp)*52).toFixed(1); }).join(" ");
-      var gid="g"+Math.abs(Math.round(Math.random()*1e6));
-      body='<svg viewBox="0 0 260 62" preserveAspectRatio="none" style="display:block;width:100%;height:62px">'
-        +'<defs><linearGradient id="'+gid+'" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="'+col+'" stop-opacity=".26"/><stop offset="1" stop-color="'+col+'" stop-opacity="0"/></linearGradient></defs>'
-        +'<path d="'+line+' L260,62 L0,62 Z" fill="url(#'+gid+')"/>'
-        +'<path d="'+line+'" fill="none" stroke="'+col+'" stroke-width="2.4" stroke-linejoin="round"/></svg>';
+      /* n68: shown as real ratings, with the numbers on it */
+      var ind=(NEW.data&&NEW.data.people||[]).filter(function(x){ return x.full_name===mv.name; })[0];
+      var cur=ind?Math.round(ind.current_rating||ind.seed_rating||0):null;
+      body=nhChart(nhAsRatings(pts,cur), col, cur?("now "+cur):null);
     }
     return '<div class="brk"><h2 style="display:flex;align-items:center;gap:8px">'+esc(title)+' '+nhTag()+'</h2>'
       +'<div style="padding:4px 14px 12px">'
@@ -10104,6 +10136,265 @@ async function clRemove(id, label){
     }).catch(function(){});
   }
 
+  /* ============================================================================================
+     n67: MY PAGE. A member claims their name once on their phone, and the app opens here: their rating, rank,
+     form, partnerships and matches, with the same action row every board has. It is the profile and the door
+     in one screen.
+       * the claim is remembered on the device only — no account, no password, nothing stored at the club
+       * tapping a partnership opens the app's OWN pair profile, which already draws the match history with
+         its set-score pills, so nothing is rebuilt here
+       * a name not on the list is not a claim but a conversation: the club's contact is offered instead
+     ============================================================================================ */
+  function meKey(){ return "opr_me_"+(W.PLAT.parentId||W.PLAT.cid); }
+  function meName(){ try{ return localStorage.getItem(meKey()); }catch(e){ return null; } }
+  W.meClaim=function(n){ try{ localStorage.setItem(meKey(),n); }catch(e){} newMePage(); };
+  W.meForget=function(){ try{ localStorage.removeItem(meKey()); }catch(e){} newMePage(); };
+  W.mePair=function(nm){ try{ if(typeof loadProfile==="function") loadProfile(nm,""); }catch(e){} };
+  function halves(v){ return String(v||"").split(" & ").map(function(x){ return x.trim(); }).filter(Boolean); }
+
+  /* everything about one person, from the matches the club already holds */
+  function meFigures(name,all){
+    var out={matches:[],partners:[],boards:{},won:0,lost:0,setsW:0,setsL:0,move:0,trail:[],gd:0,gdn:0};
+    var run=0;
+    (all.matches||[]).slice().reverse().forEach(function(m){
+      var t1=halves(m.t1p1).concat(halves(m.t1p2)), t2=halves(m.t2p1).concat(halves(m.t2p2));
+      var side=0; if(t1.indexOf(name)>=0) side=1; else if(t2.indexOf(name)>=0) side=-1;
+      if(!side) return;
+      var a=+m.t1_sets||0,b=+m.t2_sets||0, myS=(side>0?a:b), thS=(side>0?b:a);
+      out.matches.push(m); out.setsW+=myS; out.setsL+=thS; if(myS>thS) out.won++; else out.lost++;
+      out.boards[m.club_id]=(out.boards[m.club_id]||0)+1;
+      if(m.t1_games!=null&&m.t2_games!=null&&(a+b)){ out.gd+=(((side>0?+m.t1_games:+m.t2_games)-(side>0?+m.t2_games:+m.t1_games))/(a+b)); out.gdn++; }
+      var d=(m.rating_delta!=null?+m.rating_delta:0)*side; run+=d; out.trail.push(run);
+      if(ago(m.match_date)<=NHWIN) out.move+=d;
+    });
+    out.matches.reverse();
+    out.partners=(all.pairs||[]).filter(function(p){ return halves(p.name).indexOf(name)>=0; })
+      .map(function(p){ return {name:p.name,club_id:p.club_id,rating:Math.round(p.current_rating||0),
+        move:Math.round((p.current_rating||0)-(p.initial_rating||0)),played:p.sets_played||0,won:p.sets_won||0}; })
+      .sort(function(a,b){ return b.rating-a.rating; });
+    return out;
+  }
+  function meRank(name,all){
+    var ppl=(all.people||[]).filter(function(p){ return p.current_rating!=null; })
+      .sort(function(a,b){ return (b.current_rating||0)-(a.current_rating||0); });
+    for(var i=0;i<ppl.length;i++) if(ppl[i].full_name===name) return {rank:i+1,of:ppl.length};
+    return null;
+  }
+
+  /* n69: THE APP'S OWN CHART SNAPSHOT, ON THIS PAGE. Copied from plat exactly — the same six axes with the
+     same arithmetic (Win %, Scrap, Compose, Opp Str, Active, Pt Eff), the same donut of clear and close wins
+     and losses, the same dropdown. It reports what the person has actually done: nothing here is estimated. */
+  function meRadarSVG(axes){
+    var cx=100,cy=95,R=70,N=axes.length;
+    var pt=function(i,r){ var a=-Math.PI/2+i*2*Math.PI/N; return [cx+Math.cos(a)*r,cy+Math.sin(a)*r]; };
+    var grid=""; [0.25,0.5,0.75,1].forEach(function(f){
+      grid+='<polygon points="'+axes.map(function(_,i){ return pt(i,R*f).join(","); }).join(" ")+'" fill="none" stroke="#e6ddec" stroke-width="1"/>'; });
+    var spokes="",labels="";
+    axes.forEach(function(ax,i){ var p=pt(i,R);
+      spokes+='<line x1="'+cx+'" y1="'+cy+'" x2="'+p[0]+'" y2="'+p[1]+'" stroke="#e6ddec" stroke-width="1"/>';
+      var l=pt(i,R+14);
+      labels+='<text x="'+l[0]+'" y="'+l[1]+'" font-size="8" fill="#6b5a78" text-anchor="middle" dominant-baseline="middle">'+esc(ax[0])+'</text>'; });
+    var poly=axes.map(function(ax,i){ return pt(i,R*ax[1]/100).join(","); }).join(" ");
+    var ink=getComputedStyle(document.documentElement).getPropertyValue("--nhc").trim()||"#6c3483";
+    return '<svg viewBox="0 0 200 200" width="100%" style="max-width:230px;height:auto;display:block;margin:0 auto">'
+      +grid+spokes+'<polygon points="'+poly+'" fill="'+ink+'" fill-opacity=".26" stroke="'+ink+'" stroke-width="2"/>'+labels+'</svg>';
+  }
+  function meDonutSVG(cW,ccW,ccL,cL){
+    var tot=cW+ccW+ccL+cL,cx=70,cy=70,r=52,sw=22,C=2*Math.PI*r;
+    if(tot===0) return '<svg viewBox="0 0 140 140" width="100%" style="max-width:150px;height:auto;display:block;margin:0 auto">'
+      +'<circle cx="70" cy="70" r="52" fill="none" stroke="#eee" stroke-width="22"/></svg>';
+    var segs=[["#1e8449",cW],["#7ed957",ccW],["#ffb84d",ccL],["#c0392b",cL]], off=0, arcs="";
+    segs.forEach(function(x){ var v=x[1]; if(v<=0) return; var len=v/tot*C;
+      arcs+='<circle cx="'+cx+'" cy="'+cy+'" r="'+r+'" fill="none" stroke="'+x[0]+'" stroke-width="'+sw+'" '
+        +'stroke-dasharray="'+len+' '+(C-len)+'" stroke-dashoffset="'+(-off)+'" transform="rotate(-90 '+cx+' '+cy+')"/>';
+      off+=len; });
+    var ink=getComputedStyle(document.documentElement).getPropertyValue("--nhc").trim()||"#6c3483";
+    return '<svg viewBox="0 0 140 140" width="100%" style="max-width:150px;height:auto;display:block;margin:0 auto">'+arcs
+      +'<text x="70" y="66" font-size="20" font-weight="800" fill="'+ink+'" text-anchor="middle">'+tot+'</text>'
+      +'<text x="70" y="82" font-size="9" fill="#6b5a78" text-anchor="middle">matches</text></svg>';
+  }
+  W.meChartToggle=function(b){
+    var p=document.getElementById("meChartSnap"); if(!p) return;
+    var open=(p.style.display!=="none");
+    p.style.display=open?"none":"block";
+    b.innerHTML=(open?"\u25B8":"\u25BE")+" Chart Snapshot";
+  };
+  /* the same tallies plat makes, from this person's own matches */
+  function meChartBlock(me,st,all){
+    if(!st.matches.length) return "";
+    var cW=0,ccW=0,ccL=0,cL=0,oppSum=0,oppN=0;
+    var ratingOf={}; (all.people||[]).forEach(function(p){ if(p.full_name) ratingOf[p.full_name]=(p.current_rating!=null?p.current_rating:p.seed_rating); });
+    st.matches.forEach(function(m){
+      var t1=halves(m.t1p1).concat(halves(m.t1p2)), mineIsT1=(t1.indexOf(me)>=0);
+      var sf=mineIsT1?(+m.t1_sets||0):(+m.t2_sets||0), sa=mineIsT1?(+m.t2_sets||0):(+m.t1_sets||0);
+      var gf=mineIsT1?(+m.t1_games||0):(+m.t2_games||0), ga=mineIsT1?(+m.t2_games||0):(+m.t1_games||0);
+      var won=sf>sa, setMargin=Math.abs(sf-sa), gMargin=Math.abs(gf-ga);
+      var close=(setMargin<=1)||(gMargin>0&&gMargin<=3);
+      if(won){ if(close) ccW++; else cW++; } else { if(close) ccL++; else cL++; }
+      var opp=mineIsT1?halves(m.t2p1).concat(halves(m.t2p2)):t1.slice();
+      if(mineIsT1) opp=halves(m.t2p1).concat(halves(m.t2p2));
+      else opp=halves(m.t1p1).concat(halves(m.t1p2));
+      opp.forEach(function(n){ var r=ratingOf[n]; if(r!=null){ oppSum+=r; oppN++; } });
+    });
+    var totM=cW+ccW+ccL+cL, avgOpp=oppN>0?Math.round(oppSum/oppN):null;
+    /* "Active" is measured against the club's average, exactly as plat does */
+    var counts={};
+    (all.matches||[]).forEach(function(m){
+      [m.t1p1,m.t1p2,m.t2p1,m.t2p2].forEach(function(v){ halves(v).forEach(function(x){ counts[x]=(counts[x]||0)+1; }); }); });
+    var vals=Object.keys(counts).map(function(k){ return counts[k]; }).filter(function(v){ return v>0; });
+    var clubAvgM=vals.length?(vals.reduce(function(a,b){ return a+b; },0)/vals.length):0;
+    var clamp=function(v){ return Math.max(0,Math.min(100,v)); };
+    var setsPlayed=st.setsW+st.setsL, setsWon=st.setsW, matches=st.matches.length;
+    var gdps=st.gdn?(st.gd/st.gdn):0;
+    var axes=[["Win %",setsPlayed>0?clamp(setsWon/setsPlayed*100):0],
+              ["Scrap",totM>0?clamp(ccW/totM*100+(cW/totM*100)*0.4):0],
+              ["Compose",totM>0?clamp(100-(ccL/totM*100)):50],
+              ["Opp Str",avgOpp!=null?clamp((avgOpp-1200)/8):50],
+              ["Active",clubAvgM>0?clamp(matches/clubAvgM*50):clamp(matches*8)],
+              ["Pt Eff",clamp(50+gdps*12)]];
+    var key=function(c,t,v){ return '<span><span style="display:inline-block;width:8px;height:8px;background:'+c+';border-radius:2px"></span> '+t+' '+v+'</span>'; };
+    return '<div style="margin:12px 12px 0">'
+      +'<button type="button" onclick="window.meChartToggle(this)" style="width:100%;text-align:left;background:#f6f0fa;'
+      +'border:1.5px solid #e6ddec;border-radius:10px;padding:11px 14px;font-size:14px;font-weight:800;color:var(--nhc,#6c3483);'
+      +'cursor:pointer;font-family:inherit">\u25B8 Chart Snapshot</button>'
+      +'<div id="meChartSnap" style="display:none;background:#f6f0fa;border-radius:12px;padding:14px;margin-top:10px">'
+      +'<div style="font-weight:800;color:var(--nhc,#6c3483);font-size:15px;text-align:center;margin-bottom:2px">Overall Performance</div>'
+      +'<div style="font-size:10px;color:#6b5a78;text-align:center;margin-bottom:10px;line-height:1.5">'
+      +'<b>Win %</b> games won \u00b7 <b>Scrap</b> winning, esp. close \u00b7 <b>Compose</b> few close losses \u00b7 '
+      +'<b>Opp Str</b> strength of opponents \u00b7 <b>Active</b> matches vs club average \u00b7 <b>Pt Eff</b> point margin per set</div>'
+      +'<div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;justify-content:center">'
+      +'<div style="flex:1 1 200px;min-width:180px;text-align:center">'+meRadarSVG(axes)+'</div>'
+      +'<div style="flex:1;min-width:150px;text-align:center">'+meDonutSVG(cW,ccW,ccL,cL)
+      +'<div style="display:flex;flex-wrap:wrap;gap:4px 10px;justify-content:center;margin-top:6px;font-size:10px;color:#5a4636">'
+      + key("#1e8449","Clear win",cW) + key("#7ed957","Close win",ccW)
+      + key("#ffb84d","Close loss",ccL) + key("#c0392b","Clear loss",cL)
+      +'</div></div></div></div></div>';
+  }
+  function newMePage(){
+    var w=nhWrap(); if(!w) return;
+    nhCSS();
+    var C=(W.PLAT.parentId||W.PLAT.cid);
+    var club=(W.PLAT.clubs||[]).find(function(c){ return Number(c.id)===Number(C); })||{id:C,name:W.PLAT.name};
+    nhFetch().then(function(all){
+      var me=meName();
+      if(!me){ w.innerHTML=meClaimScreen(all,club); setTimeout(function(){ W.meHunt(); },0); return; }
+      var st=meFigures(me,all), p=(all.people||[]).filter(function(x){ return x.full_name===me; })[0];
+      var rating=p?Math.round(p.current_rating||p.seed_rating||0):null, lvl=rating?(rating/200):null;
+      var rk=meRank(me,all);
+      var homeId=Object.keys(st.boards).sort(function(a,b){ return st.boards[b]-st.boards[a]; })[0];
+      var col=homeId?clubPal(homeId)[0]:"#6c3483", deep=nhDeep(col); nhInk(col);
+      nhHeaderSkin(col,deep);
+      var pct=(st.setsW+st.setsL)?Math.round(100*st.setsW/(st.setsW+st.setsL)):0;
+      var gd=st.gdn?(st.gd/st.gdn):0;
+
+      var h='<div class="band" style="background:linear-gradient(135deg,'+col+','+deep+')">'
+        + '<div class="mark"><span class="logo">OPR</span>'+esc(club.name)+'</div>'
+        + '<div style="display:flex;align-items:center;gap:13px;margin-top:11px">'
+        + '<span class="av" style="width:56px;height:56px;flex:0 0 56px;border-radius:18px;font-size:19px;background:rgba(255,255,255,.18);border:2px solid rgba(255,255,255,.5)">'+esc(inits(me))+'</span>'
+        + '<span><h1 style="margin:0 0 2px">'+esc(me)+'</h1>'
+        + '<span class="sub">'+(homeId?("plays mostly at "+esc(nhBoardName(homeId))):"no matches yet")+'</span></span></div>'
+        + '<div style="display:flex;align-items:baseline;gap:10px;margin-top:12px">'
+        + '<span style="font-size:38px;font-weight:800;letter-spacing:-1px;line-height:1">'+(rating||"\u2014")+'</span>'
+        + (lvl?('<span class="pill">level '+lvl.toFixed(1)+'</span>'):'')
+        + (rk?('<span class="pill">rank '+rk.rank+' of '+rk.of+'</span>'):'')
+        + '</div>'
+        + '<div class="pulse"><a href="'+PAGE+'?club='+C+'">\u2039 '+esc(club.name)+'</a>'
+        + '<span>'+(st.move>0?"+":"")+Math.round(st.move)+' '+nhWhen()+'</span>'
+        + Object.keys(st.boards).map(function(id){ return '<span>'+esc(nhBoardName(id))+' \u00b7 '+st.boards[id]+'</span>'; }).join("")
+        + '</div></div>'
+        + nhActions(col,deep);
+
+      h+='<div class="five">'
+        + [[st.matches.length,"Matches"],[st.setsW+st.setsL,"Sets"],[st.setsW,"Sets won"],[pct+"%","Win %"],[(gd>0?"+":"")+gd.toFixed(2),"Game diff/set"]]
+            .map(function(x){ return '<div class="fig"><b>'+esc(String(x[0]))+'</b><span>'+esc(x[1])+'</span></div>'; }).join("")
+        +'</div>'
+        + meChartBlock(me,st,all)            /* n69: plat's Chart Snapshot, below the five figures */
+        +'<div class="cols">';
+
+      if(st.trail.length>1){
+        h+='<div class="brk"><h2>My rating \u00b7 '+st.trail.length+' rated matches</h2><div style="padding:4px 14px 14px">'
+          + nhChart(nhAsRatings(st.trail,rating), col, rating?("now "+rating):null)
+          +'</div></div>';
+      }
+
+      if(st.partners.length){
+        h+='<div class="brk"><h2>My partnerships \u00b7 '+st.partners.length+'</h2>'
+          +'<div class="rows" style="max-height:330px;overflow-y:auto">'
+          + st.partners.map(function(x){
+              var other=halves(x.name).filter(function(n){ return n!==me; })[0]||x.name;
+              return '<button class="row" onclick="window.mePair(\''+String(x.name).replace(/'/g,"\\'")+'\')">'
+                +'<span class="av" style="background:'+clubPal(x.club_id)[0]+'">'+esc(inits(other))+'</span>'
+                +'<span class="nm"><b>'+esc(x.name)+'</b><span>rating '+x.rating+' \u00b7 '+x.won+' of '+x.played+' sets \u00b7 '+esc(nhBoardName(x.club_id))+'</span></span>'
+                +'<span class="val"><b class="'+(x.move>=0?"up":"dn")+'">'+(x.move>0?"+":"")+x.move+'</b><span>since start</span></span></button>'; }).join("")
+          +'</div><div style="padding:8px 14px 12px;font-size:12px;color:#5f5770">Tap a partnership for every match you have played together, with the set scores.</div></div>';
+      }
+
+      if(st.matches.length){
+        h+='<div class="brk">'+nhLimeBar("My recent matches")
+          +'<div class="rows" style="max-height:340px;overflow-y:auto">'
+          + st.matches.slice(0,25).map(function(m){
+              var t1=halves(m.t1p1).concat(halves(m.t1p2)), iAmT1=(t1.indexOf(me)>=0);
+              var us=[m.t1p1,m.t1p2].filter(Boolean).join(" & "), them=[m.t2p1,m.t2p2].filter(Boolean).join(" & ");
+              if(!iAmT1){ var t=us; us=them; them=t; }
+              var a=+m.t1_sets||0,b=+m.t2_sets||0, myS=iAmT1?a:b, thS=iAmT1?b:a;
+              var id="me"+(m.id||Math.round(Math.random()*1e6));
+              return '<div><button class="row" onclick="window.nhSets(\''+id+'\')">'
+                +'<span class="nm"><b>'+esc(us)+'</b><span>v '+esc(them)+' \u00b7 '+esc(nhBoardName(m.club_id))+'</span></span>'
+                +'<span class="val"><b class="'+(myS>thS?"up":"dn")+'">'+myS+'\u2013'+thS+'</b>'
+                +'<span id="nht'+id+'" style="display:inline-block;font-size:15px;color:#7a6f8a;margin-left:6px">\u25bc</span></span></button>'
+                +'<div id="nhs'+id+'" style="display:none;padding:0 12px 10px 20px">'+nhSetPills(m)+'</div></div>'; }).join("")
+          +'</div></div>';
+      }
+      h+='</div>'
+        +'<div style="margin:14px 12px 0"><button class="more" style="border:1px solid '+col+';border-radius:99px;background:#fff" onclick="window.meForget()">This isn\u2019t me \u2014 pick another name</button></div>';
+      w.innerHTML=h;
+    });
+  }
+
+  function meClaimScreen(all,club){
+    W.__mePeople=(all.people||[]).map(function(p){ return p.full_name; })
+      .filter(function(v,i,a){ return v && a.indexOf(v)===i; }).sort();
+    W.__mePeopleFull=all.people||[];
+    return '<div class="band opr"><div class="mark"><span class="logo">OPR</span>Open Padel Ratings</div>'
+      +'<h1>Which one is you?</h1><div class="sub">'+esc(club.name)+' \u00b7 tap your name once and this becomes your page</div>'
+      +'<div class="pulse"><a href="'+PAGE+'?club='+club.id+'">\u2039 '+esc(club.name)+'</a></div></div>'
+      +'<div class="brk"><h2>Find your name</h2><div style="padding:0 12px 12px">'
+      +'<input id="meHunt" placeholder="Start typing\u2026" oninput="window.meHunt()" '
+      +'style="width:100%;padding:11px 12px;border:1.5px solid #ddd;border-radius:10px;font:inherit;margin:2px 0 8px">'
+      +'<div id="meHits" style="max-height:320px;overflow-y:auto;border:1px solid #e6e0ee;border-radius:10px"></div>'
+      +'<div style="font-size:12px;color:#5f5770;margin-top:8px;line-height:1.5">Remembered on this phone only \u2014 nothing is saved at the club, and you can change it whenever you like.</div>'
+      +'</div></div>'
+      +'<div class="brk"><h2>Name not on the list?</h2><div style="padding:2px 14px 14px;font-size:12.5px;color:#5f5770;line-height:1.55">'
+      +'Only registered members appear here. Your club\u2019s organiser can add you \u2014 they set your starting rating, '
+      +'which is why it is not something to do yourself.'
+      +'<div id="meContact" style="margin-top:10px"></div></div></div>';
+  }
+  W.meHunt=function(){
+    var box=document.getElementById("meHunt"), hits=document.getElementById("meHits");
+    if(!hits) return;
+    var v=box?String(box.value||"").toLowerCase().trim():"";
+    var names=(W.__mePeople||[]).filter(function(n){ return !v || n.toLowerCase().indexOf(v)>=0; }).slice(0,40);
+    hits.innerHTML=names.map(function(n){
+      var p=(W.__mePeopleFull||[]).filter(function(x){ return x.full_name===n; })[0];
+      return '<button onclick="window.meClaim(\''+String(n).replace(/'/g,"\\'")+'\')" '
+        +'style="display:flex;width:100%;gap:10px;align-items:center;background:none;border:none;border-bottom:1px solid #efeaf5;padding:10px 12px;font:inherit;cursor:pointer;text-align:left">'
+        +'<span class="av" style="background:'+(p&&p.club_id?clubPal(p.club_id)[0]:"#6c3483")+'">'+esc(inits(n))+'</span>'
+        +'<span class="nm"><b>'+esc(n)+'</b><span>'+((p&&p.current_rating)?("rating "+Math.round(p.current_rating)):"no rating yet")+'</span></span></button>';
+    }).join("")||'<div style="padding:12px;font-size:12.5px;color:#5f5770">No name like that here.</div>';
+    /* the club's contact, for anyone who is not on the list */
+    var box2=document.getElementById("meContact");
+    if(box2 && !box2.dataset.done){
+      box2.dataset.done="1";
+      var C=(W.PLAT.parentId||W.PLAT.cid);
+      fetch(SBREST()+"nat_club_contacts?club_id=eq."+C+"&select=contact_name,phone,email").then(J).then(function(r){
+        var c=(r||[])[0]; if(!c||!(c.contact_name||c.phone)){ box2.innerHTML='<i>No contact has been added to the register yet \u2014 ask at the club.</i>'; return; }
+        box2.innerHTML='<div style="font-weight:800;color:#241d33;margin-bottom:6px">'+esc(c.contact_name||"")+'</div>'
+          +(c.phone?('<a href="tel:'+esc(String(c.phone).replace(/[^0-9+]/g,""))+'" style="display:inline-block;background:var(--nhc,#6c3483);color:#fff;text-decoration:none;border-radius:99px;padding:9px 15px;font-weight:800;font-size:13px;margin-right:6px">Call '+esc(c.phone)+'</a>'):'')
+          +(c.email?('<a href="mailto:'+esc(c.email)+'" style="display:inline-block;border:1px solid var(--nhc,#6c3483);color:var(--nhc,#6c3483);text-decoration:none;border-radius:99px;padding:9px 15px;font-weight:800;font-size:13px">Email</a>'):'');
+      }).catch(function(){ box2.innerHTML=""; });
+    }
+  };
+
   /* the club's FRONT DOOR — the club's introduction, in OPR's own colours */
   function newClubDoor(){
     var w=nhWrap(); if(!w) return;
@@ -10149,6 +10440,14 @@ async function clRemove(id, label){
         + '<button class="row" onclick="window.platGoClubLedger('+C+')"><span class="av" style="background:#2f2f2f">\u2261</span>'
         + '<span class="nm"><b>'+esc(W.PLAT.name)+' and All Club Ledgers</b><span>every match at the club \u2014 general play and every group \u00b7 and every registered club</span></span>'
         + '<span class="val"><b style="color:#cfc6da">\u203a</b></span></button></div></div>'
+        /* n67: the way to your own page. Once claimed, this is where the app opens. */
+        + '<div class="brk"><h2>Your page</h2><div class="rows">'
+        + '<button class="row" onclick="location.href=\''+PAGE+'?club='+C+'&go=me\'">'
+        + '<span class="av" style="background:#6c3483">'+(meName()?esc(inits(meName())):"?")+'</span>'
+        + '<span class="nm"><b>'+(meName()?esc(meName()):"Find your name")+'</b>'
+        + '<span>'+(meName()?"your rating, form, partnerships and matches":"tap your name once and this becomes your home page")+'</span></span>'
+        + '<span class="val"><span style="display:inline-grid;place-items:center;width:28px;height:28px;border-radius:50%;background:#6c3483;color:#fff;font-weight:800">\u203a</span></span></button>'
+        + '</div></div>'
         + nhFoot("#3a1d6e","#1d0a41","Club admin");   /* the one way in */
     });
   }
