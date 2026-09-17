@@ -129,10 +129,23 @@
       D.matches=res[0]||[]; D.pairs=res[1]||[]; D.allClubs=res[3]||[];
       var t=(res[2]||[]).filter(function(x){ return x.active && !x.archived; });
       D.tour=t.length?t[0]:null;
-      movers();
-      D.example = D.matches.length < 5;
-      if(D.example) exampleData();
-      render();
+      /* the groups under this club, in their own colours — a member belongs to a group, not to a board id */
+      D.groups=(D.allClubs||[]).filter(function(c){ return D.boards.indexOf(c.id)>=0 && Number(c.id)!==Number(D.club.id); });
+      /* and, if a tournament is running, how it actually stands */
+      /* the standings, when there is a tournament — then finish, always. (An earlier version returned this
+         promise and never got to render: the page sat on "loading" whenever a club had one running.) */
+      var after=function(){
+        movers();
+        D.example = D.matches.length < 5;
+        if(D.example) exampleData();
+        render();
+      };
+      if(D.tour){
+        return get("plat_tournament_results?club_id=eq."+D.tour.club_id+"&discipline=eq.padel&event=eq."+encodeURIComponent(D.tour.name)+"&select=rank,p1,p2,category,wins,losses&order=rank.asc&limit=4")
+          .then(function(st){ D.standings=Array.isArray(st)?st:[]; }, function(){ D.standings=[]; })
+          .then(after);
+      }
+      after();
     }).catch(function(e){
       document.getElementById("wrap").innerHTML='<div class="load">Could not read that club.<br><br>Try <b>?club=north-coast</b> or <b>?club=kloof-padel-club</b>.<br><br><small>'+esc(e.message||e)+'</small></div>';
     });
@@ -158,6 +171,10 @@
     D.movers=[{name:"Sipho Dlamini",move:38},{name:"Tanya Roux",move:27},{name:"Ben Harker",move:-21}];
     D.pairs=[{name:"Sipho Dlamini & Ben Harker",current_rating:1642,initial_rating:1600,sets_played:9,sets_won:7},
              {name:"Tanya Roux & Nomsa Zulu",current_rating:1588,initial_rating:1570,sets_played:6,sets_won:4}];
+    D.tour=D.tour||{name:"Club Americano",club_id:D.club.id};
+    D.standings=[{rank:1,p1:"Sipho Dlamini",p2:"Ben Harker",category:"Men's",wins:4,losses:0},
+                 {rank:2,p1:"Tanya Roux",p2:"Nomsa Zulu",category:"Mixed",wins:3,losses:1},
+                 {rank:3,p1:"Jo Meyer",p2:"Kabelo Nkosi",category:"Men's",wins:2,losses:2}];
     D.matches=[{match_date:new Date().toISOString().slice(0,10),t1p1:"Sipho Dlamini",t1p2:"Ben Harker",t2p1:"Tanya Roux",t2p2:"Nomsa Zulu",t1_sets:2,t2_sets:1,club_id:D.club.id}];
   }
 
@@ -197,10 +214,33 @@
           +'<div class="val"><b class="'+(p.move>=0?"up":"dn")+'">'+(p.move>0?"+":"")+p.move+'</b><span class="nm">since start</span></div></div>';
       }).join("")+'</div><a class="more" href="#">Every pair \u2192</a></div>';
   }
+  /* WHERE YOU PLAY — the club's own board and its groups, told apart plainly. A member belongs to a group;
+     this is the part of the door most people are actually looking for. */
+  function placesBrk(){
+    var pill=function(name,col,sub){
+      return '<div class="row"><span class="av" style="background:'+esc(col)+'">'+esc(initials(name))+'</span>'
+        +'<div class="nm"><b>'+esc(name)+'</b><span>'+esc(sub)+'</span></div>'
+        +'<span class="val"><b style="font-size:17px;color:#cfc6da">\u203a</b></span></div>';
+    };
+    var h=pill(D.club.name+" \u2014 general play", D.club.colour||"#6c3483", "Matches outside the groups, open to every member");
+    (D.groups||[]).forEach(function(g){
+      var n=D.matches.filter(function(m){ return Number(m.club_id)===Number(g.id); }).length;
+      h+=pill(g.name, g.colour||"#455a64", n?(n+" recent "+(n===1?"match":"matches")):"its own board, ladder and card");
+    });
+    return '<div class="brk"><h2>Where you play</h2><div class="rows">'+h+'</div></div>';
+  }
   function tourBrk(){
-    if(!D.tour) return '<div class="brk"><h2>Tournaments</h2><div class="empty">Nothing running just now. A club tournament shows here while it is on \u2014 the leader, the round, and a tap through to the sheet.</div></div>';
-    return '<div class="brk"><h2>Tournament \u00b7 running now</h2><div class="rows">'
-      +'<div class="row"><div class="av">\u{1F3C6}</div><div class="nm"><b>'+esc(D.tour.name)+'</b><span>open \u00b7 tap for the sheet</span></div></div>'
+    if(!D.tour) return '<div class="brk"><h2>Tournaments</h2><div class="empty">Nothing running just now. While one is on, the standings show here \u2014 who leads, by how much \u2014 with a tap through to the sheet.</div></div>';
+    var st=(D.standings||[]).slice(0,3);
+    var body = st.length
+      ? st.map(function(r){
+          var nm=[r.p1,r.p2].filter(Boolean).join(" & ");
+          return '<div class="row"><div class="av" style="background:'+(r.rank===1?"#c4a000":"var(--club)")+'">'+r.rank+'</div>'
+            +'<div class="nm"><b>'+esc(nm)+'</b><span>'+esc(r.category||"")+'</span></div>'
+            +'<div class="val"><b>'+(r.wins!=null?(r.wins+"\u2013"+(r.losses||0)):"")+'</b><span class="nm">W\u2013L</span></div></div>';
+        }).join("")
+      : '<div class="row"><div class="av">\u{1F3C6}</div><div class="nm"><b>'+esc(D.tour.name)+'</b><span>under way \u00b7 no results in yet</span></div></div>';
+    return '<div class="brk"><h2>'+esc(D.tour.name)+' \u00b7 standing now '+tag()+'</h2><div class="rows">'+body
       +'</div><a class="more" href="#">Open the tournament \u2192</a></div>';
   }
   function matchesBrk(n){
@@ -245,13 +285,13 @@
     document.getElementById("who").textContent=D.club.name+(D.example?" · example data":" · live data");
     if(V===1){
       h = band("A glimpse of each thing, and a way in.")
-        + moversBrk() + formBrk() + tourBrk() + matchesBrk(3) + elsewhere();
+        + placesBrk() + moversBrk() + formBrk() + tourBrk() + matchesBrk(3) + elsewhere();
     } else if(V===2){
       h = band("The club at a glance, then what you came to do.")
-        + tiles() + actions() + moversBrk() + tourBrk() + elsewhere();
+        + tiles() + actions() + placesBrk() + moversBrk() + tourBrk() + elsewhere();
     } else {
       h = band("Quiet: what happened, and one way in.")
-        + matchesBrk(4) + moversBrk() + elsewhere();
+        + placesBrk() + matchesBrk(4) + moversBrk() + elsewhere();
     }
     h += '<div class="foot">Preview only \u00b7 nothing here is live \u00b7 real figures from '+esc(D.club.name)+'</div>';
     w.innerHTML=h;
