@@ -1171,6 +1171,30 @@ st0.textContent += "html{overflow-y:scroll}";   // p98: the scrollbar's space is
             return resp.clone().json().then(function(j){
               if(!j || !j.needs_confirm) return resp;
               var body={}; try{ body=JSON.parse(ii.body||"{}"); }catch(e){}
+              /* n66: AN EXACT NAME IS A QUESTION. Matches are stored by name, so two people sharing one are a
+                 single player for ever. The register never holds two identical names; what it must not do is
+                 decide on its own that they are the same person. */
+              if(j.exact){
+                if(W.confirm(j.error+"\n\nOK \u2014 the same person, who plays at more than one club.\nCancel \u2014 a different person with the same name.")){
+                  body.confirm_same=true;
+                } else {
+                  var want=W.prompt("Two people cannot share a name here \u2014 every match records the name itself.\n\n"
+                    +"Give this one something to tell them apart:", String(body.full_name||j.name)+" (")||"";
+                  want=String(want).trim();
+                  if(!want || want===String(j.name)){ return jsonResp({ok:false,error:"Nothing was saved \u2014 a distinct name is needed."},200); }
+                  body.full_name=want; body.confirm_different=true;
+                }
+                ii=Object.assign({},ii,{body:JSON.stringify(body)});
+                return _fetch(uu,Object.assign({},ii,{headers:fnHdrs(init.headers)})).then(ask);
+              }
+              if(j.needs_distinct){
+                var again=W.prompt(j.error+"\n\nA distinct name:", String(body.full_name||"")) || "";
+                again=String(again).trim();
+                if(!again){ return jsonResp({ok:false,error:"Nothing was saved."},200); }
+                body.full_name=again; body.confirm_different=true;
+                ii=Object.assign({},ii,{body:JSON.stringify(body)});
+                return _fetch(uu,Object.assign({},ii,{headers:fnHdrs(init.headers)})).then(ask);
+              }
               var sug=(j.suggestions||[])[0];
               if(sug && W.confirm(j.error+"\n\nOK — use \u201c"+sug+"\u201d.\nCancel — it is someone else.")){
                 if(body.full_name!==undefined) body.full_name=sug;
