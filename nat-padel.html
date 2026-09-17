@@ -900,6 +900,20 @@ st0.textContent += "html{overflow-y:scroll}";   // p98: the scrollbar's space is
     if(LANDING) st0.textContent += "#homeScreen .hero-logo-panel{padding:22px 16px 22px!important}#homeScreen .home-content{margin-top:0!important}";   // p96: the door has no chip; a shorter banner lifts the club card
     // n11: a door is a list of choices, not a poster — the banner gives back the dead space above it and the
     // cards start higher up the phone. (A board keeps the parent's full hero: that is its identity.)
+    /* n53: NO FLASH OF THE OLD HOME. The new home is drawn once the data arrives, so for a moment the app's
+       own home screen was visible underneath — which is what looked like stuttering between screens. In the
+       new app the old home is hidden from the first frame and only the new one is ever shown; if anything
+       fails, the safety timer below puts it back rather than leaving a blank page. */
+    /* the mask is for the screens whose home is REPLACED (a club door, a board). The ledger keeps its own
+       page and only gains a band, so masking it would hide the very thing we are keeping. */
+    if(W.NEWAPP && CID>0){
+      st0.textContent += "#homeScreen > *:not(#nh){visibility:hidden!important}#homeScreen{min-height:60vh}";
+      W.addEventListener("error", function(){ var x=document.getElementById("platNoFlash"); if(x) x.remove(); });
+      setTimeout(function(){ if(!document.getElementById("nh")){
+        var f=document.getElementById("platNoFlash"); if(f) f.remove();
+        var s2=document.createElement("style"); s2.textContent="#homeScreen > *{visibility:visible!important}"; document.head.appendChild(s2);
+      } }, 4000);
+    }
     if(W.PLAT.clubDoor) st0.textContent += "#homeScreen .home-content{margin-top:0!important;padding-top:10px!important}"
       + "#homeScreen .hero-logo-panel{padding:14px 16px 16px!important}"
       + "#homeScreen .hero-logo-panel img,#homeScreen .hero-logo-panel .balls img{max-height:46px!important}"
@@ -3484,7 +3498,7 @@ const CLUB_NAME = _club.name;  // shown in the logo as "OPR · <name>"
     link.setAttribute('href', href);
   }catch(e){ /* install stays on the static manifest — no functional impact */ }
 })();
-const OPR_VERSION = "OPR-DOUBLES v2026.09.03-56 · NAT fork n42 (no voice) (of PLAT p117)";  // MANUAL PAIR CREATION REMOVED FROM ADMIN: Create a pair, Bulk create pairs and Re-derive all pairs are gone (they only made match-less ghost pairs, and Re-derive rewrote every stored initial club-wide). Pairs are born automatically at match entry. Current pairs list untouched; the underlying JS is left in place unreferenced, so no other code path changes. Includes v47 (set-score fix + double-tap guard) and all prior.
+const OPR_VERSION = "OPR-DOUBLES v2026.09.03-56 · NAT fork n43 (no voice) (of PLAT p117)";  // MANUAL PAIR CREATION REMOVED FROM ADMIN: Create a pair, Bulk create pairs and Re-derive all pairs are gone (they only made match-less ghost pairs, and Re-derive rewrote every stored initial club-wide). Pairs are born automatically at match entry. Current pairs list untouched; the underlying JS is left in place unreferenced, so no other code path changes. Includes v47 (set-score fix + double-tap guard) and all prior.
 // Explanation shown above the individual ladder. Open on load so it's read; collapsible
 // (state kept for the session) and scrolls away. Mechanics only — no outcome framing, so
 // members aren't nudged away from playing stronger opponents. Every clause maps to a real
@@ -9177,7 +9191,10 @@ async function clRemove(id, label){
 /* PLAT GLUE — club strip under the hero, club dropdown at ✚ Enter, hero name from the platform. */
 (function(){
   var W=window;
-  var PAGE="nat-padel.html";   // NAT: the fork's own file
+  /* n50: THE APP'S OWN NAME, WORKED OUT, NOT WRITTEN IN. A build under another filename (nat2-padel.html,
+     say) used to keep sending people to nat-padel.html for a group or a club door — so half the taps landed
+     in the old app. It now reads the file it is actually running as. */
+  var PAGE=(function(){ try{ return location.pathname.split("/").pop() || "nat-padel.html"; }catch(e){ return "nat-padel.html"; } })();
   // NAT: the ladder — is this board a club with groups? which club is a group of?
   function kidsOf(id){ return (W.PLAT.clubs||[]).filter(function(c){ return c.parent_id===id; }); }
   function isClubWithKids(id){ return kidsOf(id).length>0; }
@@ -9420,6 +9437,87 @@ async function clRemove(id, label){
     };
     W.selectModalPlayer=function(n){ return origSelect.call(this, bare(n)); };
   }
+  /* n30: "BUT I ADDED YOU TO THE GROUP". A board's tables count only people who have played there, which keeps
+     its ranks honest — but a member registered yesterday then cannot find himself, tells the organiser, and
+     the organiser adds him again. So beneath the list, the people who are registered here and have not played
+     yet are named, with the rule said plainly. Tap a name for their profile and starting rating. The table and
+     its ranking are untouched. */
+  var WAITING=null, WAITSEED=null;
+  /* n31: THE WHOLE CLUB, NOT JUST THIS BOARD. A member registered through club admin belongs to the club's
+     own board, so on a group's list he was nowhere to be found — which is the very complaint this note
+     exists to answer. So: everyone registered anywhere in this club who has not yet played anywhere in it. */
+  function waitingList(){
+    if(WAITING) return Promise.resolve(WAITING);
+    if(!W.PLAT.cid || W.PLAT.cid===0) return Promise.resolve([]);
+    var boards=(W.PLAT.myBoards&&W.PLAT.myBoards.length)?W.PLAT.myBoards:[W.PLAT.cid];
+    var B="https://djmbnvikrdgnomjhtkgf.supabase.co/rest/v1/";
+    return Promise.all([
+      fetch(B+"plat_padel_v_individuals?club_id=in.("+boards.join(",")+")&select=full_name,seed_rating").then(function(r){ return r.json(); }),
+      fetch(B+"plat_matches?club_id=in.("+boards.join(",")+")&discipline=eq.padel&select=t1p1,t1p2,t2p1,t2p2").then(function(r){ return r.json(); })
+    ]).then(function(res){
+      var members=Array.isArray(res[0])?res[0]:[], ms=Array.isArray(res[1])?res[1]:[];
+      var played={};
+      ms.forEach(function(m){ [m.t1p1,m.t1p2,m.t2p1,m.t2p2].forEach(function(v){ if(!v) return;
+        String(v).split(" & ").forEach(function(x){ x=x.trim(); if(x) played[x]=1; }); }); });
+      var seen={};
+      WAITSEED={}; members.forEach(function(r){ if(r && r.full_name!=null && WAITSEED[r.full_name]==null) WAITSEED[r.full_name]=r.seed_rating; });
+      WAITING=members.map(function(r){ return String(r.full_name||""); })
+        .filter(function(n){ if(!n||played[n]||seen[n]) return false; seen[n]=1; return true; })
+        .sort(function(a,b){ return a.localeCompare(b); });
+      return WAITING;
+    }).catch(function(){ return []; });
+  }
+  /* n31: a PILL at the top, not a paragraph at the bottom. Twenty new members would be a wall of text down
+     there, and nobody scrolls to the end of a list looking for themselves. Closed it is one line; tapped, it
+     opens the names. It sits above the list, where somebody who cannot find themselves is already looking. */
+  function waitingNote(){
+    if(!document.getElementById("playerList")) return;
+    waitingList().then(function(names){
+      var old=document.getElementById("platWaiting"); if(old) old.remove();
+      if(!names.length) return;
+      var h=document.getElementById("playerList"); if(!h||!h.parentNode) return;
+      var d=document.createElement("div"); d.id="platWaiting"; d.dataset.platKeep="1";
+      d.style.cssText="margin:2px 4px 10px";
+      var n=names.length;
+      /* n33: the board's colour, here too — this pill sat in OPR purple on a teal board */
+      var pc=clubPal(W.PLAT.cid)[0]||"#6c3483";
+      var tint=(function(h){ try{ var n=parseInt(String(h).slice(1),16); return ((n>>16)&255)+","+((n>>8)&255)+","+(n&255); }catch(e){ return "108,52,131"; } })(pc);
+      d.innerHTML='<button onclick="window.platWaitingToggle()" style="width:100%;display:flex;align-items:center;gap:8px;'
+        +'background:rgba('+tint+',.08);border:1px solid rgba('+tint+',.28);border-radius:999px;padding:9px 14px;font-size:12.5px;color:'+pc+';'
+        +'font-weight:700;cursor:pointer;text-align:left">'
+        +'<span style="flex:1">'+n+(n===1?" member":" members")+' still to record a match</span>'
+        +'<span id="platWaitingCaret" style="font-size:11px;opacity:.8">\u25be</span></button>'
+        +'<div id="platWaitingBody" style="display:none;padding:9px 14px 2px;font-size:12.5px;color:#5a5168;line-height:1.9">'
+        +'Each one starts on the rating shown. It becomes a place in the table with their first match.<div style="margin-top:6px">'
+        /* n33: WITH THEIR STARTING RATING. "What's my number?" is the next question after "where am I?", and
+           without it the organiser gets asked twice instead of once. */
+        +names.map(function(nm){
+            var r=(WAITSEED&&WAITSEED[nm]!=null)?WAITSEED[nm]:null;
+            return '<a href="#" onclick="event.preventDefault();window.platOpenWaiting(\''+String(nm).replace(/'/g,"\\'")+'\')" style="color:'+pc+';font-weight:700;text-decoration:none;white-space:nowrap">'+esc(nm)
+              +(r!=null?('<span style="font-weight:600;opacity:.75"> \u00b7 '+esc(String(r))+'</span>'):'')+'</a>';
+          }).join('<span style="color:#b9aecb">  \u00b7  </span>')
+        +'</div></div>';
+      h.parentNode.insertBefore(d, h);
+    });
+  }
+  W.platWaitingToggle=function(){
+    var b=document.getElementById("platWaitingBody"), c=document.getElementById("platWaitingCaret");
+    if(!b) return;
+    var open=(b.style.display!=="none");
+    b.style.display=open?"none":"block";
+    if(c) c.textContent=open?"\u25be":"\u25b4";
+  };
+  W.platOpenWaiting=function(name){
+    try{ if(typeof loadProfileIndividual==="function"){ loadProfileIndividual(name,""); return; } }catch(e){}
+    try{ if(typeof loadProfile==="function") loadProfile(name,""); }catch(e){}
+  };
+  /* redraw the note whenever that list is redrawn */
+  (function(){
+    var r1=W.renderIndivList, r2=W.renderPlayerList;
+    if(typeof r1==="function") W.renderIndivList=function(){ var out=r1.apply(this,arguments); setTimeout(waitingNote,0); return out; };
+    if(typeof r2==="function") W.renderPlayerList=function(){ var out=r2.apply(this,arguments); setTimeout(waitingNote,0); return out; };
+  })();
+
   /* voice removed at build time */
 
   /* n39e was a duplicate: the glue's own ladderBadges (below) has coloured these discs by club since p117.
@@ -9440,6 +9538,12 @@ async function clRemove(id, label){
     var fire=function(){
       tries++;
       try{
+        if(go==="admin"){
+          if(W.PLAT.cid===0){ var t=document.getElementById("platRegTile");
+            if(t){ showScreen("aboutScreen"); setTimeout(function(){ t.click(); },80); return true; } return false; }
+          if(typeof openAdmin==="function"){ openAdmin(); return true; }
+          return false;
+        }
         if(go==="ladders" && typeof showScreen==="function"){ showScreen("laddersScreen"); return true; }
         if(go==="ladder" && typeof loadLadder==="function"){
           var title={mens:"Men's Pairs",ladies:"Ladies' Pairs",mixed:"Mixed Pairs",allsorts:"All Sorts",universal:"Universal Rating"}[t]||"Ratings";
@@ -9447,7 +9551,7 @@ async function clRemove(id, label){
         if(go==="profiles" && typeof showProfileSearch==="function"){ showProfileSearch(); return true; }
         if(go==="player" && who && typeof loadProfile==="function"){ loadProfile(who,""); return true; }
         if(go==="tournaments" && typeof loadActiveTournaments==="function"){ loadActiveTournaments(); return true; }
-        if(go==="tournaments" && typeof showScreen==="function"){ showScreen("tournamentsScreen"); return true; }
+        if(go==="tournaments" && typeof showScreen==="function"){ if(typeof loadActiveTournaments==="function"){ try{ loadActiveTournaments(); }catch(e){} } showScreen("tournamentScreen"); return true; }
         if(go==="entry"){ var b=document.querySelector("#homeScreen .btn-enter"); if(b){ b.click(); return true; } }
         if(go==="card" && typeof W.platOpenCard==="function"){ W.platOpenCard(); return true; }
         if(go==="card"){ var c=Array.prototype.filter.call(document.querySelectorAll("button"),function(x){ return /court card/i.test(x.textContent||""); })[0];
@@ -9459,6 +9563,597 @@ async function clRemove(id, label){
     setTimeout(fire,320);
   }
 
+  /* ============================================================================================
+     n50: THE NEW HOME. Until now the door and the place page lived in a separate file, so every action
+     handed over to this app and you landed back in the old home screen — two sites pretending to be one.
+     They are the same page from here. The parent's home screen is emptied and the new one drawn in its
+     place, and every button calls the app's OWN functions, so nothing navigates and nothing bounces.
+     Everything behind the home screen — the score sheet, the ladders, profiles, tournaments, the card —
+     is the app as it has always been.
+     ============================================================================================ */
+  var NEW={data:null};
+  /* n52: AN EMPTY BOARD STILL HAS TO LOOK LIKE SOMETHING. A new club opening on zeros and blank brackets
+     looks broken on the day it matters most, so it is filled with plainly-marked example figures and
+     invented names until five matches have been played. */
+  var NHEG=false;
+  function nhExample(){
+    NHEG=true;
+    var today=new Date().toISOString().slice(0,10);
+    var nm=["Joe Soap","Dixie Dawn","Sipho Dlamini","Tanya Roux","Ben Harker","Nomsa Zulu"];
+    var here=W.PLAT.cid;
+    return {
+      matches:[0,1,2,3,4].map(function(i){ return {id:-i-1,club_id:here,match_date:today,
+        t1p1:nm[i%6],t1p2:nm[(i+1)%6],t2p1:nm[(i+2)%6],t2p2:nm[(i+3)%6],t1_sets:2,t2_sets:1,rating_delta:14-3*i}; }),
+      pairs:[{name:nm[0]+" & "+nm[1],club_id:here,current_rating:1642,initial_rating:1600,sets_played:9,sets_won:7},
+             {name:nm[2]+" & "+nm[3],club_id:here,current_rating:1588,initial_rating:1570,sets_played:6,sets_won:4}],
+      people:nm.map(function(n,i){ return {full_name:n,current_rating:1640-18*i}; }),
+      tour:null };
+  }
+  function nhTag(){ return NHEG?'<span style="margin-left:auto;font-size:10.5px;letter-spacing:.03em;text-transform:none;color:#8a6d3b;background:#fdf6e3;border:1px solid #f0e2c0;border-radius:99px;padding:2px 8px;font-weight:700">example until you play</span>':''; }
+  function nhFetch(){
+    if(NEW.data) return Promise.resolve(NEW.data);
+    var B=SBREST(), boards=(W.PLAT.myBoards&&W.PLAT.myBoards.length)?W.PLAT.myBoards:[W.PLAT.cid];
+    var inList="club_id=in.("+boards.join(",")+")";
+    return Promise.all([
+      fetch(B+"plat_matches?"+inList+"&discipline=eq.padel&select=id,club_id,match_date,match_type,t1p1,t1p2,t2p1,t2p2,t1_sets,t2_sets,set_scores,rating_delta&order=match_date.desc,id.desc&limit=120").then(J),
+      fetch(B+"plat_player_results?"+inList+"&discipline=eq.padel&select=name,club_id,current_rating,initial_rating,sets_played,sets_won&order=current_rating.desc&limit=60").then(J),
+      fetch(B+"plat_padel_v_individuals?"+inList+"&select=full_name,current_rating,seed_rating").then(J).catch(function(){ return []; }),
+      fetch(B+"plat_padel_tournaments?"+inList+"&select=id,name,club_id,active,archived").then(J).catch(function(){ return []; })
+    ]).then(function(r){
+      NEW.data={matches:r[0]||[],pairs:r[1]||[],people:r[2]||[],
+                tour:(r[3]||[]).filter(function(x){ return x.active&&!x.archived; })[0]||null};
+      return NEW.data;
+    }).catch(function(){ NEW.data={matches:[],pairs:[],people:[],tour:null}; return NEW.data; });
+  }
+  function SBREST(){ return "https://djmbnvikrdgnomjhtkgf.supabase.co/rest/v1/"; }
+  function J(r){ return r.json(); }
+  function ago(d){ return (Date.now()-new Date(d).getTime())/86400000; }
+  function inits(n){ return String(n||"").split(/[\s&]+/).filter(Boolean).slice(0,2).map(function(w){ return w[0]; }).join("").toUpperCase(); }
+
+  /* n52: a mover carries the colour of the board they were playing at, not the page's colour — on a club
+     door the movers come from several groups at once, and the disc is the only thing that can say which. */
+  /* n62: A QUIET WEEK IS NOT AN EMPTY PAGE. Everything here looked at the last seven days, so a club that
+     last played ten days ago showed no movers, no charts and no upset — which is exactly what North Coast
+     looked like beside Kloof. The window now stretches to cover the most recent matches that exist, and the
+     headings say which period they are describing. */
+  var NHWIN=7;
+  function nhWindow(ms){
+    var recent=(ms||[]).filter(function(m){ return ago(m.match_date)<=7; });
+    if(recent.length>=2){ NHWIN=7; return 7; }
+    var d=(ms||[]).map(function(m){ return ago(m.match_date); }).sort(function(a,b){ return a-b; });
+    if(!d.length){ NHWIN=7; return 7; }
+    NHWIN=Math.max(7,Math.ceil(d[Math.min(3,d.length-1)])+1);
+    return NHWIN;
+  }
+  function nhWhen(){ return (NHWIN<=7)?"this week":("last "+NHWIN+" days"); }
+  function nhMovers(ms){
+    var sum={}, board={};
+    nhWindow(ms);
+    ms.forEach(function(m){
+      if(ago(m.match_date)>NHWIN) return;
+      var d=(m.rating_delta!=null)?+m.rating_delta:0; if(!d) return;
+      [[m.t1p1,d],[m.t1p2,d],[m.t2p1,-d],[m.t2p2,-d]].forEach(function(p){
+        if(!p[0]) return; String(p[0]).split(" & ").forEach(function(x){ x=x.trim(); if(!x) return;
+          sum[x]=(sum[x]||0)+p[1]; if(board[x]==null) board[x]=m.club_id; });
+      });
+    });
+    return Object.keys(sum).map(function(n){ return {name:n,move:sum[n],club:board[n]}; })
+      .sort(function(a,b){ return Math.abs(b.move)-Math.abs(a.move); }).slice(0,3);
+  }
+  /* n52: ONE HEADER FOR EVERYTHING. Every inner screen — Enter Score, the ladders, a profile — carried the
+     app's old banner while the home screens had the new one, so the look changed as soon as you went
+     anywhere. The header is restyled here, once, in the board's own colour, so changing it changes them all.
+     Nothing about those screens' contents is touched. */
+  function nhHeaderSkin(ink,deep){
+    var st=document.getElementById("nhHdr")||document.createElement("style"); st.id="nhHdr";
+    st.textContent=".screen .header{background:linear-gradient(135deg,"+ink+","+deep+") !important;border-radius:0 0 16px 16px;"
+      +"box-shadow:0 2px 10px rgba(20,10,40,.14);padding:12px 14px !important}"
+      +".screen .header h1{font-size:19px !important;font-weight:800 !important;letter-spacing:.1px}"
+      +".screen .header .back-btn{background:rgba(255,255,255,.16) !important;border:1px solid rgba(255,255,255,.3) !important;border-radius:99px !important;width:36px;height:36px}"
+      +".screen .header .platWhere{background:rgba(255,255,255,.18) !important;border:1px solid rgba(255,255,255,.34) !important;border-radius:99px !important;font-weight:800}";
+    if(!st.parentNode) document.head.appendChild(st);
+  }
+  function nhCSS(){
+    if(document.getElementById("nhCss")) return;
+    var st=document.createElement("style"); st.id="nhCss";
+    st.textContent=
+      /* n57: IT HAS TO SCROLL. #homeScreen is a flex column and the new home was a child of it with no room
+         to overflow, so on a phone the page sat fixed with everything below the fold unreachable. */
+      /* n58: the band stays put while the page moves under it — on a phone the whole page scrolled away and
+         you could not see which club or group you were in. */
+      "#nh{max-width:520px;margin:0 auto;padding:0 0 40px;font-family:inherit;flex:1 1 auto;overflow-y:auto;-webkit-overflow-scrolling:touch;width:100%}"
+
+     +"#homeScreen{overflow:hidden}"
+     +"#nh .band{color:#fff;padding:15px 16px 18px;position:sticky;top:0;z-index:20;overflow:hidden;border-radius:0 0 18px 18px}"
+     +"#nh .band.opr{background:url('./header_bg2.png') center/cover,linear-gradient(105deg,#1d0a41,#5b17ac 52%,#047fdd)}"
+     +"#nh .mark{display:inline-flex;align-items:center;gap:9px;font-size:11px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;opacity:.95}"
+     +"#nh .mark .logo{font-size:17px;letter-spacing:.06em;text-transform:none;background:rgba(255,255,255,.14);border:1px solid rgba(255,255,255,.34);border-radius:9px;padding:2px 9px}"
+     +"#nh h1{font-size:25px;line-height:1.1;margin:9px 0 3px;font-weight:800}"
+     +"#nh .sub{font-size:12.5px;opacity:.88}"
+     +"#nh .pulse{display:flex;gap:7px;flex-wrap:wrap;margin-top:11px}"
+     +"#nh .pulse span,#nh .pulse a{background:rgba(255,255,255,.16);border:1px solid rgba(255,255,255,.3);border-radius:99px;padding:5px 11px;font-size:12px;font-weight:700;color:#fff;text-decoration:none}"
+     +/* n60: the page was white cards and grey type, which read as unfinished rather than calm. Each bracket now
+   carries a thin edge in the board's colour and a tinted heading strip, so the page belongs to the group you
+   are standing in. The tint is the same colour at 7%, so it never fights the numbers. */
+      "#nh .brk{background:#fff;border:1px solid #e6e0ee;border-radius:14px;margin:12px 12px 0;overflow:hidden;box-shadow:0 1px 3px rgba(26,16,48,.05)}"
+     +"#nh .brk h2{color:#4a4256}"
+     +"#nh .more{color:var(--nhc,#6c3483);background:#fcfbfd}"
+     +"#nh .brk h2{font-size:12.5px;letter-spacing:.08em;text-transform:uppercase;font-weight:800;margin:0;padding:11px 14px 10px}"
+     +"#nh .rows{padding:4px 6px}"
+     +"#nh .row{display:flex;align-items:center;gap:11px;padding:9px 8px;width:100%;background:none;border:none;text-align:left;font:inherit;color:inherit;cursor:pointer}"
+     +"#nh .row+.row{border-top:1px solid #efeaf5}"
+     +"#nh .av{width:34px;height:34px;border-radius:50%;flex:0 0 34px;display:grid;place-items:center;color:#fff;font-size:12.5px;font-weight:800}"
+     +"#nh .nm{flex:1;min-width:0}#nh .nm b{display:block;font-size:15.5px;color:#241d33}#nh .nm span{display:block;font-size:12.5px;color:#5f5770;margin-top:2px}"
+     +"#nh .val{text-align:right}#nh .val b{display:block;font-size:16px;font-weight:800}#nh .val span{display:block;font-size:11.5px;color:#5f5770}"
+     +"#nh .up{color:#1f8a4c}#nh .dn{color:#c0392b}"
+     +"#nh .more{display:block;width:100%;text-align:center;padding:10px;border:none;border-top:1px solid #efeaf5;background:#fcfbfd;font:inherit;font-size:12.5px;font-weight:800;color:var(--nhc,#6c3483);cursor:pointer}"
+     +"#nh .doit{display:flex;gap:9px;padding:12px 12px 2px;overflow-x:auto;scrollbar-width:none}#nh .doit::-webkit-scrollbar{display:none}"
+     +"#nh .doit button{flex:0 0 104px;border:1px solid #e6e0ee;background:#fff;border-radius:14px;padding:13px 6px;font:inherit;font-weight:700;font-size:12.5px;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:7px;line-height:1.25;text-align:center}"
+     +"#nh .doit button.primary{color:#fff;border-color:transparent}"
+     +"#nh .doit svg{width:22px;height:22px;stroke:currentColor;fill:none;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round}"
+     +"#nh .tiles{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:12px 12px 0}"
+     +"#nh .tile{background:#fff;border:1px solid #e6e0ee;border-radius:14px;padding:13px}"
+     +"#nh .tile .k{font-size:10.5px;letter-spacing:.1em;text-transform:uppercase;color:#6f6780;font-weight:800}"
+     +"#nh .tile .v{font-size:23px;font-weight:800;margin-top:5px}#nh .tile .n{font-size:11.5px;color:#6f6780;margin-top:2px}"
+     +"#nh .shaded{background:var(--nhtint,rgba(108,52,131,.07));border-radius:12px}"
+     +"#nh .shaded .row{border-top:none}"
+     +"#nh .kind{font-size:11px;letter-spacing:.09em;text-transform:uppercase;color:#8a8196;font-weight:800;padding:9px 8px 2px}"
+     /* n53: A LAPTOP IS NOT A BIG PHONE. On a wide screen the single column left the page mostly empty, so the
+        brackets sit two abreast, the band spreads, and the tiles run four across. Same pieces, more room. */
+     +"@media(min-width:880px){"
+     +"#nh{max-width:1080px;padding-bottom:40px}"
+     +"#nh .band{border-radius:0 0 22px 22px;padding:22px 26px 24px}"
+     +"#nh h1{font-size:32px}"
+     +"#nh .tiles{grid-template-columns:repeat(4,1fr);margin:16px 16px 0}"
+     +"#nh .doit{padding:16px 16px 2px;overflow:visible;flex-wrap:wrap}"
+     +"#nh .doit button{flex:0 0 132px}"
+     +"#nh .cols{display:grid;grid-template-columns:1fr 1fr;gap:0 4px;align-items:start}"
+     +"#nh .brk{margin:16px 16px 0}"
+     +"}";
+    document.head.appendChild(st);
+  }
+  function nhWrap(){
+    var host=document.getElementById("homeScreen"); if(!host) return null;
+    Array.prototype.forEach.call(host.children,function(el){ if(el.id!=="nh") el.style.display="none"; });
+    /* the first-frame mask hid everything in here; the new home is the exception */
+    var sv=document.getElementById("nhShow");
+    if(!sv){ sv=document.createElement("style"); sv.id="nhShow"; sv.textContent="#nh{visibility:visible!important}"; document.head.appendChild(sv); }
+    var w=document.getElementById("nh");
+    if(!w){ w=document.createElement("div"); w.id="nh"; host.insertBefore(w,host.firstChild); }
+    return w;
+  }
+  function nhBoardName(id){ var c=(W.PLAT.clubs||[]).find(function(x){ return Number(x.id)===Number(id); }); return c?c.name:""; }
+  function nhInk(hex){
+    var h=hex||"#6c3483";
+    document.documentElement.style.setProperty("--nhc",h);
+    document.documentElement.style.setProperty("--nhtint","rgba("+nhRgb(h)+",.07)");
+    document.documentElement.style.setProperty("--nhdeep",nhDeep(h,.35));
+  }
+  function nhRgb(h){ try{ var n=parseInt(String(h).slice(1),16); return ((n>>16)&255)+","+((n>>8)&255)+","+(n&255); }catch(e){ return "108,52,131"; } }
+  function nhDeep(h,f){ try{ var n=parseInt(String(h).slice(1),16),r=(n>>16)&255,g=(n>>8)&255,b=n&255;
+    f=f||.42; return "#"+((1<<24)+((r*(1-f)|0)<<16)+((g*(1-f)|0)<<8)+(b*(1-f)|0)).toString(16).slice(1); }catch(e){ return "#3a1d6e"; } }
+
+  /* the brackets, all calling the app's own screens */
+  /* Where a glimpse leads depends on WHOSE figures it shows. On the door they are the club's — every group
+     added together — so they open the club LEDGER's tables. On a place page they are that board's, so they
+     open that board's own screens. Sending the door's club-wide movers to one board's ladder was simply
+     wrong: the names were not in it. */
+  function nhLadderGo(scope){
+    if(scope==="club") return 'window.platGoClubLedger('+W.PLAT.cid+')';
+    return 'showScreen(\'laddersScreen\')';
+  }
+  function nhMoversBrk(d,ink,scope){
+    var mv=nhMovers(d.matches); if(!mv.length) return "";
+    return '<div class="brk"><h2 style="display:flex;align-items:center;gap:8px">Movers '+nhWhen()+' '+nhTag()+'</h2><div class="rows">'
+      + mv.map(function(m){
+          /* the disc wears the colour of the board where the move happened — never the page's colour */
+          var col=m.club?clubPal(m.club)[0]:ink, where=m.club?nhBoardName(m.club):"";
+          return '<div class="row">'
+          +'<span class="av" style="background:'+col+'">'+esc(inits(m.name))+'</span>'
+          +'<span class="nm"><b>'+esc(m.name)+'</b><span>'+(m.move>=0?"climbing":"giving ground")+(where?(" \u00b7 "+esc(where)):"")+'</span></span>'
+          +'<span class="val"><b class="'+(m.move>=0?"up":"dn")+'">'+(m.move>0?"\u25b2 +":"\u25bc ")+Math.round(m.move)+'</b><span>'+nhWhen()+'</span></span></div>'; }).join("")
+      +'</div><button class="more" onclick="window.nhGo(\'profiles\')">See player profiles here \u2192</button></div>';
+  }
+  function nhFormBrk(d,ink,scope){
+    var hot=(d.pairs||[]).filter(function(p){ return (p.sets_played||0)>=3; })
+      .map(function(p){ return {name:p.name,club_id:p.club_id,pct:Math.round(100*(p.sets_won||0)/(p.sets_played||1)),move:Math.round((p.current_rating||0)-(p.initial_rating||0))}; })
+      .sort(function(a,b){ return b.pct-a.pct||b.move-a.move; }).slice(0,2);
+    if(!hot.length) return "";
+    return '<div class="brk"><h2 style="display:flex;align-items:center;gap:8px">In form '+nhTag()+'</h2><div class="rows">'
+      + hot.map(function(p){
+          var col=p.club_id?clubPal(p.club_id)[0]:ink;
+          return '<div class="row">'
+          +'<span class="av" style="background:'+col+'">'+esc(inits(p.name))+'</span>'
+          +'<span class="nm"><b>'+esc(p.name)+'</b><span>'+p.pct+'% of sets won</span></span>'
+          +'<span class="val"><b class="'+(p.move>=0?"up":"dn")+'">'+(p.move>0?"+":"")+p.move+'</b><span>since start</span></span></div>'; }).join("")
+      +'</div><button class="more" onclick="window.nhGo(\'ladders\')">Ratings and ladders \u2192</button></div>';
+  }
+  function nhTrail(name,ms){
+    var pts=[], run=0;
+    ms.slice().reverse().forEach(function(m){
+      var d=(m.rating_delta!=null)?+m.rating_delta:0; if(!d) return;
+      var side=0;
+      [[m.t1p1,1],[m.t1p2,1],[m.t2p1,-1],[m.t2p2,-1]].forEach(function(p){
+        if(!p[0]) return; String(p[0]).split(" & ").forEach(function(x){ if(x.trim()===name) side=p[1]; });
+      });
+      if(!side) return; run+=d*side; pts.push(run);
+    });
+    return pts;
+  }
+  /* n57: THE RADAR THE APP ALREADY DRAWS — the same six axes, and the same arithmetic, as the Overall
+     Performance chart on a profile (Win %, Scrap, Compose, Opp Str, Active, Pt Eff). Here it describes the
+     BOARD rather than one person: how this group plays, from its own matches. Nobody is singled out. */
+  /* n58: TWO LINES, NOT A WEB. The radar said how the board plays; what people actually want to see is who
+     went up and who came down, and the shape of each. One chart for the week's biggest climb, one for the
+     steepest fall, each built from that person's own match deltas. */
+  function nhTrail(name,ms){
+    var pts=[], run=0;
+    ms.slice().reverse().forEach(function(m){
+      var d=(m.rating_delta!=null)?+m.rating_delta:0; if(!d) return;
+      var side=0;
+      [[m.t1p1,1],[m.t1p2,1],[m.t2p1,-1],[m.t2p2,-1]].forEach(function(p){
+        if(!p[0]) return; String(p[0]).split(" & ").forEach(function(x){ if(x.trim()===name) side=p[1]; });
+      });
+      if(!side) return; run+=d*side; pts.push(run);
+    });
+    return pts;
+  }
+  function nhOneChart(mv,ms,ink,title){
+    if(!mv) return "";
+    var pts=nhTrail(mv.name,ms);
+    var col=mv.club?clubPal(mv.club)[0]:ink, up=(mv.move>=0);
+    var body;
+    if(pts.length<2){ body='<div style="font-size:12px;color:#6f6780;padding:10px 4px">Not enough rated matches yet to draw a line.</div>'; }
+    else {
+      var lo=Math.min.apply(null,pts), hi=Math.max.apply(null,pts), sp=(hi-lo)||1, step=260/(pts.length-1);
+      var line=pts.map(function(v,i){ return (i?"L":"M")+(i*step).toFixed(1)+","+(60-((v-lo)/sp)*52).toFixed(1); }).join(" ");
+      var gid="g"+Math.abs(Math.round(Math.random()*1e6));
+      body='<svg viewBox="0 0 260 62" preserveAspectRatio="none" style="display:block;width:100%;height:62px">'
+        +'<defs><linearGradient id="'+gid+'" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="'+col+'" stop-opacity=".26"/><stop offset="1" stop-color="'+col+'" stop-opacity="0"/></linearGradient></defs>'
+        +'<path d="'+line+' L260,62 L0,62 Z" fill="url(#'+gid+')"/>'
+        +'<path d="'+line+'" fill="none" stroke="'+col+'" stroke-width="2.4" stroke-linejoin="round"/></svg>';
+    }
+    return '<div class="brk"><h2 style="display:flex;align-items:center;gap:8px">'+esc(title)+' '+nhTag()+'</h2>'
+      +'<div style="padding:4px 14px 12px">'
+      +'<div style="display:flex;align-items:center;gap:11px;padding:4px 0 6px">'
+      +'<span class="av" style="background:'+col+'">'+esc(inits(mv.name))+'</span>'
+      +'<span class="nm"><b style="font-size:15.5px">'+esc(mv.name)+'</b><span>'+esc(mv.club?nhBoardName(mv.club):"")+'</span></span>'
+      +'<span class="val"><b class="'+(up?"up":"dn")+'" style="font-size:18px">'+(up?"\u25b2 +":"\u25bc ")+Math.round(mv.move)+'</b><span>this week</span></span></div>'
+      +body+'</div></div>';
+  }
+  function nhCharts(d,ink){
+    var ms=d.matches||[], all=nhMovers(ms);
+    var up=all.filter(function(x){ return x.move>0; })[0] || null;
+    var dn=all.filter(function(x){ return x.move<0; })[0] || null;
+    return nhOneChart(up,ms,ink,"Biggest climb "+nhWhen()) + nhOneChart(dn,ms,ink,"Steepest fall "+nhWhen());
+  }
+  /* a match row goes nowhere: the triangle opens the SET SCORES, green for the set won, red for the one lost */
+  W.nhSets=function(id){
+    var el=document.getElementById("nhs"+id), t=document.getElementById("nht"+id);
+    if(!el) return; var open=(el.style.display!=="none");
+    el.style.display=open?"none":"block"; if(t) t.style.transform=open?"":"rotate(180deg)";
+  };
+  function nhSetPills(m){
+    var raw=String(m.set_scores||"").trim();
+    var sets=raw?raw.split(/[, ]+/).filter(Boolean):[];
+    if(!sets.length) return '<span style="font-size:12px;color:#6f6780">Set scores were not recorded.</span>';
+    return sets.map(function(sc){
+      var p=String(sc).split(/[-\u2013\/]/), a=parseInt(p[0],10), b=parseInt(p[1],10);
+      var win=(!isNaN(a)&&!isNaN(b))?(a>b):null;
+      var bg=(win===null)?"#eceaf1":(win?"#e6f4ea":"#fdeaea"), fg=(win===null)?"#4b4557":(win?"#1f8a4c":"#c0392b");
+      return '<span style="display:inline-block;background:'+bg+';color:'+fg+';border-radius:8px;padding:3px 9px;font-size:12.5px;font-weight:800;margin:2px 5px 2px 0">'+esc(sc)+'</span>';
+    }).join("");
+  }
+  function nhMatchesBrk(d,n,scope){
+    var ms=(d.matches||[]).slice(0,n||4); if(!ms.length) return "";
+    return '<div class="brk"><h2 style="display:flex;align-items:center;gap:8px">Just played '+nhTag()+'</h2><div class="rows">'
+      + ms.map(function(m){
+          var a=[m.t1p1,m.t1p2].filter(Boolean).join(" & "), b=[m.t2p1,m.t2p2].filter(Boolean).join(" & ");
+          var bd=(W.PLAT.clubs||[]).find(function(c){ return Number(c.id)===Number(m.club_id); });
+          var col=(bd&&bd.colour)||"#6c3483";
+          var pill=(scope==="club"&&bd)?('<span style="display:inline-block;background:'+col+';color:#fff;border-radius:99px;padding:2px 9px;font-size:10.5px;font-weight:800;margin-top:4px">'+esc(bd.name)+'</span>'):'';
+          var id=m.id||Math.abs(Math.round(Math.random()*1e6));
+          return '<div><button class="row" onclick="window.nhSets(\''+id+'\')">'
+            +'<span class="nm"><b>'+esc(a)+'</b><span>'+esc(b)+'</span>'+pill+'</span>'
+            +'<span class="val"><b>'+((m.t1_sets==null)?"":(m.t1_sets+"\u2013"+m.t2_sets))+'</b>'
+            +'<span id="nht'+id+'" style="display:inline-block;font-size:15px;line-height:1;color:#7a6f8a;margin-left:6px;transition:transform .15s">\u25bc</span></span></button>'
+            +'<div id="nhs'+id+'" style="display:none;padding:0 12px 10px 20px">'+nhSetPills(m)+'</div></div>'; }).join("")
+      +'</div></div>';
+  }
+  /* n59: the win against the strongest opposition, by rating gap. Approximate on purpose: a pair's rating
+     today is not exactly what it was on the night, and the alternative is storing ratings per match. */
+  function nhUpset(d){
+    var rate={}; (d.pairs||[]).forEach(function(p){ rate[p.name]=p.current_rating||0; });
+    var best=null; nhWindow(d.matches||[]);
+    (d.matches||[]).forEach(function(m){
+      if(ago(m.match_date)>NHWIN) return;
+      var a=[m.t1p1,m.t1p2].filter(Boolean).join(" & "), b=[m.t2p1,m.t2p2].filter(Boolean).join(" & ");
+      if(!a||!b||rate[a]==null||rate[b]==null) return;
+      var aWon=(+m.t1_sets||0)>(+m.t2_sets||0), win=aWon?a:b, lose=aWon?b:a;
+      var gap=Math.round((rate[lose]||0)-(rate[win]||0));
+      if(gap>0 && (!best||gap>best.gap)) best={who:win,beat:lose,gap:gap};
+    });
+    return best;
+  }
+  /* n59: what came off the court cards this week, kept apart so an organiser sees the evening in one place */
+  function nhCardBrk(d){
+    nhWindow(d.matches||[]);
+    var ms=(d.matches||[]).filter(function(m){ return ago(m.match_date)<=NHWIN && /court|card|session/i.test(String(m.event||"")); });
+    var head='<div class="brk"><h2 style="display:flex;align-items:center;gap:8px">Card matches \u00b7 '+nhWhen()+' '+nhTag()+'</h2>';
+    if(!ms.length) return head+'<div style="padding:8px 14px 14px;font-size:12.5px;color:#5f5770;line-height:1.5">'
+      +'Nothing off a court card this week. Matches entered from a card show here, so an evening\u2019s play reads in one place.</div></div>';
+    return head+'<div class="rows">'
+      + ms.slice(0,6).map(function(m){
+          var a=[m.t1p1,m.t1p2].filter(Boolean).join(" & "), b=[m.t2p1,m.t2p2].filter(Boolean).join(" & ");
+          return '<div class="row"><span class="nm"><b>'+esc(a)+'</b><span>'+esc(b)+'</span></span>'
+            +'<span class="val"><b>'+((m.t1_sets==null)?"":(m.t1_sets+"\u2013"+m.t2_sets))+'</b><span>'+esc(m.event||"card")+'</span></span></div>'; }).join("")
+      +'</div></div>';
+  }
+  function nhTourBrk(d){
+    if(!d.tour) return "";
+    return '<div class="brk"><h2>'+esc(d.tour.name)+' \u00b7 running now</h2><div class="rows">'
+      +'<div class="row"><span class="av" style="background:#c4a000">\u{1F3C6}</span>'
+      +'<span class="nm"><b>'+esc(d.tour.name)+'</b><span>open \u00b7 tap for the sheet</span></span></div>'
+      +'</div><button class="more" onclick="window.nhGo(\'tournaments\')">Open the tournament \u2192</button></div>';
+  }
+  function nhActions(ink,deep){
+    var ic={score:'<svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>',
+            card:'<svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="1.6"/><path d="M3 12h18M12 4v16"/></svg>',
+            lad:'<svg viewBox="0 0 24 24"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/></svg>',
+            cup:'<svg viewBox="0 0 24 24"><path d="M7 4h10v4a5 5 0 0 1-10 0V4Z"/><path d="M17 5h3v2a3 3 0 0 1-3 3M7 5H4v2a3 3 0 0 0 3 3"/><path d="M12 13v4M9 21h6"/></svg>',
+            per:'<svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="3.4"/><path d="M5 20c1.2-3.4 4-5 7-5s5.8 1.6 7 5"/></svg>',
+            led:'<svg viewBox="0 0 24 24"><path d="M4 5a2 2 0 0 1 2-2h13v16H6a2 2 0 0 0-2 2V5Z"/><path d="M8 7h7M8 11h7"/></svg>'};
+    return '<div class="doit">'
+      +'<button class="primary" style="background:linear-gradient(135deg,'+ink+','+deep+')" onclick="window.nhGo(\'entry\')">'+ic.score+'Enter a score</button>'
+      +'<button onclick="window.nhGo(\'card\')">'+ic.card+'Court card</button>'
+      +'<button onclick="window.nhGo(\'ladders\')">'+ic.lad+'Ratings &amp; ladders</button>'
+      +'<button onclick="window.nhGo(\'tournaments\')">'+ic.cup+'Tournaments</button>'
+      +'<button onclick="window.nhGo(\'profiles\')">'+ic.per+'Profiles</button>'
+      /* n61: the ledgers belong in this row too — from a board you reach the club's whole record, and the
+         register's, without going back out to the door first. */
+      +'<button onclick="window.nhGo(\'ledger\')">'+ic.led+'Ledgers</button>'
+      +'</div>';
+  }
+  /* n58: these two were wired to screens that do not exist — the tournaments screen is singular, and the
+     court card lives on the session screen the glue itself builds. Neither button did anything. */
+  W.nhGo=function(what){
+    try{
+      if(what==="entry"){ var b=document.querySelector("#homeScreen .btn-enter"); if(b){ b.click(); return; } }
+      if(what==="profiles" && typeof showProfileSearch==="function"){ showProfileSearch(); return; }
+      if(what==="ladders"){ showScreen("laddersScreen"); return; }
+      if(what==="ledger"){
+        /* the club's ledger — the register's own is one tap from there */
+        var top=(W.PLAT.parentId||W.PLAT.cid);
+        location.href=PAGE+"?club=0&pool="+W.PLAT.pool+"&nat="+top; return;
+      }
+      if(what==="tournaments"){
+        /* the app opens tournaments through its own function; the screen alone is not enough to populate it */
+        /* the app's own two steps: fill the list, then show it. openInternalTournament needs an event and
+           threw when called blind, which is why the button appeared dead. */
+        if(typeof loadActiveTournaments==="function"){ try{ loadActiveTournaments(); }catch(e){} }
+        showScreen("tournamentScreen"); return;
+      }
+      if(what==="card"){
+        if(typeof sessScreen==="function"){ sessScreen(); W.showScreen("platSessScreen");
+          if(typeof W.platSessOpen==="function") W.platSessOpen(); return; }
+        var c=Array.prototype.filter.call(document.querySelectorAll("button"),function(x){ return /court card/i.test(x.textContent||""); })[0];
+        if(c){ c.click(); return; }
+      }
+    }catch(e){}
+  };
+  /* n56: the way into admin, and to About OPR, on every home screen — coloured so they read as somewhere to
+     go rather than small print. Which admin opens depends on where you are: a board opens its Control Room,
+     the ledger opens the register's admin, the club door opens the club's. */
+  function nhFoot(ink,deep,what){
+    var a=function(label,onclick,fill){
+      return '<button onclick="'+onclick+'" style="flex:1 1 0;min-width:120px;border:1px solid '+(fill?"transparent":"#e0d9ea")+';'
+        +'background:'+(fill?("linear-gradient(135deg,"+ink+","+deep+")"):"#fff")+';color:'+(fill?"#fff":ink)+';'
+        +'border-radius:99px;padding:11px 14px;font:inherit;font-size:13px;font-weight:800;cursor:pointer">'+esc(label)+'</button>';
+    };
+    return '<div style="display:flex;gap:9px;flex-wrap:wrap;margin:14px 12px 0">'
+      + (what==="none" ? "" : a(what||"Admin","window.nhAdminPage()",true))
+      + a("About OPR","showScreen('aboutScreen')",false)
+      + '</div>';
+  }
+  /* n59: ONE WAY INTO ADMIN. Admin was reachable from the board, the door and the ledger, each opening a
+     different room — so nobody could tell which code did what. Now a single pill opens an Admin Control page
+     that lists every room this club has, in the order they nest: the club's own, each group, then the ledger.
+     Every other admin link is gone. */
+  W.nhAdminPage=function(){
+    var w=nhWrap(); if(!w) return;
+    nhCSS();
+    var C=(W.PLAT.parentId||W.PLAT.cid), kids=kidsOf(C).sort(function(a,b){ return String(a.name).localeCompare(String(b.name)); });
+    var club=(W.PLAT.clubs||[]).find(function(c){ return Number(c.id)===Number(C); })||{id:C,name:W.PLAT.name};
+    var pill=function(label,sub,col,onclick){
+      return '<button class="row" onclick="'+onclick+'">'
+        +'<span class="av" style="background:'+col+'">\u2699</span>'
+        +'<span class="nm"><b>'+esc(label)+'</b><span>'+esc(sub)+'</span></span>'
+        +'<span class="val"><b style="color:#cfc6da">\u203a</b></span></button>';
+    };
+    var body='<div class="brk"><h2>The club</h2><div class="rows">'
+      + pill(esc(club.name)+" \u2014 general play", "members, groups, colours and codes", "#6c3483",
+             "location.href='"+PAGE+"?club="+C+"&board=1&go=admin'")
+      +'</div></div>';
+    if(kids.length){
+      body+='<div class="brk"><h2>Groups</h2><div class="rows">'
+        + kids.map(function(g){ return pill(g.name, "its own control room \u2014 members, pairs, matches", clubPal(g.id)[0],
+            "location.href='"+PAGE+"?club="+g.id+"&go=admin'"); }).join("")
+        +'</div></div>';
+    }
+    body+='<div class="brk"><h2>Ledger</h2><div class="rows">'
+      + pill("Ledger control", "the register: people, clubs, backups, recompute", "#2f2f2f",
+             "location.href='"+PAGE+"?club=0&pool="+W.PLAT.pool+"&nat="+C+"&go=admin'")
+      +'</div></div>';
+    w.innerHTML='<div class="band" style="background:linear-gradient(135deg,#3a1d6e,#1d0a41)">'
+      +'<div class="mark"><span class="logo">OPR</span>Admin control</div>'
+      +'<h1>'+esc(club.name)+'</h1>'
+      +'<div class="sub">Every room this club has, and the code each one takes</div>'
+      +'<div class="pulse"><a href="'+PAGE+'?club='+C+'">\u2039 '+esc(club.name)+'</a></div></div>'
+      + body;
+  };
+  W.nhAdmin=function(){
+    try{
+      if(W.PLAT.cid===0){ var t=document.getElementById("platRegTile"); if(t){ showScreen("aboutScreen"); setTimeout(function(){ t.click(); },60); return; } }
+      if(typeof openAdmin==="function"){ openAdmin(); return; }
+      showScreen("aboutScreen");
+    }catch(e){ try{ showScreen("aboutScreen"); }catch(_){} }
+  };
+  W.nhPlayer=function(n){ try{ if(typeof loadProfile==="function") loadProfile(n,""); }catch(e){} };
+
+  /* n51: THE LEDGER'S HOME, in the new shape too. Two of the three home screens had been replaced and this
+     one had not, so tapping Ledger landed back in the old app — which is exactly what "no semblance of the
+     old site" rules out. The tables BEHIND it are still the app's own; this is the front of it. */
+  /* n54: THE LEDGER KEEPS ITS OWN PAGE. It already has the tables people go there for, and repeating the
+     movers, the form and the matches above them was the same information twice. So the ledger gets the new
+     BAND and nothing else — its own screen, unchanged, under a header that matches the rest of the app. */
+  function newLedgerHome(){
+    nhCSS(); nhInk("#2f2f2f"); nhHeaderSkin("#2f2f2f","#141414");
+    var host=document.getElementById("homeScreen"); if(!host) return;
+    var isClub=!!W.PLAT.nat, name=isClub?(W.PLAT.natName||"Club"):(W.PLAT.poolName||"All Registered Clubs");
+    var B=SBREST(), where=(W.PLAT.natIds&&W.PLAT.natIds.length)?("club_id=in.("+W.PLAT.natIds.join(",")+")"):("pool_id=eq."+W.PLAT.pool);
+    /* the band goes ABOVE the page's own content — nothing of the ledger is hidden or replaced */
+    var band=document.getElementById("nhBand");
+    if(!band){ band=document.createElement("div"); band.id="nhBand"; band.className="nhband"; host.insertBefore(band,host.firstChild); }
+    /* n55: THE NEW HEADER REPLACES THE OLD ONE. Adding a band above the app's own banner left two headers
+       stacked — the new one and the old balls-and-title one underneath it. The tables stay; the banner goes. */
+    var kill=document.getElementById("nhKillHero");
+    if(!kill){ kill=document.createElement("style"); kill.id="nhKillHero";
+      kill.textContent="#homeScreen .hero-logo-panel,#homeScreen .hero,#homeScreen #heroTitle{display:none!important}"
+        +"#homeScreen .home-content{margin-top:0!important;padding-top:4px!important}";
+      document.head.appendChild(kill); }
+    var sv=document.getElementById("nhShow");
+    if(!sv){ sv=document.createElement("style"); sv.id="nhShow";
+      /* the first-frame mask is "#homeScreen > *:not(#nh)", which outranks a plain "#homeScreen > *".
+         The ledger keeps its own page, so everything in it is revealed with a rule that outranks the mask. */
+      sv.textContent="html body #homeScreen > *{visibility:visible!important}"
+        +".nhband{color:#fff;padding:15px 16px 17px;border-radius:0;background:linear-gradient(135deg,#2f2f2f,#141414);width:100%;margin:0 0 8px;box-sizing:border-box}"
+        +"@media(min-width:880px){.nhband{border-radius:0 0 18px 18px}}"
+        +".nhband .mark{display:inline-flex;align-items:center;gap:9px;font-size:11px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;opacity:.95}"
+        +".nhband .mark .logo{font-size:17px;letter-spacing:.06em;text-transform:none;background:rgba(255,255,255,.14);border:1px solid rgba(255,255,255,.34);border-radius:9px;padding:2px 9px}"
+        +".nhband h1{font-size:25px;line-height:1.1;margin:9px 0 3px;font-weight:800}"
+        +".nhband .sub{font-size:12.5px;opacity:.88}"
+        +".nhband .pulse{display:flex;gap:7px;flex-wrap:wrap;margin-top:11px}"
+        +".nhband .pulse span,.nhband .pulse a{background:rgba(255,255,255,.16);border:1px solid rgba(255,255,255,.3);border-radius:99px;padding:5px 11px;font-size:12px;font-weight:700;color:#fff;text-decoration:none}";
+      document.head.appendChild(sv); }
+    /* the way back, and the way into admin — a ledger had neither */
+    var back="";
+    if(isClub) back='<a href="'+PAGE+'?club='+W.PLAT.nat+'">\u2039 '+esc(W.PLAT.natName||"the club")+'</a>';
+    else { var last=null; try{ last=sessionStorage.getItem("nat_last_club_"+W.PLAT.pool); }catch(e){}
+      if(last){ var bits=last.split("|"); back='<a href="'+PAGE+'?club=0&pool='+W.PLAT.pool+'&nat='+bits[0]+'">\u2039 '+esc((bits[1]||"club")+" ledger")+'</a>'; } }
+    /* on the register's own ledger the tables cover every club, so the button says so */
+    if(!isClub){ setTimeout(function(){
+      Array.prototype.forEach.call(document.querySelectorAll("#homeScreen .menu-btn"),function(b){
+        if(/current ratings and ladders/i.test(b.textContent||"") && !/all clubs/i.test(b.textContent||""))
+          b.textContent="Current Ratings and Ladders \u2014 All Clubs";
+      }); },400); }
+    band.innerHTML='<div class="mark"><span class="logo">OPR</span>Ledger</div>'
+      +'<h1>'+esc(name)+'</h1>'
+      +'<div class="sub">'+(isClub?"Every match at the club \u2014 general play and every group":"Every match at every registered club \u2014 one rating each")+'</div>'
+      +'<div class="pulse">'+back
+      +'<a href="#" onclick="event.preventDefault();showScreen(\'aboutScreen\')">About OPR</a>'
+      +'</div>';
+    /* one live line in the band, once the figures are in — nothing else is added to the page */
+    fetch(B+"plat_matches?"+where+"&discipline=eq.padel&select=match_date,t1p1,t1p2,t2p1,t2p2,rating_delta&order=match_date.desc&limit=80").then(J).then(function(ms){
+      ms=ms||[];
+      var wk=ms.filter(function(m){ return ago(m.match_date)<=7; }).length, mv=nhMovers(ms);
+      var p=band.querySelector(".pulse");
+      p.innerHTML += '<span>'+wk+(wk===1?' match':' matches')+' this week</span>'
+        + '<span>'+((d.pairs||[]).length)+' pairs on record</span>'   /* n59: nobody named in the band */;
+    }).catch(function(){});
+  }
+
+  /* the club's FRONT DOOR — the club's introduction, in OPR's own colours */
+  function newClubDoor(){
+    var w=nhWrap(); if(!w) return;
+    nhCSS(); nhInk("#6c3483"); nhHeaderSkin("#3a1d6e","#1d0a41");
+    var C=W.PLAT.cid, kids=kidsOf(C).sort(function(a,b){ return String(a.name).localeCompare(String(b.name)); });
+    nhFetch().then(function(d){
+      nhWindow(d.matches||[]); var wk=(d.matches||[]).filter(function(m){ return ago(m.match_date)<=NHWIN; }).length;
+      var mv=nhMovers(d.matches||[]);
+      var row=function(name,col,sub,href){
+        return '<button class="row" onclick="location.href=\''+href+'\'">'
+          +'<span class="av" style="background:'+col+'">'+esc(inits(name))+'</span>'
+          +'<span class="nm"><b>'+esc(name)+'</b><span>'+esc(sub)+'</span></span>'
+          /* n64: the little \u203a was too quiet to read as "tap here". A round chevron in the board's colour
+           says it plainly, without shouting. */
+        +'<span class="val"><span style="display:inline-grid;place-items:center;width:28px;height:28px;border-radius:50%;'
+        +'background:'+col+';color:#fff;font-size:15px;font-weight:800;line-height:1">\u203a</span></span></button>';
+      };
+      /* n63: the club's own row sits on a light shade of its colour, so the eye separates "the club" from
+         "its groups" without another heading doing the work. */
+      var places='<div class="kind">The club</div>'
+        /* the shade is a background on the row itself, not a box around it — a box added padding and pushed
+           the avatar and the chevron out of line with the groups below. */
+        + '<div class="shaded">'
+        + row(W.PLAT.name+" \u2014 general play", "#6c3483", "Open to every member \u00b7 matches outside the groups", PAGE+"?club="+C+"&board=1")
+        + '</div>';
+      if(kids.length){
+        places+='<div class="kind">Groups \u00b7 each runs itself</div>';
+        kids.forEach(function(g){
+          var n=(d.matches||[]).filter(function(m){ return Number(m.club_id)===Number(g.id); }).length;
+          places+=row(g.name, clubPal(g.id)[0], n?(n+" recent "+(n===1?"match":"matches")):"its own board, ladder and card", PAGE+"?club="+g.id);
+        });
+      }
+      w.innerHTML =
+        '<div class="band opr"><div class="mark"><span class="logo">OPR</span>Open Padel Ratings</div>'
+        + '<h1>'+esc(W.PLAT.name||"")+'</h1>'
+        + '<div class="sub">'+esc(W.PLAT.poolName||"")+'</div>'
+        + '<div class="pulse"><span>'+wk+(wk===1?' match':' matches')+' this week</span>'
+        + '<span>'+((d.pairs||[]).length)+' pairs on record</span>'   /* n59: nobody named in the band */
+        + (d.tour?('<span>'+esc(d.tour.name)+' running</span>'):'')+'</div></div>'
+        + '<div class="brk"><h2>Where you play</h2><div class="rows">'+places+'</div></div>'
+        + '<div class="cols">'+nhFormBrk(d,"#6c3483","club") + nhMoversBrk(d,"#6c3483","club") + nhTourBrk(d) + nhMatchesBrk(d,5,"club")+'</div>'   /* n59 */ 
+        + '<div class="brk"><h2>Ledgers</h2><div class="rows">'
+        + '<button class="row" onclick="window.platGoClubLedger('+C+')"><span class="av" style="background:#2f2f2f">\u2261</span>'
+        + '<span class="nm"><b>'+esc(W.PLAT.name)+' and All Club Ledgers</b><span>every match at the club \u2014 general play and every group \u00b7 and every registered club</span></span>'
+        + '<span class="val"><b style="color:#cfc6da">\u203a</b></span></button></div></div>'
+        + nhFoot("#3a1d6e","#1d0a41","Club admin");   /* the one way in */
+    });
+  }
+
+  /* the place page — a board's home, entirely replaced */
+  function newPlaceHome(){
+    var w=nhWrap(); if(!w) return;
+    nhCSS();
+    var ink=(W.PLAT.colour||"#6c3483"), deep=nhDeep(ink); nhInk(ink); nhHeaderSkin(ink,deep);
+    /* n53: the club's own board needs the way back too — it sits under the club door exactly as a group does,
+       and it had no chip at all. */
+    var club=(W.PLAT.parentId?(W.PLAT.clubs||[]).find(function(c){ return c.id===W.PLAT.parentId; })
+                             :(isClubWithKids(W.PLAT.cid)?{id:W.PLAT.cid,name:W.PLAT.name}:null));
+    nhFetch().then(function(all){
+      var mine=(all.matches||[]).filter(function(m){ return Number(m.club_id)===Number(W.PLAT.cid); });
+      var d={matches:mine,pairs:(all.pairs||[]).filter(function(p){ return Number(p.club_id)===Number(W.PLAT.cid); }),
+             people:all.people,tour:all.tour};
+      NHEG=false;
+      if(mine.length<5){ d=nhExample(); mine=d.matches; }   /* n52 */
+      nhWindow(mine); var wk=mine.filter(function(m){ return ago(m.match_date)<=NHWIN; }).length;
+      var mv=nhMovers(mine), top=(d.pairs||[])[0];
+      var people={}; mine.forEach(function(m){ [m.t1p1,m.t1p2,m.t2p1,m.t2p2].forEach(function(v){ if(v) String(v).split(" & ").forEach(function(x){ people[x.trim()]=1; }); }); });
+      w.innerHTML =
+        '<div class="band" style="background:linear-gradient(135deg,'+ink+','+deep+')">'
+        + '<div class="mark"><span class="logo">OPR</span>'+esc(club?club.name:(W.PLAT.poolName||"Open Padel Ratings"))+'</div>'
+        + '<h1>'+esc(W.PLAT.name||"")+'</h1>'
+        + '<div class="sub">'+(W.PLAT.parentId?"Its own board, ladder, tournaments and court cards":"Open to every member \u2014 matches outside the groups")+'</div>'
+        + '<div class="pulse">'+(club?('<a href="'+PAGE+'?club='+club.id+'">\u2039 '+esc(club.name)+'</a>'):'')
+        + '<span>'+wk+(wk===1?' match':' matches')+' '+nhWhen()+'</span>'
+        /* n58: no mover named in the band — it repeated the same person on every screen. A count instead. */
+        + '<span>'+((d.matches||[]).length)+' on record</span>'+'</div></div>'
+        /* n52: four tiles, as the place page had before — top pair and biggest move are the two people read */
+        + '<div class="tiles">'
+        + '<div class="tile"><div class="k">'+esc(nhWhen().replace("this week","This week"))+'</div><div class="v">'+wk+'</div><div class="n">matches here</div></div>'
+        + '<div class="tile"><div class="k">Playing</div><div class="v">'+Object.keys(people).length+'</div><div class="n">with a match on record</div></div>'
+        + '<div class="tile"><div class="k">Top pair</div><div class="v" style="font-size:15px;line-height:1.25">'+esc(top?top.name:"\u2014")+'</div><div class="n">'+(top?Math.round(top.current_rating):"")+'</div></div>'
+        /* n59: the move was already said twice on this page; the upset is a different story each week */
+        + (function(){ var u=nhUpset(d);
+            return '<div class="tile"><div class="k">Biggest upset</div>'
+              +'<div class="v" style="font-size:15px;line-height:1.25">'+esc(u?u.who:"\u2014")+'</div>'
+              +'<div class="n">'+esc(u?("beat a pair rated "+u.gap+" higher"):("none "+nhWhen()))+'</div></div>'; })()
+        + '</div>'
+        + nhActions(ink,deep)
+        + '<div class="cols">'+nhCharts(d,ink)+nhMoversBrk(d,ink,"board") + nhFormBrk(d,ink,"board") + nhTourBrk(d) + nhMatchesBrk(d,5,"board") + nhCardBrk(d)+'</div>'
+        + nhFoot(ink,deep,"none");   /* n59: admin lives on the club door only */
+    });
+  }
   /* What has just been played, across the whole club — the door's own short list. */
   function doorRecent(scope){
     var box=document.getElementById("platDoorRecent"); if(!box||!W.PLAT.pool) return;
@@ -11284,6 +11979,8 @@ async function clRemove(id, label){
     if(W.PLAT.landing){ var t1="OPR · "+(W.PLAT.poolName||"Clubs"); if(ht) ht.textContent=t1; document.title=t1; landing(); try{ doorChip(); }catch(e){} return; }
     // NAT: a club with groups opens on its DOOR (its board is ?club=C&board=1)
     if(W.PLAT.clubDoor){ var t3="OPR · "+(W.PLAT.name||"Club"); if(ht) ht.textContent=t3; document.title=t3;
+      if(W.NEWAPP){ try{ newClubDoor(); }catch(e){} return; }   /* n50: the new front door */
+      if(W.NEWAPP){ try{ newClubDoor(); }catch(e){} return; }
       var sb3=document.querySelector("#homeScreen .hero-logo-panel .sub, #homeScreen .sub"); if(sb3 && W.PLAT.poolName) sb3.textContent=W.PLAT.poolName+" · Open Padel Ratings System";
       clubDoor();
       /* n11: the door's About has an Admin link that only reaches the club board's own admin — which you get
@@ -11291,14 +11988,17 @@ async function clRemove(id, label){
       try{ var ab=document.getElementById("aboutScreen");
            if(ab) Array.prototype.forEach.call(ab.querySelectorAll("button"),function(b){ if(/admin/i.test(b.textContent||"")) b.style.display="none"; }); }catch(e){}
       return; }
-    if(W.PLAT.cid===0){ var t2="OPR · "+(W.PLAT.nat?(W.PLAT.natName||"Club"):(W.PLAT.poolName||"Overall"))+" · Ledger"; if(ht) ht.textContent=t2; document.title=t2; ledgerOnly(); try{ natToggle(); }catch(e){}
+    if(W.PLAT.cid===0){ var t2="OPR · "+(W.PLAT.nat?(W.PLAT.natName||"Club"):(W.PLAT.poolName||"Overall"))+" · Ledger"; if(ht) ht.textContent=t2; document.title=t2;
+      if(W.NEWAPP){ try{ newLedgerHome(); }catch(e){} }   /* n51: the ledger's home, new shape */
+      ledgerOnly(); try{ natToggle(); }catch(e){}
       /* n32: standing on the COMBINED ledger is the register owner's place as surely as the door is — and it
          is where combined.html lands, so arriving that way left every club door afterwards looking like a
          member's, with no way back. Stamp it here too. A club's own ledger (nat set) does not count: that is
          where a club admin stands. */
       if(!W.PLAT.nat) markOwnerDevice();                    /* n37 */
     }
-    else if(W.PLAT.name&&ht){ var _bn=(W.PLAT.board&&isClubWithKids(W.PLAT.cid))?(W.PLAT.name+" · General play"):W.PLAT.name;   /* n3 */
+    else if(W.PLAT.name&&ht){
+      if(W.NEWAPP){ try{ newPlaceHome(); }catch(e){} }   /* n50: the board's home is the new place page */ var _bn=(W.PLAT.board&&isClubWithKids(W.PLAT.cid))?(W.PLAT.name+" · General play"):W.PLAT.name;   /* n3 */
       /* n3: the parent writes 'OPR · '+CLUB_NAME into the hero from its own window.onload, which can land
          after this. Rather than guess the order, hold the title for a few frames — whoever writes last, the
          board still names itself. */
