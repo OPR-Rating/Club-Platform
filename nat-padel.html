@@ -3484,7 +3484,7 @@ const CLUB_NAME = _club.name;  // shown in the logo as "OPR · <name>"
     link.setAttribute('href', href);
   }catch(e){ /* install stays on the static manifest — no functional impact */ }
 })();
-const OPR_VERSION = "OPR-DOUBLES v2026.09.03-56 · NAT fork n41 (no voice) (of PLAT p117)";  // MANUAL PAIR CREATION REMOVED FROM ADMIN: Create a pair, Bulk create pairs and Re-derive all pairs are gone (they only made match-less ghost pairs, and Re-derive rewrote every stored initial club-wide). Pairs are born automatically at match entry. Current pairs list untouched; the underlying JS is left in place unreferenced, so no other code path changes. Includes v47 (set-score fix + double-tap guard) and all prior.
+const OPR_VERSION = "OPR-DOUBLES v2026.09.03-56 · NAT fork n42 (no voice) (of PLAT p117)";  // MANUAL PAIR CREATION REMOVED FROM ADMIN: Create a pair, Bulk create pairs and Re-derive all pairs are gone (they only made match-less ghost pairs, and Re-derive rewrote every stored initial club-wide). Pairs are born automatically at match entry. Current pairs list untouched; the underlying JS is left in place unreferenced, so no other code path changes. Includes v47 (set-score fix + double-tap guard) and all prior.
 // Explanation shown above the individual ladder. Open on load so it's read; collapsible
 // (state kept for the session) and scrolls away. Mechanics only — no outcome framing, so
 // members aren't nudged away from playing stronger opponents. Every clause maps to a real
@@ -9424,6 +9424,41 @@ async function clRemove(id, label){
 
   /* n39e was a duplicate: the glue's own ladderBadges (below) has coloured these discs by club since p117.
      It was never broken — an !important rule of mine was sitting on top of it. Removed; the original stands. */
+  /* n42: DEEP LINKS. Until now every address opened a board's home page and the person had to find the rest
+     themselves, so a link that says "the full ratings" could not actually go there. The page now accepts
+     ?go=... and opens that screen once the board has loaded:
+        go=ladders     the ratings and ladders menu        go=entry      enter a score
+        go=profiles    the member list                     go=card       the court card
+        go=tournaments tournaments                         go=ladder&t=mens   one ladder straight away
+        go=player&name=Murray%20Aberdein                   somebody's profile
+     Anything unknown is ignored and the board opens as usual, so an old or mistyped link is never a dead end. */
+  function goWhere(){
+    var q=new URLSearchParams(location.search);
+    var go=(q.get("go")||"").toLowerCase(); if(!go) return;
+    var t=(q.get("t")||"mens").toLowerCase(), who=q.get("name")||"";
+    var tries=0;
+    var fire=function(){
+      tries++;
+      try{
+        if(go==="ladders" && typeof showScreen==="function"){ showScreen("laddersScreen"); return true; }
+        if(go==="ladder" && typeof loadLadder==="function"){
+          var title={mens:"Men's Pairs",ladies:"Ladies' Pairs",mixed:"Mixed Pairs",allsorts:"All Sorts",universal:"Universal Rating"}[t]||"Ratings";
+          loadLadder(t,title); return true; }
+        if(go==="profiles" && typeof showProfileSearch==="function"){ showProfileSearch(); return true; }
+        if(go==="player" && who && typeof loadProfile==="function"){ loadProfile(who,""); return true; }
+        if(go==="tournaments" && typeof loadActiveTournaments==="function"){ loadActiveTournaments(); return true; }
+        if(go==="tournaments" && typeof showScreen==="function"){ showScreen("tournamentsScreen"); return true; }
+        if(go==="entry"){ var b=document.querySelector("#homeScreen .btn-enter"); if(b){ b.click(); return true; } }
+        if(go==="card" && typeof W.platOpenCard==="function"){ W.platOpenCard(); return true; }
+        if(go==="card"){ var c=Array.prototype.filter.call(document.querySelectorAll("button"),function(x){ return /court card/i.test(x.textContent||""); })[0];
+          if(c){ c.click(); return true; } }
+      }catch(e){}
+      if(tries<12) setTimeout(fire,220);
+      return false;
+    };
+    setTimeout(fire,320);
+  }
+
   /* What has just been played, across the whole club — the door's own short list. */
   function doorRecent(scope){
     var box=document.getElementById("platDoorRecent"); if(!box||!W.PLAT.pool) return;
@@ -11244,6 +11279,7 @@ async function clRemove(id, label){
     fixManifest();
     var ht=document.getElementById("heroTitle");
     try{ natChip(); }catch(e){}   // NAT: the chip climbs the ladder
+    try{ goWhere(); }catch(e){}   /* n42: ?go= opens the screen the link asked for */
     try{ pickerPatch(); }catch(e){}   // n13: club first, register on typing
     if(W.PLAT.landing){ var t1="OPR · "+(W.PLAT.poolName||"Clubs"); if(ht) ht.textContent=t1; document.title=t1; landing(); try{ doorChip(); }catch(e){} return; }
     // NAT: a club with groups opens on its DOOR (its board is ?club=C&board=1)
