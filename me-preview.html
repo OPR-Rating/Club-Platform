@@ -58,6 +58,12 @@
   .nm{flex:1;min-width:0}.nm b{display:block;font-size:15.5px;color:#241d33}.nm span{display:block;font-size:12.5px;color:#5f5770;margin-top:2px}
   .val{text-align:right}.val b{display:block;font-size:16px;font-weight:800}.val span{display:block;font-size:11.5px;color:#5f5770}
   .up{color:var(--ok)}.dn{color:var(--down)}
+  /* the app's five figures, across */
+  .five{display:grid;grid-template-columns:repeat(5,1fr);gap:7px;margin:12px 12px 0}
+  .fig{background:#fff;border:1px solid var(--line);border-radius:12px;padding:10px 4px;text-align:center}
+  .fig b{display:block;font-size:17px;font-weight:800;color:var(--me)}
+  .fig span{display:block;font-size:10px;color:var(--mute);margin-top:2px;line-height:1.2}
+  @media(max-width:430px){ .five{grid-template-columns:repeat(3,1fr)} }
   .tiles{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:12px 12px 0}
   .tile{background:#fff;border:1px solid var(--line);border-radius:14px;padding:13px}
   .tile .k{font-size:10.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--mute);font-weight:800}
@@ -122,11 +128,13 @@
         get("plat_player_results?"+inList+"&discipline=eq.padel&select=name,club_id,current_rating,initial_rating,sets_played,sets_won"),
         get("plat_padel_v_individuals?"+inList+"&select=full_name,club_id,current_rating,seed_rating,gender"),
         get("plat_clubs?pool_id=eq."+D.pool+"&select=id,name,colour"),
-        get("plat_padel_tournaments?"+inList+"&select=id,name,club_id,active,archived").catch(function(){ return []; })
+        get("plat_padel_tournaments?"+inList+"&select=id,name,club_id,active,archived").catch(function(){ return []; }),
+        get("nat_club_contacts?club_id=eq."+D.club.id+"&select=contact_name,phone,email").catch(function(){ return []; })
       ]);
     }).then(function(r){
       D.matches=r[0]||[]; D.pairs=r[1]||[]; D.people=r[2]||[]; D.clubs=r[3]||[];
       D.tour=(r[4]||[]).filter(function(x){ return x.active&&!x.archived; })[0]||null;
+      D.contact=(r[5]||[])[0]||null;
       D.groups=D.clubs.filter(function(c){ return D.boards.indexOf(c.id)>=0 && Number(c.id)!==Number(D.club.id); });
       render();
     }).catch(function(e){
@@ -135,27 +143,43 @@
   }
 
   /* ---------- my own figures ---------- */
+  /* A MATCH STORES PAIRS, NOT PEOPLE. t1p1 is "Dave Keal & Andrew Kramer" in this app, so looking for a
+     single name found nothing — which is why a man with a match showed none. Each slot is split on "&" and
+     every half is checked; the other half is the partner. */
+  function halves(v){ return String(v||"").split(" & ").map(function(x){ return x.trim(); }).filter(Boolean); }
   function mine(name){
-    var out={matches:[],partners:{},boards:{},won:0,lost:0,setsW:0,setsL:0,move:0,trail:[]};
+    var out={matches:[],partners:{},boards:{},won:0,lost:0,setsW:0,setsL:0,move:0,trail:[],pairs:{}};
     var run=0;
     D.matches.slice().reverse().forEach(function(m){
+      var t1=halves(m.t1p1).concat(halves(m.t1p2)), t2=halves(m.t2p1).concat(halves(m.t2p2));
       var side=0, mate=null;
-      if([m.t1p1,m.t1p2].indexOf(name)>=0){ side=1; mate=(m.t1p1===name)?m.t1p2:m.t1p1; }
-      else if([m.t2p1,m.t2p2].indexOf(name)>=0){ side=-1; mate=(m.t2p1===name)?m.t2p2:m.t2p1; }
+      if(t1.indexOf(name)>=0){ side=1; mate=t1.filter(function(x){ return x!==name; })[0]||null; }
+      else if(t2.indexOf(name)>=0){ side=-1; mate=t2.filter(function(x){ return x!==name; })[0]||null; }
       if(!side) return;
       var a=+m.t1_sets||0, b=+m.t2_sets||0, myS=(side>0?a:b), thS=(side>0?b:a);
       out.matches.push(m); out.setsW+=myS; out.setsL+=thS;
       if(myS>thS) out.won++; else out.lost++;
-      if(mate){ out.partners[mate]=out.partners[mate]||{w:0,l:0,d:0};
-        out.partners[mate][myS>thS?"w":"l"]++; }
       out.boards[m.club_id]=(out.boards[m.club_id]||0)+1;
       var d=(m.rating_delta!=null?+m.rating_delta:0)*side;
       run+=d; out.trail.push(run);
       if(ago(m.match_date)<=7) out.move+=d;
-      if(mate) out.partners[mate].d+=d;
+      if(mate){
+        out.partners[mate]=out.partners[mate]||{w:0,l:0,d:0};
+        out.partners[mate][myS>thS?"w":"l"]++; out.partners[mate].d+=d;
+      }
+      var mypair=(side>0?t1:t2).slice().sort().join(" & ");
+      out.pairs[mypair]=(out.pairs[mypair]||0)+1;
     });
     out.matches.reverse();
     return out;
+  }
+  /* the pair rows the app itself keeps, for the pairs this person belongs to */
+  function myPairs(name){
+    return (D.pairs||[]).filter(function(p){ return halves(p.name).indexOf(name)>=0; })
+      .map(function(p){ return {name:p.name, club_id:p.club_id, rating:Math.round(p.current_rating||0),
+        move:Math.round((p.current_rating||0)-(p.initial_rating||0)),
+        played:p.sets_played||0, won:p.sets_won||0}; })
+      .sort(function(a,b){ return b.rating-a.rating; });
   }
   function person(name){ return D.people.filter(function(p){ return p.full_name===name; })[0]||null; }
   function boardName(id){ var c=D.clubs.filter(function(x){ return Number(x.id)===Number(id); })[0]; return c?c.name:""; }
@@ -173,6 +197,21 @@
       +'whenever you like. In the real thing a name could be claimed once, with a PIN you choose yourself.</p>'
       +'<input id="hunt" placeholder="Start typing\u2026" oninput="window.mePick()">'
       +'<div class="list" id="hits"></div></div>'
+      /* NOT ON THE LIST? Then it is not a claim, it is a conversation. Registering yourself would mean asking
+         a stranger what their own rating should be, which only an organiser can judge — so the app points at
+         the person who can do it, using the club's own contact details. */
+      +'<div class="claim" style="background:#fbf9fc">'
+      +'<h3>Name not on the list?</h3>'
+      +'<p>Only registered members appear here. Your club\u2019s organiser can add you \u2014 they set your starting '
+      +'rating, which is why it is not something to do yourself.</p>'
+      +(D.contact&&(D.contact.contact_name||D.contact.phone)
+        ? ('<div style="font-size:13.5px;font-weight:700;margin-bottom:8px">'+esc(D.contact.contact_name||D.club.name)+'</div>'
+           +(D.contact.phone?('<a href="tel:'+esc(String(D.contact.phone).replace(/[^0-9+]/g,""))+'" '
+             +'style="display:inline-block;background:var(--me);color:#fff;text-decoration:none;border-radius:99px;padding:10px 16px;font-weight:800;font-size:13px">Call '+esc(D.contact.phone)+'</a> '):'')
+           +(D.contact.email?('<a href="mailto:'+esc(D.contact.email)+'" style="display:inline-block;border:1px solid var(--me);color:var(--me);'
+             +'text-decoration:none;border-radius:99px;padding:10px 16px;font-weight:800;font-size:13px;margin-top:6px">Email</a>'):''))
+        : '<div style="font-size:12.5px;color:#6f6780">Ask at the club \u2014 no contact has been added to the register yet.</div>')
+      +'</div>'
       +'<div class="foot">Sample \u00b7 nothing here is live</div>';
   }
   window.mePick=function(){
@@ -222,10 +261,21 @@
       +'<button><svg viewBox="0 0 24 24"><path d="M4 5a2 2 0 0 1 2-2h13v16H6a2 2 0 0 0-2 2V5Z"/><path d="M8 7h7M8 11h7"/></svg>Ledgers</button>'
       +'</div>';
 
+    /* THE APP'S OWN PROFILE, IN THE NEW SHAPE. Five figures across, the chart, then the partnerships the app
+       already keeps — with the board's colour running through all of it, or the club's purple where somebody
+       plays only general play. */
     var pct=(st.setsW+st.setsL)?Math.round(100*st.setsW/(st.setsW+st.setsL)):0;
-    h+='<div class="tiles">'
-      +'<div class="tile"><div class="k">Matches</div><div class="v">'+st.matches.length+'</div><div class="n">'+st.won+' won \u00b7 '+st.lost+' lost</div></div>'
-      +'<div class="tile"><div class="k">Sets won</div><div class="v">'+pct+'%</div><div class="n">'+st.setsW+' of '+(st.setsW+st.setsL)+'</div></div>'
+    var gdps=(function(){ var g=0,n=0; st.matches.forEach(function(m){
+        if(m.t1_games==null||m.t2_games==null) return;
+        var iAmT1=(halves(m.t1p1).concat(halves(m.t1p2)).indexOf(me)>=0);
+        var mine2=iAmT1?+m.t1_games:+m.t2_games, theirs=iAmT1?+m.t2_games:+m.t1_games;
+        var sets=(+m.t1_sets||0)+(+m.t2_sets||0); if(!sets) return;
+        g+=(mine2-theirs)/sets; n++; }); return n?(g/n):0; })();
+
+    h+='<div class="five">'
+      + [[st.matches.length,"Matches"],[st.setsW+st.setsL,"Sets"],[st.setsW,"Sets won"],
+         [pct+"%","Win %"],[(gdps>0?"+":"")+gdps.toFixed(2),"Game diff/set"]]
+        .map(function(x){ return '<div class="fig"><b>'+esc(String(x[0]))+'</b><span>'+esc(x[1])+'</span></div>'; }).join("")
       +'</div>';
 
     h+='<div class="cols">';
@@ -234,39 +284,44 @@
     if(st.trail.length>1){
       var lo=Math.min.apply(null,st.trail), hi=Math.max.apply(null,st.trail), sp=(hi-lo)||1, step=260/(st.trail.length-1);
       var line=st.trail.map(function(v,i){ return (i?"L":"M")+(i*step).toFixed(1)+","+(60-((v-lo)/sp)*52).toFixed(1); }).join(" ");
-      h+='<div class="brk"><h2>My form \u00b7 '+st.trail.length+' rated matches</h2><div style="padding:2px 14px 14px">'
+      h+='<div class="brk"><h2>My form \u00b7 '+st.trail.length+' rated '+(st.trail.length===1?"match":"matches")+'</h2>'
+        +'<div style="padding:2px 14px 14px">'
         +'<svg viewBox="0 0 260 62" preserveAspectRatio="none" style="display:block;width:100%;height:62px">'
         +'<defs><linearGradient id="mg" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="'+col+'" stop-opacity=".26"/><stop offset="1" stop-color="'+col+'" stop-opacity="0"/></linearGradient></defs>'
         +'<path d="'+line+' L260,62 L0,62 Z" fill="url(#mg)"/><path d="'+line+'" fill="none" stroke="'+col+'" stroke-width="2.4" stroke-linejoin="round"/></svg>'
         +'</div></div>';
     }
 
-    /* my partners */
-    var mates=Object.keys(st.partners).map(function(k){ var x=st.partners[k];
-      return {name:k,w:x.w,l:x.l,d:Math.round(x.d)}; })
-      .sort(function(a,b){ return (b.w-b.l)-(a.w-a.l) || b.d-a.d; }).slice(0,5);
-    if(mates.length){
-      h+='<div class="brk"><h2>My partners</h2><div class="rows">'
-        +mates.map(function(x){ return '<div class="row"><span class="av" style="background:'+col+'">'+esc(inits(x.name))+'</span>'
-          +'<span class="nm"><b>'+esc(x.name)+'</b><span>'+x.w+' won \u00b7 '+x.l+' lost together</span></span>'
-          +'<span class="val"><b class="'+(x.d>=0?"up":"dn")+'">'+(x.d>0?"+":"")+x.d+'</b><span>with them</span></span></div>'; }).join("")
-        +'</div><button class="more">All my partnerships \u2192</button></div>';
+    /* the partnerships the app keeps: the pair, its rating, its move, and where it plays */
+    var mp=myPairs(me);
+    if(mp.length){
+      h+='<div class="brk"><h2>My partnerships \u00b7 '+mp.length+'</h2><div class="rows" style="max-height:330px;overflow-y:auto">'
+        + mp.map(function(x){
+            var other=halves(x.name).filter(function(n){ return n!==me; })[0]||x.name;
+            var pc=boardCol(x.club_id);
+            return '<div class="row"><span class="av" style="background:'+pc+'">'+esc(inits(other))+'</span>'
+              +'<span class="nm"><b>'+esc(x.name)+'</b><span>rating '+x.rating+' \u00b7 '+x.won+' of '+x.played+' sets \u00b7 '+esc(boardName(x.club_id))+'</span></span>'
+              +'<span class="val"><b class="'+(x.move>=0?"up":"dn")+'">'+(x.move>0?"+":"")+x.move+'</b><span>since start</span></span></div>'; }).join("")
+        +'</div><button class="more">All partnerships \u2192</button></div>';
     }
 
     /* where I play */
-    h+='<div class="brk"><h2>Where I play</h2><div class="rows">'
-      + Object.keys(st.boards).sort(function(a,b){ return st.boards[b]-st.boards[a]; }).map(function(id){
-          return '<button class="row"><span class="av" style="background:'+boardCol(id)+'">'+esc(inits(boardName(id)))+'</span>'
-            +'<span class="nm"><b>'+esc(boardName(id))+'</b><span>'+st.boards[id]+' matches</span></span>'
-            +'<span class="val"><span style="display:inline-grid;place-items:center;width:28px;height:28px;border-radius:50%;background:'+boardCol(id)+';color:#fff;font-weight:800">\u203a</span></span></button>'; }).join("")
-      +'</div></div>';
+    var bd=Object.keys(st.boards).sort(function(a,b){ return st.boards[b]-st.boards[a]; });
+    if(bd.length){
+      h+='<div class="brk"><h2>Where I play</h2><div class="rows">'
+        + bd.map(function(id){
+            return '<button class="row"><span class="av" style="background:'+boardCol(id)+'">'+esc(inits(boardName(id)))+'</span>'
+              +'<span class="nm"><b>'+esc(boardName(id))+'</b><span>'+st.boards[id]+' '+(st.boards[id]===1?"match":"matches")+'</span></span>'
+              +'<span class="val"><span style="display:inline-grid;place-items:center;width:28px;height:28px;border-radius:50%;background:'+boardCol(id)+';color:#fff;font-weight:800">\u203a</span></span></button>'; }).join("")
+        +'</div></div>';
+    }
 
-    /* my recent matches, lime bar, scrolling */
+    /* my matches, written from my side */
     if(st.matches.length){
       h+='<div class="brk"><div class="lime">My recent matches</div>'
         +'<div class="rows" style="max-height:340px;overflow-y:auto">'
         + st.matches.slice(0,25).map(function(m){
-            var iAmT1=([m.t1p1,m.t1p2].indexOf(me)>=0);
+            var t1=halves(m.t1p1).concat(halves(m.t1p2)), iAmT1=(t1.indexOf(me)>=0);
             var us=[m.t1p1,m.t1p2].filter(Boolean).join(" & "), them=[m.t2p1,m.t2p2].filter(Boolean).join(" & ");
             if(!iAmT1){ var t=us; us=them; them=t; }
             var a=+m.t1_sets||0,b=+m.t2_sets||0, myS=iAmT1?a:b, thS=iAmT1?b:a;
