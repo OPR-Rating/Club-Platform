@@ -9596,7 +9596,7 @@ async function clRemove(id, label){
     var B=SBREST(), boards=(W.PLAT.myBoards&&W.PLAT.myBoards.length)?W.PLAT.myBoards:[W.PLAT.cid];
     var inList="club_id=in.("+boards.join(",")+")";
     return Promise.all([
-      fetch(B+"plat_matches?"+inList+"&discipline=eq.padel&select=id,club_id,match_date,match_type,t1p1,t1p2,t2p1,t2p2,t1_sets,t2_sets,set_scores,rating_delta&order=match_date.desc,id.desc&limit=120").then(J),
+      fetch(B+"plat_matches?"+inList+"&discipline=eq.padel&select=id,club_id,match_date,match_type,event,t1p1,t1p2,t2p1,t2p2,t1_sets,t2_sets,set_scores,rating_delta&order=match_date.desc,id.desc&limit=120").then(J),
       fetch(B+"plat_player_results?"+inList+"&discipline=eq.padel&select=name,club_id,current_rating,initial_rating,sets_played,sets_won&order=current_rating.desc&limit=60").then(J),
       fetch(B+"plat_padel_v_individuals?"+inList+"&select=full_name,current_rating,seed_rating").then(J).catch(function(){ return []; }),
       fetch(B+"plat_padel_tournaments?"+inList+"&select=id,name,club_id,active,archived").then(J).catch(function(){ return []; })
@@ -9845,9 +9845,16 @@ async function clRemove(id, label){
       return '<span style="display:inline-block;background:'+bg+';color:'+fg+';border-radius:8px;padding:3px 9px;font-size:12.5px;font-weight:800;margin:2px 5px 2px 0">'+esc(sc)+'</span>';
     }).join("");
   }
+  /* n65: the app's own lime bar over a list that scrolls inside its own box */
+  function nhLimeBar(label){
+    return '<div style="background:#c4e000;color:#1a1a1a;font-weight:800;font-size:13px;letter-spacing:.02em;'
+      +'text-align:center;padding:10px 12px;border-bottom:1px solid rgba(0,0,0,.12)">'+esc(label)+'</div>';
+  }
   function nhMatchesBrk(d,n,scope){
-    var ms=(d.matches||[]).slice(0,n||4); if(!ms.length) return "";
-    return '<div class="brk"><h2 style="display:flex;align-items:center;gap:8px">Just played '+nhTag()+'</h2><div class="rows">'
+    var ms=(d.matches||[]).slice(0,n||20); if(!ms.length) return "";
+    /* n65: the app's lime bar, and a long list that scrolls inside its own box */
+    return '<div class="brk">'+nhLimeBar("Recent matches"+(NHEG?" \u00b7 example":""))
+      +'<div class="rows" style="max-height:340px;overflow-y:auto;-webkit-overflow-scrolling:touch">'
       + ms.map(function(m){
           var a=[m.t1p1,m.t1p2].filter(Boolean).join(" & "), b=[m.t2p1,m.t2p2].filter(Boolean).join(" & ");
           var bd=(W.PLAT.clubs||[]).find(function(c){ return Number(c.id)===Number(m.club_id); });
@@ -9890,11 +9897,21 @@ async function clRemove(id, label){
             +'<span class="val"><b>'+((m.t1_sets==null)?"":(m.t1_sets+"\u2013"+m.t2_sets))+'</b><span>'+esc(m.event||"card")+'</span></span></div>'; }).join("")
       +'</div></div>';
   }
+  /* n65: a running tournament shows ITS matches — the ones entered against that event — so opening the
+     bracket answers "what has just happened in it" without going to the sheet. */
   function nhTourBrk(d){
     if(!d.tour) return "";
-    return '<div class="brk"><h2>'+esc(d.tour.name)+' \u00b7 running now</h2><div class="rows">'
-      +'<div class="row"><span class="av" style="background:#c4a000">\u{1F3C6}</span>'
-      +'<span class="nm"><b>'+esc(d.tour.name)+'</b><span>open \u00b7 tap for the sheet</span></span></div>'
+    var nm=String(d.tour.name||"").toLowerCase();
+    var ms=(d.matches||[]).filter(function(m){ return String(m.event||"").toLowerCase()===nm; }).slice(0,12);
+    var body = ms.length
+      ? ms.map(function(m){
+          var a=[m.t1p1,m.t1p2].filter(Boolean).join(" & "), b=[m.t2p1,m.t2p2].filter(Boolean).join(" & ");
+          return '<div class="row"><span class="nm"><b>'+esc(a)+'</b><span>'+esc(b)+'</span></span>'
+            +'<span class="val"><b>'+((m.t1_sets==null)?"":(m.t1_sets+"\u2013"+m.t2_sets))+'</b><span>'+esc(String(m.match_date||"").slice(5))+'</span></span></div>'; }).join("")
+      : '<div class="row"><span class="av" style="background:#c4a000">\u{1F3C6}</span>'
+        +'<span class="nm"><b>'+esc(d.tour.name)+'</b><span>under way \u00b7 no results entered yet</span></span></div>';
+    return '<div class="brk">'+nhLimeBar(d.tour.name+" \u00b7 running now")
+      +'<div class="rows" style="max-height:280px;overflow-y:auto;-webkit-overflow-scrolling:touch">'+body
       +'</div><button class="more" onclick="window.nhGo(\'tournaments\')">Open the tournament \u2192</button></div>';
   }
   function nhActions(ink,deep){
@@ -10103,7 +10120,7 @@ async function clRemove(id, label){
         + '<span>'+((d.pairs||[]).length)+' pairs on record</span>'   /* n59: nobody named in the band */
         + (d.tour?('<span>'+esc(d.tour.name)+' running</span>'):'')+'</div></div>'
         + '<div class="brk"><h2>Where you play</h2><div class="rows">'+places+'</div></div>'
-        + '<div class="cols">'+nhFormBrk(d,"#6c3483","club") + nhMoversBrk(d,"#6c3483","club") + nhTourBrk(d) + nhMatchesBrk(d,5,"club")+'</div>'   /* n59 */ 
+        + '<div class="cols">'+nhFormBrk(d,"#6c3483","club") + nhMoversBrk(d,"#6c3483","club") + nhTourBrk(d) + nhMatchesBrk(d,25,"club")+'</div>'   /* n59 */ 
         + '<div class="brk"><h2>Ledgers</h2><div class="rows">'
         + '<button class="row" onclick="window.platGoClubLedger('+C+')"><span class="av" style="background:#2f2f2f">\u2261</span>'
         + '<span class="nm"><b>'+esc(W.PLAT.name)+' and All Club Ledgers</b><span>every match at the club \u2014 general play and every group \u00b7 and every registered club</span></span>'
@@ -10151,7 +10168,7 @@ async function clRemove(id, label){
               +'<div class="n">'+esc(u?("beat a pair rated "+u.gap+" higher"):("none "+nhWhen()))+'</div></div>'; })()
         + '</div>'
         + nhActions(ink,deep)
-        + '<div class="cols">'+nhCharts(d,ink)+nhMoversBrk(d,ink,"board") + nhFormBrk(d,ink,"board") + nhTourBrk(d) + nhMatchesBrk(d,5,"board") + nhCardBrk(d)+'</div>'
+        + '<div class="cols">'+nhCharts(d,ink)+nhMoversBrk(d,ink,"board") + nhFormBrk(d,ink,"board") + nhTourBrk(d) + nhMatchesBrk(d,25,"board") + nhCardBrk(d)+'</div>'
         + nhFoot(ink,deep,"none");   /* n59: admin lives on the club door only */
     });
   }
