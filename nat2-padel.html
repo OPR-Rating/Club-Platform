@@ -9623,7 +9623,7 @@ async function clRemove(id, label){
     return Promise.all([
       fetch(B+"plat_matches?"+inList+"&discipline=eq.padel&select=id,club_id,match_date,match_type,event,t1p1,t1p2,t2p1,t2p2,t1_sets,t2_sets,set_scores,rating_delta&order=match_date.desc,id.desc&limit=120").then(J),
       fetch(B+"plat_player_results?"+inList+"&discipline=eq.padel&select=name,club_id,current_rating,initial_rating,sets_played,sets_won&order=current_rating.desc&limit=60").then(J),
-      fetch(B+"plat_padel_v_individuals?"+inList+"&select=full_name,current_rating,seed_rating").then(J).catch(function(){ return []; }),
+      fetch(B+"plat_padel_v_individuals?"+inList+"&select=id,full_name,club_id,current_rating,seed_rating").then(J).catch(function(){ return []; }),
       fetch(B+"plat_padel_tournaments?"+inList+"&select=id,name,club_id,active,archived").then(J).catch(function(){ return []; })
     ]).then(function(r){
       NEW.data={matches:r[0]||[],pairs:r[1]||[],people:r[2]||[],
@@ -10145,10 +10145,81 @@ async function clRemove(id, label){
          its set-score pills, so nothing is rebuilt here
        * a name not on the list is not a claim but a conversation: the club's contact is offered instead
      ============================================================================================ */
+  /* n71: A CLAIM, NOT A PREFERENCE. The name is claimed in the register with a PIN the member chooses, so it
+     leaves the list and nobody else can take it, and only that PIN can change the photo — which everybody
+     sees. The phone remembers the name and the PIN so neither is ever asked for again; the PIN exists for the
+     day the phone is replaced, and for an organiser to know a claim is genuine. Not a login: no account, no
+     email, no reset. A forgotten PIN is released by the register administrator, and the member claims again. */
   function meKey(){ return "opr_me_"+(W.PLAT.parentId||W.PLAT.cid); }
+  function mePinKey(){ return "opr_mepin_"+(W.PLAT.parentId||W.PLAT.cid); }
+  function mePin(){ try{ return localStorage.getItem(mePinKey())||""; }catch(e){ return ""; } }
+  function meIdOf(name,all){ var p=(all.people||[]).filter(function(x){ return x.full_name===name; })[0]; return p?(p.id||p.individual_id||null):null; }
+  function meClaims(){
+    return fetch(SBREST()+"nat_v_member_claim?pool_id=eq."+W.PLAT.pool+"&select=individual_id,photo").then(J)
+      .then(function(r){ var m={}; (Array.isArray(r)?r:[]).forEach(function(c){ m[Number(c.individual_id)]={photo:c.photo}; }); return m; })
+      .catch(function(){ return {}; });
+  }
+  W.meDoClaim=function(id,name){
+    var pin=W.prompt("Claim \u201c"+name+"\u201d\n\nChoose a PIN of four digits. You will not be asked for it again on this "
+      +"phone \u2014 it is only needed if you change phones, or to set your photo.","");
+    if(pin===null) return;
+    pin=String(pin).replace(/\D/g,"");
+    if(pin.length<4){ alert("A PIN of at least four digits, please."); return; }
+    acall({action:"claim_name",pool_id:W.PLAT.pool,individual_id:id,pin:pin}).then(function(r){
+      if(r&&r.ok){ try{ localStorage.setItem(meKey(),name); localStorage.setItem(mePinKey(),pin); }catch(e){}
+        newMePage(); return; }
+      if(r&&r.already_claimed){
+        var p2=W.prompt(r.error+"\n\nIf it was you, enter the PIN you chose:","");
+        if(p2===null) return;
+        acall({action:"verify_claim",individual_id:id,pin:String(p2).replace(/\D/g,"")}).then(function(v){
+          if(v&&v.ok){ try{ localStorage.setItem(meKey(),name); localStorage.setItem(mePinKey(),String(p2).replace(/\D/g,"")); }catch(e){}
+            newMePage(); }
+          else alert((v&&v.error)||"That PIN does not match.");
+        });
+        return;
+      }
+      alert((r&&r.error)||"Could not claim that name.");
+    });
+  };
+  /* the photo: shrunk on the phone to a small square, then stored for everyone to see */
+  W.mePhotoPick=function(){
+    var me=meName(); if(!me) return;
+    var inp=document.getElementById("mePhotoInput");
+    if(!inp){ inp=document.createElement("input"); inp.type="file"; inp.accept="image/*"; inp.id="mePhotoInput";
+      inp.style.display="none"; document.body.appendChild(inp);
+      inp.addEventListener("change",function(e){
+        var f=e.target.files&&e.target.files[0]; if(!f) return;
+        var img=new Image(), rd=new FileReader();
+        rd.onload=function(){ img.onload=function(){
+          var S=256, c=document.createElement("canvas"); c.width=S; c.height=S;
+          var g=c.getContext("2d"), side=Math.min(img.width,img.height);
+          g.drawImage(img,(img.width-side)/2,(img.height-side)/2,side,side,0,0,S,S);
+          var data=c.toDataURL("image/jpeg",0.72);
+          acall({action:"set_photo",individual_id:W.__meId,pin:mePin(),photo:data}).then(function(r){
+            if(r&&r.ok) newMePage(); else alert((r&&r.error)||"Could not save the picture.");
+          });
+        }; img.src=rd.result; };
+        rd.readAsDataURL(f); e.target.value="";
+      });
+    }
+    inp.click();
+  };
+  W.mePhotoClear=function(){
+    if(!W.confirm("Remove your picture?")) return;
+    acall({action:"set_photo",individual_id:W.__meId,pin:mePin(),photo:null}).then(function(r){
+      if(r&&r.ok) newMePage(); else alert((r&&r.error)||"Could not remove it.");
+    });
+  };
   function meName(){ try{ return localStorage.getItem(meKey()); }catch(e){ return null; } }
   W.meClaim=function(n){ try{ localStorage.setItem(meKey(),n); }catch(e){} newMePage(); };
-  W.meForget=function(){ try{ localStorage.removeItem(meKey()); }catch(e){} newMePage(); };
+  W.meForget=function(){
+    /* this only forgets the name ON THIS PHONE. The claim stays in the register — releasing it is the
+       register administrator's to do, which is what stops somebody taking a name that is not theirs. */
+    if(!W.confirm("Use a different name on this phone?\n\nYour claim stays with you \u2014 nothing is released. "
+      +"To free a name for somebody else, the club has to do it.")) return;
+    try{ localStorage.removeItem(meKey()); localStorage.removeItem(mePinKey()); }catch(e){}
+    newMePage();
+  };
   W.mePair=function(nm){ try{ if(typeof loadProfile==="function") loadProfile(nm,""); }catch(e){} };
   function halves(v){ return String(v||"").split(" & ").map(function(x){ return x.trim(); }).filter(Boolean); }
 
@@ -10314,9 +10385,12 @@ async function clRemove(id, label){
     nhCSS();
     var C=(W.PLAT.parentId||W.PLAT.cid);
     var club=(W.PLAT.clubs||[]).find(function(c){ return Number(c.id)===Number(C); })||{id:C,name:W.PLAT.name};
-    nhFetch().then(function(all){
+    Promise.all([nhFetch(),meClaims()]).then(function(res){
+      var all=res[0], claims=res[1]||{}; W.__meTaken=claims;
       var me=meName();
       if(!me){ w.innerHTML=meClaimScreen(all,club); setTimeout(function(){ W.meHunt(); },0); return; }
+      W.__meId=meIdOf(me,all);
+      var myPhoto=(W.__meId&&claims[Number(W.__meId)])?claims[Number(W.__meId)].photo:null;
       var st=meFigures(me,all), p=(all.people||[]).filter(function(x){ return x.full_name===me; })[0];
       var rating=p?Math.round(p.current_rating||p.seed_rating||0):null, lvl=rating?(rating/200):null;
       var rk=meRank(me,all);
@@ -10329,7 +10403,9 @@ async function clRemove(id, label){
       var h='<div class="band" style="background:linear-gradient(135deg,'+col+','+deep+')">'
         + '<div class="mark"><span class="logo">OPR</span>'+esc(club.name)+'</div>'
         + '<div style="display:flex;align-items:center;gap:13px;margin-top:11px">'
-        + '<span class="av" style="width:56px;height:56px;flex:0 0 56px;border-radius:18px;font-size:19px;background:rgba(255,255,255,.18);border:2px solid rgba(255,255,255,.5)">'+esc(inits(me))+'</span>'
+        + '<span class="av" onclick="window.mePhotoPick()" title="Tap to set your picture" style="width:56px;height:56px;flex:0 0 56px;border-radius:18px;font-size:19px;'
+        + 'background:'+(myPhoto?("#fff url("+myPhoto+") center/cover no-repeat"):"rgba(255,255,255,.18)")+';border:2px solid rgba(255,255,255,.5);cursor:pointer;overflow:hidden">'
+        + (myPhoto?"":esc(inits(me)))+'</span>' 
         + '<span><h1 style="margin:0 0 2px">'+esc(me)+'</h1>'
         + '<span class="sub">'+(homeId?("plays mostly at "+esc(nhBoardName(homeId))):"no matches yet")+'</span></span></div>'
         + '<div style="display:flex;align-items:baseline;gap:10px;margin-top:12px">'
@@ -10386,7 +10462,13 @@ async function clRemove(id, label){
           +'</div></div>';
       }
       h+='</div>'
-        +'<div style="margin:14px 12px 0"><button class="more" style="border:1px solid '+col+';border-radius:99px;background:#fff" onclick="window.meForget()">This isn\u2019t me \u2014 pick another name</button></div>';
+        +'<div style="margin:14px 12px 0;display:flex;gap:9px;flex-wrap:wrap">'
+        +'<button class="more" style="flex:1 1 150px;border:1px solid '+col+';border-radius:99px;background:#fff" onclick="window.mePhotoPick()">'+(myPhoto?"Change my picture":"Add my picture")+'</button>'
+        +(myPhoto?('<button class="more" style="flex:1 1 120px;border:1px solid #ddd;border-radius:99px;background:#fff;color:#7a6f8a" onclick="window.mePhotoClear()">Remove it</button>'):'')
+        +'</div>'
+        +'<div style="font-size:11.5px;color:#5f5770;margin:8px 14px 0;line-height:1.5">Your picture is seen by everyone in the register. '
+        +'Only your PIN can change it \u2014 and you will not be asked for the PIN again on this phone.</div>'
+        +'<div style="margin:12px 12px 0"><button class="more" style="border:1px solid #ddd;border-radius:99px;background:#fff;color:#7a6f8a" onclick="window.meForget()">This isn\u2019t me \u2014 use a different name</button></div>';
       w.innerHTML=h;
     });
   }
@@ -10413,10 +10495,19 @@ async function clRemove(id, label){
     var box=document.getElementById("meHunt"), hits=document.getElementById("meHits");
     if(!hits) return;
     var v=box?String(box.value||"").toLowerCase().trim():"";
-    var names=(W.__mePeople||[]).filter(function(n){ return !v || n.toLowerCase().indexOf(v)>=0; }).slice(0,40);
+    /* n71: a claimed name is NOT on the list — that is what claiming means, and it is what stops one member
+       taking another's name (or putting a photo on it). */
+    var taken=W.__meTaken||{};
+    var names=(W.__mePeople||[]).filter(function(n){
+      var pp=(W.__mePeopleFull||[]).filter(function(x){ return x.full_name===n; })[0];
+      var pid=pp?Number(pp.id||pp.individual_id||0):0;
+      if(pid && taken[pid]) return false;
+      return !v || n.toLowerCase().indexOf(v)>=0;
+    }).slice(0,40);
     hits.innerHTML=names.map(function(n){
       var p=(W.__mePeopleFull||[]).filter(function(x){ return x.full_name===n; })[0];
-      return '<button onclick="window.meClaim(\''+String(n).replace(/'/g,"\\'")+'\')" '
+      var pid=p?Number(p.id||p.individual_id||0):0;
+      return '<button onclick="window.meDoClaim('+pid+',&quot;'+String(n).replace(/"/g,'')+'&quot;)" '
         +'style="display:flex;width:100%;gap:10px;align-items:center;background:none;border:none;border-bottom:1px solid #efeaf5;padding:10px 12px;font:inherit;cursor:pointer;text-align:left">'
         +'<span class="av" style="background:'+(p&&p.club_id?clubPal(p.club_id)[0]:"#6c3483")+'">'+esc(inits(n))+'</span>'
         +'<span class="nm"><b>'+esc(n)+'</b><span>'+((p&&p.current_rating)?("rating "+Math.round(p.current_rating)):"no rating yet")+'</span></span></button>';
