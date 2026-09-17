@@ -1,0 +1,300 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>OPR · my page</title>
+<!--
+  me-preview.html — WHAT A MEMBER'S OWN PAGE COULD BE. A sample, on real data, touching nothing.
+
+      me-preview.html?club=kloof-padel-club-test          pick a name, then it remembers
+      me-preview.html?club=kloof-padel-club-test&me=Murray%20Aberdein
+
+  The idea we talked through: a member claims their name once, and from then on the app opens HERE — their
+  rating, their form, their partners, their groups — with the same action row the boards have. It is the
+  group door and the profile in one page.
+
+  Two things this sample deliberately does NOT do, because they are decisions rather than code:
+    * it does not stop two phones claiming the same name (that needs a table and a released-by-admin rule)
+    * it does not ask for a PIN (your model: the player sets one when claiming, used only to prove it is them)
+  The name it remembers lives on this device only, exactly as a preference.
+-->
+<style>
+  :root{ --ink:#1b1626; --mute:#6f6780; --line:#e6e0ee; --paper:#f7f5fa; --me:#6c3483; --me-deep:#40204f;
+         --ok:#1f8a4c; --down:#c0392b; --lime:#c4e000; }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--paper);color:var(--ink);font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;-webkit-font-smoothing:antialiased}
+  .wrap{max-width:520px;margin:0 auto;padding:0 0 44px}
+  @media(min-width:880px){ .wrap{max-width:1080px} .cols{display:grid;grid-template-columns:1fr 1fr;gap:0 4px;align-items:start} }
+
+  .band{background:linear-gradient(135deg,var(--me),var(--me-deep));color:#fff;padding:16px 16px 18px;position:sticky;top:0;z-index:20}
+  .mark{display:inline-flex;align-items:center;gap:9px;font-size:11px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;opacity:.95}
+  .mark .logo{font-size:17px;letter-spacing:.06em;text-transform:none;background:rgba(255,255,255,.14);border:1px solid rgba(255,255,255,.34);border-radius:9px;padding:2px 9px}
+  .who{display:flex;align-items:center;gap:13px;margin-top:11px}
+  .face{width:60px;height:60px;border-radius:20px;flex:0 0 60px;display:grid;place-items:center;font-size:21px;font-weight:800;
+        background:rgba(255,255,255,.18);border:2px solid rgba(255,255,255,.5);overflow:hidden;cursor:pointer}
+  .face img{width:100%;height:100%;object-fit:cover}
+  .who h1{font-size:24px;line-height:1.1;margin:0 0 3px;font-weight:800}
+  .who .sub{font-size:12.5px;opacity:.86}
+  .nums{display:flex;align-items:baseline;gap:11px;margin-top:13px}
+  .nums .r{font-size:40px;font-weight:800;letter-spacing:-1.2px;line-height:1}
+  .pill{background:rgba(255,255,255,.16);border:1px solid rgba(255,255,255,.3);border-radius:99px;padding:5px 11px;font-size:12px;font-weight:700}
+  .pulse{display:flex;gap:7px;flex-wrap:wrap;margin-top:12px}
+
+  .doit{display:flex;gap:9px;padding:12px 12px 2px;overflow-x:auto;scrollbar-width:none}
+  .doit::-webkit-scrollbar{display:none}
+  .doit button{flex:0 0 104px;border:1px solid var(--line);background:#fff;border-radius:14px;padding:13px 6px;font:inherit;font-weight:700;font-size:12.5px;
+    cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:7px;line-height:1.25;text-align:center;color:var(--ink)}
+  .doit button.primary{background:linear-gradient(135deg,var(--me),var(--me-deep));color:#fff;border-color:transparent}
+  .doit svg{width:22px;height:22px;stroke:currentColor;fill:none;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round}
+
+  .brk{background:#fff;border:1px solid var(--line);border-radius:14px;margin:12px 12px 0;overflow:hidden;box-shadow:0 1px 3px rgba(26,16,48,.05)}
+  .brk h2{font-size:12.5px;letter-spacing:.08em;text-transform:uppercase;color:#4a4256;font-weight:800;margin:0;padding:11px 14px 8px}
+  .lime{background:var(--lime);color:#1a1a1a;font-weight:800;font-size:13px;text-align:center;padding:10px 12px;border-bottom:1px solid rgba(0,0,0,.12)}
+  .rows{padding:4px 6px}
+  .row{display:flex;align-items:center;gap:11px;padding:9px 8px;width:100%;background:none;border:none;text-align:left;font:inherit;color:inherit}
+  .row+.row{border-top:1px solid #efeaf5}
+  .av{width:34px;height:34px;border-radius:50%;flex:0 0 34px;display:grid;place-items:center;color:#fff;font-size:12.5px;font-weight:800}
+  .nm{flex:1;min-width:0}.nm b{display:block;font-size:15.5px;color:#241d33}.nm span{display:block;font-size:12.5px;color:#5f5770;margin-top:2px}
+  .val{text-align:right}.val b{display:block;font-size:16px;font-weight:800}.val span{display:block;font-size:11.5px;color:#5f5770}
+  .up{color:var(--ok)}.dn{color:var(--down)}
+  .tiles{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:12px 12px 0}
+  .tile{background:#fff;border:1px solid var(--line);border-radius:14px;padding:13px}
+  .tile .k{font-size:10.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--mute);font-weight:800}
+  .tile .v{font-size:23px;font-weight:800;margin-top:5px}
+  .tile .n{font-size:11.5px;color:var(--mute);margin-top:2px}
+  .more{display:block;width:100%;text-align:center;padding:10px;border:none;border-top:1px solid #efeaf5;background:#fcfbfd;font:inherit;font-size:12.5px;font-weight:800;color:var(--me);cursor:pointer}
+  .load{padding:40px 16px;text-align:center;color:var(--mute);font-size:13px}
+  .claim{margin:12px;background:#fff;border:1px solid var(--line);border-radius:14px;padding:14px}
+  .claim h3{margin:0 0 4px;font-size:16px}
+  .claim p{margin:0 0 10px;font-size:12.5px;color:var(--mute);line-height:1.5}
+  .claim input{width:100%;padding:11px 12px;border:1.5px solid #ddd;border-radius:10px;font:inherit;margin-bottom:8px}
+  .claim .list{max-height:300px;overflow-y:auto;border:1px solid var(--line);border-radius:10px}
+  .claim .list button{display:flex;width:100%;gap:10px;align-items:center;background:none;border:none;border-bottom:1px solid #efeaf5;padding:10px 12px;font:inherit;cursor:pointer;text-align:left}
+  .foot{text-align:center;color:#a99cbb;font-size:10.5px;margin:16px 0 4px}
+</style>
+</head>
+<body>
+<div class="wrap" id="wrap"><div class="load">Reading the club…</div></div>
+<input type="file" id="fileIn" accept="image/*" style="display:none">
+
+<script>
+(function(){
+  var SB="https://djmbnvikrdgnomjhtkgf.supabase.co";
+  var KEY="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRqbWJudmlrcmRnbm9tamh0a2dmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODUzOTE0MzEsImV4cCI6MjEwMDk2NzQzMX0.vR8xlVFjV6jXW-pAclGjM74HqmWSKVpsacFjM-dCIJI";
+  var q=new URLSearchParams(location.search);
+  var want=(q.get("club")||"kloof-padel-club-test").trim();
+  var ME=q.get("me")||null;
+  var D={club:null,pool:null,boards:[],clubs:[],groups:[],matches:[],pairs:[],people:[],tour:null};
+
+  function get(p){ return fetch(SB+"/rest/v1/"+p,{headers:{apikey:KEY,Authorization:"Bearer "+KEY}}).then(function(r){ return r.json(); }); }
+  function esc(s){ return String(s==null?"":s).replace(/[&<>"]/g,function(c){ return {"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;"}[c]; }); }
+  function inits(n){ return String(n||"").split(/[\s&]+/).filter(Boolean).slice(0,2).map(function(w){ return w[0]; }).join("").toUpperCase(); }
+  function ago(d){ return (Date.now()-new Date(d).getTime())/86400000; }
+  function dark(h,f){ try{ var n=parseInt(h.slice(1),16),r=(n>>16)&255,g=(n>>8)&255,b=n&255; f=f||.42;
+    return "#"+((1<<24)+((r*(1-f)|0)<<16)+((g*(1-f)|0)<<8)+(b*(1-f)|0)).toString(16).slice(1); }catch(e){ return "#40204f"; } }
+  function remembered(){ try{ return ME || localStorage.getItem("opr_me_"+want); }catch(e){ return ME; } }
+  function remember(n){ try{ localStorage.setItem("opr_me_"+want,n); }catch(e){} ME=n; render(); }
+  function forget(){ try{ localStorage.removeItem("opr_me_"+want); }catch(e){} ME=null; render(); }
+
+  /* ---------- the club, its boards, its play ---------- */
+  function load(){
+    var byId=/^\d+$/.test(want);
+    var first=byId ? get("plat_clubs?id=eq."+want+"&select=id,name,colour,pool_id")
+                   : get("nat_club_slugs?slug=eq."+encodeURIComponent(want.toLowerCase())+"&select=club_id")
+                       .then(function(r){ var id=(r&&r[0])?r[0].club_id:0;
+                         return id?get("plat_clubs?id=eq."+id+"&select=id,name,colour,pool_id"):[]; });
+    return first.then(function(rows){
+      if(!rows||!rows.length) throw new Error("club not found");
+      var asked=rows[0];
+      return get("nat_club_parent?group_id=eq."+asked.id+"&select=club_id").then(function(par){
+        if(par&&par.length) return get("plat_clubs?id=eq."+par[0].club_id+"&select=id,name,colour,pool_id").then(function(c){ return (c&&c[0])||asked; });
+        return asked;
+      });
+    }).then(function(club){
+      D.club=club; D.pool=club.pool_id;
+      return get("nat_club_parent?club_id=eq."+club.id+"&select=group_id");
+    }).then(function(kids){
+      D.boards=[D.club.id].concat((kids||[]).map(function(k){ return k.group_id; }));
+      var inList="club_id=in.("+D.boards.join(",")+")";
+      return Promise.all([
+        get("plat_matches?"+inList+"&discipline=eq.padel&select=id,club_id,match_date,match_type,event,t1p1,t1p2,t2p1,t2p2,t1_sets,t2_sets,set_scores,rating_delta&order=match_date.desc,id.desc&limit=300"),
+        get("plat_player_results?"+inList+"&discipline=eq.padel&select=name,club_id,current_rating,initial_rating,sets_played,sets_won"),
+        get("plat_padel_v_individuals?"+inList+"&select=full_name,club_id,current_rating,seed_rating,gender"),
+        get("plat_clubs?pool_id=eq."+D.pool+"&select=id,name,colour"),
+        get("plat_padel_tournaments?"+inList+"&select=id,name,club_id,active,archived").catch(function(){ return []; })
+      ]);
+    }).then(function(r){
+      D.matches=r[0]||[]; D.pairs=r[1]||[]; D.people=r[2]||[]; D.clubs=r[3]||[];
+      D.tour=(r[4]||[]).filter(function(x){ return x.active&&!x.archived; })[0]||null;
+      D.groups=D.clubs.filter(function(c){ return D.boards.indexOf(c.id)>=0 && Number(c.id)!==Number(D.club.id); });
+      render();
+    }).catch(function(e){
+      document.getElementById("wrap").innerHTML='<div class="load">Could not read that club.<br><br><small>'+esc(e.message||e)+'</small></div>';
+    });
+  }
+
+  /* ---------- my own figures ---------- */
+  function mine(name){
+    var out={matches:[],partners:{},boards:{},won:0,lost:0,setsW:0,setsL:0,move:0,trail:[]};
+    var run=0;
+    D.matches.slice().reverse().forEach(function(m){
+      var side=0, mate=null;
+      if([m.t1p1,m.t1p2].indexOf(name)>=0){ side=1; mate=(m.t1p1===name)?m.t1p2:m.t1p1; }
+      else if([m.t2p1,m.t2p2].indexOf(name)>=0){ side=-1; mate=(m.t2p1===name)?m.t2p2:m.t2p1; }
+      if(!side) return;
+      var a=+m.t1_sets||0, b=+m.t2_sets||0, myS=(side>0?a:b), thS=(side>0?b:a);
+      out.matches.push(m); out.setsW+=myS; out.setsL+=thS;
+      if(myS>thS) out.won++; else out.lost++;
+      if(mate){ out.partners[mate]=out.partners[mate]||{w:0,l:0,d:0};
+        out.partners[mate][myS>thS?"w":"l"]++; }
+      out.boards[m.club_id]=(out.boards[m.club_id]||0)+1;
+      var d=(m.rating_delta!=null?+m.rating_delta:0)*side;
+      run+=d; out.trail.push(run);
+      if(ago(m.match_date)<=7) out.move+=d;
+      if(mate) out.partners[mate].d+=d;
+    });
+    out.matches.reverse();
+    return out;
+  }
+  function person(name){ return D.people.filter(function(p){ return p.full_name===name; })[0]||null; }
+  function boardName(id){ var c=D.clubs.filter(function(x){ return Number(x.id)===Number(id); })[0]; return c?c.name:""; }
+  function boardCol(id){ var c=D.clubs.filter(function(x){ return Number(x.id)===Number(id); })[0]; return (c&&c.colour)||"#6c3483"; }
+
+  /* ---------- claiming a name ---------- */
+  function claimScreen(){
+    var names=D.people.map(function(p){ return p.full_name; })
+      .filter(function(v,i,a){ return v && a.indexOf(v)===i; }).sort();
+    return '<div class="band"><div class="mark"><span class="logo">OPR</span>Open Padel Ratings</div>'
+      +'<div class="who"><div class="face">?</div><div><h1>Which one is you?</h1>'
+      +'<div class="sub">'+esc(D.club.name)+' \u00b7 tap your name once and this becomes your page</div></div></div></div>'
+      +'<div class="claim"><h3>Find your name</h3>'
+      +'<p>Your name is remembered on this phone only \u2014 nothing is saved to the club, and you can change it '
+      +'whenever you like. In the real thing a name could be claimed once, with a PIN you choose yourself.</p>'
+      +'<input id="hunt" placeholder="Start typing\u2026" oninput="window.mePick()">'
+      +'<div class="list" id="hits"></div></div>'
+      +'<div class="foot">Sample \u00b7 nothing here is live</div>';
+  }
+  window.mePick=function(){
+    var v=(document.getElementById("hunt").value||"").toLowerCase().trim();
+    var names=D.people.map(function(p){ return p.full_name; })
+      .filter(function(x,i,a){ return x && a.indexOf(x)===i; })
+      .filter(function(n){ return !v || n.toLowerCase().indexOf(v)>=0; }).sort().slice(0,40);
+    document.getElementById("hits").innerHTML=names.map(function(n){
+      var p=person(n);
+      return '<button onclick="window.meClaim(\''+String(n).replace(/'/g,"\\'")+'\')">'
+        +'<span class="av" style="background:'+boardCol(p?p.club_id:0)+'">'+esc(inits(n))+'</span>'
+        +'<span class="nm"><b>'+esc(n)+'</b><span>'+(p&&p.current_rating?("rating "+Math.round(p.current_rating)):"no rating yet")+'</span></span></button>';
+    }).join("")||'<div style="padding:12px;font-size:12.5px;color:#6f6780">No name like that here.</div>';
+  };
+  window.meClaim=function(n){ remember(n); };
+  window.meForget=function(){ forget(); };
+
+  /* ---------- my page ---------- */
+  function render(){
+    var w=document.getElementById("wrap");
+    var me=remembered();
+    if(!me){ w.innerHTML=claimScreen(); setTimeout(window.mePick,0); return; }
+    var p=person(me), st=mine(me);
+    var rating=p?Math.round(p.current_rating||p.seed_rating||0):null;
+    var level=rating?(rating/200):null;
+    var homeId=Object.keys(st.boards).sort(function(a,b){ return st.boards[b]-st.boards[a]; })[0];
+    var col=homeId?boardCol(homeId):"#6c3483";
+    document.documentElement.style.setProperty("--me",col);
+    document.documentElement.style.setProperty("--me-deep",dark(col,.45));
+
+    /* the bands, tiles and brackets */
+    var pulse=[];
+    Object.keys(st.boards).forEach(function(id){ pulse.push('<span class="pill">'+esc(boardName(id))+' \u00b7 '+st.boards[id]+'</span>'); });
+    var h='<div class="band"><div class="mark"><span class="logo">OPR</span>'+esc(D.club.name)+'</div>'
+      +'<div class="who"><div class="face" onclick="document.getElementById(\'fileIn\').click()" id="face">'+esc(inits(me))+'</div>'
+      +'<div><h1>'+esc(me)+'</h1><div class="sub">'+(homeId?("plays mostly at "+esc(boardName(homeId))):"no matches yet")+'</div></div></div>'
+      +'<div class="nums"><div class="r">'+(rating||"\u2014")+'</div>'
+      +(level?('<span class="pill">level '+level.toFixed(1)+'</span>'):'')
+      +'<span class="pill '+(st.move>=0?"":"")+'">'+(st.move>0?"+":"")+Math.round(st.move)+' this week</span></div>'
+      +'<div class="pulse">'+pulse.join("")+'</div></div>';
+
+    h+='<div class="doit">'
+      +'<button class="primary"><svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>Enter a score</button>'
+      +'<button><svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="1.6"/><path d="M3 12h18M12 4v16"/></svg>Court card</button>'
+      +'<button><svg viewBox="0 0 24 24"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/></svg>Ratings &amp; ladders</button>'
+      +'<button><svg viewBox="0 0 24 24"><path d="M7 4h10v4a5 5 0 0 1-10 0V4Z"/><path d="M17 5h3v2a3 3 0 0 1-3 3M7 5H4v2a3 3 0 0 0 3 3"/><path d="M12 13v4M9 21h6"/></svg>Tournaments</button>'
+      +'<button><svg viewBox="0 0 24 24"><path d="M4 5a2 2 0 0 1 2-2h13v16H6a2 2 0 0 0-2 2V5Z"/><path d="M8 7h7M8 11h7"/></svg>Ledgers</button>'
+      +'</div>';
+
+    var pct=(st.setsW+st.setsL)?Math.round(100*st.setsW/(st.setsW+st.setsL)):0;
+    h+='<div class="tiles">'
+      +'<div class="tile"><div class="k">Matches</div><div class="v">'+st.matches.length+'</div><div class="n">'+st.won+' won \u00b7 '+st.lost+' lost</div></div>'
+      +'<div class="tile"><div class="k">Sets won</div><div class="v">'+pct+'%</div><div class="n">'+st.setsW+' of '+(st.setsW+st.setsL)+'</div></div>'
+      +'</div>';
+
+    h+='<div class="cols">';
+
+    /* my form, as a line */
+    if(st.trail.length>1){
+      var lo=Math.min.apply(null,st.trail), hi=Math.max.apply(null,st.trail), sp=(hi-lo)||1, step=260/(st.trail.length-1);
+      var line=st.trail.map(function(v,i){ return (i?"L":"M")+(i*step).toFixed(1)+","+(60-((v-lo)/sp)*52).toFixed(1); }).join(" ");
+      h+='<div class="brk"><h2>My form \u00b7 '+st.trail.length+' rated matches</h2><div style="padding:2px 14px 14px">'
+        +'<svg viewBox="0 0 260 62" preserveAspectRatio="none" style="display:block;width:100%;height:62px">'
+        +'<defs><linearGradient id="mg" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="'+col+'" stop-opacity=".26"/><stop offset="1" stop-color="'+col+'" stop-opacity="0"/></linearGradient></defs>'
+        +'<path d="'+line+' L260,62 L0,62 Z" fill="url(#mg)"/><path d="'+line+'" fill="none" stroke="'+col+'" stroke-width="2.4" stroke-linejoin="round"/></svg>'
+        +'</div></div>';
+    }
+
+    /* my partners */
+    var mates=Object.keys(st.partners).map(function(k){ var x=st.partners[k];
+      return {name:k,w:x.w,l:x.l,d:Math.round(x.d)}; })
+      .sort(function(a,b){ return (b.w-b.l)-(a.w-a.l) || b.d-a.d; }).slice(0,5);
+    if(mates.length){
+      h+='<div class="brk"><h2>My partners</h2><div class="rows">'
+        +mates.map(function(x){ return '<div class="row"><span class="av" style="background:'+col+'">'+esc(inits(x.name))+'</span>'
+          +'<span class="nm"><b>'+esc(x.name)+'</b><span>'+x.w+' won \u00b7 '+x.l+' lost together</span></span>'
+          +'<span class="val"><b class="'+(x.d>=0?"up":"dn")+'">'+(x.d>0?"+":"")+x.d+'</b><span>with them</span></span></div>'; }).join("")
+        +'</div><button class="more">All my partnerships \u2192</button></div>';
+    }
+
+    /* where I play */
+    h+='<div class="brk"><h2>Where I play</h2><div class="rows">'
+      + Object.keys(st.boards).sort(function(a,b){ return st.boards[b]-st.boards[a]; }).map(function(id){
+          return '<button class="row"><span class="av" style="background:'+boardCol(id)+'">'+esc(inits(boardName(id)))+'</span>'
+            +'<span class="nm"><b>'+esc(boardName(id))+'</b><span>'+st.boards[id]+' matches</span></span>'
+            +'<span class="val"><span style="display:inline-grid;place-items:center;width:28px;height:28px;border-radius:50%;background:'+boardCol(id)+';color:#fff;font-weight:800">\u203a</span></span></button>'; }).join("")
+      +'</div></div>';
+
+    /* my recent matches, lime bar, scrolling */
+    if(st.matches.length){
+      h+='<div class="brk"><div class="lime">My recent matches</div>'
+        +'<div class="rows" style="max-height:340px;overflow-y:auto">'
+        + st.matches.slice(0,25).map(function(m){
+            var iAmT1=([m.t1p1,m.t1p2].indexOf(me)>=0);
+            var us=[m.t1p1,m.t1p2].filter(Boolean).join(" & "), them=[m.t2p1,m.t2p2].filter(Boolean).join(" & ");
+            if(!iAmT1){ var t=us; us=them; them=t; }
+            var a=+m.t1_sets||0,b=+m.t2_sets||0, myS=iAmT1?a:b, thS=iAmT1?b:a;
+            return '<div class="row"><span class="nm"><b>'+esc(us)+'</b><span>v '+esc(them)+' \u00b7 '+esc(boardName(m.club_id))+'</span></span>'
+              +'<span class="val"><b class="'+(myS>thS?"up":"dn")+'">'+myS+'\u2013'+thS+'</b><span>'+esc(String(m.match_date||"").slice(5))+'</span></span></div>'; }).join("")
+        +'</div></div>';
+    }
+    h+='</div>';
+
+    h+='<div style="margin:14px 12px 0"><button class="more" style="border:1px solid '+col+';border-radius:99px;background:#fff;color:'+col+'" onclick="window.meForget()">This isn\u2019t me \u2014 pick another name</button></div>'
+      +'<div class="foot">Sample \u00b7 your name is remembered on this device only</div>';
+
+    w.innerHTML=h;
+    var f=document.getElementById("face");
+    try{ var img=localStorage.getItem("opr_face_"+me); if(img&&f) f.innerHTML='<img alt="" src="'+img+'">'; }catch(e){}
+  }
+
+  /* a photo, on this phone only */
+  document.getElementById("fileIn").addEventListener("change",function(e){
+    var file=e.target.files&&e.target.files[0]; if(!file) return;
+    var r=new FileReader();
+    r.onload=function(){ try{ localStorage.setItem("opr_face_"+remembered(), r.result); }catch(_){}
+      var f=document.getElementById("face"); if(f) f.innerHTML='<img alt="" src="'+r.result+'">'; };
+    r.readAsDataURL(file); e.target.value="";
+  });
+
+  load();
+})();
+</script>
+</body>
+</html>
