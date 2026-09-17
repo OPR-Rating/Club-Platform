@@ -9556,7 +9556,10 @@ async function clRemove(id, label){
     if(document.getElementById("nhCss")) return;
     var st=document.createElement("style"); st.id="nhCss";
     st.textContent=
-      "#nh{max-width:520px;margin:0 auto;padding:0 0 30px;font-family:inherit}"
+      /* n57: IT HAS TO SCROLL. #homeScreen is a flex column and the new home was a child of it with no room
+         to overflow, so on a phone the page sat fixed with everything below the fold unreachable. */
+      "#nh{max-width:520px;margin:0 auto;padding:0 0 40px;font-family:inherit;flex:1 1 auto;overflow-y:auto;-webkit-overflow-scrolling:touch;width:100%}"
+     +"#homeScreen{overflow:hidden}"
      +"#nh .band{color:#fff;padding:15px 16px 18px;position:relative;overflow:hidden;border-radius:0 0 18px 18px}"
      +"#nh .band.opr{background:url('./header_bg2.png') center/cover,linear-gradient(105deg,#1d0a41,#5b17ac 52%,#047fdd)}"
      +"#nh .mark{display:inline-flex;align-items:center;gap:9px;font-size:11px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;opacity:.95}"
@@ -9625,11 +9628,14 @@ async function clRemove(id, label){
   function nhMoversBrk(d,ink,scope){
     var mv=nhMovers(d.matches); if(!mv.length) return "";
     return '<div class="brk"><h2 style="display:flex;align-items:center;gap:8px">Movers this week '+nhTag()+'</h2><div class="rows">'
-      + mv.map(function(m){ return '<button class="row" onclick="window.nhPlayer(\''+String(m.name).replace(/'/g,"\\'")+'\')">'
-          +'<span class="av" style="background:'+ink+'">'+esc(inits(m.name))+'</span>'
-          +'<span class="nm"><b>'+esc(m.name)+'</b><span>'+(m.move>=0?"climbing":"giving ground")+'</span></span>'
-          +'<span class="val"><b class="'+(m.move>=0?"up":"dn")+'">'+(m.move>0?"+":"")+Math.round(m.move)+'</b><span>rating</span></span></button>'; }).join("")
-      +'</div><button class="more" onclick="window.nhGo(\'profiles\')">See player profiles here \u2192</button></div>';   /* n56 */
+      + mv.map(function(m){
+          /* the disc wears the colour of the board where the move happened — never the page's colour */
+          var col=m.club?clubPal(m.club)[0]:ink, where=m.club?nhBoardName(m.club):"";
+          return '<div class="row">'
+          +'<span class="av" style="background:'+col+'">'+esc(inits(m.name))+'</span>'
+          +'<span class="nm"><b>'+esc(m.name)+'</b><span>'+(m.move>=0?"climbing":"giving ground")+(where?(" \u00b7 "+esc(where)):"")+'</span></span>'
+          +'<span class="val"><b class="'+(m.move>=0?"up":"dn")+'">'+(m.move>0?"\u25b2 +":"\u25bc ")+Math.round(m.move)+'</b><span>this week</span></span></div>'; }).join("")
+      +'</div><button class="more" onclick="window.nhGo(\'profiles\')">See player profiles here \u2192</button></div>';
   }
   function nhFormBrk(d,ink,scope){
     var hot=(d.pairs||[]).filter(function(p){ return (p.sets_played||0)>=3; })
@@ -9637,53 +9643,14 @@ async function clRemove(id, label){
       .sort(function(a,b){ return b.pct-a.pct||b.move-a.move; }).slice(0,2);
     if(!hot.length) return "";
     return '<div class="brk"><h2 style="display:flex;align-items:center;gap:8px">In form '+nhTag()+'</h2><div class="rows">'
-      + hot.map(function(p){ return '<button class="row" onclick="window.nhPlayer(\''+String(p.name).replace(/'/g,"\\'")+'\')">'
-          +'<span class="av" style="background:'+ink+'">'+esc(inits(p.name))+'</span>'
+      + hot.map(function(p){
+          var col=p.club_id?clubPal(p.club_id)[0]:ink;
+          return '<div class="row">'
+          +'<span class="av" style="background:'+col+'">'+esc(inits(p.name))+'</span>'
           +'<span class="nm"><b>'+esc(p.name)+'</b><span>'+p.pct+'% of sets won</span></span>'
-          +'<span class="val"><b class="'+(p.move>=0?"up":"dn")+'">'+(p.move>0?"+":"")+p.move+'</b><span>since start</span></span></button>'; }).join("")
-      +'</div><button class="more" onclick="'+(scope==="club"?nhLadderGo("club"):'loadLadder(\'mens\',\"Men\u2019s Pairs\")')+'">Every pair \u2192</button></div>';
+          +'<span class="val"><b class="'+(p.move>=0?"up":"dn")+'">'+(p.move>0?"+":"")+p.move+'</b><span>since start</span></span></div>'; }).join("")
+      +'</div><button class="more" onclick="window.nhGo(\'profiles\')">See player profiles here \u2192</button></div>';
   }
-  /* n56: a match row goes nowhere. Tapping it opens the SET SCORES underneath, in the colours of who won
-     each one — which is what the triangle means everywhere else in the app. Jumping to another board from
-     here was never what anybody wanted. */
-  W.nhSets=function(id){
-    var el=document.getElementById("nhs"+id), t=document.getElementById("nht"+id);
-    if(!el) return; var open=(el.style.display!=="none");
-    el.style.display=open?"none":"block"; if(t) t.style.transform=open?"":"rotate(180deg)";
-  };
-  function nhSetPills(m){
-    var raw=String(m.set_scores||"").trim();
-    var sets=raw?raw.split(/[, ]+/).filter(Boolean):[];
-    if(!sets.length) return '<span style="font-size:12px;color:#6f6780">Set scores were not recorded.</span>';
-    return sets.map(function(sc){
-      var p=sc.split(/[-\u2013\/]/), a=parseInt(p[0],10), b=parseInt(p[1],10);
-      var win=(!isNaN(a)&&!isNaN(b))?(a>b):null;
-      var bg=(win===null)?"#eceaf1":(win?"#e6f4ea":"#fdeaea"), fg=(win===null)?"#4b4557":(win?"#1f8a4c":"#c0392b");
-      return '<span style="display:inline-block;background:'+bg+';color:'+fg+';border-radius:8px;padding:3px 9px;font-size:12.5px;font-weight:800;margin:2px 5px 2px 0">'+esc(sc)+'</span>';
-    }).join("");
-  }
-  function nhMatchesBrk(d,n,scope){
-    var ms=(d.matches||[]).slice(0,n||4); if(!ms.length) return "";
-    return '<div class="brk"><h2 style="display:flex;align-items:center;gap:8px">Just played '+nhTag()+'</h2><div class="rows">'
-      + ms.map(function(m){
-          var a=[m.t1p1,m.t1p2].filter(Boolean).join(" & "), b=[m.t2p1,m.t2p2].filter(Boolean).join(" & ");
-          var bd=(W.PLAT.clubs||[]).find(function(c){ return Number(c.id)===Number(m.club_id); });
-          var col=(bd&&bd.colour)||"#6c3483";
-          /* the board's own COLOUR, as a pill — the same thing the pills do everywhere else. The row opens
-             that board, because that is where the match was played. */
-          var pill=(scope==="club"&&bd)?('<span style="display:inline-block;background:'+col+';color:#fff;border-radius:99px;padding:2px 9px;font-size:10.5px;font-weight:800;margin-top:4px">'+esc(bd.name)+'</span>'):'';
-          var go=(scope==="club"&&bd&&Number(bd.id)!==Number(W.PLAT.cid))?(' onclick="location.href=\''+PAGE+'?club='+bd.id+'\'" style="cursor:pointer"'):'';
-          var id=m.id||Math.abs(Math.round(Math.random()*1e6));
-          return '<div><button class="row" onclick="window.nhSets(\''+id+'\')">'
-            +'<span class="nm"><b>'+esc(a)+'</b><span>'+esc(b)+'</span>'+pill+'</span>'
-            +'<span class="val"><b>'+((m.t1_sets==null)?"":(m.t1_sets+"\u2013"+m.t2_sets))+'</b>'
-            +'<span id="nht'+id+'" style="display:inline-block;font-size:10px;color:#9a91a8;transition:transform .15s">\u25be</span></span></button>'
-            +'<div id="nhs'+id+'" style="display:none;padding:0 12px 10px 53px">'+nhSetPills(m)+'</div></div>'; }).join("")
-      +'</div></div>';
-  }
-  /* n53: THE BIGGEST MOVER, WITH HIS SHAPE. A number says how far somebody moved; the line says how they got
-     there. Built from that person's own match deltas — the same figures the engine keeps — so it is their
-     real week, not a decoration. */
   function nhTrail(name,ms){
     var pts=[], run=0;
     ms.slice().reverse().forEach(function(m){
@@ -9696,24 +9663,76 @@ async function clRemove(id, label){
     });
     return pts;
   }
-  function nhMoverChart(d,ink){
-    var mv=nhMovers(d.matches||[])[0]; if(!mv) return "";
-    var pts=nhTrail(mv.name,d.matches||[]); if(pts.length<2) return "";
-    var lo=Math.min.apply(null,pts), hi=Math.max.apply(null,pts), sp=(hi-lo)||1, step=260/(pts.length-1);
-    var line=pts.map(function(v,i){ return (i?"L":"M")+(i*step).toFixed(1)+","+(64-((v-lo)/sp)*56).toFixed(1); }).join(" ");
-    var area=line+" L260,64 L0,64 Z";
-    var ind=(d.people||[]).filter(function(p){ return p.full_name===mv.name; })[0];
-    return '<div class="brk"><h2 style="display:flex;align-items:center;gap:8px">Biggest mover \u00b7 how the week went '+nhTag()+'</h2>'
-      +'<div style="padding:4px 14px 12px">'
-      +'<div style="display:flex;align-items:center;gap:11px;padding:6px 0 4px">'
-      +'<span class="av" style="background:'+(mv.club?clubPal(mv.club)[0]:ink)+'">'+esc(inits(mv.name))+'</span>'
-      +'<span class="nm"><b style="font-size:15.5px">'+esc(mv.name)+'</b>'
-      +'<span>'+(ind?("rating "+Math.round(ind.current_rating||0)+" \u00b7 "):"")+pts.length+' rated matches</span></span>'
-      +'<span class="val"><b class="'+(mv.move>=0?"up":"dn")+'" style="font-size:18px">'+(mv.move>0?"+":"")+Math.round(mv.move)+'</b><span>this week</span></span></div>'
-      +'<svg viewBox="0 0 260 64" preserveAspectRatio="none" style="display:block;width:100%;height:64px">'
-      +'<defs><linearGradient id="nhg" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="'+ink+'" stop-opacity=".28"/><stop offset="1" stop-color="'+ink+'" stop-opacity="0"/></linearGradient></defs>'
-      +'<path d="'+area+'" fill="url(#nhg)"/><path d="'+line+'" fill="none" stroke="'+ink+'" stroke-width="2.4" stroke-linejoin="round"/></svg>'
-      +'</div><button class="more" onclick="window.nhPlayer(\''+String(mv.name).replace(/'/g,"\\'")+'\')">Open '+esc(String(mv.name).split(" ")[0])+'\u2019s profile \u2192</button></div>';
+  /* n57: THE RADAR THE APP ALREADY DRAWS — the same six axes, and the same arithmetic, as the Overall
+     Performance chart on a profile (Win %, Scrap, Compose, Opp Str, Active, Pt Eff). Here it describes the
+     BOARD rather than one person: how this group plays, from its own matches. Nobody is singled out. */
+  function nhRadar(d,ink){
+    var ms=(d.matches||[]); if(ms.length<2) return "";
+    var setsW=0,setsP=0,cW=0,ccW=0,ccL=0,cL=0,gd=0,gdn=0,people={};
+    ms.forEach(function(m){
+      var a=+m.t1_sets||0, b=+m.t2_sets||0; setsP+=a+b; setsW+=Math.max(a,b);
+      var close=(Math.abs(a-b)<=1);
+      if(close){ ccW++; ccL++; } else { cW++; cL++; }
+      if(m.t1_games!=null&&m.t2_games!=null){ gd+=Math.abs((+m.t1_games)-(+m.t2_games))/Math.max(1,a+b); gdn++; }
+      [m.t1p1,m.t1p2,m.t2p1,m.t2p2].forEach(function(v){ if(v) String(v).split(" & ").forEach(function(x){ people[x.trim()]=1; }); });
+    });
+    var tot=cW+ccW+ccL+cL, clamp=function(v){ return Math.max(0,Math.min(100,v)); };
+    var gdps=gdn?(gd/gdn):0, heads=Object.keys(people).length;
+    var axes=[["Win %",clamp(setsP?setsW/setsP*100:0)],
+              ["Scrap",clamp(tot?(ccW/tot*100+(cW/tot*100)*0.4):0)],
+              ["Compose",clamp(tot?(100-(ccL/tot*100)):50)],
+              ["Opp Str",50],
+              ["Active",clamp(heads?Math.min(100,ms.length/heads*50):0)],
+              ["Pt Eff",clamp(50+gdps*12)]];
+    var cx=100,cy=95,R=70,N=axes.length;
+    var pt=function(i,r){ var a=-Math.PI/2+i*2*Math.PI/N; return [cx+Math.cos(a)*r,cy+Math.sin(a)*r]; };
+    var grid=""; [0.25,0.5,0.75,1].forEach(function(f){
+      grid+='<polygon points="'+axes.map(function(_,i){ return pt(i,R*f).join(","); }).join(" ")+'" fill="none" stroke="#e0d9ea" stroke-width="1"/>'; });
+    axes.forEach(function(_,i){ var p=pt(i,R); grid+='<line x1="'+cx+'" y1="'+cy+'" x2="'+p[0].toFixed(1)+'" y2="'+p[1].toFixed(1)+'" stroke="#e8e2f0" stroke-width="1"/>'; });
+    var poly=axes.map(function(a,i){ return pt(i,R*(a[1]/100)).join(","); }).join(" ");
+    var labels=axes.map(function(a,i){ var p=pt(i,R+15);
+      var anchor=(p[0]>cx+6)?"start":((p[0]<cx-6)?"end":"middle");
+      return '<text x="'+p[0].toFixed(1)+'" y="'+(p[1]+4).toFixed(1)+'" font-size="9.5" fill="#6f6780" text-anchor="'+anchor+'">'+esc(a[0])+'</text>'; }).join("");
+    return '<div class="brk"><h2 style="display:flex;align-items:center;gap:8px">How '+esc(W.PLAT.name||"this board")+' plays '+nhTag()+'</h2>'
+      +'<div style="padding:2px 10px 12px;text-align:center">'
+      +'<svg viewBox="0 0 200 200" style="width:100%;max-width:280px;height:auto">'+grid
+      +'<polygon points="'+poly+'" fill="'+ink+'" fill-opacity=".22" stroke="'+ink+'" stroke-width="2"/>'+labels+'</svg>'
+      +'<div style="font-size:11.5px;color:#6f6780;line-height:1.5;margin-top:2px">'
+      +'<b>Win %</b> sets won \u00b7 <b>Scrap</b> winning the close ones \u00b7 <b>Compose</b> few close losses \u00b7 <b>Active</b> how much the board plays \u00b7 <b>Pt Eff</b> margin per set</div>'
+      +'</div></div>';
+  }
+  /* a match row goes nowhere: the triangle opens the SET SCORES, green for the set won, red for the one lost */
+  W.nhSets=function(id){
+    var el=document.getElementById("nhs"+id), t=document.getElementById("nht"+id);
+    if(!el) return; var open=(el.style.display!=="none");
+    el.style.display=open?"none":"block"; if(t) t.style.transform=open?"":"rotate(180deg)";
+  };
+  function nhSetPills(m){
+    var raw=String(m.set_scores||"").trim();
+    var sets=raw?raw.split(/[, ]+/).filter(Boolean):[];
+    if(!sets.length) return '<span style="font-size:12px;color:#6f6780">Set scores were not recorded.</span>';
+    return sets.map(function(sc){
+      var p=String(sc).split(/[-\u2013\/]/), a=parseInt(p[0],10), b=parseInt(p[1],10);
+      var win=(!isNaN(a)&&!isNaN(b))?(a>b):null;
+      var bg=(win===null)?"#eceaf1":(win?"#e6f4ea":"#fdeaea"), fg=(win===null)?"#4b4557":(win?"#1f8a4c":"#c0392b");
+      return '<span style="display:inline-block;background:'+bg+';color:'+fg+';border-radius:8px;padding:3px 9px;font-size:12.5px;font-weight:800;margin:2px 5px 2px 0">'+esc(sc)+'</span>';
+    }).join("");
+  }
+  function nhMatchesBrk(d,n,scope){
+    var ms=(d.matches||[]).slice(0,n||4); if(!ms.length) return "";
+    return '<div class="brk"><h2 style="display:flex;align-items:center;gap:8px">Just played '+nhTag()+'</h2><div class="rows">'
+      + ms.map(function(m){
+          var a=[m.t1p1,m.t1p2].filter(Boolean).join(" & "), b=[m.t2p1,m.t2p2].filter(Boolean).join(" & ");
+          var bd=(W.PLAT.clubs||[]).find(function(c){ return Number(c.id)===Number(m.club_id); });
+          var col=(bd&&bd.colour)||"#6c3483";
+          var pill=(scope==="club"&&bd)?('<span style="display:inline-block;background:'+col+';color:#fff;border-radius:99px;padding:2px 9px;font-size:10.5px;font-weight:800;margin-top:4px">'+esc(bd.name)+'</span>'):'';
+          var id=m.id||Math.abs(Math.round(Math.random()*1e6));
+          return '<div><button class="row" onclick="window.nhSets(\''+id+'\')">'
+            +'<span class="nm"><b>'+esc(a)+'</b><span>'+esc(b)+'</span>'+pill+'</span>'
+            +'<span class="val"><b>'+((m.t1_sets==null)?"":(m.t1_sets+"\u2013"+m.t2_sets))+'</b>'
+            +'<span id="nht'+id+'" style="display:inline-block;font-size:10px;color:#9a91a8;transition:transform .15s">\u25be</span></span></button>'
+            +'<div id="nhs'+id+'" style="display:none;padding:0 12px 10px 20px">'+nhSetPills(m)+'</div></div>'; }).join("")
+      +'</div></div>';
   }
   function nhTourBrk(d){
     if(!d.tour) return "";
@@ -9854,7 +9873,7 @@ async function clRemove(id, label){
         + (mv[0]?('<span>biggest move '+(mv[0].move>0?"+":"")+Math.round(mv[0].move)+' \u00b7 '+esc(String(mv[0].name).split(" ")[0])+'</span>'):'')
         + (d.tour?('<span>'+esc(d.tour.name)+' running</span>'):'')+'</div></div>'
         + '<div class="brk"><h2>Where you play</h2><div class="rows">'+places+'</div></div>'
-        + '<div class="cols">'+nhMoverChart(d,"#6c3483")+nhMoversBrk(d,"#6c3483","club") + nhFormBrk(d,"#6c3483","club") + nhTourBrk(d) + nhMatchesBrk(d,3,"club")+'</div>' 
+        + '<div class="cols">'+nhMoversBrk(d,"#6c3483","club") + nhFormBrk(d,"#6c3483","club") + nhTourBrk(d) + nhMatchesBrk(d,3,"club")+'</div>' 
         + '<div class="brk"><h2>Ledgers</h2><div class="rows">'
         + '<button class="row" onclick="window.platGoClubLedger('+C+')"><span class="av" style="background:#2f2f2f">\u2261</span>'
         + '<span class="nm"><b>'+esc(W.PLAT.name)+' ledger</b><span>every match at the club \u2014 general play and every group</span></span>'
@@ -9897,7 +9916,7 @@ async function clRemove(id, label){
         + '<div class="tile"><div class="k">Biggest move</div><div class="v '+((mv[0]&&mv[0].move<0)?"dn":"up")+'">'+(mv[0]?((mv[0].move>0?"+":"")+Math.round(mv[0].move)):"\u2014")+'</div><div class="n">'+esc(mv[0]?mv[0].name:"")+'</div></div>'
         + '</div>'
         + nhActions(ink,deep)
-        + '<div class="cols">'+nhMoverChart(d,ink)+nhMoversBrk(d,ink,"board") + nhFormBrk(d,ink,"board") + nhTourBrk(d) + nhMatchesBrk(d,4,"board")+'</div>'
+        + '<div class="cols">'+nhRadar(d,ink)+nhMoversBrk(d,ink,"board") + nhFormBrk(d,ink,"board") + nhTourBrk(d) + nhMatchesBrk(d,4,"board")+'</div>'
         + nhFoot(ink,deep,"Control room");
     });
   }
