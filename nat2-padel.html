@@ -736,7 +736,7 @@
 <script>/* newapp */ window.NEWAPP=true;
 
 /* ============================================================================
-   NAT EARLY SNIPPET — nat-padel.html  VERSION: NAT-PADEL v2026.09.15-n2  (n2: A RATING IS NATIONAL — the club ledger rebuilt the rating from the club's matches alone, so one person read three numbers; the engine's replay is now pool-wide on every ledger and only the lists are club-scoped.)\n   NAT-PADEL v2026.09.15-n1  (THE NATIONAL REGISTER FORK of PLAT p117.
+   NAT EARLY SNIPPET — nat2-padel.html  VERSION: NAT-PADEL v2026.09.15-n2  (n2: A RATING IS NATIONAL — the club ledger rebuilt the rating from the club's matches alone, so one person read three numbers; the engine's replay is now pool-wide on every ledger and only the lists are club-scoped.)\n   NAT-PADEL v2026.09.15-n1  (THE NATIONAL REGISTER FORK of PLAT p117.
    plat-padel.html is not touched. Changes, each marked NAT:
      * the CLUB RUNG: nat_club_parent says which club a board is a group of. A club with groups has a CLUB DOOR at
        ?club=C (its board is one tap further, ?club=C&board=1); a register with two or more clubs has a NATIONAL
@@ -9173,12 +9173,15 @@ async function clRemove(id, label){
   });
 </script>
 <script>
-/* NAT GLUE — nat-padel.html n1: the PLAT p117 glue with the CLUB RUNG (national door, club door, club ledger,
+/* NAT GLUE — nat2-padel.html n1: the PLAT p117 glue with the CLUB RUNG (national door, club door, club ledger,
    National grid toggle, chips that climb the ladder, General Admin on nat_admin). Every change is marked NAT. */
 /* PLAT GLUE — club strip under the hero, club dropdown at ✚ Enter, hero name from the platform. */
 (function(){
   var W=window;
-  var PAGE="nat-padel.html";   // NAT: the fork's own file
+  /* n50: THE APP'S OWN NAME, WORKED OUT, NOT WRITTEN IN. A build under another filename (nat2-padel.html,
+     say) used to keep sending people to nat2-padel.html for a group or a club door — so half the taps landed
+     in the old app. It now reads the file it is actually running as. */
+  var PAGE=(function(){ try{ return location.pathname.split("/").pop() || "nat2-padel.html"; }catch(e){ return "nat2-padel.html"; } })();
   // NAT: the ladder — is this board a club with groups? which club is a group of?
   function kidsOf(id){ return (W.PLAT.clubs||[]).filter(function(c){ return c.parent_id===id; }); }
   function isClubWithKids(id){ return kidsOf(id).length>0; }
@@ -9547,16 +9550,24 @@ async function clRemove(id, label){
     f=f||.42; return "#"+((1<<24)+((r*(1-f)|0)<<16)+((g*(1-f)|0)<<8)+(b*(1-f)|0)).toString(16).slice(1); }catch(e){ return "#3a1d6e"; } }
 
   /* the brackets, all calling the app's own screens */
-  function nhMoversBrk(d,ink){
+  /* Where a glimpse leads depends on WHOSE figures it shows. On the door they are the club's — every group
+     added together — so they open the club LEDGER's tables. On a place page they are that board's, so they
+     open that board's own screens. Sending the door's club-wide movers to one board's ladder was simply
+     wrong: the names were not in it. */
+  function nhLadderGo(scope){
+    if(scope==="club") return 'window.platGoClubLedger('+W.PLAT.cid+')';
+    return 'showScreen(\'laddersScreen\')';
+  }
+  function nhMoversBrk(d,ink,scope){
     var mv=nhMovers(d.matches); if(!mv.length) return "";
     return '<div class="brk"><h2>Movers this week</h2><div class="rows">'
       + mv.map(function(m){ return '<button class="row" onclick="window.nhPlayer(\''+String(m.name).replace(/'/g,"\\'")+'\')">'
           +'<span class="av" style="background:'+ink+'">'+esc(inits(m.name))+'</span>'
           +'<span class="nm"><b>'+esc(m.name)+'</b><span>'+(m.move>=0?"climbing":"giving ground")+'</span></span>'
           +'<span class="val"><b class="'+(m.move>=0?"up":"dn")+'">'+(m.move>0?"+":"")+Math.round(m.move)+'</b><span>rating</span></span></button>'; }).join("")
-      +'</div><button class="more" onclick="showScreen(\'laddersScreen\')">See the full ratings and ladders \u2192</button></div>';
+      +'</div><button class="more" onclick="'+nhLadderGo(scope)+'">See the full ratings and ladders \u2192</button></div>';
   }
-  function nhFormBrk(d,ink){
+  function nhFormBrk(d,ink,scope){
     var hot=(d.pairs||[]).filter(function(p){ return (p.sets_played||0)>=3; })
       .map(function(p){ return {name:p.name,pct:Math.round(100*(p.sets_won||0)/(p.sets_played||1)),move:Math.round((p.current_rating||0)-(p.initial_rating||0))}; })
       .sort(function(a,b){ return b.pct-a.pct||b.move-a.move; }).slice(0,2);
@@ -9566,17 +9577,21 @@ async function clRemove(id, label){
           +'<span class="av" style="background:'+ink+'">'+esc(inits(p.name))+'</span>'
           +'<span class="nm"><b>'+esc(p.name)+'</b><span>'+p.pct+'% of sets won</span></span>'
           +'<span class="val"><b class="'+(p.move>=0?"up":"dn")+'">'+(p.move>0?"+":"")+p.move+'</b><span>since start</span></span></button>'; }).join("")
-      +'</div><button class="more" onclick="loadLadder(\'mens\',\"Men\u2019s Pairs\")">Every pair \u2192</button></div>';
+      +'</div><button class="more" onclick="'+(scope==="club"?nhLadderGo("club"):'loadLadder(\'mens\',\"Men\u2019s Pairs\")')+'">Every pair \u2192</button></div>';
   }
-  function nhMatchesBrk(d,n){
+  function nhMatchesBrk(d,n,scope){
     var ms=(d.matches||[]).slice(0,n||4); if(!ms.length) return "";
     return '<div class="brk"><h2>Just played</h2><div class="rows">'
       + ms.map(function(m){
           var a=[m.t1p1,m.t1p2].filter(Boolean).join(" & "), b=[m.t2p1,m.t2p2].filter(Boolean).join(" & ");
           var bd=(W.PLAT.clubs||[]).find(function(c){ return Number(c.id)===Number(m.club_id); });
-          return '<div class="row"><span class="nm"><b>'+esc(a)+'</b><span>'+esc(b)+'</span></span>'
-            +'<span class="val"><b>'+((m.t1_sets==null)?"":(m.t1_sets+"\u2013"+m.t2_sets))+'</b>'
-            +'<span style="color:'+((bd&&bd.colour)||"#8a8196")+'">'+esc(bd?bd.name:"")+'</span></span></div>'; }).join("")
+          var col=(bd&&bd.colour)||"#6c3483";
+          /* the board's own COLOUR, as a pill — the same thing the pills do everywhere else. The row opens
+             that board, because that is where the match was played. */
+          var pill=(scope==="club"&&bd)?('<span style="display:inline-block;background:'+col+';color:#fff;border-radius:99px;padding:2px 9px;font-size:10.5px;font-weight:800;margin-top:4px">'+esc(bd.name)+'</span>'):'';
+          var go=(scope==="club"&&bd&&Number(bd.id)!==Number(W.PLAT.cid))?(' onclick="location.href=\''+PAGE+'?club='+bd.id+'\'" style="cursor:pointer"'):'';
+          return '<button class="row"'+go+'><span class="nm"><b>'+esc(a)+'</b><span>'+esc(b)+'</span>'+pill+'</span>'
+            +'<span class="val"><b>'+((m.t1_sets==null)?"":(m.t1_sets+"\u2013"+m.t2_sets))+'</b></span></button>'; }).join("")
       +'</div></div>';
   }
   function nhTourBrk(d){
@@ -9610,6 +9625,57 @@ async function clRemove(id, label){
   };
   W.nhPlayer=function(n){ try{ if(typeof loadProfile==="function") loadProfile(n,""); }catch(e){} };
 
+  /* n51: THE LEDGER'S HOME, in the new shape too. Two of the three home screens had been replaced and this
+     one had not, so tapping Ledger landed back in the old app — which is exactly what "no semblance of the
+     old site" rules out. The tables BEHIND it are still the app's own; this is the front of it. */
+  function newLedgerHome(){
+    var w=nhWrap(); if(!w) return;
+    nhCSS(); nhInk("#2f2f2f");
+    var isClub=!!W.PLAT.nat, name=isClub?(W.PLAT.natName||"Club"):(W.PLAT.poolName||"All Registered Clubs");
+    var B=SBREST(), where=(W.PLAT.natIds&&W.PLAT.natIds.length)?("club_id=in.("+W.PLAT.natIds.join(",")+")"):("pool_id=eq."+W.PLAT.pool);
+    Promise.all([
+      fetch(B+"plat_matches?"+where+"&discipline=eq.padel&select=id,club_id,match_date,t1p1,t1p2,t2p1,t2p2,t1_sets,t2_sets,rating_delta&order=match_date.desc,id.desc&limit=80").then(J),
+      fetch(B+"plat_player_results?"+where+"&discipline=eq.padel&select=name,club_id,current_rating,initial_rating,sets_played,sets_won&order=current_rating.desc&limit=40").then(J)
+    ]).then(function(r){
+      var ms=r[0]||[], pairs=r[1]||[];
+      var d={matches:ms,pairs:pairs,people:[],tour:null};
+      var wk=ms.filter(function(m){ return ago(m.match_date)<=7; }).length;
+      var mv=nhMovers(ms);
+      var people={}; ms.forEach(function(m){ [m.t1p1,m.t1p2,m.t2p1,m.t2p2].forEach(function(v){ if(v) String(v).split(" & ").forEach(function(x){ people[x.trim()]=1; }); }); });
+      var clubs=(W.PLAT.clubs||[]).filter(function(c){ return !c.parent_id; });
+      var switchRow="";
+      if(!isClub && clubs.length>1){
+        switchRow='<div class="brk"><h2>Every club</h2><div class="rows">'
+          + clubs.map(function(c){
+              var n=ms.filter(function(m){ return Number(m.club_id)===Number(c.id) || (W.PLAT.clubs||[]).some(function(g){ return Number(g.parent_id)===Number(c.id) && Number(g.id)===Number(m.club_id); }); }).length;
+              return '<button class="row" onclick="location.href=\''+PAGE+'?club=0&pool='+W.PLAT.pool+'&nat='+c.id+'\'">'
+                +'<span class="av" style="background:'+clubPal(c.id)[0]+'">'+esc(inits(c.name))+'</span>'
+                +'<span class="nm"><b>'+esc(c.name)+'</b><span>'+n+(n===1?' match':' matches')+' on record</span></span>'
+                +'<span class="val"><b style="color:#cfc6da">\u203a</b></span></button>'; }).join("")
+          +'</div></div>';
+      }
+      w.innerHTML =
+        '<div class="band" style="background:linear-gradient(135deg,#2f2f2f,#141414)">'
+        + '<div class="mark"><span class="logo">OPR</span>Ledger</div>'
+        + '<h1>'+esc(name)+'</h1>'
+        + '<div class="sub">'+(isClub?"Every match at the club \u2014 general play and every group":"Every match at every registered club \u2014 one rating each")+'</div>'
+        + '<div class="pulse">'
+        + (isClub?('<a href="'+PAGE+'?club='+W.PLAT.nat+'">\u2039 '+esc(W.PLAT.natName||"the club")+'</a>'):'')
+        + '<span>'+wk+(wk===1?' match':' matches')+' this week</span>'
+        + '<span>'+Object.keys(people).length+' playing</span>'
+        + (mv[0]?('<span>biggest move '+(mv[0].move>0?"+":"")+Math.round(mv[0].move)+'</span>'):'')
+        + '</div></div>'
+        + '<div class="doit">'
+        + '<button class="primary" style="background:linear-gradient(135deg,#2f2f2f,#141414)" onclick="showScreen(\'laddersScreen\')">'
+        +   '<svg viewBox="0 0 24 24"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/></svg>Ratings &amp; ladders</button>'
+        + '<button onclick="window.nhGo(\'profiles\')"><svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="3.4"/><path d="M5 20c1.2-3.4 4-5 7-5s5.8 1.6 7 5"/></svg>Profiles</button>'
+        + (isClub?('<button onclick="location.href=\''+PAGE+'?club=0&pool='+W.PLAT.pool+'\'"><svg viewBox="0 0 24 24"><path d="M4 5a2 2 0 0 1 2-2h13v16H6a2 2 0 0 0-2 2V5Z"/><path d="M8 7h7M8 11h7"/></svg>All registered clubs</button>'):'')
+        + '</div>'
+        + switchRow
+        + nhMoversBrk(d,"#2f2f2f","board") + nhFormBrk(d,"#2f2f2f","board") + nhMatchesBrk(d,5,"club");
+    });
+  }
+
   /* the club's FRONT DOOR — the club's introduction, in OPR's own colours */
   function newClubDoor(){
     var w=nhWrap(); if(!w) return;
@@ -9641,7 +9707,7 @@ async function clRemove(id, label){
         + (mv[0]?('<span>biggest move '+(mv[0].move>0?"+":"")+Math.round(mv[0].move)+' \u00b7 '+esc(String(mv[0].name).split(" ")[0])+'</span>'):'')
         + (d.tour?('<span>'+esc(d.tour.name)+' running</span>'):'')+'</div></div>'
         + '<div class="brk"><h2>Where you play</h2><div class="rows">'+places+'</div></div>'
-        + nhMoversBrk(d,"#6c3483") + nhFormBrk(d,"#6c3483") + nhTourBrk(d) + nhMatchesBrk(d,3)
+        + nhMoversBrk(d,"#6c3483","club") + nhFormBrk(d,"#6c3483","club") + nhTourBrk(d) + nhMatchesBrk(d,3,"club")
         + '<div class="brk"><h2>Ledgers</h2><div class="rows">'
         + '<button class="row" onclick="window.platGoClubLedger('+C+')"><span class="av" style="background:#2f2f2f">\u2261</span>'
         + '<span class="nm"><b>'+esc(W.PLAT.name)+' ledger</b><span>every match at the club \u2014 general play and every group</span></span>'
@@ -9675,7 +9741,7 @@ async function clRemove(id, label){
         + '<div class="tile"><div class="k">Playing</div><div class="v">'+Object.keys(people).length+'</div><div class="n">with a match on record</div></div>'
         + '</div>'
         + nhActions(ink,deep)
-        + nhMoversBrk(d,ink) + nhFormBrk(d,ink) + nhTourBrk(d) + nhMatchesBrk(d,4);
+        + nhMoversBrk(d,ink,"board") + nhFormBrk(d,ink,"board") + nhTourBrk(d) + nhMatchesBrk(d,4,"board");
     });
   }
   /* What has just been played, across the whole club — the door's own short list. */
@@ -10325,7 +10391,7 @@ async function clRemove(id, label){
       }).join("")||'<span style="color:#888">No clubs yet.</span>';
     });
   }
-  var DOOR_BASE=(function(){ try{ return location.origin+location.pathname; }catch(e){ return "nat-padel.html"; } })();
+  var DOOR_BASE=(function(){ try{ return location.origin+location.pathname; }catch(e){ return "nat2-padel.html"; } })();
   W.platCopyDoor=function(u){
     var m=document.getElementById("platRegMsg");
     var done=function(){ if(m){ m.style.color="#2e7d32"; m.textContent="Address copied \u2014 send it to the club."; } };
@@ -11512,7 +11578,9 @@ async function clRemove(id, label){
       try{ var ab=document.getElementById("aboutScreen");
            if(ab) Array.prototype.forEach.call(ab.querySelectorAll("button"),function(b){ if(/admin/i.test(b.textContent||"")) b.style.display="none"; }); }catch(e){}
       return; }
-    if(W.PLAT.cid===0){ var t2="OPR · "+(W.PLAT.nat?(W.PLAT.natName||"Club"):(W.PLAT.poolName||"Overall"))+" · Ledger"; if(ht) ht.textContent=t2; document.title=t2; ledgerOnly(); try{ natToggle(); }catch(e){}
+    if(W.PLAT.cid===0){ var t2="OPR · "+(W.PLAT.nat?(W.PLAT.natName||"Club"):(W.PLAT.poolName||"Overall"))+" · Ledger"; if(ht) ht.textContent=t2; document.title=t2;
+      if(W.NEWAPP){ try{ newLedgerHome(); }catch(e){} }   /* n51: the ledger's home, new shape */
+      ledgerOnly(); try{ natToggle(); }catch(e){}
       /* n32: standing on the COMBINED ledger is the register owner's place as surely as the door is — and it
          is where combined.html lands, so arriving that way left every club door afterwards looking like a
          member's, with no way back. Stamp it here too. A club's own ledger (nat set) does not count: that is
