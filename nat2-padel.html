@@ -9577,8 +9577,15 @@ async function clRemove(id, label){
      +"#nh .sub{font-size:12.5px;opacity:.88}"
      +"#nh .pulse{display:flex;gap:7px;flex-wrap:wrap;margin-top:11px}"
      +"#nh .pulse span,#nh .pulse a{background:rgba(255,255,255,.16);border:1px solid rgba(255,255,255,.3);border-radius:99px;padding:5px 11px;font-size:12px;font-weight:700;color:#fff;text-decoration:none}"
-     +"#nh .brk{background:#fff;border:1px solid #e6e0ee;border-radius:16px;margin:12px 12px 0;overflow:hidden}"
-     +"#nh .brk h2{font-size:12.5px;letter-spacing:.08em;text-transform:uppercase;color:#4a4256;font-weight:800;margin:0;padding:13px 14px 3px}"
+     +/* n60: the page was white cards and grey type, which read as unfinished rather than calm. Each bracket now
+   carries a thin edge in the board's colour and a tinted heading strip, so the page belongs to the group you
+   are standing in. The tint is the same colour at 7%, so it never fights the numbers. */
+      "#nh .brk{background:#fff;border:1px solid #e6e0ee;border-left:4px solid var(--nhc,#6c3483);border-radius:14px;margin:12px 12px 0;overflow:hidden;box-shadow:0 1px 3px rgba(26,16,48,.05)}"
+     +"#nh .brk h2{background:var(--nhtint,rgba(108,52,131,.07));border-bottom:1px solid #efeaf5;color:var(--nhdeep,#4a4256)}"
+     +"#nh .tile{border-left:4px solid var(--nhc,#6c3483)}"
+     +"#nh .tile .k{color:var(--nhdeep,#6f6780)}"
+     +"#nh .more{color:var(--nhc,#6c3483);background:var(--nhtint,#fcfbfd)}"
+     +"#nh .brk h2{font-size:12.5px;letter-spacing:.08em;text-transform:uppercase;font-weight:800;margin:0;padding:11px 14px 10px}"
      +"#nh .rows{padding:4px 6px}"
      +"#nh .row{display:flex;align-items:center;gap:11px;padding:9px 8px;width:100%;background:none;border:none;text-align:left;font:inherit;color:inherit;cursor:pointer}"
      +"#nh .row+.row{border-top:1px solid #efeaf5}"
@@ -9621,7 +9628,13 @@ async function clRemove(id, label){
     return w;
   }
   function nhBoardName(id){ var c=(W.PLAT.clubs||[]).find(function(x){ return Number(x.id)===Number(id); }); return c?c.name:""; }
-  function nhInk(hex){ document.documentElement.style.setProperty("--nhc",hex||"#6c3483"); }
+  function nhInk(hex){
+    var h=hex||"#6c3483";
+    document.documentElement.style.setProperty("--nhc",h);
+    document.documentElement.style.setProperty("--nhtint","rgba("+nhRgb(h)+",.07)");
+    document.documentElement.style.setProperty("--nhdeep",nhDeep(h,.35));
+  }
+  function nhRgb(h){ try{ var n=parseInt(String(h).slice(1),16); return ((n>>16)&255)+","+((n>>8)&255)+","+(n&255); }catch(e){ return "108,52,131"; } }
   function nhDeep(h,f){ try{ var n=parseInt(String(h).slice(1),16),r=(n>>16)&255,g=(n>>8)&255,b=n&255;
     f=f||.42; return "#"+((1<<24)+((r*(1-f)|0)<<16)+((g*(1-f)|0)<<8)+(b*(1-f)|0)).toString(16).slice(1); }catch(e){ return "#3a1d6e"; } }
 
@@ -9792,13 +9805,17 @@ async function clRemove(id, label){
             card:'<svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="1.6"/><path d="M3 12h18M12 4v16"/></svg>',
             lad:'<svg viewBox="0 0 24 24"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/></svg>',
             cup:'<svg viewBox="0 0 24 24"><path d="M7 4h10v4a5 5 0 0 1-10 0V4Z"/><path d="M17 5h3v2a3 3 0 0 1-3 3M7 5H4v2a3 3 0 0 0 3 3"/><path d="M12 13v4M9 21h6"/></svg>',
-            per:'<svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="3.4"/><path d="M5 20c1.2-3.4 4-5 7-5s5.8 1.6 7 5"/></svg>'};
+            per:'<svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="3.4"/><path d="M5 20c1.2-3.4 4-5 7-5s5.8 1.6 7 5"/></svg>',
+            led:'<svg viewBox="0 0 24 24"><path d="M4 5a2 2 0 0 1 2-2h13v16H6a2 2 0 0 0-2 2V5Z"/><path d="M8 7h7M8 11h7"/></svg>'};
     return '<div class="doit">'
       +'<button class="primary" style="background:linear-gradient(135deg,'+ink+','+deep+')" onclick="window.nhGo(\'entry\')">'+ic.score+'Enter a score</button>'
       +'<button onclick="window.nhGo(\'card\')">'+ic.card+'Court card</button>'
       +'<button onclick="window.nhGo(\'ladders\')">'+ic.lad+'Ratings &amp; ladders</button>'
       +'<button onclick="window.nhGo(\'tournaments\')">'+ic.cup+'Tournaments</button>'
       +'<button onclick="window.nhGo(\'profiles\')">'+ic.per+'Profiles</button>'
+      /* n61: the ledgers belong in this row too — from a board you reach the club's whole record, and the
+         register's, without going back out to the door first. */
+      +'<button onclick="window.nhGo(\'ledger\')">'+ic.led+'Ledgers</button>'
       +'</div>';
   }
   /* n58: these two were wired to screens that do not exist — the tournaments screen is singular, and the
@@ -9808,6 +9825,11 @@ async function clRemove(id, label){
       if(what==="entry"){ var b=document.querySelector("#homeScreen .btn-enter"); if(b){ b.click(); return; } }
       if(what==="profiles" && typeof showProfileSearch==="function"){ showProfileSearch(); return; }
       if(what==="ladders"){ showScreen("laddersScreen"); return; }
+      if(what==="ledger"){
+        /* the club's ledger — the register's own is one tap from there */
+        var top=(W.PLAT.parentId||W.PLAT.cid);
+        location.href=PAGE+"?club=0&pool="+W.PLAT.pool+"&nat="+top; return;
+      }
       if(what==="tournaments"){
         /* the app opens tournaments through its own function; the screen alone is not enough to populate it */
         /* the app's own two steps: fill the list, then show it. openInternalTournament needs an event and
