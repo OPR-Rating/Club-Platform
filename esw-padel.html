@@ -3544,7 +3544,7 @@ const CLUB_NAME = _club.name;  // shown in the logo as "OPR · <name>"
     link.setAttribute('href', href);
   }catch(e){ /* install stays on the static manifest — no functional impact */ }
 })();
-const OPR_VERSION = "OPR-DOUBLES v2026.09.03-56 · NAT fork n63 (no voice) (of PLAT p117)";  // MANUAL PAIR CREATION REMOVED FROM ADMIN: Create a pair, Bulk create pairs and Re-derive all pairs are gone (they only made match-less ghost pairs, and Re-derive rewrote every stored initial club-wide). Pairs are born automatically at match entry. Current pairs list untouched; the underlying JS is left in place unreferenced, so no other code path changes. Includes v47 (set-score fix + double-tap guard) and all prior.
+const OPR_VERSION = "OPR-DOUBLES v2026.09.03-56 · NAT fork n64 (no voice) (of PLAT p117)";  // MANUAL PAIR CREATION REMOVED FROM ADMIN: Create a pair, Bulk create pairs and Re-derive all pairs are gone (they only made match-less ghost pairs, and Re-derive rewrote every stored initial club-wide). Pairs are born automatically at match entry. Current pairs list untouched; the underlying JS is left in place unreferenced, so no other code path changes. Includes v47 (set-score fix + double-tap guard) and all prior.
 // Explanation shown above the individual ladder. Open on load so it's read; collapsible
 // (state kept for the session) and scrolls away. Mechanics only — no outcome framing, so
 // members aren't nudged away from playing stronger opponents. Every clause maps to a real
@@ -10170,8 +10170,10 @@ async function clRemove(id, label){
         +'</div></div>';
     }
     body+='<div class="brk"><h2>Ledger</h2><div class="rows">'
+      /* n66: carry where we came from. Going into ledger control used to land on the ledger, and leaving it
+         left you on the ledger too — never back at the door you started from. */
       + pill("Ledger control", "the register: people, clubs, backups, recompute", "#2f2f2f",
-             "location.href='"+PAGE+"?club=0&pool="+W.PLAT.pool+"&nat="+C+"&go=admin'")
+             "location.href='"+PAGE+"?club=0&pool="+W.PLAT.pool+"&nat="+C+"&go=admin&from="+C+"'")
       +'</div></div>';
     w.innerHTML='<div class="band" style="background:linear-gradient(135deg,#3a1d6e,#1d0a41)">'
       +'<div class="mark"><span class="logo">OPR</span>Admin control</div>'
@@ -10213,6 +10215,11 @@ async function clRemove(id, label){
   /* n54: THE LEDGER KEEPS ITS OWN PAGE. It already has the tables people go there for, and repeating the
      movers, the form and the matches above them was the same information twice. So the ledger gets the new
      BAND and nothing else — its own screen, unchanged, under a header that matches the rest of the app. */
+  /* n66: ?from=<club> means "you came from that door" — the way back, and the Close on the admin room, go
+     there instead of dumping you on the ledger. */
+  function nhFrom(){
+    try{ var m=String(location.search||"").match(/[?&]from=(\d+)/); return m?Number(m[1]):0; }catch(e){ return 0; }
+  }
   function newLedgerHome(){
     /* n65: A CLUB'S LEDGER IS THE CLUB, so it wears the club's purple — the same purple as the Records row
        that led here. The REGISTER's ledger, which spans every club, stays charcoal. Two widths, two colours,
@@ -10250,7 +10257,10 @@ async function clRemove(id, label){
       document.head.appendChild(sv); }
     /* the way back, and the way into admin — a ledger had neither */
     var back="";
-    if(isClub) back='<a href="'+PAGE+'?club='+W.PLAT.nat+'">\u2039 '+esc(W.PLAT.natName||"the club")+'</a>';
+    /* n66: if a door sent us here, that door is the way back — not another ledger */
+    var frm=nhFrom();
+    if(frm) back='<a href="'+PAGE+'?club='+frm+'">\u2039 back</a>';
+    else if(isClub) back='<a href="'+PAGE+'?club='+W.PLAT.nat+'">\u2039 '+esc(W.PLAT.natName||"the club")+'</a>';
     else { var last=null; try{ last=sessionStorage.getItem("nat_last_club_"+W.PLAT.pool); }catch(e){}
       if(last){ var bits=last.split("|"); back='<a href="'+PAGE+'?club=0&pool='+W.PLAT.pool+'&nat='+bits[0]+'">\u2039 '+esc((bits[1]||"club")+" ledger")+'</a>'; } }
     /* on the register's own ledger the tables cover every club, so the button says so */
@@ -11838,7 +11848,13 @@ async function clRemove(id, label){
     v=String(v).trim();
     var m=document.getElementById("platRegMsg");
     acall({action:"set_general_label",admin_pin:REG.pin,club_id:id,label:v}).then(function(r){
-      if(!r||!r.ok){ if(m){ m.style.color="#c00"; m.textContent=(r&&r.error)||"Could not save that name."; } return; }
+      if(!r||!r.ok){
+        var why=(r&&r.error)||"Could not save that name.";
+        /* the action arrived with nat_admin v15 — an older function simply does not know it */
+        if(/unknown action|not supported|invalid action/i.test(String(why))) why="This needs nat_admin v15 deployed \u2014 the older function does not know how to save it.";
+        if(m){ m.style.color="#c00"; m.textContent=why; }
+        return;
+      }
       [(W.PLAT.clubs||[]),(REG.clubs||[])].forEach(function(list){
         list.forEach(function(x){ if(Number(x.id)===Number(id)){ x.options=x.options||{};
           if(v) x.options.general_label=v; else delete x.options.general_label; } }); });
@@ -11915,7 +11931,13 @@ async function clRemove(id, label){
          business being in a room opened from the register's ledger. Now: no club context, no club code. */
       if (okRole && r.role==="club" && Number(r.club_id||0)!==Number(W.PLAT.nat||0)) okRole=false;
       if (okRole){ REG.pin=p; REG.role=r.role; REG.clubId=r.club_id||0; REG.clubName=r.club_name||""; regRender(); regLoad(); } else { m.textContent=(r&&r.role==="club")?"That is a club PIN — the register needs the register PIN or master.":"PIN not recognised."; } }); };
-  W.platRegLock=function(){ REG.pin=""; REG.role=""; regRender(); };
+  /* n66: Close returns to the door that sent you here. It used to lock the room and leave you standing on
+     the ledger — so going in to rename something meant finding your own way back. */
+  W.platRegLock=function(){
+    REG.pin=""; REG.role=""; regRender();
+    var frm=(typeof nhFrom==="function")?nhFrom():0;
+    if(frm && W.NEWAPP){ location.href=PAGE+"?club="+frm; }
+  };
   W.platAddPoolMember=function(){
     var m=document.getElementById("platRegMsg");
     var name=(document.getElementById("platPName").value||"").trim();
