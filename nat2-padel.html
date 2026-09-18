@@ -10214,7 +10214,12 @@ async function clRemove(id, label){
      movers, the form and the matches above them was the same information twice. So the ledger gets the new
      BAND and nothing else — its own screen, unchanged, under a header that matches the rest of the app. */
   function newLedgerHome(){
-    nhCSS(); nhInk("#2f2f2f"); nhHeaderSkin("#2f2f2f","#141414");
+    /* n65: A CLUB'S LEDGER IS THE CLUB, so it wears the club's purple — the same purple as the Records row
+       that led here. The REGISTER's ledger, which spans every club, stays charcoal. Two widths, two colours,
+       and you can tell at a glance which one you are standing on. */
+    var isClubLedger = !!W.PLAT.nat;
+    var lcol = isClubLedger ? "#6c3483" : "#2f2f2f";
+    nhCSS(); nhInk(lcol); nhHeaderSkin(lcol, isClubLedger?"#1d0a41":"#141414");
     try{ nhBarMount(); }catch(e){}   /* n63: the way home was missing from every ledger page */
     var host=document.getElementById("homeScreen"); if(!host) return;
     var isClub=!!W.PLAT.nat, name=isClub?(W.PLAT.natName||"Club"):(W.PLAT.poolName||"All Registered Clubs");
@@ -10989,8 +10994,11 @@ async function clRemove(id, label){
           + lastLine +'</button>';
       };
       var heading=function(t){ return '<div style="font-size:12px;letter-spacing:.09em;text-transform:uppercase;color:#7a6f8a;font-weight:800;margin:18px 14px 0">'+esc(t)+'</div>'; };
+      /* n65: marked platKeep so the painter leaves it alone — every other purple on a board is repainted to
+         that board's colour, but the club's own record must stay purple wherever it appears, because that
+         fixed colour is how you know you are looking at the club as a whole. */
       var ledgerRow=function(title,sub,col,onclick){
-        return '<button onclick="'+onclick+'" style="display:flex;width:calc(100% - 24px);align-items:center;gap:11px;text-align:left;'
+        return '<button data-plat-keep="1" onclick="'+onclick+'" style="display:flex;width:calc(100% - 24px);align-items:center;gap:11px;text-align:left;'
           +'background:#fff;border:1px solid #cfc5e0;border-radius:14px;padding:12px 13px;margin:10px 12px 0;font:inherit;cursor:pointer">'
           +'<span style="flex:1;min-width:0"><span style="display:block;font-size:14.5px;font-weight:800;color:#241d33">'+esc(title)+'</span>'
           +'<span style="display:block;font-size:12px;color:#5f5770;margin-top:2px">'+esc(sub)+'</span></span>'
@@ -11017,10 +11025,15 @@ async function clRemove(id, label){
         + '<div id="doorWhere" style="display:none;padding:2px 12px 4px"></div>'
         /* the engine */
         + heading("Where things happen \u00b7 tap to enter")
-        + card(nhGeneralName(), "#6c3483", "Open to every member", PAGE+"?club="+C+"&board=1", C)
+        /* n65: THE CLUB'S OWN BOARD IS A BOARD. It was hardwired purple while every group wore its own
+           colour, so the place most clubs play most read as the app's furniture. It now takes the colour the
+           club chose, like any other board — purple is reserved for the CLUB'S RECORDS, below. */
+        + card(nhGeneralName(), clubPal(C)[0], "Open to every member", PAGE+"?club="+C+"&board=1", C)
         + kids.map(function(g){ return card(g.name, clubPal(g.id)[0], "A group \u00b7 its own ladder and card", PAGE+"?club="+g.id, g.id); }).join("")
         /* two records, no toggle, each saying how wide it is */
         + heading("The records")
+        /* n65: PURPLE IS THE CLUB ITSELF. Fixed, never chosen: wherever you see it you are looking at the
+           club's whole record. Boards wear their own colours; the register's ledger stays charcoal. */
         + ledgerRow(W.PLAT.name, "Every match at this club \u2014 general play and every group", "#6c3483", "window.platGoClubLedger("+C+")")
         + ledgerRow("All registered clubs", "Every match at every club in the register \u2014 one rating each", "#2f2f2f",
                     "location.href='"+PAGE+"?club=0&pool="+W.PLAT.pool+"'")
@@ -11507,19 +11520,29 @@ async function clRemove(id, label){
        Padel Ballies read as a club beside Monday Club. Now: the CLUB's own board first — the club's own OPR
        app, which this club calls General play — and its GROUPS listed with the form that makes them, where
        you look when you are thinking about groups. */
+    /* n65: THE ROW WAS BEING CRUSHED. Four buttons on one line left the caption a column one word wide, with
+       the buttons sitting on top of it. The name and its caption now have the line to themselves and the
+       buttons wrap beneath, so a fifth button would not break it either. */
     function boardRow(c, sub){
       var p=clubPal(c.id);
-      return '<div style="display:flex;align-items:center;gap:8px;padding:7px 0;border-bottom:1px solid #eee">'
+      var btn=function(label,onclick,danger){
+        return '<button class="menu-btn" style="min-height:32px;padding:5px 11px;font-size:12px;'
+          +(danger?'border:1px solid #c62828;color:#c62828;background:#fff;border-radius:8px;cursor:pointer':'')+'" '
+          +'onclick="'+onclick+'">'+esc(label)+'</button>';
+      };
+      return '<div style="padding:10px 0;border-bottom:1px solid #eee">'
+        +'<div style="display:flex;align-items:center;gap:8px">'
         +'<span style="width:16px;height:16px;border-radius:50%;background:'+p[0]+';flex:0 0 16px"></span>'
-        +'<span style="flex:1;min-width:0"><span style="font-weight:600">'+esc(c.name)+'</span>'
-        +(sub?'<span style="display:block;font-size:11.5px;color:#777">'+esc(sub)+'</span>':'')+'</span>'
-        +'<button class="menu-btn" style="min-height:30px;padding:4px 10px;font-size:12px" onclick="window.platRenameBoard('+c.id+')">Rename</button>'   /* n17: correcting a name was missing */
-        +'<button class="menu-btn" style="min-height:30px;padding:4px 10px;font-size:12px" onclick="window.platClubColour('+c.id+')">Colour</button>'
-        /* n89: a club may call its own board what its members call it — the door read "X — general play"
-           because the label was built from the club's name and could be edited nowhere. */
-        +((!c.parent_id)?('<button class="menu-btn" style="min-height:30px;padding:4px 10px;font-size:12px" onclick="window.platGeneralLabel('+c.id+')">Name general play</button>'):'')
-        +'<button style="min-height:30px;padding:4px 10px;font-size:12px;border:1px solid #c62828;color:#c62828;background:#fff;border-radius:8px;cursor:pointer" onclick="window.platClubTeardown('+c.id+')">Delete\u2026</button></div>'
-        +'<div id="platTd'+c.id+'"></div>';
+        +'<span style="flex:1;min-width:0"><span style="font-weight:700;font-size:14px">'+esc(c.name)+'</span>'
+        +(sub?'<span style="display:block;font-size:11.5px;color:#777;line-height:1.4;margin-top:2px">'+esc(sub)+'</span>':'')
+        +'</span></div>'
+        +'<div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:8px;padding-left:24px">'
+        + btn("Rename","window.platRenameBoard("+c.id+")")
+        + btn("Colour","window.platClubColour("+c.id+")")
+        + ((!c.parent_id)?btn("Name general play","window.platGeneralLabel("+c.id+")"):"")
+        + btn("Delete\u2026","window.platClubTeardown("+c.id+")",true)
+        +'</div>'
+        +'<div id="platTd'+c.id+'"></div></div>';
     }
     var myGroups=[];
     if(REG.role==="club"){
