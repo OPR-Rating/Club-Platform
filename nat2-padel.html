@@ -834,7 +834,8 @@
   var W=window; W.PLAT={cid:CID,pool:POOLQ,clubs:[],poolName:"",name:"",ready:null,landing:LANDING,
     board:BOARDQ,nat:NATQ,natIds:null,natNames:null,parentId:0,kids:[],clubDoor:false};
   // NAT: a club door is known from the last visit, so the first frame is already laid out as a door
-  try{ W.PLAT.clubDoor=(CID>0 && !BOARDQ && localStorage.getItem("plat_nat_kids_"+CID)==="1"); }catch(e){}
+  try{ W.PLAT.clubDoor=(CID>0 && !BOARDQ && (localStorage.getItem("plat_nat_kids_"+CID)==="1"
+        || (W.NEWAPP && localStorage.getItem("plat_nat_isclub_"+CID)==="1"))); }catch(e){}
   // n10: NO FLASH OF THE OLD PAGE. The parent draws its board, chip and title on the first frame, from its
   // own defaults; the platform only learns the ladder when the network answers, so for a moment you saw the
   // previous shape and then it jumped. Two things stop that: (a) the ladder is remembered from the last
@@ -965,7 +966,13 @@ st0.textContent += "html{overflow-y:scroll}";   // p98: the scrollbar's space is
           (W.PLAT.clubs||[]).forEach(function(c){ c.parent_id=pm[c.id]||null; });
           W.PLAT.parentId=CID?(pm[CID]||0):0;
           W.PLAT.kids=(W.PLAT.clubs||[]).filter(function(c){ return c.parent_id===CID && CID>0; }).map(function(c){return c.id;});
-          W.PLAT.clubDoor=(CID>0 && !BOARDQ && W.PLAT.kids.length>0);
+          /* n81: A CLUB ALWAYS HAS A DOOR IN THE NEW APP. The door used to appear only once a club had groups,
+             so a club with none — Eswatini today — opened straight onto its board and never saw Where you
+             play, Go to, the last match or its ledgers. A club with no groups simply has one place to play,
+             and says so. A GROUP still has no door: it is a board. */
+          var isClubRung = (W.PLAT.kids.length>0) || (W.NEWAPP && !W.PLAT.parentId);
+          try{ localStorage.setItem("plat_nat_isclub_"+CID, W.PLAT.parentId?"0":"1"); }catch(e){}
+          W.PLAT.clubDoor=(CID>0 && !BOARDQ && isClubRung);
           /* n29: WHO HAS ACTUALLY PLAYED HERE. A board listed every member, the ledger only those who have
              played, so a registered-but-unplayed member sat in the board's ratings table and pushed everyone
              else down a rank — Larry at 2 on Kloof, absent from the ledger, Dave 3 in one place and 4 in the
@@ -3531,7 +3538,7 @@ const CLUB_NAME = _club.name;  // shown in the logo as "OPR · <name>"
     link.setAttribute('href', href);
   }catch(e){ /* install stays on the static manifest — no functional impact */ }
 })();
-const OPR_VERSION = "OPR-DOUBLES v2026.09.03-56 · NAT fork n51 (no voice) (of PLAT p117)";  // MANUAL PAIR CREATION REMOVED FROM ADMIN: Create a pair, Bulk create pairs and Re-derive all pairs are gone (they only made match-less ghost pairs, and Re-derive rewrote every stored initial club-wide). Pairs are born automatically at match entry. Current pairs list untouched; the underlying JS is left in place unreferenced, so no other code path changes. Includes v47 (set-score fix + double-tap guard) and all prior.
+const OPR_VERSION = "OPR-DOUBLES v2026.09.03-56 · NAT fork n54 (no voice) (of PLAT p117)";  // MANUAL PAIR CREATION REMOVED FROM ADMIN: Create a pair, Bulk create pairs and Re-derive all pairs are gone (they only made match-less ghost pairs, and Re-derive rewrote every stored initial club-wide). Pairs are born automatically at match entry. Current pairs list untouched; the underlying JS is left in place unreferenced, so no other code path changes. Includes v47 (set-score fix + double-tap guard) and all prior.
 // Explanation shown above the individual ladder. Open on load so it's read; collapsible
 // (state kept for the session) and scrolls away. Mechanics only — no outcome framing, so
 // members aren't nudged away from playing stronger opponents. Every clause maps to a real
@@ -9651,13 +9658,14 @@ async function clRemove(id, label){
     var B=SBREST(), boards=(W.PLAT.myBoards&&W.PLAT.myBoards.length)?W.PLAT.myBoards:[W.PLAT.cid];
     var inList="club_id=in.("+boards.join(",")+")";
     return Promise.all([
-      fetch(B+"plat_matches?"+inList+"&discipline=eq.padel&select=id,club_id,match_date,match_type,event,t1p1,t1p2,t2p1,t2p2,t1_sets,t2_sets,set_scores,rating_delta&order=match_date.desc,id.desc&limit=120").then(J),
+      fetch(B+"plat_matches?"+inList+"&discipline=eq.padel&select=id,club_id,match_date,match_type,event,t1p1,t1p2,t2p1,t2p2,t1_sets,t2_sets,t1_games,t2_games,set_scores,rating_delta&order=match_date.desc,id.desc&limit=120").then(J),
       fetch(B+"plat_player_results?"+inList+"&discipline=eq.padel&select=name,club_id,current_rating,initial_rating,sets_played,sets_won&order=current_rating.desc&limit=60").then(J),
       fetch(B+"plat_padel_v_individuals?"+inList+"&select=id,full_name,club_id,current_rating,seed_rating").then(J).catch(function(){ return []; }),
       fetch(B+"plat_padel_tournaments?"+inList+"&select=id,name,club_id,active,archived").then(J).catch(function(){ return []; })
     ]).then(function(r){
+      var live=(r[3]||[]).filter(function(x){ return x.active&&!x.archived; });
       NEW.data={matches:r[0]||[],pairs:r[1]||[],people:r[2]||[],
-                tour:(r[3]||[]).filter(function(x){ return x.active&&!x.archived; })[0]||null};
+                tour:live[0]||null, tours:live};        /* n81: a club can be running several at once */
       return NEW.data;
     }).catch(function(){ NEW.data={matches:[],pairs:[],people:[],tour:null}; return NEW.data; });
   }
@@ -9768,7 +9776,9 @@ async function clRemove(id, label){
      +"#nh .fig{background:#fff;border:1px solid #e6e0ee;border-radius:12px;padding:10px 4px;text-align:center}"
      +"#nh .fig b{display:block;font-size:16px;font-weight:800;color:var(--nhc,#6c3483)}"
      +"#nh .fig span{display:block;font-size:9.5px;color:#6f6780;margin-top:3px;line-height:1.2}"
-     +"@media(max-width:430px){#nh .five{grid-template-columns:repeat(3,1fr)}}"
+     /* n82: five across on a phone too — 3+2 left an orphan row */
+     +"@media(max-width:430px){#nh .five{gap:5px;margin:12px 10px 0}#nh .fig{padding:9px 2px}"
+     +"#nh .fig b{font-size:14px}#nh .fig span{font-size:8.5px;letter-spacing:-.1px}}"
      +"#nh .kind{font-size:11.5px;letter-spacing:.07em;text-transform:uppercase;color:#7a6f8a;font-weight:800;padding:6px 8px 1px}"
      /* n53: A LAPTOP IS NOT A BIG PHONE. On a wide screen the single column left the page mostly empty, so the
         brackets sit two abreast, the band spreads, and the tiles run four across. Same pieces, more room. */
@@ -9999,9 +10009,17 @@ async function clRemove(id, label){
   }
   /* n65: a running tournament shows ITS matches — the ones entered against that event — so opening the
      bracket answers "what has just happened in it" without going to the sheet. */
+  /* n81: ALL OF THEM. A club running four tournaments saw one — the bracket took the first and ignored the
+     rest, which is exactly what an active club does at the height of a season. */
   function nhTourBrk(d){
-    if(!d.tour) return "";
-    var nm=String(d.tour.name||"").toLowerCase();
+    var list=(d.tours&&d.tours.length)?d.tours:(d.tour?[d.tour]:[]);
+    if(!list.length) return "";
+    if(list.length>1) return list.map(function(t){ return nhOneTour(d,t); }).join("");
+    return nhOneTour(d,list[0]);
+  }
+  function nhOneTour(d,tour){
+    if(!tour) return "";
+    var nm=String(tour.name||"").toLowerCase();
     var ms=(d.matches||[]).filter(function(m){ return String(m.event||"").toLowerCase()===nm; }).slice(0,12);
     var body = ms.length
       ? ms.map(function(m){
@@ -10009,8 +10027,8 @@ async function clRemove(id, label){
           return '<div class="row"><span class="nm"><b>'+esc(a)+'</b><span>'+esc(b)+'</span></span>'
             +'<span class="val"><b>'+((m.t1_sets==null)?"":(m.t1_sets+"\u2013"+m.t2_sets))+'</b><span>'+esc(String(m.match_date||"").slice(5))+'</span></span></div>'; }).join("")
       : '<div class="row"><span class="av" style="background:#c4a000">\u{1F3C6}</span>'
-        +'<span class="nm"><b>'+esc(d.tour.name)+'</b><span>under way \u00b7 no results entered yet</span></span></div>';
-    return '<div class="brk">'+nhLimeBar(d.tour.name+" \u00b7 running now")
+        +'<span class="nm"><b>'+esc(tour.name)+'</b><span>under way \u00b7 no results entered yet</span></span></div>';
+    return '<div class="brk">'+nhLimeBar(tour.name+" \u00b7 running now")
       +'<div class="rows" style="max-height:280px;overflow-y:auto;-webkit-overflow-scrolling:touch">'+body
       +'</div><button class="more" onclick="window.nhGo(\'tournaments\')">Open the tournament \u2192</button></div>';
   }
@@ -10034,7 +10052,12 @@ async function clRemove(id, label){
      court card lives on the session screen the glue itself builds. Neither button did anything. */
   W.nhGo=function(what){
     try{
-      if(what==="entry"){ var b=document.querySelector("#homeScreen .btn-enter"); if(b){ b.click(); return; } }
+      if(what==="entry"){
+        /* n82: started from somebody's own page, the sheet already knows who they are — being asked "who are
+           you?" at the end reads as the app forgetting. The name is filled in; the list still opens. */
+        W.__meFrom=meName()||null;
+        var b=document.querySelector("#homeScreen .btn-enter"); if(b){ b.click(); return; }
+      }
       if(what==="profiles" && typeof showProfileSearch==="function"){ showProfileSearch(); return; }
       if(what==="ladders"){ showScreen("laddersScreen"); return; }
       if(what==="ledger"){
@@ -10114,6 +10137,24 @@ async function clRemove(id, label){
       showScreen("aboutScreen");
     }catch(e){ try{ showScreen("aboutScreen"); }catch(_){} }
   };
+  /* fill the submitter in as soon as the verify step appears */
+  (function(){
+    var seen=null;
+    setInterval(function(){
+      try{
+        var sel=document.getElementById("submitterName");
+        if(!sel || sel===seen || !W.__meFrom) return;
+        var want=String(W.__meFrom);
+        for(var i=0;i<sel.options.length;i++){
+          if(String(sel.options[i].value)===want || String(sel.options[i].text).trim()===want){
+            sel.selectedIndex=i; seen=sel;
+            try{ sel.dispatchEvent(new Event("change",{bubbles:true})); }catch(e){}
+            break;
+          }
+        }
+      }catch(e){}
+    }, 400);
+  })();
   W.nhPlayer=function(n){ try{ if(typeof loadProfile==="function") loadProfile(n,""); }catch(e){} };
 
   /* n51: THE LEDGER'S HOME, in the new shape too. Two of the three home screens had been replaced and this
@@ -10276,7 +10317,16 @@ async function clRemove(id, label){
       var a=+m.t1_sets||0,b=+m.t2_sets||0, myS=(side>0?a:b), thS=(side>0?b:a);
       out.matches.push(m); out.setsW+=myS; out.setsL+=thS; if(myS>thS) out.won++; else out.lost++;
       out.boards[m.club_id]=(out.boards[m.club_id]||0)+1;
-      if(m.t1_games!=null&&m.t2_games!=null&&(a+b)){ out.gd+=(((side>0?+m.t1_games:+m.t2_games)-(side>0?+m.t2_games:+m.t1_games))/(a+b)); out.gdn++; }
+      /* n83: the games ARE stored on the match — this read 0.00 because the query never asked for the two
+         columns, not because the data was missing. They are fetched now, and the set scores stay as a
+         fallback for the rare match saved without them, so the figure matches the app's own profile. */
+      var gf=null,ga=null;
+      if(m.t1_games!=null&&m.t2_games!=null){ gf=+m.t1_games; ga=+m.t2_games; }
+      else {
+        var tot=nhGamesFromSets(m.set_scores);
+        if(tot){ gf=tot[0]; ga=tot[1]; }
+      }
+      if(gf!=null&&ga!=null&&(a+b)){ out.gd+=(((side>0?gf:ga)-(side>0?ga:gf))/(a+b)); out.gdn++; }
       var d=(m.rating_delta!=null?+m.rating_delta:0)*side; run+=d; out.trail.push(run);
       if(ago(m.match_date)<=NHWIN) out.move+=d;
     });
@@ -10286,6 +10336,17 @@ async function clRemove(id, label){
         move:Math.round((p.current_rating||0)-(p.initial_rating||0)),played:p.sets_played||0,won:p.sets_won||0}; })
       .sort(function(a,b){ return b.rating-a.rating; });
     return out;
+  }
+  /* "6-4 3-6 6-3" -> [15,13] */
+  function nhGamesFromSets(raw){
+    var t=String(raw||"").trim(); if(!t) return null;
+    var a=0,b=0,n=0;
+    t.split(/[, ]+/).filter(Boolean).forEach(function(sc){
+      var p=String(sc).split(/[-\u2013\/]/);
+      var x=parseInt(p[0],10), y=parseInt(p[1],10);
+      if(!isNaN(x)&&!isNaN(y)){ a+=x; b+=y; n++; }
+    });
+    return n?[a,b]:null;
   }
   function meRank(name,all){
     var ppl=(all.people||[]).filter(function(p){ return p.current_rating!=null; })
@@ -10450,7 +10511,12 @@ async function clRemove(id, label){
       var rating=p?Math.round(p.current_rating||p.seed_rating||0):null, lvl=rating?(rating/200):null;
       var rk=meRank(me,all);
       var homeId=Object.keys(st.boards).sort(function(a,b){ return st.boards[b]-st.boards[a]; })[0];
-      var col=homeId?clubPal(homeId)[0]:"#6c3483", deep=nhDeep(col); nhInk(col);
+      /* n81: THE PAGE IS THE CLUB'S COLOUR, NOT A BOARD'S. Taking the colour of whichever board somebody had
+         played at most meant the page changed colour under them — a group tonight, general play on Saturday —
+         and when the lookup missed it fell through to the ledger's charcoal, which is what turned this page
+         black after one match. The club is the stable thing a member belongs to; each group's colour still
+         appears on the rows that belong to it. */
+      var col=(club&&club.colour)||"#6c3483", deep=nhDeep(col); nhInk(col);
       nhHeaderSkin(col,deep);
       var pct=(st.setsW+st.setsL)?Math.round(100*st.setsW/(st.setsW+st.setsL)):0;
       var gd=st.gdn?(st.gd/st.gdn):0;
@@ -10482,9 +10548,14 @@ async function clRemove(id, label){
         + meChartBlock(me,st,all)            /* n69: plat's Chart Snapshot, below the five figures */
         +'<div class="cols">';
 
-      if(st.trail.length>1){
-        h+='<div class="brk"><h2>My rating \u00b7 '+st.trail.length+' rated matches</h2><div style="padding:4px 14px 14px">'
-          + nhChart(nhAsRatings(st.trail,rating), col, rating?("now "+rating):null)
+      /* n82: ONE MATCH IS STILL A LINE. The chart needed two points and a single rated match gave one, so a
+         member who had just played saw the empty state — exactly when they most wanted to see the move. The
+         seed is the first point: where they started, and where they are now. */
+      if(st.trail.length>=1){
+        var series=nhAsRatings(st.trail,rating);
+        h+='<div class="brk"><h2>My rating \u00b7 '+st.trail.length+' rated '+(st.trail.length===1?"match":"matches")+'</h2>'
+          +'<div style="padding:4px 14px 14px">'
+          + nhChart(series, col, rating?("now "+rating):null)
           +'</div></div>';
       } else {
         h+='<div class="brk"><h2>My rating</h2>'
@@ -10724,6 +10795,13 @@ async function clRemove(id, label){
         + '<div class="shaded">'
         + row(W.PLAT.name+" \u2014 general play", "#6c3483", "Open to every member \u00b7 matches outside the groups", PAGE+"?club="+C+"&board=1", boardPulse(C,"#6c3483",d.matches))
         + '</div>';
+      if(!kids.length){
+        /* n81: a club with no groups has one place to play, and the door says so rather than hiding itself */
+        places+='<div class="kind">Groups</div>'
+          +'<div style="padding:4px 10px 8px;font-size:12.5px;color:#5f5770;line-height:1.55">'
+          +'None yet. A group is a board of its own \u2014 its own ladder, tournaments and court cards \u2014 for a '
+          +'regular evening or a section of the club. Club admin makes one.</div>';
+      }
       if(kids.length){
         places+='<div class="kind">Groups \u00b7 each runs itself</div>';
         kids.forEach(function(g){
@@ -10773,7 +10851,9 @@ async function clRemove(id, label){
     nhFetch().then(function(all){
       var mine=(all.matches||[]).filter(function(m){ return Number(m.club_id)===Number(W.PLAT.cid); });
       var d={matches:mine,pairs:(all.pairs||[]).filter(function(p){ return Number(p.club_id)===Number(W.PLAT.cid); }),
-             people:all.people,tour:all.tour};
+             people:all.people,tour:all.tour,
+             /* n81: this board's running tournaments — the club may have several at once */
+             tours:(all.tours||[]).filter(function(t){ return Number(t.club_id)===Number(W.PLAT.cid); })};
       NHEG=false;
       if(mine.length<5){ d=nhExample(); mine=d.matches; }   /* n52 */
       nhWindow(mine); var wk=mine.filter(function(m){ return ago(m.match_date)<=NHWIN; }).length;
