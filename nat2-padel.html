@@ -907,6 +907,14 @@ st0.textContent += "html{overflow-y:scroll}";   // p98: the scrollbar's space is
        fails, the safety timer below puts it back rather than leaving a blank page. */
     /* the mask is for the screens whose home is REPLACED (a club door, a board). The ledger keeps its own
        page and only gains a band, so masking it would hide the very thing we are keeping. */
+    /* n73: THE LEDGER FLASHED TOO. Its own page is kept, so it was never masked — and the app's banner was
+       visible for a moment before the new band replaced it. Now the ledger is held back as well, and the band
+       reveals it; the difference is that nothing of it is hidden once it is up. */
+    if(W.NEWAPP && CID===0){
+      st0.textContent += "#homeScreen{visibility:hidden!important;min-height:50vh}";
+      setTimeout(function(){ var s2=document.createElement("style");
+        s2.textContent="html body #homeScreen{visibility:visible!important}"; document.head.appendChild(s2); }, 3500);
+    }
     if(W.NEWAPP && CID>0){
       st0.textContent += "#homeScreen > *:not(#nh){visibility:hidden!important}#homeScreen{min-height:60vh}";
       W.addEventListener("error", function(){ var x=document.getElementById("platNoFlash"); if(x) x.remove(); });
@@ -10099,7 +10107,7 @@ async function clRemove(id, label){
     if(!sv){ sv=document.createElement("style"); sv.id="nhShow";
       /* the first-frame mask is "#homeScreen > *:not(#nh)", which outranks a plain "#homeScreen > *".
          The ledger keeps its own page, so everything in it is revealed with a rule that outranks the mask. */
-      sv.textContent="html body #homeScreen > *{visibility:visible!important}"
+      sv.textContent="html body #homeScreen{visibility:visible!important}html body #homeScreen > *{visibility:visible!important}"
         +".nhband{color:#fff;padding:15px 16px 17px;border-radius:0;background:linear-gradient(135deg,#2f2f2f,#141414);width:100%;margin:0 0 8px;box-sizing:border-box}"
         +"@media(min-width:880px){.nhband{border-radius:0 0 18px 18px}}"
         +".nhband .mark{display:inline-flex;align-items:center;gap:9px;font-size:11px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;opacity:.95}"
@@ -10537,7 +10545,11 @@ async function clRemove(id, label){
       var row=function(name,col,sub,href){
         return '<button class="row" onclick="location.href=\''+href+'\'">'
           +'<span class="av" style="background:'+col+'">'+esc(inits(name))+'</span>'
-          +'<span class="nm"><b>'+esc(name)+'</b><span>'+esc(sub)+'</span></span>'
+          /* n73: the board's name as a full pill in its own colour — as plain text beside the circle it was
+             falling away, and the colour is what tells the boards apart. */
+          +'<span class="nm"><span style="display:inline-block;background:'+col+';color:#fff;font-weight:800;font-size:14px;'
+          +'border-radius:99px;padding:5px 13px;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+esc(name)+'</span>'
+          +'<span style="margin-top:5px">'+esc(sub)+'</span></span>'
           /* n64: the little \u203a was too quiet to read as "tap here". A round chevron in the board's colour
            says it plainly, without shouting. */
         +'<span class="val"><span style="display:inline-grid;place-items:center;width:28px;height:28px;border-radius:50%;'
@@ -10972,15 +10984,40 @@ async function clRemove(id, label){
     });
   }
   W.platRegRender=function(){ regRender(); };
+  /* the paste report, redrawn after the room reloads */
+  function pasteReport(){
+    var r=REG.report; if(!r) return "";
+    var parts='<div style="margin-top:8px;font-size:12.5px;color:#2e7d32">Added '+(r.added||0)+((r.added===1)?" name":" names")+'.</div>';
+    if(r.kept&&r.kept.length){
+      parts+='<div style="margin-top:8px;padding:10px 12px;background:#fdf6e3;border:1px solid #f0e2c0;border-radius:10px;color:#6b5a2a;font-size:12.5px;line-height:1.55">'
+        +'<b>'+r.kept.length+((r.kept.length===1)?" name was":" names were")+' already registered</b> \u2014 not added again, and the rating already on record was kept:<br>'
+        + r.kept.map(function(k){ return esc(k.name)+(k.plays_at?(" \u00b7 "+esc(k.plays_at)):"")+(k.seed!=null?(" \u00b7 seed "+k.seed):""); }).join("<br>")
+        +'</div>';
+    }
+    if(r.failed&&r.failed.length) parts+='<div style="margin-top:6px;font-size:12.5px;color:#c00">Skipped: '+esc(r.failed.join(", "))+'</div>';
+    return parts;
+  }
   function regRender(){
     var b=document.getElementById("platRegBody"); if(!b) return;
     var q=(REG.q||"").toLowerCase();
     var rows=REG.players.filter(function(p){ return !q || p.full_name.toLowerCase().indexOf(q)>=0; });
+    /* n72: on a CLUB'S OWN ledger the list is that club's people, even before a code is typed. The whole
+       register belongs on the register's own ledger — which is where the note below appears instead. */
+    if(W.PLAT.nat && REG.role!=="pool" && (W.PLAT.natIds||[]).length){
+      var mineIds=W.PLAT.natIds.map(Number);
+      rows=rows.filter(function(p){ return (p.clubs||[]).some(function(c){ return mineIds.indexOf(Number(c.id))>=0; }); });
+    }
     rows.sort(REG.sort==="rating" ? function(a,c){ return (c.current_rating||0)-(a.current_rating||0); } : function(a,c){ return a.full_name.localeCompare(c.full_name); });
     var h=adminPanel()
       +'<div style="display:flex;gap:8px;align-items:center;margin:10px 0"><input id="platRegQ" placeholder="Find a player…" value="'+esc(REG.q)+'" oninput="window.platRegQ(this.value)" style="flex:1;padding:10px 12px;border:1.5px solid #ddd;border-radius:10px;font-size:14px">'
       +'<button class="menu-btn" style="min-height:40px;padding:8px 12px" onclick="window.platRegSort()">'+(REG.sort==="rating"?"Sort: rating":"Sort: name")+'</button></div>'
-      +'<div style="font-size:12px;color:#666;margin-bottom:8px">'+rows.length+' players · '+REG.clubs.length+' clubs · one rating each</div>';
+      /* n72: BEFORE A CODE IS TYPED THIS IS THE WHOLE REGISTER. A club admin opening the room sees every
+         club's people, which is right — it is how a duplicate is spotted — but it reads as "my club has 149
+         members" unless it says so plainly. */
+      +'<div style="font-size:12px;color:#666;margin-bottom:8px">'+rows.length+' players \u00b7 '+REG.clubs.length+' clubs \u00b7 one rating each</div>'
+      +((REG.role==="club"||W.PLAT.nat)?'':'<div style="background:#fdf6e3;border:1px solid #f0e2c0;border-radius:10px;padding:10px 12px;margin:0 0 10px;font-size:12.5px;color:#6b5a2a;line-height:1.5">'
+        +'<b>This is the whole register</b> \u2014 every club in it, so you can see whether somebody is already '
+        +'registered elsewhere before you add them. Type your club\u2019s code above and the list narrows to your own members.</div>')
     rows.forEach(function(p){
       h+='<div style="display:flex;align-items:center;gap:10px;padding:10px 12px;margin:6px 0;background:#fff;border:1px solid #e6e3ec;border-left:4px solid #6c3483;border-radius:10px">'
         +'<div style="flex:1;min-width:0"><div style="font-weight:700;font-size:15px">'+esc(p.full_name)+'</div><div style="margin-top:2px">'+(function(){
@@ -11047,7 +11084,8 @@ async function clRemove(id, label){
       +'<button class="menu-btn" style="margin-top:8px;width:100%" onclick="window.platAddPoolMember()">Add member</button>';
     h+='<div style="margin-top:14px;font-weight:700;font-size:13px;color:#444">Add the whole club (paste from Excel)</div>'
       +'<div style="font-size:12px;color:#666;margin:4px 0 6px">One per line: <b>Name, Gender, Rating</b> — tabs or commas. Gender M or F. Rating optional.</div>'
-      +'<textarea id="platPBulk" style="width:100%;min-height:120px;font-family:ui-monospace,monospace;font-size:12.5px;padding:9px;border:1.5px solid #ddd;border-radius:10px" placeholder="John Smith, M, 1350&#10;Sarah Jones, F, 1180"></textarea>'
+      +'<textarea id="platPBulk" oninput="window.platPBulkTally()" onchange="window.platPBulkTally()" style="width:100%;min-height:120px;font-family:ui-monospace,monospace;font-size:12.5px;padding:9px;border:1.5px solid #ddd;border-radius:10px" placeholder="John Smith, M, 1350&#10;Sarah Jones, F, 1180"></textarea>'
+      +'<div id="platPBulkCount" style="font-size:12px;color:#666;margin:6px 2px 0">'+(REG.report?pasteReport():"Nothing pasted yet.")+'</div>'
       +'<button class="menu-btn" style="margin-top:8px;width:100%" onclick="window.platBulkPoolMembers()">Add all pasted members</button>';
     // new club
     // n4: ONBOARDING. A CLUB is a top-level door in this register (own name, colour, code, ledger and groups);
@@ -11389,6 +11427,19 @@ async function clRemove(id, label){
       REGMAP=null; regLoad();
     });
   };
+  /* n72: a line under the paste box, counting as you type — you could not tell whether a paste had landed */
+  W.platPBulkTally=function(){
+    var raw=(document.getElementById("platPBulk")||{}).value||"";
+    var out=document.getElementById("platPBulkCount"); if(!out) return;
+    var lines=raw.split("\n").map(function(l){ return l.trim(); }).filter(function(l){ return l.length; });
+    if(!lines.length){ out.style.color="#666"; out.textContent="Nothing pasted yet."; return; }
+    var ok=0,bad=0;
+    lines.forEach(function(l){ var p=l.split(/\t|,/).map(function(x){ return x.trim(); });
+      var g=(p[1]||"").toUpperCase().charAt(0);
+      if(p[0]&&(g==="M"||g==="F")) ok++; else bad++; });
+    out.style.color=bad?"#8a6d3b":"#2e7d32";
+    out.textContent="Read "+ok+(ok===1?" name":" names")+(bad?(" \u00b7 "+bad+" line"+(bad===1?"":"s")+" not understood (need Name, Gender)"):" \u00b7 ready to add");
+  };
   W.platBulkPoolMembers=function(){
     var m=document.getElementById("platRegMsg");
     var raw=(document.getElementById("platPBulk")||{}).value||"";
@@ -11400,12 +11451,32 @@ async function clRemove(id, label){
       if(!p[0]||(g!=="M"&&g!=="F")){ if(!bad) bad="Line "+(i+1)+": need Name, Gender (M/F)."; return; }
       rows.push({full_name:p[0],gender:g,rating:p[2]}); });
     if(bad){ m.style.color="#c00"; m.textContent=bad; return; }
-    m.style.color="#666"; m.textContent="Adding "+rows.length+"…";
+    m.style.color="#666"; m.textContent="Adding "+rows.length+(rows.length===1?" name":" names")+" \u2014 this can take a few seconds\u2026";
     acall({action:"bulk_add_pool_members",pool_id:W.PLAT.pool,admin_pin:REG.pin,rows:rows}).then(function(r){
       if(!r||!r.ok){ m.style.color="#c00"; m.textContent=(r&&r.error)||"Failed."; return; }
       document.getElementById("platPBulk").value="";
       m.style.color="#2e7d32";
-      m.textContent="Added "+r.added+(r.already_there?(" · "+r.already_there+" already in the register"):"")+((r.failed&&r.failed.length)?(" · skipped "+r.failed.join(", ")):"");
+      /* n72: WHO WAS ALREADY THERE, BY NAME. A paste used to report only a count, so an organiser had no way
+         to know that one of their 48 was already registered at another club, under a seed somebody else set. */
+      var msg="Added "+r.added+(r.added===1?" name":" names")+".";
+      m.style.color="#2e7d32"; m.textContent=msg;
+      REG.report=r;                 /* n72: the room reloads after a paste — the report has to outlive it */
+      var box=document.getElementById("platPBulkCount");
+      if(box){
+        var lines=[];
+        if(r.kept&&r.kept.length){
+          lines.push('<div style="margin-top:8px;padding:10px 12px;background:#fdf6e3;border:1px solid #f0e2c0;border-radius:10px;color:#6b5a2a;font-size:12.5px;line-height:1.55">'
+            +'<b>'+r.kept.length+(r.kept.length===1?" name was":" names were")+' already registered</b> \u2014 they were not added again, '
+            +'and the rating already on record was kept:<br>'
+            + r.kept.map(function(k){ return esc(k.name)+(k.plays_at?(" \u00b7 "+esc(k.plays_at)):"")+(k.seed!=null?(" \u00b7 seed "+k.seed):""); }).join("<br>")
+            +'</div>');
+        }
+        if(r.failed&&r.failed.length){
+          lines.push('<div style="margin-top:8px;font-size:12.5px;color:#c00">Skipped: '+esc(r.failed.join(", "))+'</div>');
+        }
+        box.style.color="#2e7d32";
+        box.innerHTML="Added "+r.added+(r.added===1?" name":" names")+"."+lines.join("");
+      }
       REGMAP=null; regLoad();
     });
   };
