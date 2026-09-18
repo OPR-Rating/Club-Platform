@@ -9476,19 +9476,41 @@ async function clRemove(id, label){
      yet are named, with the rule said plainly. Tap a name for their profile and starting rating. The table and
      its ranking are untouched. */
   var WAITING=null, WAITSEED=null;
-  /* n31: THE WHOLE CLUB, NOT JUST THIS BOARD. A member registered through club admin belongs to the club's
-     own board, so on a group's list he was nowhere to be found — which is the very complaint this note
-     exists to answer. So: everyone registered anywhere in this club who has not yet played anywhere in it. */
+  /* n74: THIS BOARD, NOT THE WHOLE CLUB. n31 widened this to every board in the club, to answer "I added him
+     and he is not in the group" — but a club that registers fifty members then buries every group's list
+     under fifty names who are not in that group. A name belongs where it was added: the club's own board, or
+     the group's. So the list is this board's, and a group says separately how many are waiting at the club,
+     which answers the original complaint without pretending they are members here. */
+  var WAITELSE=0;
   function waitingList(){
     if(WAITING) return Promise.resolve(WAITING);
     if(!W.PLAT.cid || W.PLAT.cid===0) return Promise.resolve([]);
-    var boards=(W.PLAT.myBoards&&W.PLAT.myBoards.length)?W.PLAT.myBoards:[W.PLAT.cid];
+    var boards=[W.PLAT.cid];
     var B="https://djmbnvikrdgnomjhtkgf.supabase.co/rest/v1/";
     return Promise.all([
       fetch(B+"plat_padel_v_individuals?club_id=in.("+boards.join(",")+")&select=full_name,seed_rating").then(function(r){ return r.json(); }),
       fetch(B+"plat_matches?club_id=in.("+boards.join(",")+")&discipline=eq.padel&select=t1p1,t1p2,t2p1,t2p2").then(function(r){ return r.json(); })
     ]).then(function(res){
       var members=Array.isArray(res[0])?res[0]:[], ms=Array.isArray(res[1])?res[1]:[];
+      /* how many are registered on the club's OTHER boards and have not played — said as a count, not a list */
+      try{
+        var all=(W.PLAT.myBoards||[]).filter(function(id){ return Number(id)!==Number(W.PLAT.cid); });
+        if(all.length){
+          var B2="https://djmbnvikrdgnomjhtkgf.supabase.co/rest/v1/";
+          Promise.all([
+            fetch(B2+"plat_padel_v_individuals?club_id=in.("+all.join(",")+")&select=full_name").then(function(r){ return r.json(); }),
+            fetch(B2+"plat_matches?club_id=in.("+all.concat([W.PLAT.cid]).join(",")+")&discipline=eq.padel&select=t1p1,t1p2,t2p1,t2p2").then(function(r){ return r.json(); })
+          ]).then(function(o){
+            var pl={}; (Array.isArray(o[1])?o[1]:[]).forEach(function(m){ [m.t1p1,m.t1p2,m.t2p1,m.t2p2].forEach(function(v){ if(!v) return;
+              String(v).split(" & ").forEach(function(x){ x=x.trim(); if(x) pl[x]=1; }); }); });
+            var seen2={}, n=0;
+            (Array.isArray(o[0])?o[0]:[]).forEach(function(r){ var nm=String(r.full_name||""); if(!nm||pl[nm]||seen2[nm]) return; seen2[nm]=1; n++; });
+            WAITELSE=n;
+            var el=document.getElementById("platWaitElse");
+            if(el && n) el.textContent=n+(n===1?" more member is":" more members are")+" registered elsewhere in the club and "+(n===1?"has":"have")+" not played \u2014 "+(n===1?"he or she appears":"they appear")+" here once they join this board.";
+          }).catch(function(){});
+        }
+      }catch(e){}
       var played={};
       ms.forEach(function(m){ [m.t1p1,m.t1p2,m.t2p1,m.t2p2].forEach(function(v){ if(!v) return;
         String(v).split(" & ").forEach(function(x){ x=x.trim(); if(x) played[x]=1; }); }); });
@@ -9521,7 +9543,7 @@ async function clRemove(id, label){
         +'<span style="flex:1">'+n+(n===1?" member":" members")+' still to record a match</span>'
         +'<span id="platWaitingCaret" style="font-size:11px;opacity:.8">\u25be</span></button>'
         +'<div id="platWaitingBody" style="display:none;padding:9px 14px 2px;font-size:12.5px;color:#5a5168;line-height:1.9">'
-        +'Each one starts on the rating shown. It becomes a place in the table with their first match.<div style="margin-top:6px">'
+        +'Each one starts on the rating shown. It becomes a place in the table with their first match.<div id="platWaitElse" style="margin-top:6px;color:#6f6780"></div><div style="margin-top:6px">'
         /* n33: WITH THEIR STARTING RATING. "What's my number?" is the next question after "where am I?", and
            without it the organiser gets asked twice instead of once. */
         +names.map(function(nm){
@@ -9731,6 +9753,10 @@ async function clRemove(id, label){
      +"#nh .tile .v{font-size:23px;font-weight:800;margin-top:5px}#nh .tile .n{font-size:11.5px;color:#6f6780;margin-top:2px}"
      +"#nh .shaded{background:var(--nhtint,rgba(108,52,131,.07));border-radius:12px}"
      +"#nh .shaded .row{border-top:none}"
+     +"#nh .fourgrid{display:grid;grid-template-columns:1fr 1fr;gap:9px;padding:4px 12px 12px}"
+     +"#nh .fourbtn{border:1px solid #e6e0ee;background:#fff;border-radius:14px;padding:14px 8px;font:inherit;font-weight:700;font-size:13px;"
+     +"cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:8px;line-height:1.25;text-align:center;color:#241d33}"
+     +"#nh .fourbtn svg{width:22px;height:22px;stroke:var(--nhc,#6c3483);fill:none;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round}"
      +"#nh .kind{font-size:11px;letter-spacing:.09em;text-transform:uppercase;color:#8a8196;font-weight:800;padding:9px 8px 2px}"
      /* n53: A LAPTOP IS NOT A BIG PHONE. On a wide screen the single column left the page mostly empty, so the
         brackets sit two abreast, the band spreads, and the tiles run four across. Same pieces, more room. */
@@ -10534,6 +10560,45 @@ async function clRemove(id, label){
     }
   };
 
+  /* n75: THE DOOR NOW DOES SOMETHING. The first thing anybody opens the app for is to enter a score, and the
+     club door offered no way to do it — you had to guess which board first. So four things to do, and each
+     one asks where: general play, or one of the groups. Tournaments are not among the four because a running
+     tournament already announces itself in its own bracket; the court card is what people reach for on the
+     night and has to be findable. */
+  function doorActions(kids){
+    var ic={score:'<svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>',
+            lad:'<svg viewBox="0 0 24 24"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/></svg>',
+            per:'<svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="3.4"/><path d="M5 20c1.2-3.4 4-5 7-5s5.8 1.6 7 5"/></svg>',
+            card:'<svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="1.6"/><path d="M3 12h18M12 4v16"/></svg>'};
+    var four=[["score","Enter a score","Where did you play?",ic.score],
+              ["ladders","Ratings &amp; ladders","Whose ratings?",ic.lad],
+              ["profiles","Profiles","Whose members?",ic.per],
+              ["card","Court card","Which board\u2019s card?",ic.card]];
+    return '<div class="brk"><h2>What would you like to do?</h2>'
+      +'<div class="fourgrid">'
+      + four.map(function(f){ return '<button class="fourbtn" onclick="window.doorPick(\''+f[0]+'\')">'+f[3]+esc(f[1]).replace("&amp;","&")+'</button>'; }).join("")
+      +'</div><div id="doorWhere" style="display:none;padding:2px 10px 12px"></div></div>';
+  }
+  W.doorPick=function(what){
+    var box=document.getElementById("doorWhere"); if(!box) return;
+    if(box.dataset.open===what){ box.style.display="none"; box.dataset.open=""; return; }
+    box.dataset.open=what; box.style.display="block";
+    var C=W.PLAT.cid, kids=kidsOf(C).sort(function(a,b){ return String(a.name).localeCompare(String(b.name)); });
+    var ask={score:"Where did you play?",ladders:"Whose ratings and ladders?",profiles:"Whose members?",card:"Which board\u2019s court card?"}[what];
+    var go=function(id){ return PAGE+"?club="+id+(id===C?"&board=1":"")+"&go="+(what==="score"?"entry":what); };
+    var pill=function(label,col,href){
+      return '<a href="'+href+'" style="display:block;width:100%;box-sizing:border-box;background:'+col+';color:#fff;text-decoration:none;'
+        +'font-weight:800;font-size:14px;border-radius:99px;padding:11px 16px;margin-top:8px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+esc(label)+'</a>';
+    };
+    var h='<div style="font-size:12.5px;color:#5f5770;margin:2px 2px 2px">'+esc(ask)+'</div>'
+      + pill(W.PLAT.name+" \u2014 general play","#6c3483",go(C))
+      + kids.map(function(g){ return pill(g.name, clubPal(g.id)[0], go(g.id)); }).join("");
+    if(what==="ladders"||what==="profiles"){
+      h+= pill("Everyone at "+W.PLAT.name+" \u00b7 the ledger","#2f2f2f",PAGE+"?club=0&pool="+W.PLAT.pool+"&nat="+C+"&go="+what);
+    }
+    box.innerHTML=h;
+  };
+
   /* the club's FRONT DOOR — the club's introduction, in OPR's own colours */
   function newClubDoor(){
     var w=nhWrap(); if(!w) return;
@@ -10547,7 +10612,7 @@ async function clRemove(id, label){
           +'<span class="av" style="background:'+col+'">'+esc(inits(name))+'</span>'
           /* n73: the board's name as a full pill in its own colour — as plain text beside the circle it was
              falling away, and the colour is what tells the boards apart. */
-          +'<span class="nm"><span style="display:inline-block;background:'+col+';color:#fff;font-weight:800;font-size:14px;'
+          +'<span class="nm"><span style="display:block;width:100%;box-sizing:border-box;background:'+col+';color:#fff;font-weight:800;font-size:14px;'
           +'border-radius:99px;padding:5px 13px;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+esc(name)+'</span>'
           +'<span style="margin-top:5px">'+esc(sub)+'</span></span>'
           /* n64: the little \u203a was too quiet to read as "tap here". A round chevron in the board's colour
@@ -10578,6 +10643,7 @@ async function clRemove(id, label){
         + '<span>'+((d.pairs||[]).length)+' pairs on record</span>'   /* n59: nobody named in the band */
         + (d.tour?('<span>'+esc(d.tour.name)+' running</span>'):'')+'</div></div>'
         + '<div class="brk"><h2>Where you play</h2><div class="rows">'+places+'</div></div>'
+        + doorActions(kids)
         + '<div class="cols">'+nhFormBrk(d,"#6c3483","club") + nhMoversBrk(d,"#6c3483","club") + nhTourBrk(d) + nhMatchesBrk(d,25,"club")+'</div>'   /* n59 */ 
         + '<div class="brk"><h2>Ledgers</h2><div class="rows">'
         + '<button class="row" onclick="window.platGoClubLedger('+C+')"><span class="av" style="background:#2f2f2f">\u2261</span>'

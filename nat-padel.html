@@ -906,6 +906,14 @@ st0.textContent += "html{overflow-y:scroll}";   // p98: the scrollbar's space is
        fails, the safety timer below puts it back rather than leaving a blank page. */
     /* the mask is for the screens whose home is REPLACED (a club door, a board). The ledger keeps its own
        page and only gains a band, so masking it would hide the very thing we are keeping. */
+    /* n73: THE LEDGER FLASHED TOO. Its own page is kept, so it was never masked — and the app's banner was
+       visible for a moment before the new band replaced it. Now the ledger is held back as well, and the band
+       reveals it; the difference is that nothing of it is hidden once it is up. */
+    if(W.NEWAPP && CID===0){
+      st0.textContent += "#homeScreen{visibility:hidden!important;min-height:50vh}";
+      setTimeout(function(){ var s2=document.createElement("style");
+        s2.textContent="html body #homeScreen{visibility:visible!important}"; document.head.appendChild(s2); }, 3500);
+    }
     if(W.NEWAPP && CID>0){
       st0.textContent += "#homeScreen > *:not(#nh){visibility:hidden!important}#homeScreen{min-height:60vh}";
       W.addEventListener("error", function(){ var x=document.getElementById("platNoFlash"); if(x) x.remove(); });
@@ -3522,7 +3530,7 @@ const CLUB_NAME = _club.name;  // shown in the logo as "OPR · <name>"
     link.setAttribute('href', href);
   }catch(e){ /* install stays on the static manifest — no functional impact */ }
 })();
-const OPR_VERSION = "OPR-DOUBLES v2026.09.03-56 · NAT fork n44 (no voice) (of PLAT p117)";  // MANUAL PAIR CREATION REMOVED FROM ADMIN: Create a pair, Bulk create pairs and Re-derive all pairs are gone (they only made match-less ghost pairs, and Re-derive rewrote every stored initial club-wide). Pairs are born automatically at match entry. Current pairs list untouched; the underlying JS is left in place unreferenced, so no other code path changes. Includes v47 (set-score fix + double-tap guard) and all prior.
+const OPR_VERSION = "OPR-DOUBLES v2026.09.03-56 · NAT fork n45 (no voice) (of PLAT p117)";  // MANUAL PAIR CREATION REMOVED FROM ADMIN: Create a pair, Bulk create pairs and Re-derive all pairs are gone (they only made match-less ghost pairs, and Re-derive rewrote every stored initial club-wide). Pairs are born automatically at match entry. Current pairs list untouched; the underlying JS is left in place unreferenced, so no other code path changes. Includes v47 (set-score fix + double-tap guard) and all prior.
 // Explanation shown above the individual ladder. Open on load so it's read; collapsible
 // (state kept for the session) and scrolls away. Mechanics only — no outcome framing, so
 // members aren't nudged away from playing stronger opponents. Every clause maps to a real
@@ -9467,19 +9475,41 @@ async function clRemove(id, label){
      yet are named, with the rule said plainly. Tap a name for their profile and starting rating. The table and
      its ranking are untouched. */
   var WAITING=null, WAITSEED=null;
-  /* n31: THE WHOLE CLUB, NOT JUST THIS BOARD. A member registered through club admin belongs to the club's
-     own board, so on a group's list he was nowhere to be found — which is the very complaint this note
-     exists to answer. So: everyone registered anywhere in this club who has not yet played anywhere in it. */
+  /* n74: THIS BOARD, NOT THE WHOLE CLUB. n31 widened this to every board in the club, to answer "I added him
+     and he is not in the group" — but a club that registers fifty members then buries every group's list
+     under fifty names who are not in that group. A name belongs where it was added: the club's own board, or
+     the group's. So the list is this board's, and a group says separately how many are waiting at the club,
+     which answers the original complaint without pretending they are members here. */
+  var WAITELSE=0;
   function waitingList(){
     if(WAITING) return Promise.resolve(WAITING);
     if(!W.PLAT.cid || W.PLAT.cid===0) return Promise.resolve([]);
-    var boards=(W.PLAT.myBoards&&W.PLAT.myBoards.length)?W.PLAT.myBoards:[W.PLAT.cid];
+    var boards=[W.PLAT.cid];
     var B="https://djmbnvikrdgnomjhtkgf.supabase.co/rest/v1/";
     return Promise.all([
       fetch(B+"plat_padel_v_individuals?club_id=in.("+boards.join(",")+")&select=full_name,seed_rating").then(function(r){ return r.json(); }),
       fetch(B+"plat_matches?club_id=in.("+boards.join(",")+")&discipline=eq.padel&select=t1p1,t1p2,t2p1,t2p2").then(function(r){ return r.json(); })
     ]).then(function(res){
       var members=Array.isArray(res[0])?res[0]:[], ms=Array.isArray(res[1])?res[1]:[];
+      /* how many are registered on the club's OTHER boards and have not played — said as a count, not a list */
+      try{
+        var all=(W.PLAT.myBoards||[]).filter(function(id){ return Number(id)!==Number(W.PLAT.cid); });
+        if(all.length){
+          var B2="https://djmbnvikrdgnomjhtkgf.supabase.co/rest/v1/";
+          Promise.all([
+            fetch(B2+"plat_padel_v_individuals?club_id=in.("+all.join(",")+")&select=full_name").then(function(r){ return r.json(); }),
+            fetch(B2+"plat_matches?club_id=in.("+all.concat([W.PLAT.cid]).join(",")+")&discipline=eq.padel&select=t1p1,t1p2,t2p1,t2p2").then(function(r){ return r.json(); })
+          ]).then(function(o){
+            var pl={}; (Array.isArray(o[1])?o[1]:[]).forEach(function(m){ [m.t1p1,m.t1p2,m.t2p1,m.t2p2].forEach(function(v){ if(!v) return;
+              String(v).split(" & ").forEach(function(x){ x=x.trim(); if(x) pl[x]=1; }); }); });
+            var seen2={}, n=0;
+            (Array.isArray(o[0])?o[0]:[]).forEach(function(r){ var nm=String(r.full_name||""); if(!nm||pl[nm]||seen2[nm]) return; seen2[nm]=1; n++; });
+            WAITELSE=n;
+            var el=document.getElementById("platWaitElse");
+            if(el && n) el.textContent=n+(n===1?" more member is":" more members are")+" registered elsewhere in the club and "+(n===1?"has":"have")+" not played \u2014 "+(n===1?"he or she appears":"they appear")+" here once they join this board.";
+          }).catch(function(){});
+        }
+      }catch(e){}
       var played={};
       ms.forEach(function(m){ [m.t1p1,m.t1p2,m.t2p1,m.t2p2].forEach(function(v){ if(!v) return;
         String(v).split(" & ").forEach(function(x){ x=x.trim(); if(x) played[x]=1; }); }); });
@@ -9512,7 +9542,7 @@ async function clRemove(id, label){
         +'<span style="flex:1">'+n+(n===1?" member":" members")+' still to record a match</span>'
         +'<span id="platWaitingCaret" style="font-size:11px;opacity:.8">\u25be</span></button>'
         +'<div id="platWaitingBody" style="display:none;padding:9px 14px 2px;font-size:12.5px;color:#5a5168;line-height:1.9">'
-        +'Each one starts on the rating shown. It becomes a place in the table with their first match.<div style="margin-top:6px">'
+        +'Each one starts on the rating shown. It becomes a place in the table with their first match.<div id="platWaitElse" style="margin-top:6px;color:#6f6780"></div><div style="margin-top:6px">'
         /* n33: WITH THEIR STARTING RATING. "What's my number?" is the next question after "where am I?", and
            without it the organiser gets asked twice instead of once. */
         +names.map(function(nm){
@@ -9562,6 +9592,7 @@ async function clRemove(id, label){
     var fire=function(){
       tries++;
       try{
+        if(go==="me"){ try{ newMePage(); return true; }catch(e){ return false; } }
         if(go==="admin"){
           if(W.PLAT.cid===0){ var t=document.getElementById("platRegTile");
             if(t){ showScreen("aboutScreen"); setTimeout(function(){ t.click(); },80); return true; } return false; }
@@ -9621,7 +9652,7 @@ async function clRemove(id, label){
     return Promise.all([
       fetch(B+"plat_matches?"+inList+"&discipline=eq.padel&select=id,club_id,match_date,match_type,event,t1p1,t1p2,t2p1,t2p2,t1_sets,t2_sets,set_scores,rating_delta&order=match_date.desc,id.desc&limit=120").then(J),
       fetch(B+"plat_player_results?"+inList+"&discipline=eq.padel&select=name,club_id,current_rating,initial_rating,sets_played,sets_won&order=current_rating.desc&limit=60").then(J),
-      fetch(B+"plat_padel_v_individuals?"+inList+"&select=full_name,current_rating,seed_rating").then(J).catch(function(){ return []; }),
+      fetch(B+"plat_padel_v_individuals?"+inList+"&select=id,full_name,club_id,current_rating,seed_rating").then(J).catch(function(){ return []; }),
       fetch(B+"plat_padel_tournaments?"+inList+"&select=id,name,club_id,active,archived").then(J).catch(function(){ return []; })
     ]).then(function(r){
       NEW.data={matches:r[0]||[],pairs:r[1]||[],people:r[2]||[],
@@ -9822,6 +9853,40 @@ async function clRemove(id, label){
     });
     return pts;
   }
+  /* n68: A LINE WITH NO NUMBERS ON IT IS A DECORATION. Every chart here now carries the figures that make it
+     readable: where it started, where it ended, and the high and low it touched, with a dot on the last
+     point. The series is turned into real RATINGS wherever the person's current rating is known, so the
+     numbers on the chart are the numbers on their profile. */
+  function nhChart(vals,col,endLabel){
+    if(!vals || vals.length<2) return "";
+    var lo=Math.min.apply(null,vals), hi=Math.max.apply(null,vals), sp=(hi-lo)||1;
+    var W2=260, H=74, top=12, bot=58, step=W2/(vals.length-1);
+    var y=function(v){ return (bot-((v-lo)/sp)*(bot-top)).toFixed(1); };
+    var line=vals.map(function(v,i){ return (i?"L":"M")+(i*step).toFixed(1)+","+y(v); }).join(" ");
+    var gid="g"+Math.abs(Math.round(Math.random()*1e6));
+    var last=vals[vals.length-1], first=vals[0];
+    return '<svg viewBox="0 0 '+W2+' '+H+'" preserveAspectRatio="none" style="display:block;width:100%;height:74px;overflow:visible">'
+      +'<defs><linearGradient id="'+gid+'" x1="0" y1="0" x2="0" y2="1">'
+      +'<stop offset="0" stop-color="'+col+'" stop-opacity=".26"/><stop offset="1" stop-color="'+col+'" stop-opacity="0"/></linearGradient></defs>'
+      +'<line x1="0" y1="'+y(hi)+'" x2="'+W2+'" y2="'+y(hi)+'" stroke="#e6e0ee" stroke-width="1" stroke-dasharray="3 3"/>'
+      +'<line x1="0" y1="'+y(lo)+'" x2="'+W2+'" y2="'+y(lo)+'" stroke="#e6e0ee" stroke-width="1" stroke-dasharray="3 3"/>'
+      +'<path d="'+line+' L'+W2+','+H+' L0,'+H+' Z" fill="url(#'+gid+')"/>'
+      +'<path d="'+line+'" fill="none" stroke="'+col+'" stroke-width="2.4" stroke-linejoin="round"/>'
+      +'<circle cx="'+((vals.length-1)*step).toFixed(1)+'" cy="'+y(last)+'" r="3.4" fill="'+col+'"/>'
+      +'<text x="2" y="'+(+y(hi)-4)+'" font-size="9" fill="#8a8196">high '+Math.round(hi)+'</text>'
+      +'<text x="2" y="'+(+y(lo)+11)+'" font-size="9" fill="#8a8196">low '+Math.round(lo)+'</text>'
+      +'</svg>'
+      +'<div style="display:flex;justify-content:space-between;font-size:11.5px;color:#5f5770;margin-top:2px">'
+      +'<span>started '+Math.round(first)+'</span>'
+      +'<span style="font-weight:800;color:'+col+'">'+esc(endLabel||("now "+Math.round(last)))+'</span></div>';
+  }
+  /* a cumulative run of deltas, expressed as the ratings they produced */
+  function nhAsRatings(trail,currentRating){
+    if(!trail || !trail.length) return [];
+    if(currentRating==null) return trail.slice();
+    var end=trail[trail.length-1];
+    return [currentRating-end].concat(trail.map(function(v){ return currentRating-end+v; }));
+  }
   function nhOneChart(mv,ms,ink,title){
     if(!mv) return "";
     var pts=nhTrail(mv.name,ms);
@@ -9829,13 +9894,10 @@ async function clRemove(id, label){
     var body;
     if(pts.length<2){ body='<div style="font-size:12px;color:#6f6780;padding:10px 4px">Not enough rated matches yet to draw a line.</div>'; }
     else {
-      var lo=Math.min.apply(null,pts), hi=Math.max.apply(null,pts), sp=(hi-lo)||1, step=260/(pts.length-1);
-      var line=pts.map(function(v,i){ return (i?"L":"M")+(i*step).toFixed(1)+","+(60-((v-lo)/sp)*52).toFixed(1); }).join(" ");
-      var gid="g"+Math.abs(Math.round(Math.random()*1e6));
-      body='<svg viewBox="0 0 260 62" preserveAspectRatio="none" style="display:block;width:100%;height:62px">'
-        +'<defs><linearGradient id="'+gid+'" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="'+col+'" stop-opacity=".26"/><stop offset="1" stop-color="'+col+'" stop-opacity="0"/></linearGradient></defs>'
-        +'<path d="'+line+' L260,62 L0,62 Z" fill="url(#'+gid+')"/>'
-        +'<path d="'+line+'" fill="none" stroke="'+col+'" stroke-width="2.4" stroke-linejoin="round"/></svg>';
+      /* n68: shown as real ratings, with the numbers on it */
+      var ind=(NEW.data&&NEW.data.people||[]).filter(function(x){ return x.full_name===mv.name; })[0];
+      var cur=ind?Math.round(ind.current_rating||ind.seed_rating||0):null;
+      body=nhChart(nhAsRatings(pts,cur), col, cur?("now "+cur):null);
     }
     return '<div class="brk"><h2 style="display:flex;align-items:center;gap:8px">'+esc(title)+' '+nhTag()+'</h2>'
       +'<div style="padding:4px 14px 12px">'
@@ -10066,7 +10128,7 @@ async function clRemove(id, label){
     if(!sv){ sv=document.createElement("style"); sv.id="nhShow";
       /* the first-frame mask is "#homeScreen > *:not(#nh)", which outranks a plain "#homeScreen > *".
          The ledger keeps its own page, so everything in it is revealed with a rule that outranks the mask. */
-      sv.textContent="html body #homeScreen > *{visibility:visible!important}"
+      sv.textContent="html body #homeScreen{visibility:visible!important}html body #homeScreen > *{visibility:visible!important}"
         +".nhband{color:#fff;padding:15px 16px 17px;border-radius:0;background:linear-gradient(135deg,#2f2f2f,#141414);width:100%;margin:0 0 8px;box-sizing:border-box}"
         +"@media(min-width:880px){.nhband{border-radius:0 0 18px 18px}}"
         +".nhband .mark{display:inline-flex;align-items:center;gap:9px;font-size:11px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;opacity:.95}"
@@ -10103,6 +10165,396 @@ async function clRemove(id, label){
     }).catch(function(){});
   }
 
+  /* ============================================================================================
+     n67: MY PAGE. A member claims their name once on their phone, and the app opens here: their rating, rank,
+     form, partnerships and matches, with the same action row every board has. It is the profile and the door
+     in one screen.
+       * the claim is remembered on the device only — no account, no password, nothing stored at the club
+       * tapping a partnership opens the app's OWN pair profile, which already draws the match history with
+         its set-score pills, so nothing is rebuilt here
+       * a name not on the list is not a claim but a conversation: the club's contact is offered instead
+     ============================================================================================ */
+  /* n71: A CLAIM, NOT A PREFERENCE. The name is claimed in the register with a PIN the member chooses, so it
+     leaves the list and nobody else can take it, and only that PIN can change the photo — which everybody
+     sees. The phone remembers the name and the PIN so neither is ever asked for again; the PIN exists for the
+     day the phone is replaced, and for an organiser to know a claim is genuine. Not a login: no account, no
+     email, no reset. A forgotten PIN is released by the register administrator, and the member claims again. */
+  function meKey(){ return "opr_me_"+(W.PLAT.parentId||W.PLAT.cid); }
+  function mePinKey(){ return "opr_mepin_"+(W.PLAT.parentId||W.PLAT.cid); }
+  function mePin(){ try{ return localStorage.getItem(mePinKey())||""; }catch(e){ return ""; } }
+  function meIdOf(name,all){ var p=(all.people||[]).filter(function(x){ return x.full_name===name; })[0]; return p?(p.id||p.individual_id||null):null; }
+  function meClaims(){
+    return fetch(SBREST()+"nat_v_member_claim?pool_id=eq."+W.PLAT.pool+"&select=individual_id,photo").then(J)
+      .then(function(r){ var m={}; (Array.isArray(r)?r:[]).forEach(function(c){ m[Number(c.individual_id)]={photo:c.photo}; }); return m; })
+      .catch(function(){ return {}; });
+  }
+  W.meDoClaim=function(id,name){
+    var pin=W.prompt("Claim \u201c"+name+"\u201d\n\nChoose a PIN of four digits. You will not be asked for it again on this "
+      +"phone \u2014 it is only needed if you change phones, or to set your photo.","");
+    if(pin===null) return;
+    pin=String(pin).replace(/\D/g,"");
+    if(pin.length<4){ alert("A PIN of at least four digits, please."); return; }
+    acall({action:"claim_name",pool_id:W.PLAT.pool,individual_id:id,pin:pin}).then(function(r){
+      if(r&&r.ok){ try{ localStorage.setItem(meKey(),name); localStorage.setItem(mePinKey(),pin); }catch(e){}
+        newMePage(); return; }
+      if(r&&r.already_claimed){
+        var p2=W.prompt(r.error+"\n\nIf it was you, enter the PIN you chose:","");
+        if(p2===null) return;
+        acall({action:"verify_claim",individual_id:id,pin:String(p2).replace(/\D/g,"")}).then(function(v){
+          if(v&&v.ok){ try{ localStorage.setItem(meKey(),name); localStorage.setItem(mePinKey(),String(p2).replace(/\D/g,"")); }catch(e){}
+            newMePage(); }
+          else alert((v&&v.error)||"That PIN does not match.");
+        });
+        return;
+      }
+      alert((r&&r.error)||"Could not claim that name.");
+    });
+  };
+  /* the photo: shrunk on the phone to a small square, then stored for everyone to see */
+  W.mePhotoPick=function(){
+    var me=meName(); if(!me) return;
+    var inp=document.getElementById("mePhotoInput");
+    if(!inp){ inp=document.createElement("input"); inp.type="file"; inp.accept="image/*"; inp.id="mePhotoInput";
+      inp.style.display="none"; document.body.appendChild(inp);
+      inp.addEventListener("change",function(e){
+        var f=e.target.files&&e.target.files[0]; if(!f) return;
+        var img=new Image(), rd=new FileReader();
+        rd.onload=function(){ img.onload=function(){
+          var S=256, c=document.createElement("canvas"); c.width=S; c.height=S;
+          var g=c.getContext("2d"), side=Math.min(img.width,img.height);
+          g.drawImage(img,(img.width-side)/2,(img.height-side)/2,side,side,0,0,S,S);
+          var data=c.toDataURL("image/jpeg",0.72);
+          acall({action:"set_photo",individual_id:W.__meId,pin:mePin(),photo:data}).then(function(r){
+            if(r&&r.ok) newMePage(); else alert((r&&r.error)||"Could not save the picture.");
+          });
+        }; img.src=rd.result; };
+        rd.readAsDataURL(f); e.target.value="";
+      });
+    }
+    inp.click();
+  };
+  W.mePhotoClear=function(){
+    if(!W.confirm("Remove your picture?")) return;
+    acall({action:"set_photo",individual_id:W.__meId,pin:mePin(),photo:null}).then(function(r){
+      if(r&&r.ok) newMePage(); else alert((r&&r.error)||"Could not remove it.");
+    });
+  };
+  function meName(){ try{ return localStorage.getItem(meKey()); }catch(e){ return null; } }
+  W.meClaim=function(n){ try{ localStorage.setItem(meKey(),n); }catch(e){} newMePage(); };
+  W.meForget=function(){
+    /* this only forgets the name ON THIS PHONE. The claim stays in the register — releasing it is the
+       register administrator's to do, which is what stops somebody taking a name that is not theirs. */
+    if(!W.confirm("Use a different name on this phone?\n\nYour claim stays with you \u2014 nothing is released. "
+      +"To free a name for somebody else, the club has to do it.")) return;
+    try{ localStorage.removeItem(meKey()); localStorage.removeItem(mePinKey()); }catch(e){}
+    newMePage();
+  };
+  W.mePair=function(nm){ try{ if(typeof loadProfile==="function") loadProfile(nm,""); }catch(e){} };
+  function halves(v){ return String(v||"").split(" & ").map(function(x){ return x.trim(); }).filter(Boolean); }
+
+  /* everything about one person, from the matches the club already holds */
+  function meFigures(name,all){
+    var out={matches:[],partners:[],boards:{},won:0,lost:0,setsW:0,setsL:0,move:0,trail:[],gd:0,gdn:0};
+    var run=0;
+    (all.matches||[]).slice().reverse().forEach(function(m){
+      var t1=halves(m.t1p1).concat(halves(m.t1p2)), t2=halves(m.t2p1).concat(halves(m.t2p2));
+      var side=0; if(t1.indexOf(name)>=0) side=1; else if(t2.indexOf(name)>=0) side=-1;
+      if(!side) return;
+      var a=+m.t1_sets||0,b=+m.t2_sets||0, myS=(side>0?a:b), thS=(side>0?b:a);
+      out.matches.push(m); out.setsW+=myS; out.setsL+=thS; if(myS>thS) out.won++; else out.lost++;
+      out.boards[m.club_id]=(out.boards[m.club_id]||0)+1;
+      if(m.t1_games!=null&&m.t2_games!=null&&(a+b)){ out.gd+=(((side>0?+m.t1_games:+m.t2_games)-(side>0?+m.t2_games:+m.t1_games))/(a+b)); out.gdn++; }
+      var d=(m.rating_delta!=null?+m.rating_delta:0)*side; run+=d; out.trail.push(run);
+      if(ago(m.match_date)<=NHWIN) out.move+=d;
+    });
+    out.matches.reverse();
+    out.partners=(all.pairs||[]).filter(function(p){ return halves(p.name).indexOf(name)>=0; })
+      .map(function(p){ return {name:p.name,club_id:p.club_id,rating:Math.round(p.current_rating||0),
+        move:Math.round((p.current_rating||0)-(p.initial_rating||0)),played:p.sets_played||0,won:p.sets_won||0}; })
+      .sort(function(a,b){ return b.rating-a.rating; });
+    return out;
+  }
+  function meRank(name,all){
+    var ppl=(all.people||[]).filter(function(p){ return p.current_rating!=null; })
+      .sort(function(a,b){ return (b.current_rating||0)-(a.current_rating||0); });
+    for(var i=0;i<ppl.length;i++) if(ppl[i].full_name===name) return {rank:i+1,of:ppl.length};
+    return null;
+  }
+
+  /* n69: THE APP'S OWN CHART SNAPSHOT, ON THIS PAGE. Copied from plat exactly — the same six axes with the
+     same arithmetic (Win %, Scrap, Compose, Opp Str, Active, Pt Eff), the same donut of clear and close wins
+     and losses, the same dropdown. It reports what the person has actually done: nothing here is estimated. */
+  function meRadarSVG(axes){
+    var cx=100,cy=95,R=70,N=axes.length;
+    var pt=function(i,r){ var a=-Math.PI/2+i*2*Math.PI/N; return [cx+Math.cos(a)*r,cy+Math.sin(a)*r]; };
+    var grid=""; [0.25,0.5,0.75,1].forEach(function(f){
+      grid+='<polygon points="'+axes.map(function(_,i){ return pt(i,R*f).join(","); }).join(" ")+'" fill="none" stroke="#e6ddec" stroke-width="1"/>'; });
+    var spokes="",labels="";
+    axes.forEach(function(ax,i){ var p=pt(i,R);
+      spokes+='<line x1="'+cx+'" y1="'+cy+'" x2="'+p[0]+'" y2="'+p[1]+'" stroke="#e6ddec" stroke-width="1"/>';
+      var l=pt(i,R+14);
+      labels+='<text x="'+l[0]+'" y="'+l[1]+'" font-size="8" fill="#6b5a78" text-anchor="middle" dominant-baseline="middle">'+esc(ax[0])+'</text>'; });
+    var poly=axes.map(function(ax,i){ return pt(i,R*ax[1]/100).join(","); }).join(" ");
+    var ink=getComputedStyle(document.documentElement).getPropertyValue("--nhc").trim()||"#6c3483";
+    return '<svg viewBox="0 0 200 200" width="100%" style="max-width:230px;height:auto;display:block;margin:0 auto">'
+      +grid+spokes+'<polygon points="'+poly+'" fill="'+ink+'" fill-opacity=".26" stroke="'+ink+'" stroke-width="2"/>'+labels+'</svg>';
+  }
+  function meDonutSVG(cW,ccW,ccL,cL){
+    var tot=cW+ccW+ccL+cL,cx=70,cy=70,r=52,sw=22,C=2*Math.PI*r;
+    if(tot===0) return '<svg viewBox="0 0 140 140" width="100%" style="max-width:150px;height:auto;display:block;margin:0 auto">'
+      +'<circle cx="70" cy="70" r="52" fill="none" stroke="#eee" stroke-width="22"/></svg>';
+    var segs=[["#1e8449",cW],["#7ed957",ccW],["#ffb84d",ccL],["#c0392b",cL]], off=0, arcs="";
+    segs.forEach(function(x){ var v=x[1]; if(v<=0) return; var len=v/tot*C;
+      arcs+='<circle cx="'+cx+'" cy="'+cy+'" r="'+r+'" fill="none" stroke="'+x[0]+'" stroke-width="'+sw+'" '
+        +'stroke-dasharray="'+len+' '+(C-len)+'" stroke-dashoffset="'+(-off)+'" transform="rotate(-90 '+cx+' '+cy+')"/>';
+      off+=len; });
+    var ink=getComputedStyle(document.documentElement).getPropertyValue("--nhc").trim()||"#6c3483";
+    return '<svg viewBox="0 0 140 140" width="100%" style="max-width:150px;height:auto;display:block;margin:0 auto">'+arcs
+      +'<text x="70" y="66" font-size="20" font-weight="800" fill="'+ink+'" text-anchor="middle">'+tot+'</text>'
+      +'<text x="70" y="82" font-size="9" fill="#6b5a78" text-anchor="middle">matches</text></svg>';
+  }
+  W.meChartToggle=function(b){
+    var p=document.getElementById("meChartSnap"); if(!p) return;
+    var open=(p.style.display!=="none");
+    p.style.display=open?"none":"block";
+    b.innerHTML=(open?"\u25B8":"\u25BE")+" Chart Snapshot";
+  };
+  /* n70: SIX AXES THAT SAY SOMETHING ABOUT HOW SOMEBODY PLAYS.
+     Out: "Active" (a count of turning up, and its "club average" is meaningless once a club has groups that
+     play at different rates) and the old "Opp Str" (fixed scale (r-1200)/8, so every strong club pins at the
+     top). Out too: Scrap and Compose, which were close wins and the absence of close losses — the same thing
+     measured twice.
+     In: Clutch (the close matches, one honest number), Opposition (where your opponents sit AMONG YOUR OWN
+     BOARD, as a percentile, so it means the same at any club), Consistency (how steady your per-match moves
+     are — the player who rarely has a disaster), Momentum (which way the last eight weeks have gone).
+     Matches played moves to the figures row, where a count belongs. None of this touches a rating. */
+  function meAxes(me,st,all){
+    var clamp=function(v){ return Math.max(0,Math.min(100,v)); };
+    var ratingOf={}; (all.people||[]).forEach(function(p){ if(p.full_name) ratingOf[p.full_name]=(p.current_rating!=null?p.current_rating:p.seed_rating); });
+
+    var cW=0,ccW=0,ccL=0,cL=0,oppSum=0,oppN=0,deltas=[],recent=0,recentN=0;
+    st.matches.forEach(function(m){
+      var t1=halves(m.t1p1).concat(halves(m.t1p2)), mineIsT1=(t1.indexOf(me)>=0);
+      var sf=mineIsT1?(+m.t1_sets||0):(+m.t2_sets||0), sa=mineIsT1?(+m.t2_sets||0):(+m.t1_sets||0);
+      var gf=mineIsT1?(+m.t1_games||0):(+m.t2_games||0), ga=mineIsT1?(+m.t2_games||0):(+m.t1_games||0);
+      var won=sf>sa, setMargin=Math.abs(sf-sa), gMargin=Math.abs(gf-ga);
+      var close=(setMargin<=1)||(gMargin>0&&gMargin<=3);          // plat's own test, unchanged
+      if(won){ if(close) ccW++; else cW++; } else { if(close) ccL++; else cL++; }
+      (mineIsT1?halves(m.t2p1).concat(halves(m.t2p2)):halves(m.t1p1).concat(halves(m.t1p2)))
+        .forEach(function(n){ var r=ratingOf[n]; if(r!=null){ oppSum+=r; oppN++; } });
+      var d=(m.rating_delta!=null?+m.rating_delta:0)*(mineIsT1?1:-1);
+      deltas.push(d);
+      if(ago(m.match_date)<=56){ recent+=d; recentN++; }
+    });
+
+    var setsPlayed=st.setsW+st.setsL;
+    var closeN=ccW+ccL, gdps=st.gdn?(st.gd/st.gdn):0;
+
+    /* OPPOSITION: a percentile among the people on the boards this person plays at — 50 is the middle of
+       their own group, 90 means they are usually up against the strongest there. */
+    var boardIds=Object.keys(st.boards).map(Number);
+    var peers=(all.people||[]).filter(function(p){ return boardIds.indexOf(Number(p.club_id))>=0; })
+      .map(function(p){ return (p.current_rating!=null?p.current_rating:p.seed_rating); })
+      .filter(function(v){ return v!=null; }).sort(function(a,b){ return a-b; });
+    var avgOpp=oppN?(oppSum/oppN):null, oppPct=50;
+    if(avgOpp!=null && peers.length>1){
+      var below=peers.filter(function(v){ return v<avgOpp; }).length;
+      oppPct=clamp(below/(peers.length-1)*100);
+    }
+
+    /* CONSISTENCY: the spread of the per-match moves. A steady player sits high; one who swings wildly does
+       not. 0 spread reads 100; a spread of 25 rating points a match or more reads 0. */
+    var cons=50;
+    if(deltas.length>=3){
+      var mean=deltas.reduce(function(a,b){ return a+b; },0)/deltas.length;
+      var sd=Math.sqrt(deltas.reduce(function(a,b){ return a+(b-mean)*(b-mean); },0)/deltas.length);
+      cons=clamp(100-(sd/25)*100);
+    }
+
+    /* MOMENTUM: the last eight weeks, in rating points. +50 and better reads full; -50 and worse reads nil. */
+    var mom = recentN ? clamp(50+recent) : 50;
+
+    return {axes:[["Win %", setsPlayed>0?clamp(st.setsW/setsPlayed*100):0],
+                  ["Clutch", closeN>0?clamp(ccW/closeN*100):50],
+                  ["Margin", clamp(50+gdps*12)],
+                  ["Opposition", oppPct],
+                  ["Consistency", cons],
+                  ["Momentum", mom]],
+            donut:{cW:cW,ccW:ccW,ccL:ccL,cL:cL}, recentN:recentN, recent:Math.round(recent)};
+  }
+
+  function meChartBlock(me,st,all){
+    if(!st.matches.length) return "";
+    var A=meAxes(me,st,all), d=A.donut;
+    var key=function(c,t,v){ return '<span><span style="display:inline-block;width:8px;height:8px;background:'+c+';border-radius:2px"></span> '+t+' '+v+'</span>'; };
+    return '<div style="margin:12px 12px 0">'
+      +'<button type="button" onclick="window.meChartToggle(this)" style="width:100%;text-align:left;background:#f6f0fa;'
+      +'border:1.5px solid #e6ddec;border-radius:10px;padding:11px 14px;font-size:14px;font-weight:800;color:var(--nhc,#6c3483);'
+      +'cursor:pointer;font-family:inherit">\u25B8 Chart Snapshot</button>'
+      +'<div id="meChartSnap" style="display:none;background:#f6f0fa;border-radius:12px;padding:14px;margin-top:10px">'
+      +'<div style="font-weight:800;color:var(--nhc,#6c3483);font-size:15px;text-align:center;margin-bottom:2px">Overall Performance</div>'
+      +'<div style="font-size:10px;color:#6b5a78;text-align:center;margin-bottom:10px;line-height:1.5">'
+      +'<b>Win %</b> sets won \u00b7 <b>Clutch</b> the close matches won \u00b7 <b>Margin</b> points per set \u00b7 '
+      +'<b>Opposition</b> how strong your opponents are for your board \u00b7 <b>Consistency</b> how steady your results are \u00b7 '
+      +'<b>Momentum</b> the last eight weeks</div>'
+      +'<div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;justify-content:center">'
+      +'<div style="flex:1 1 200px;min-width:180px;text-align:center">'+meRadarSVG(A.axes)+'</div>'
+      +'<div style="flex:1;min-width:150px;text-align:center">'+meDonutSVG(d.cW,d.ccW,d.ccL,d.cL)
+      +'<div style="display:flex;flex-wrap:wrap;gap:4px 10px;justify-content:center;margin-top:6px;font-size:10px;color:#5a4636">'
+      + key("#1e8449","Clear win",d.cW) + key("#7ed957","Close win",d.ccW)
+      + key("#ffb84d","Close loss",d.ccL) + key("#c0392b","Clear loss",d.cL)
+      +'</div></div></div>'
+      +'<div style="font-size:10.5px;color:#6b5a78;text-align:center;margin-top:10px">'
+      + A.recentN + (A.recentN===1?" match":" matches") + ' in the last eight weeks \u00b7 '
+      + (A.recent>0?"+":"") + A.recent + ' rating in that time</div>'
+      +'</div></div>';
+  }
+  function newMePage(){
+    var w=nhWrap(); if(!w) return;
+    nhCSS();
+    var C=(W.PLAT.parentId||W.PLAT.cid);
+    var club=(W.PLAT.clubs||[]).find(function(c){ return Number(c.id)===Number(C); })||{id:C,name:W.PLAT.name};
+    Promise.all([nhFetch(),meClaims()]).then(function(res){
+      var all=res[0], claims=res[1]||{}; W.__meTaken=claims;
+      var me=meName();
+      if(!me){ w.innerHTML=meClaimScreen(all,club); setTimeout(function(){ W.meHunt(); },0); return; }
+      W.__meId=meIdOf(me,all);
+      var myPhoto=(W.__meId&&claims[Number(W.__meId)])?claims[Number(W.__meId)].photo:null;
+      var st=meFigures(me,all), p=(all.people||[]).filter(function(x){ return x.full_name===me; })[0];
+      var rating=p?Math.round(p.current_rating||p.seed_rating||0):null, lvl=rating?(rating/200):null;
+      var rk=meRank(me,all);
+      var homeId=Object.keys(st.boards).sort(function(a,b){ return st.boards[b]-st.boards[a]; })[0];
+      var col=homeId?clubPal(homeId)[0]:"#6c3483", deep=nhDeep(col); nhInk(col);
+      nhHeaderSkin(col,deep);
+      var pct=(st.setsW+st.setsL)?Math.round(100*st.setsW/(st.setsW+st.setsL)):0;
+      var gd=st.gdn?(st.gd/st.gdn):0;
+
+      var h='<div class="band" style="background:linear-gradient(135deg,'+col+','+deep+')">'
+        + '<div class="mark"><span class="logo">OPR</span>'+esc(club.name)+'</div>'
+        + '<div style="display:flex;align-items:center;gap:13px;margin-top:11px">'
+        + '<span class="av" onclick="window.mePhotoPick()" title="Tap to set your picture" style="width:56px;height:56px;flex:0 0 56px;border-radius:18px;font-size:19px;'
+        + 'background:'+(myPhoto?("#fff url("+myPhoto+") center/cover no-repeat"):"rgba(255,255,255,.18)")+';border:2px solid rgba(255,255,255,.5);cursor:pointer;overflow:hidden">'
+        + (myPhoto?"":esc(inits(me)))+'</span>' 
+        + '<span><h1 style="margin:0 0 2px">'+esc(me)+'</h1>'
+        + '<span class="sub">'+(homeId?("plays mostly at "+esc(nhBoardName(homeId))):"no matches yet")+'</span></span></div>'
+        + '<div style="display:flex;align-items:baseline;gap:10px;margin-top:12px">'
+        + '<span style="font-size:38px;font-weight:800;letter-spacing:-1px;line-height:1">'+(rating||"\u2014")+'</span>'
+        + (lvl?('<span class="pill">level '+lvl.toFixed(1)+'</span>'):'')
+        + (rk?('<span class="pill">rank '+rk.rank+' of '+rk.of+'</span>'):'')
+        + '</div>'
+        + '<div class="pulse"><a href="'+PAGE+'?club='+C+'">\u2039 '+esc(club.name)+'</a>'
+        + '<span>'+(st.move>0?"+":"")+Math.round(st.move)+' '+nhWhen()+'</span>'
+        + Object.keys(st.boards).map(function(id){ return '<span>'+esc(nhBoardName(id))+' \u00b7 '+st.boards[id]+'</span>'; }).join("")
+        + '</div></div>'
+        + nhActions(col,deep);
+
+      h+='<div class="five">'
+        + [[st.matches.length,"Matches"],[st.matches.filter(function(m){ return ago(m.match_date)<=56; }).length,"Last 8 weeks"],
+           [st.setsW+"/"+(st.setsW+st.setsL),"Sets won"],[pct+"%","Win %"],[(gd>0?"+":"")+gd.toFixed(2),"Game diff/set"]]
+            .map(function(x){ return '<div class="fig"><b>'+esc(String(x[0]))+'</b><span>'+esc(x[1])+'</span></div>'; }).join("")
+        +'</div>'
+        + meChartBlock(me,st,all)            /* n69: plat's Chart Snapshot, below the five figures */
+        +'<div class="cols">';
+
+      if(st.trail.length>1){
+        h+='<div class="brk"><h2>My rating \u00b7 '+st.trail.length+' rated matches</h2><div style="padding:4px 14px 14px">'
+          + nhChart(nhAsRatings(st.trail,rating), col, rating?("now "+rating):null)
+          +'</div></div>';
+      }
+
+      if(st.partners.length){
+        h+='<div class="brk"><h2>My partnerships \u00b7 '+st.partners.length+'</h2>'
+          +'<div class="rows" style="max-height:330px;overflow-y:auto">'
+          + st.partners.map(function(x){
+              var other=halves(x.name).filter(function(n){ return n!==me; })[0]||x.name;
+              return '<button class="row" onclick="window.mePair(\''+String(x.name).replace(/'/g,"\\'")+'\')">'
+                +'<span class="av" style="background:'+clubPal(x.club_id)[0]+'">'+esc(inits(other))+'</span>'
+                +'<span class="nm"><b>'+esc(x.name)+'</b><span>rating '+x.rating+' \u00b7 '+x.won+' of '+x.played+' sets \u00b7 '+esc(nhBoardName(x.club_id))+'</span></span>'
+                +'<span class="val"><b class="'+(x.move>=0?"up":"dn")+'">'+(x.move>0?"+":"")+x.move+'</b><span>since start</span></span></button>'; }).join("")
+          +'</div><div style="padding:8px 14px 12px;font-size:12px;color:#5f5770">Tap a partnership for every match you have played together, with the set scores.</div></div>';
+      }
+
+      if(st.matches.length){
+        h+='<div class="brk">'+nhLimeBar("My recent matches")
+          +'<div class="rows" style="max-height:340px;overflow-y:auto">'
+          + st.matches.slice(0,25).map(function(m){
+              var t1=halves(m.t1p1).concat(halves(m.t1p2)), iAmT1=(t1.indexOf(me)>=0);
+              var us=[m.t1p1,m.t1p2].filter(Boolean).join(" & "), them=[m.t2p1,m.t2p2].filter(Boolean).join(" & ");
+              if(!iAmT1){ var t=us; us=them; them=t; }
+              var a=+m.t1_sets||0,b=+m.t2_sets||0, myS=iAmT1?a:b, thS=iAmT1?b:a;
+              var id="me"+(m.id||Math.round(Math.random()*1e6));
+              return '<div><button class="row" onclick="window.nhSets(\''+id+'\')">'
+                +'<span class="nm"><b>'+esc(us)+'</b><span>v '+esc(them)+' \u00b7 '+esc(nhBoardName(m.club_id))+'</span></span>'
+                +'<span class="val"><b class="'+(myS>thS?"up":"dn")+'">'+myS+'\u2013'+thS+'</b>'
+                +'<span id="nht'+id+'" style="display:inline-block;font-size:15px;color:#7a6f8a;margin-left:6px">\u25bc</span></span></button>'
+                +'<div id="nhs'+id+'" style="display:none;padding:0 12px 10px 20px">'+nhSetPills(m)+'</div></div>'; }).join("")
+          +'</div></div>';
+      }
+      h+='</div>'
+        +'<div style="margin:14px 12px 0;display:flex;gap:9px;flex-wrap:wrap">'
+        +'<button class="more" style="flex:1 1 150px;border:1px solid '+col+';border-radius:99px;background:#fff" onclick="window.mePhotoPick()">'+(myPhoto?"Change my picture":"Add my picture")+'</button>'
+        +(myPhoto?('<button class="more" style="flex:1 1 120px;border:1px solid #ddd;border-radius:99px;background:#fff;color:#7a6f8a" onclick="window.mePhotoClear()">Remove it</button>'):'')
+        +'</div>'
+        +'<div style="font-size:11.5px;color:#5f5770;margin:8px 14px 0;line-height:1.5">Your picture is seen by everyone in the register. '
+        +'Only your PIN can change it \u2014 and you will not be asked for the PIN again on this phone.</div>'
+        +'<div style="margin:12px 12px 0"><button class="more" style="border:1px solid #ddd;border-radius:99px;background:#fff;color:#7a6f8a" onclick="window.meForget()">This isn\u2019t me \u2014 use a different name</button></div>';
+      w.innerHTML=h;
+    });
+  }
+
+  function meClaimScreen(all,club){
+    W.__mePeople=(all.people||[]).map(function(p){ return p.full_name; })
+      .filter(function(v,i,a){ return v && a.indexOf(v)===i; }).sort();
+    W.__mePeopleFull=all.people||[];
+    return '<div class="band opr"><div class="mark"><span class="logo">OPR</span>Open Padel Ratings</div>'
+      +'<h1>Which one is you?</h1><div class="sub">'+esc(club.name)+' \u00b7 tap your name once and this becomes your page</div>'
+      +'<div class="pulse"><a href="'+PAGE+'?club='+club.id+'">\u2039 '+esc(club.name)+'</a></div></div>'
+      +'<div class="brk"><h2>Find your name</h2><div style="padding:0 12px 12px">'
+      +'<input id="meHunt" placeholder="Start typing\u2026" oninput="window.meHunt()" '
+      +'style="width:100%;padding:11px 12px;border:1.5px solid #ddd;border-radius:10px;font:inherit;margin:2px 0 8px">'
+      +'<div id="meHits" style="max-height:320px;overflow-y:auto;border:1px solid #e6e0ee;border-radius:10px"></div>'
+      +'<div style="font-size:12px;color:#5f5770;margin-top:8px;line-height:1.5">Remembered on this phone only \u2014 nothing is saved at the club, and you can change it whenever you like.</div>'
+      +'</div></div>'
+      +'<div class="brk"><h2>Name not on the list?</h2><div style="padding:2px 14px 14px;font-size:12.5px;color:#5f5770;line-height:1.55">'
+      +'Only registered members appear here. Your club\u2019s organiser can add you \u2014 they set your starting rating, '
+      +'which is why it is not something to do yourself.'
+      +'<div id="meContact" style="margin-top:10px"></div></div></div>';
+  }
+  W.meHunt=function(){
+    var box=document.getElementById("meHunt"), hits=document.getElementById("meHits");
+    if(!hits) return;
+    var v=box?String(box.value||"").toLowerCase().trim():"";
+    /* n71: a claimed name is NOT on the list — that is what claiming means, and it is what stops one member
+       taking another's name (or putting a photo on it). */
+    var taken=W.__meTaken||{};
+    var names=(W.__mePeople||[]).filter(function(n){
+      var pp=(W.__mePeopleFull||[]).filter(function(x){ return x.full_name===n; })[0];
+      var pid=pp?Number(pp.id||pp.individual_id||0):0;
+      if(pid && taken[pid]) return false;
+      return !v || n.toLowerCase().indexOf(v)>=0;
+    }).slice(0,40);
+    hits.innerHTML=names.map(function(n){
+      var p=(W.__mePeopleFull||[]).filter(function(x){ return x.full_name===n; })[0];
+      var pid=p?Number(p.id||p.individual_id||0):0;
+      return '<button onclick="window.meDoClaim('+pid+',&quot;'+String(n).replace(/"/g,'')+'&quot;)" '
+        +'style="display:flex;width:100%;gap:10px;align-items:center;background:none;border:none;border-bottom:1px solid #efeaf5;padding:10px 12px;font:inherit;cursor:pointer;text-align:left">'
+        +'<span class="av" style="background:'+(p&&p.club_id?clubPal(p.club_id)[0]:"#6c3483")+'">'+esc(inits(n))+'</span>'
+        +'<span class="nm"><b>'+esc(n)+'</b><span>'+((p&&p.current_rating)?("rating "+Math.round(p.current_rating)):"no rating yet")+'</span></span></button>';
+    }).join("")||'<div style="padding:12px;font-size:12.5px;color:#5f5770">No name like that here.</div>';
+    /* the club's contact, for anyone who is not on the list */
+    var box2=document.getElementById("meContact");
+    if(box2 && !box2.dataset.done){
+      box2.dataset.done="1";
+      var C=(W.PLAT.parentId||W.PLAT.cid);
+      fetch(SBREST()+"nat_club_contacts?club_id=eq."+C+"&select=contact_name,phone,email").then(J).then(function(r){
+        var c=(r||[])[0]; if(!c||!(c.contact_name||c.phone)){ box2.innerHTML='<i>No contact has been added to the register yet \u2014 ask at the club.</i>'; return; }
+        box2.innerHTML='<div style="font-weight:800;color:#241d33;margin-bottom:6px">'+esc(c.contact_name||"")+'</div>'
+          +(c.phone?('<a href="tel:'+esc(String(c.phone).replace(/[^0-9+]/g,""))+'" style="display:inline-block;background:var(--nhc,#6c3483);color:#fff;text-decoration:none;border-radius:99px;padding:9px 15px;font-weight:800;font-size:13px;margin-right:6px">Call '+esc(c.phone)+'</a>'):'')
+          +(c.email?('<a href="mailto:'+esc(c.email)+'" style="display:inline-block;border:1px solid var(--nhc,#6c3483);color:var(--nhc,#6c3483);text-decoration:none;border-radius:99px;padding:9px 15px;font-weight:800;font-size:13px">Email</a>'):'');
+      }).catch(function(){ box2.innerHTML=""; });
+    }
+  };
+
   /* the club's FRONT DOOR — the club's introduction, in OPR's own colours */
   function newClubDoor(){
     var w=nhWrap(); if(!w) return;
@@ -10114,7 +10566,11 @@ async function clRemove(id, label){
       var row=function(name,col,sub,href){
         return '<button class="row" onclick="location.href=\''+href+'\'">'
           +'<span class="av" style="background:'+col+'">'+esc(inits(name))+'</span>'
-          +'<span class="nm"><b>'+esc(name)+'</b><span>'+esc(sub)+'</span></span>'
+          /* n73: the board's name as a full pill in its own colour — as plain text beside the circle it was
+             falling away, and the colour is what tells the boards apart. */
+          +'<span class="nm"><span style="display:inline-block;background:'+col+';color:#fff;font-weight:800;font-size:14px;'
+          +'border-radius:99px;padding:5px 13px;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+esc(name)+'</span>'
+          +'<span style="margin-top:5px">'+esc(sub)+'</span></span>'
           /* n64: the little \u203a was too quiet to read as "tap here". A round chevron in the board's colour
            says it plainly, without shouting. */
         +'<span class="val"><span style="display:inline-grid;place-items:center;width:28px;height:28px;border-radius:50%;'
@@ -10148,6 +10604,14 @@ async function clRemove(id, label){
         + '<button class="row" onclick="window.platGoClubLedger('+C+')"><span class="av" style="background:#2f2f2f">\u2261</span>'
         + '<span class="nm"><b>'+esc(W.PLAT.name)+' and All Club Ledgers</b><span>every match at the club \u2014 general play and every group \u00b7 and every registered club</span></span>'
         + '<span class="val"><b style="color:#cfc6da">\u203a</b></span></button></div></div>'
+        /* n67: the way to your own page. Once claimed, this is where the app opens. */
+        + '<div class="brk"><h2>Your page</h2><div class="rows">'
+        + '<button class="row" onclick="location.href=\''+PAGE+'?club='+C+'&go=me\'">'
+        + '<span class="av" style="background:#6c3483">'+(meName()?esc(inits(meName())):"?")+'</span>'
+        + '<span class="nm"><b>'+(meName()?esc(meName()):"Find your name")+'</b>'
+        + '<span>'+(meName()?"your rating, form, partnerships and matches":"tap your name once and this becomes your home page")+'</span></span>'
+        + '<span class="val"><span style="display:inline-grid;place-items:center;width:28px;height:28px;border-radius:50%;background:#6c3483;color:#fff;font-weight:800">\u203a</span></span></button>'
+        + '</div></div>'
         + nhFoot("#3a1d6e","#1d0a41","Club admin");   /* the one way in */
     });
   }
@@ -10541,15 +11005,40 @@ async function clRemove(id, label){
     });
   }
   W.platRegRender=function(){ regRender(); };
+  /* the paste report, redrawn after the room reloads */
+  function pasteReport(){
+    var r=REG.report; if(!r) return "";
+    var parts='<div style="margin-top:8px;font-size:12.5px;color:#2e7d32">Added '+(r.added||0)+((r.added===1)?" name":" names")+'.</div>';
+    if(r.kept&&r.kept.length){
+      parts+='<div style="margin-top:8px;padding:10px 12px;background:#fdf6e3;border:1px solid #f0e2c0;border-radius:10px;color:#6b5a2a;font-size:12.5px;line-height:1.55">'
+        +'<b>'+r.kept.length+((r.kept.length===1)?" name was":" names were")+' already registered</b> \u2014 not added again, and the rating already on record was kept:<br>'
+        + r.kept.map(function(k){ return esc(k.name)+(k.plays_at?(" \u00b7 "+esc(k.plays_at)):"")+(k.seed!=null?(" \u00b7 seed "+k.seed):""); }).join("<br>")
+        +'</div>';
+    }
+    if(r.failed&&r.failed.length) parts+='<div style="margin-top:6px;font-size:12.5px;color:#c00">Skipped: '+esc(r.failed.join(", "))+'</div>';
+    return parts;
+  }
   function regRender(){
     var b=document.getElementById("platRegBody"); if(!b) return;
     var q=(REG.q||"").toLowerCase();
     var rows=REG.players.filter(function(p){ return !q || p.full_name.toLowerCase().indexOf(q)>=0; });
+    /* n72: on a CLUB'S OWN ledger the list is that club's people, even before a code is typed. The whole
+       register belongs on the register's own ledger — which is where the note below appears instead. */
+    if(W.PLAT.nat && REG.role!=="pool" && (W.PLAT.natIds||[]).length){
+      var mineIds=W.PLAT.natIds.map(Number);
+      rows=rows.filter(function(p){ return (p.clubs||[]).some(function(c){ return mineIds.indexOf(Number(c.id))>=0; }); });
+    }
     rows.sort(REG.sort==="rating" ? function(a,c){ return (c.current_rating||0)-(a.current_rating||0); } : function(a,c){ return a.full_name.localeCompare(c.full_name); });
     var h=adminPanel()
       +'<div style="display:flex;gap:8px;align-items:center;margin:10px 0"><input id="platRegQ" placeholder="Find a player…" value="'+esc(REG.q)+'" oninput="window.platRegQ(this.value)" style="flex:1;padding:10px 12px;border:1.5px solid #ddd;border-radius:10px;font-size:14px">'
       +'<button class="menu-btn" style="min-height:40px;padding:8px 12px" onclick="window.platRegSort()">'+(REG.sort==="rating"?"Sort: rating":"Sort: name")+'</button></div>'
-      +'<div style="font-size:12px;color:#666;margin-bottom:8px">'+rows.length+' players · '+REG.clubs.length+' clubs · one rating each</div>';
+      /* n72: BEFORE A CODE IS TYPED THIS IS THE WHOLE REGISTER. A club admin opening the room sees every
+         club's people, which is right — it is how a duplicate is spotted — but it reads as "my club has 149
+         members" unless it says so plainly. */
+      +'<div style="font-size:12px;color:#666;margin-bottom:8px">'+rows.length+' players \u00b7 '+REG.clubs.length+' clubs \u00b7 one rating each</div>'
+      +((REG.role==="club"||W.PLAT.nat)?'':'<div style="background:#fdf6e3;border:1px solid #f0e2c0;border-radius:10px;padding:10px 12px;margin:0 0 10px;font-size:12.5px;color:#6b5a2a;line-height:1.5">'
+        +'<b>This is the whole register</b> \u2014 every club in it, so you can see whether somebody is already '
+        +'registered elsewhere before you add them. Type your club\u2019s code above and the list narrows to your own members.</div>')
     rows.forEach(function(p){
       h+='<div style="display:flex;align-items:center;gap:10px;padding:10px 12px;margin:6px 0;background:#fff;border:1px solid #e6e3ec;border-left:4px solid #6c3483;border-radius:10px">'
         +'<div style="flex:1;min-width:0"><div style="font-weight:700;font-size:15px">'+esc(p.full_name)+'</div><div style="margin-top:2px">'+(function(){
@@ -10616,7 +11105,8 @@ async function clRemove(id, label){
       +'<button class="menu-btn" style="margin-top:8px;width:100%" onclick="window.platAddPoolMember()">Add member</button>';
     h+='<div style="margin-top:14px;font-weight:700;font-size:13px;color:#444">Add the whole club (paste from Excel)</div>'
       +'<div style="font-size:12px;color:#666;margin:4px 0 6px">One per line: <b>Name, Gender, Rating</b> — tabs or commas. Gender M or F. Rating optional.</div>'
-      +'<textarea id="platPBulk" style="width:100%;min-height:120px;font-family:ui-monospace,monospace;font-size:12.5px;padding:9px;border:1.5px solid #ddd;border-radius:10px" placeholder="John Smith, M, 1350&#10;Sarah Jones, F, 1180"></textarea>'
+      +'<textarea id="platPBulk" oninput="window.platPBulkTally()" onchange="window.platPBulkTally()" style="width:100%;min-height:120px;font-family:ui-monospace,monospace;font-size:12.5px;padding:9px;border:1.5px solid #ddd;border-radius:10px" placeholder="John Smith, M, 1350&#10;Sarah Jones, F, 1180"></textarea>'
+      +'<div id="platPBulkCount" style="font-size:12px;color:#666;margin:6px 2px 0">'+(REG.report?pasteReport():"Nothing pasted yet.")+'</div>'
       +'<button class="menu-btn" style="margin-top:8px;width:100%" onclick="window.platBulkPoolMembers()">Add all pasted members</button>';
     // new club
     // n4: ONBOARDING. A CLUB is a top-level door in this register (own name, colour, code, ledger and groups);
@@ -10958,6 +11448,19 @@ async function clRemove(id, label){
       REGMAP=null; regLoad();
     });
   };
+  /* n72: a line under the paste box, counting as you type — you could not tell whether a paste had landed */
+  W.platPBulkTally=function(){
+    var raw=(document.getElementById("platPBulk")||{}).value||"";
+    var out=document.getElementById("platPBulkCount"); if(!out) return;
+    var lines=raw.split("\n").map(function(l){ return l.trim(); }).filter(function(l){ return l.length; });
+    if(!lines.length){ out.style.color="#666"; out.textContent="Nothing pasted yet."; return; }
+    var ok=0,bad=0;
+    lines.forEach(function(l){ var p=l.split(/\t|,/).map(function(x){ return x.trim(); });
+      var g=(p[1]||"").toUpperCase().charAt(0);
+      if(p[0]&&(g==="M"||g==="F")) ok++; else bad++; });
+    out.style.color=bad?"#8a6d3b":"#2e7d32";
+    out.textContent="Read "+ok+(ok===1?" name":" names")+(bad?(" \u00b7 "+bad+" line"+(bad===1?"":"s")+" not understood (need Name, Gender)"):" \u00b7 ready to add");
+  };
   W.platBulkPoolMembers=function(){
     var m=document.getElementById("platRegMsg");
     var raw=(document.getElementById("platPBulk")||{}).value||"";
@@ -10969,12 +11472,32 @@ async function clRemove(id, label){
       if(!p[0]||(g!=="M"&&g!=="F")){ if(!bad) bad="Line "+(i+1)+": need Name, Gender (M/F)."; return; }
       rows.push({full_name:p[0],gender:g,rating:p[2]}); });
     if(bad){ m.style.color="#c00"; m.textContent=bad; return; }
-    m.style.color="#666"; m.textContent="Adding "+rows.length+"…";
+    m.style.color="#666"; m.textContent="Adding "+rows.length+(rows.length===1?" name":" names")+" \u2014 this can take a few seconds\u2026";
     acall({action:"bulk_add_pool_members",pool_id:W.PLAT.pool,admin_pin:REG.pin,rows:rows}).then(function(r){
       if(!r||!r.ok){ m.style.color="#c00"; m.textContent=(r&&r.error)||"Failed."; return; }
       document.getElementById("platPBulk").value="";
       m.style.color="#2e7d32";
-      m.textContent="Added "+r.added+(r.already_there?(" · "+r.already_there+" already in the register"):"")+((r.failed&&r.failed.length)?(" · skipped "+r.failed.join(", ")):"");
+      /* n72: WHO WAS ALREADY THERE, BY NAME. A paste used to report only a count, so an organiser had no way
+         to know that one of their 48 was already registered at another club, under a seed somebody else set. */
+      var msg="Added "+r.added+(r.added===1?" name":" names")+".";
+      m.style.color="#2e7d32"; m.textContent=msg;
+      REG.report=r;                 /* n72: the room reloads after a paste — the report has to outlive it */
+      var box=document.getElementById("platPBulkCount");
+      if(box){
+        var lines=[];
+        if(r.kept&&r.kept.length){
+          lines.push('<div style="margin-top:8px;padding:10px 12px;background:#fdf6e3;border:1px solid #f0e2c0;border-radius:10px;color:#6b5a2a;font-size:12.5px;line-height:1.55">'
+            +'<b>'+r.kept.length+(r.kept.length===1?" name was":" names were")+' already registered</b> \u2014 they were not added again, '
+            +'and the rating already on record was kept:<br>'
+            + r.kept.map(function(k){ return esc(k.name)+(k.plays_at?(" \u00b7 "+esc(k.plays_at)):"")+(k.seed!=null?(" \u00b7 seed "+k.seed):""); }).join("<br>")
+            +'</div>');
+        }
+        if(r.failed&&r.failed.length){
+          lines.push('<div style="margin-top:8px;font-size:12.5px;color:#c00">Skipped: '+esc(r.failed.join(", "))+'</div>');
+        }
+        box.style.color="#2e7d32";
+        box.innerHTML="Added "+r.added+(r.added===1?" name":" names")+"."+lines.join("");
+      }
       REGMAP=null; regLoad();
     });
   };
