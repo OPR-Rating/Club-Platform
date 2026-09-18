@@ -3538,7 +3538,7 @@ const CLUB_NAME = _club.name;  // shown in the logo as "OPR · <name>"
     link.setAttribute('href', href);
   }catch(e){ /* install stays on the static manifest — no functional impact */ }
 })();
-const OPR_VERSION = "OPR-DOUBLES v2026.09.03-56 · NAT fork n55 (no voice) (of PLAT p117)";  // MANUAL PAIR CREATION REMOVED FROM ADMIN: Create a pair, Bulk create pairs and Re-derive all pairs are gone (they only made match-less ghost pairs, and Re-derive rewrote every stored initial club-wide). Pairs are born automatically at match entry. Current pairs list untouched; the underlying JS is left in place unreferenced, so no other code path changes. Includes v47 (set-score fix + double-tap guard) and all prior.
+const OPR_VERSION = "OPR-DOUBLES v2026.09.03-56 · NAT fork n56 (no voice) (of PLAT p117)";  // MANUAL PAIR CREATION REMOVED FROM ADMIN: Create a pair, Bulk create pairs and Re-derive all pairs are gone (they only made match-less ghost pairs, and Re-derive rewrote every stored initial club-wide). Pairs are born automatically at match entry. Current pairs list untouched; the underlying JS is left in place unreferenced, so no other code path changes. Includes v47 (set-score fix + double-tap guard) and all prior.
 // Explanation shown above the individual ladder. Open on load so it's read; collapsible
 // (state kept for the session) and scrolls away. Mechanics only — no outcome framing, so
 // members aren't nudged away from playing stronger opponents. Every clause maps to a real
@@ -9658,7 +9658,7 @@ async function clRemove(id, label){
     var B=SBREST(), boards=(W.PLAT.myBoards&&W.PLAT.myBoards.length)?W.PLAT.myBoards:[W.PLAT.cid];
     var inList="club_id=in.("+boards.join(",")+")";
     return Promise.all([
-      fetch(B+"plat_matches?"+inList+"&discipline=eq.padel&select=id,club_id,match_date,match_type,event,t1p1,t1p2,t2p1,t2p2,t1_sets,t2_sets,t1_games,t2_games,set_scores,rating_delta&order=match_date.desc,id.desc&limit=120").then(J),
+      fetch(B+"plat_matches?"+inList+"&discipline=eq.padel&select=id,club_id,match_date,match_type,event,t1p1,t1p2,t2p1,t2p2,t1_sets,t2_sets,t1_games,t2_games,set_scores,display_t1,display_t2,rating_delta&order=match_date.desc,id.desc&limit=120").then(J),
       fetch(B+"plat_player_results?"+inList+"&discipline=eq.padel&select=name,club_id,current_rating,initial_rating,sets_played,sets_won&order=current_rating.desc&limit=2000").then(J),
       fetch(B+"plat_padel_v_individuals?"+inList+"&select=id,full_name,club_id,current_rating,seed_rating").then(J).catch(function(){ return []; }),
       fetch(B+"plat_padel_tournaments?"+inList+"&select=id,name,club_id,active,archived").then(J).catch(function(){ return []; })
@@ -9947,16 +9947,14 @@ async function clRemove(id, label){
     if(!el) return; var open=(el.style.display!=="none");
     el.style.display=open?"none":"block"; if(t) t.style.transform=open?"":"rotate(180deg)";
   };
+  /* n85: plat's own expander — set scores split on COMMAS, written 6/3, and its exact fallback wording */
   function nhSetPills(m,col){
-    var raw=String(m.set_scores||"").trim();
-    var sets=raw?raw.split(/[, ]+/).filter(Boolean):[];
-    if(!sets.length) return '<span style="font-size:12px;color:#6f6780">Set scores were not recorded.</span>';
-    return sets.map(function(sc){
-      var p=String(sc).split(/[-\u2013\/]/), a=parseInt(p[0],10), b=parseInt(p[1],10);
-      var win=(!isNaN(a)&&!isNaN(b))?(a>b):null;
-      /* n84: plat writes these in the board's colour, not red and green */
-      var bg=col||"#6c3483";
-      return '<span style="display:inline-block;background:'+bg+';color:#fff;border-radius:8px;padding:4px 11px;font-size:13px;font-weight:800;margin:3px 4px">'+esc(sc)+'</span>';
+    var ss=String(m.set_scores||"").trim();
+    var scores=ss?ss.split(",").map(function(x){ return x.trim(); }).filter(Boolean):[];
+    if(!scores.length) return '<span style="color:#888;font-size:11px">Game scores not recorded for this match</span>';
+    return scores.map(function(sc){
+      return '<span style="background:'+(col||"#6c3483")+';color:#fff;border-radius:4px;padding:3px 10px;margin:0 3px;font-size:13px;font-weight:700">'
+        + esc(String(sc).replace("-","/")) + '</span>';
     }).join("");
   }
   /* n65: the app's own lime bar over a list that scrolls inside its own box */
@@ -9967,30 +9965,47 @@ async function clRemove(id, label){
   /* n84: RECENT MATCHES, AS PLAT WRITES THEM. Date, match type, the S badge and a triangle; the names with
      the score between them; and the triangle opens the set pills with the sets and games beneath, exactly as
      the app's own list does. The board's pill carries its colour. */
+  /* n85: PLAT'S OWN ROW, NOT MY IMITATION OF IT. I had written the badge as a fixed "S" — it is derived:
+     "ladder match" is L on lime, anything else with an event is T in purple, and only a blank or "social"
+     event is S in grey. The expander is plat's too: set scores split on COMMAS and shown as 6/3, with
+     "Game scores not recorded for this match" when there are none, then Sets and Games beneath. display_t1
+     and display_t2 are used when present, which is how handicap matches show their adjusted line-up. */
+  function nhTypeTag(m){
+    var ev=String(m.event||"").trim(), low=ev.toLowerCase();
+    var isLadder=(low==="ladder match");
+    var isTour=(ev!=="" && low!=="social" && !isLadder);
+    if(isLadder) return '<span style="background:#c4e000;color:#2a3000;font-size:9px;font-weight:700;padding:1px 5px;border-radius:4px;margin-left:4px">L</span>';
+    if(isTour)   return '<span style="background:#6c3483;color:#fff;font-size:9px;font-weight:700;padding:1px 5px;border-radius:4px;margin-left:4px">T</span>';
+    return '<span style="background:#ccc;color:#333;font-size:9px;font-weight:700;padding:1px 5px;border-radius:4px;margin-left:4px">S</span>';
+  }
+  function nhSides(m){
+    /* plat prefers display_t1/display_t2 — a handicap match writes its adjusted line-up there */
+    var a=m.display_t1 || (m.t1p2 ? ((m.t1p1||"")+" & "+m.t1p2) : (m.t1p1||""));
+    var b=m.display_t2 || (m.t2p2 ? ((m.t2p1||"")+" & "+m.t2p2) : (m.t2p1||""));
+    return [a,b];
+  }
   function nhMatchRow(m,scope){
-    var a=[m.t1p1,m.t1p2].filter(Boolean).join(" & "), b=[m.t2p1,m.t2p2].filter(Boolean).join(" & ");
+    var sides=nhSides(m), a=sides[0], b=sides[1];
     var bd=(W.PLAT.clubs||[]).find(function(c){ return Number(c.id)===Number(m.club_id); });
     var col=(bd&&bd.colour)||"#6c3483";
     var id="m"+(m.id||Math.abs(Math.round(Math.random()*1e6)));
-    var sets=(m.t1_sets!=null)?(m.t1_sets+"-"+m.t2_sets):"";
-    var games=(m.t1_games!=null&&m.t2_games!=null)?(m.t1_games+"-"+m.t2_games):"";
     var pillHTML=(scope!=="one"&&bd)?('<span style="display:inline-block;background:'+col+';color:#fff;border-radius:99px;'
       +'padding:2px 9px;font-size:10px;font-weight:800;margin-right:6px;vertical-align:middle">'+esc(bd.name)+'</span>'):'';
     return '<div style="border:1px solid #e9e4f0;border-radius:12px;padding:9px 11px;margin:6px 0;background:#fff">'
-      +'<div style="display:flex;align-items:center;gap:7px;font-size:11.5px;color:#8a8196;justify-content:center;flex-wrap:wrap">'
+      +'<div style="display:flex;align-items:center;gap:6px;font-size:11.5px;color:#8a8196;justify-content:center;flex-wrap:wrap">'
       + pillHTML
       +'<span>'+esc(String(m.match_date||"").slice(0,10))+'</span>'
       +'<span style="color:'+col+';font-weight:700">'+esc(m.match_type||"")+'</span>'
-      +'<span style="background:#eceaf1;border-radius:5px;padding:1px 6px;font-size:10px;font-weight:800;color:#5f5770">S</span>'
+      + nhTypeTag(m)
       +'<button onclick="window.nhSets(\''+id+'\')" style="background:none;border:none;cursor:pointer;color:'+col+';font-size:13px;padding:0 2px">'
       +'<span id="nht'+id+'" style="display:inline-block;transition:transform .15s">\u25bc</span></button>'
       +'</div>'
       +'<div style="text-align:center;font-size:13.5px;font-weight:800;margin-top:3px;line-height:1.4">'
-      + esc(a)+' <span style="color:'+col+'">'+esc(sets)+'</span> '+esc(b)+'</div>'
+      + esc(a)+' <span style="color:'+col+'">'+((m.t1_sets||0)+"-"+(m.t2_sets||0))+'</span> '+esc(b)+'</div>'
       +'<div id="nhs'+id+'" style="display:none;border-top:1px solid #efeaf5;margin-top:8px;padding-top:8px;text-align:center">'
       + nhSetPills(m,col)
-      +'<div style="font-size:11.5px;color:#8a8196;margin-top:5px">'
-      +(sets?('Sets: '+esc(sets)):'')+(games?(' \u00b7 Games: '+esc(games)):'')+'</div></div>'
+      +'<div style="font-size:11px;color:#888;margin-top:6px">Sets: '+((m.t1_sets||0)+"-"+(m.t2_sets||0))
+      +'  \u00b7  Games: '+((m.t1_games||0)+"-"+(m.t2_games||0))+'</div></div>'
       +'</div>';
   }
   function nhMatchesBrk(d,n,scope){
