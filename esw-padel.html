@@ -3544,7 +3544,7 @@ const CLUB_NAME = _club.name;  // shown in the logo as "OPR · <name>"
     link.setAttribute('href', href);
   }catch(e){ /* install stays on the static manifest — no functional impact */ }
 })();
-const OPR_VERSION = "OPR-DOUBLES v2026.09.03-56 · NAT fork n65 (no voice) (of PLAT p117)";  // MANUAL PAIR CREATION REMOVED FROM ADMIN: Create a pair, Bulk create pairs and Re-derive all pairs are gone (they only made match-less ghost pairs, and Re-derive rewrote every stored initial club-wide). Pairs are born automatically at match entry. Current pairs list untouched; the underlying JS is left in place unreferenced, so no other code path changes. Includes v47 (set-score fix + double-tap guard) and all prior.
+const OPR_VERSION = "OPR-DOUBLES v2026.09.03-56 · NAT fork n66 (no voice) (of PLAT p117)";  // MANUAL PAIR CREATION REMOVED FROM ADMIN: Create a pair, Bulk create pairs and Re-derive all pairs are gone (they only made match-less ghost pairs, and Re-derive rewrote every stored initial club-wide). Pairs are born automatically at match entry. Current pairs list untouched; the underlying JS is left in place unreferenced, so no other code path changes. Includes v47 (set-score fix + double-tap guard) and all prior.
 // Explanation shown above the individual ladder. Open on load so it's read; collapsible
 // (state kept for the session) and scrolls away. Mechanics only — no outcome framing, so
 // members aren't nudged away from playing stronger opponents. Every clause maps to a real
@@ -9349,7 +9349,7 @@ async function clRemove(id, label){
     d.innerHTML=html;
     host.insertBefore(d,host.firstChild);
     doorRecent();   // p112: both door shapes
-    if(base.length){ var ab=document.createElement("div"); ab.style.cssText="text-align:center;margin:14px 0 6px";
+    if(base.length && !W.NEWAPP){ var ab=document.createElement("div"); ab.style.cssText="text-align:center;margin:14px 0 6px";
       ab.innerHTML='<button data-plat-keep="1" onclick="showScreen(\'aboutScreen\')" style="display:inline-flex;align-items:center;background:transparent;border:1.5px solid #9b80b3;color:#6c3483;border-radius:99px;padding:8px 20px;font-size:13px;font-weight:700;cursor:pointer">About OPR</button>';
       var tag=d.querySelector('div[style*="letter-spacing:.5px"]'); if(tag) d.insertBefore(ab,tag); else d.appendChild(ab); }
   }
@@ -9409,7 +9409,7 @@ async function clRemove(id, label){
         +" Also \u2014 "+esc(W.PLAT.poolName||"All Registered Clubs")+" is one tap from there.",
       onePill("platGoClubLedger("+C+")", (W.PLAT.name||"Club")+" ledger", LEDGER, true));
     html += '<div id="platDoorRecent" style="margin-top:6px"></div>';
-    html += '<div style="text-align:center;margin:14px 0 6px"><button data-plat-keep="1" onclick="showScreen(\'aboutScreen\')" style="display:inline-flex;align-items:center;background:transparent;border:1.5px solid #9b80b3;color:#6c3483;border-radius:99px;padding:8px 20px;font-size:13px;font-weight:700;cursor:pointer">About OPR</button></div>';
+    if(!W.NEWAPP) html += '<div style="text-align:center;margin:14px 0 6px"><button data-plat-keep="1" onclick="showScreen(\'aboutScreen\')" style="display:inline-flex;align-items:center;background:transparent;border:1.5px solid #9b80b3;color:#6c3483;border-radius:99px;padding:8px 20px;font-size:13px;font-weight:700;cursor:pointer">About OPR</button></div>';
     html += '<div style="text-align:center;color:#b3a9c4;font-size:10px;letter-spacing:.5px;margin:0 0 10px">'+esc((typeof OPR_VERSION!=="undefined"?OPR_VERSION:""))+'</div>';
     d.innerHTML=html; host.insertBefore(d,host.firstChild);
     try{ var m=document.getElementById("platNoFlash"); if(m) m.remove(); }catch(e){}   /* n10: reveal, once */
@@ -9723,6 +9723,23 @@ async function clRemove(id, label){
       +".screen .header h1{font-size:19px !important;font-weight:800 !important;letter-spacing:.1px}"
       +".screen .header .back-btn{background:rgba(255,255,255,.16) !important;border:1px solid rgba(255,255,255,.3) !important;border-radius:99px !important;width:36px;height:36px}"
       +".screen .header .platWhere{background:rgba(255,255,255,.18) !important;border:1px solid rgba(255,255,255,.34) !important;border-radius:99px !important;font-weight:800}";
+    if(!st.parentNode) document.head.appendChild(st);
+  }
+  /* n66: ONE DOOR INTO ADMIN, ONE INTO ABOUT — SWEPT, NOT PATCHED. The parent page carries its own "Admin
+     access" link in the About screen's footer and its own About OPR buttons; the fork was adding more on top.
+     Rather than chase each one, the new app hides every admin and About entry the page can produce and keeps
+     only the two on the front door's quiet row. */
+  function nhOneWayIn(){
+    if(!W.NEWAPP) return;
+    var st=document.getElementById("nhOneWay") || document.createElement("style");
+    st.id="nhOneWay";
+    st.textContent =
+      /* the parent's own admin link, wherever it renders */
+      "button[onclick*='openAdmin']{display:none!important}"
+      /* every About OPR button the parent or the old fork grows, except the door's quiet row */
+      + "#platAboutPill,#platAdminPill{display:none!important}"
+      + "#homeScreen .menu-btn[onclick*='aboutScreen']{display:none!important}"
+      + "#nh ~ * button[onclick*='aboutScreen']{display:none!important}";
     if(!st.parentNode) document.head.appendChild(st);
   }
   function nhCSS(){
@@ -10139,10 +10156,10 @@ async function clRemove(id, label){
         +'background:'+(fill?("linear-gradient(135deg,"+ink+","+deep+")"):"#fff")+';color:'+(fill?"#fff":ink)+';'
         +'border-radius:99px;padding:11px 14px;font:inherit;font-size:13px;font-weight:800;cursor:pointer">'+esc(label)+'</button>';
     };
-    return '<div style="display:flex;gap:9px;flex-wrap:wrap;margin:14px 12px 0">'
-      + (what==="none" ? "" : a(what||"Admin","window.nhAdminPage()",true))
-      + a("About OPR","showScreen('aboutScreen')",false)
-      + '</div>';
+    /* n66: ADMIN AND ABOUT LIVE ON THE FRONT DOOR ONLY. Both were on every home screen, and every About tile
+       carried its own admin link, so there were half a dozen doors into the same rooms and no way to tell
+       which code opened which. The door's own quiet row is now the single way in; this foot draws nothing. */
+    return "";
   }
   /* n59: ONE WAY INTO ADMIN. Admin was reachable from the board, the door and the ledger, each opening a
      different room — so nobody could tell which code did what. Now a single pill opens an Admin Control page
@@ -10226,7 +10243,7 @@ async function clRemove(id, label){
        and you can tell at a glance which one you are standing on. */
     var isClubLedger = !!W.PLAT.nat;
     var lcol = isClubLedger ? "#6c3483" : "#2f2f2f";
-    nhCSS(); nhInk(lcol); nhHeaderSkin(lcol, isClubLedger?"#1d0a41":"#141414");
+    nhCSS(); nhOneWayIn(); nhInk(lcol); nhHeaderSkin(lcol, isClubLedger?"#1d0a41":"#141414");
     try{ nhBarMount(); }catch(e){}   /* n63: the way home was missing from every ledger page */
     var host=document.getElementById("homeScreen"); if(!host) return;
     var isClub=!!W.PLAT.nat, name=isClub?(W.PLAT.natName||"Club"):(W.PLAT.poolName||"All Registered Clubs");
@@ -10273,7 +10290,8 @@ async function clRemove(id, label){
       +'<h1>'+esc(name)+'</h1>'
       +'<div class="sub">'+(isClub?"Every match at the club \u2014 general play and every group":"Every match at every registered club \u2014 one rating each")+'</div>'
       +'<div class="pulse">'+back
-      +'<a href="#" onclick="event.preventDefault();showScreen(\'aboutScreen\')">About OPR</a>'
+      /* n66: About OPR lives on the front door only — this was the second one on every ledger page */
+      +''
       +'</div>';
     /* one live line in the band, once the figures are in — nothing else is added to the page */
     fetch(B+"plat_matches?"+where+"&discipline=eq.padel&select=match_date,t1p1,t1p2,t2p1,t2p2,rating_delta&order=match_date.desc&limit=80").then(J).then(function(ms){
@@ -10592,7 +10610,7 @@ async function clRemove(id, label){
   }
   function newMePage(){
     var w=nhWrap(); if(!w) return;
-    nhCSS();
+    nhCSS(); nhOneWayIn();
     var C=(W.PLAT.parentId||W.PLAT.cid);
     var club=(W.PLAT.clubs||[]).find(function(c){ return Number(c.id)===Number(C); })||{id:C,name:W.PLAT.name};
     Promise.all([nhFetch(),meClaims()]).then(function(res){
@@ -10925,7 +10943,7 @@ async function clRemove(id, label){
   /* the club's FRONT DOOR — the club's introduction, in OPR's own colours */
   function newClubDoor(){
     var w=nhWrap(); if(!w) return;
-    nhCSS(); nhInk("#6c3483"); nhHeaderSkin("#3a1d6e","#1d0a41");
+    nhCSS(); nhOneWayIn(); nhInk("#6c3483"); nhHeaderSkin("#3a1d6e","#1d0a41");
     var C=W.PLAT.cid, kids=kidsOf(C).sort(function(a,b){ return String(a.name).localeCompare(String(b.name)); });
     /* n90: the faces come with the figures, so a door draws once with everything it needs */
     Promise.all([nhFetch(),nhFaces()]).then(function(rr){
@@ -11069,7 +11087,7 @@ async function clRemove(id, label){
   /* the place page — a board's home, entirely replaced */
   function newPlaceHome(){
     var w=nhWrap(); if(!w) return;
-    nhCSS();
+    nhCSS(); nhOneWayIn();
     var ink=(W.PLAT.colour||"#6c3483"), deep=nhDeep(ink); nhInk(ink); nhHeaderSkin(ink,deep);
     /* n53: the club's own board needs the way back too — it sits under the club door exactly as a group does,
        and it had no chip at all. */
@@ -11449,6 +11467,9 @@ async function clRemove(id, label){
   }
   function regTile(){
     if(document.getElementById("platRegTile")) return;
+    /* n66: in the new app this tile is reached only through the door's Club admin, so it is not grown onto
+       About OPR — which is what put an admin link inside every About tile in the app. */
+    if(W.NEWAPP && !/[?&]go=admin/.test(String(location.search||""))) return;
     var about=document.getElementById("aboutScreen"); if(!about) return;
     var host=about.querySelector(".copyright"); 
     var wrap=document.createElement("div"); wrap.style.cssText="text-align:center;margin:18px 0 8px";
@@ -12222,6 +12243,9 @@ async function clRemove(id, label){
      it under Recent Matches, where an organiser will look for it — and only on a group board, never on a
      ledger, which is read-only. */
   function adminPill(){
+    /* n66: ONE WAY IN. Admin was reachable from the board, the ledger and every About tile; now only from
+       the door's Club admin, which opens the Admin Control page. */
+    if(W.NEWAPP) return;
     // organisation boards only: they no longer show About, which is where the parent hides its admin link.
     if(W.PLAT.cid===0 || !W.PLAT.orgId || document.getElementById("platAdminPill")) return;
     var lower=document.querySelector("#homeScreen .home-lower")
@@ -12887,6 +12911,8 @@ async function clRemove(id, label){
     }catch(e){ W.PLAT._keepCourt=true; W.showScreen("entryScreen"); }
   };
   function aboutPill(){
+    /* n66: the new app puts About OPR on the front door only. This pill was grown onto every home screen. */
+    if(W.NEWAPP) return;
     if(document.getElementById("platAboutPill")) return;
     var host=document.getElementById("platAdminPill") || document.querySelector("#homeScreen .home-lower") || document.querySelector("#homeScreen .home-content");
     if(!host) return;
@@ -13016,7 +13042,15 @@ async function clRemove(id, label){
       stR.textContent="#homeScreen .home-recent-col > div:first-child{background:#d4f425!important;color:#2a3000!important;border-color:#C97E0A!important}";
       document.head.appendChild(stR);
     }catch(e){}
-    try{ if(W.PLAT.cid!==0) watchAndPaint(function(){ return (W.PLAT.colour||""); }); }catch(e){}
+    /* n66: THE WHOLE LEDGER, NOT JUST ITS BAND. A club's ledger is the club, so its profiles, ratings and
+       ladders must be purple too — they were being repainted charcoal along with the register's, which is
+       exactly the confusion the colour rule exists to remove. A board still wears its own colour; only the
+       REGISTER's ledger is charcoal. */
+    try{
+      if(W.PLAT.cid!==0){ watchAndPaint(function(){ return (W.PLAT.colour||""); }); }
+      else if(!W.PLAT.nat){ watchAndPaint(function(){ return "#2f2f2f"; }); }   /* the register: charcoal */
+      /* a club's ledger: purple, which is the app's own colour, so nothing to repaint */
+    }catch(e){}
     /* n27: THE BOARD'S COLOUR, IN THE STYLESHEET TOO. The repainter rewrites inline styles, but the ladder's
        rank badges take their purple from a CSS rule, so on a blue group they stayed OPR purple — the colour is
        how you know which board you are on, so it has to hold everywhere. */
