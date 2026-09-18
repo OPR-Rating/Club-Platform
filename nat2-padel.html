@@ -9734,8 +9734,8 @@ async function clRemove(id, label){
       "#nh .brk{background:#fff;border:1px solid #e6e0ee;border-radius:14px;margin:12px 12px 0;overflow:hidden;box-shadow:0 1px 3px rgba(26,16,48,.05)}"
      +"#nh .brk h2{color:#4a4256}"
      +"#nh .more{color:var(--nhc,#6c3483);background:#fcfbfd}"
-     +"#nh .brk h2{font-size:12.5px;letter-spacing:.08em;text-transform:uppercase;font-weight:800;margin:0;padding:11px 14px 10px}"
-     +"#nh .rows{padding:4px 6px}"
+     +"#nh .brk h2{font-size:12.5px;letter-spacing:.08em;text-transform:uppercase;font-weight:800;margin:0;padding:11px 14px 4px}"
+     +"#nh .rows{padding:2px 6px 4px}"
      +"#nh .row{display:flex;align-items:center;gap:11px;padding:9px 8px;width:100%;background:none;border:none;text-align:left;font:inherit;color:inherit;cursor:pointer}"
      +"#nh .row+.row{border-top:1px solid #efeaf5}"
      +"#nh .av{width:34px;height:34px;border-radius:50%;flex:0 0 34px;display:grid;place-items:center;color:#fff;font-size:12.5px;font-weight:800}"
@@ -9751,24 +9751,22 @@ async function clRemove(id, label){
      +"#nh .tile{background:#fff;border:1px solid #e6e0ee;border-radius:14px;padding:13px}"
      +"#nh .tile .k{font-size:10.5px;letter-spacing:.1em;text-transform:uppercase;color:#6f6780;font-weight:800}"
      +"#nh .tile .v{font-size:23px;font-weight:800;margin-top:5px}#nh .tile .n{font-size:11.5px;color:#6f6780;margin-top:2px}"
-     +"#nh .shaded{background:var(--nhtint,rgba(108,52,131,.07));border-radius:12px}"
+     +"#nh .shaded{background:var(--nhtint,rgba(108,52,131,.07));border-radius:12px;margin:0 2px}"
      +"#nh .shaded .row{border-top:none}"
      +"#nh .fourgrid{display:grid;grid-template-columns:repeat(4,1fr);gap:7px;padding:2px 12px 12px}"
      +"#nh .fourbtn{border:1px solid #e6e0ee;background:#fff;border-radius:12px;padding:10px 3px;font:inherit;font-weight:700;font-size:10.5px;"
      +"cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:8px;line-height:1.25;text-align:center;color:#241d33}"
      +"#nh .fourbtn svg{width:19px;height:19px;stroke:var(--nhc,#6c3483);fill:none;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round}"
-     +"#nh .kind{font-size:11px;letter-spacing:.09em;text-transform:uppercase;color:#8a8196;font-weight:800;padding:9px 8px 2px}"
+     +"#nh .kind{font-size:11px;letter-spacing:.09em;text-transform:uppercase;color:#8a8196;font-weight:800;padding:6px 8px 1px}"
      /* n53: A LAPTOP IS NOT A BIG PHONE. On a wide screen the single column left the page mostly empty, so the
         brackets sit two abreast, the band spreads, and the tiles run four across. Same pieces, more room. */
+     /* n77: A LAPTOP SHOWS THE APP, NOT A SPREAD. Two columns and a 1080px band left everything scattered
+        across a wide screen and nothing lined up with the bar at the foot. The page keeps its own width and
+        sits in the middle, exactly as it does on a phone — one layout to look after, and it reads the same
+        wherever it is opened. */
      +"@media(min-width:880px){"
-     +"#nh{max-width:1080px;padding-bottom:40px}"
-     +"#nh .band{border-radius:0 0 22px 22px;padding:22px 26px 24px}"
-     +"#nh h1{font-size:32px}"
-     +"#nh .tiles{grid-template-columns:repeat(4,1fr);margin:16px 16px 0}"
-     +"#nh .doit{padding:16px 16px 2px;overflow:visible;flex-wrap:wrap}"
-     +"#nh .doit button{flex:0 0 132px}"
-     +"#nh .cols{display:grid;grid-template-columns:1fr 1fr;gap:0 4px;align-items:start}"
-     +"#nh .brk{margin:16px 16px 0}"
+     +"#nh{max-width:560px;padding-bottom:40px}"
+     +"#nh .band{border-radius:0 0 20px 20px}"
      +"}";
     document.head.appendChild(st);
   }
@@ -10568,16 +10566,20 @@ async function clRemove(id, label){
   function homeBar(){
     var C=(W.PLAT.parentId||W.PLAT.cid||0);
     if(!C) return "";
-    var ic={home:'<svg viewBox="0 0 24 24"><path d="M3 11l9-7 9 7"/><path d="M5 10v10h14V10"/></svg>',
-            score:'<svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>',
-            me:'<svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="3.4"/><path d="M5 20c1.2-3.4 4-5 7-5s5.8 1.6 7 5"/></svg>'};
+    var sv='width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"';
+    var ic={home:'<svg '+sv+'><path d="M3 11l9-7 9 7"/><path d="M5 10v10h14V10"/></svg>',
+            score:'<svg '+sv+'><path d="M12 5v14M5 12h14"/></svg>',
+            me:'<svg '+sv+'><circle cx="12" cy="8" r="3.4"/><path d="M5 20c1.2-3.4 4-5 7-5s5.8 1.6 7 5"/></svg>'};
     var b=function(icon,label,href,on){
+      /* n77: the icons had no size of their own, so on a laptop they filled the bar. Sized here, and the
+         stroke takes the row's colour. */
       return '<a href="'+href+'" style="flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;'
-        +'text-decoration:none;color:'+(on?"var(--nhc,#6c3483)":"#7a6f8a")+';font-size:10px;font-weight:700;padding:7px 2px">'+icon+esc(label)+'</a>';
+        +'text-decoration:none;color:'+(on?"var(--nhc,#6c3483)":"#7a6f8a")+';font-size:10px;font-weight:700;padding:8px 2px">'
+        +'<span style="display:block;width:22px;height:22px">'+icon+'</span>'+esc(label)+'</a>';
     };
     return '<div style="height:66px"></div>'
       +'<div id="nhBar" style="position:fixed;left:0;right:0;bottom:0;z-index:60;background:#fff;border-top:1px solid #e6e0ee;'
-      +'box-shadow:0 -2px 12px rgba(26,16,48,.07);display:flex;max-width:520px;margin:0 auto;padding-bottom:env(safe-area-inset-bottom)">'
+      +'box-shadow:0 -2px 12px rgba(26,16,48,.07);display:flex;max-width:560px;margin:0 auto;padding-bottom:env(safe-area-inset-bottom)">'
       + b(ic.home,"Club home",PAGE+"?club="+C,true)
       + b(ic.score,"Enter a score",PAGE+"?club="+W.PLAT.cid+((Number(W.PLAT.cid)===Number(C))?"&board=1":"")+"&go=entry",false)
       + b(ic.me,"My page",PAGE+"?club="+C+"&go=me",false)
@@ -10626,19 +10628,19 @@ async function clRemove(id, label){
     nhFetch().then(function(d){
       nhWindow(d.matches||[]); var wk=(d.matches||[]).filter(function(m){ return ago(m.match_date)<=NHWIN; }).length;
       var mv=nhMovers(d.matches||[]);
-      var row=function(name,col,sub,href){
-        return '<button class="row" onclick="location.href=\''+href+'\'">'
-          +'<span class="av" style="background:'+col+'">'+esc(inits(name))+'</span>'
-          /* n73: the board's name as a full pill in its own colour — as plain text beside the circle it was
-             falling away, and the colour is what tells the boards apart. */
-          +'<span class="nm"><span style="display:block;width:100%;box-sizing:border-box;background:'+col+';color:#fff;font-weight:800;font-size:14px;'
-          +'border-radius:99px;padding:5px 13px;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+esc(name)+'</span>'
-          +'<span style="margin-top:5px">'+esc(sub)+'</span></span>'
-          /* n64: the little \u203a was too quiet to read as "tap here". A round chevron in the board's colour
-           says it plainly, without shouting. */
-        +'<span class="val" style="align-self:flex-start;margin-top:4px"><span style="display:inline-grid;place-items:center;width:30px;height:30px;border-radius:50%;'
-        +'background:'+col+';color:#fff;font-size:15px;font-weight:800;line-height:1">\u203a</span></span></button>';
-      };
+    /* n77: THE THREE PIECES ON ONE LINE. The disc, the pill and the chevron were each aligned to the row's
+       middle while the pill sat above its caption, so nothing lined up. They now share one line and the
+       caption sits beneath, indented to the pill. */
+    var row=function(name,col,sub,href){
+      return '<button class="row" style="flex-wrap:wrap;align-items:center;row-gap:3px" onclick="location.href=\''+href+'\'">'
+        +'<span class="av" style="background:'+col+'">'+esc(inits(name))+'</span>'
+        +'<span style="flex:1;min-width:0;display:block;background:'+col+';color:#fff;font-weight:800;font-size:14px;'
+        +'border-radius:99px;padding:7px 14px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+esc(name)+'</span>'
+        +'<span style="display:inline-grid;place-items:center;width:30px;height:30px;border-radius:50%;flex:0 0 30px;'
+        +'background:'+col+';color:#fff;font-size:16px;font-weight:800;line-height:1">\u203a</span>'
+        +'<span style="flex-basis:100%;padding-left:45px;font-size:12.5px;color:#5f5770">'+esc(sub)+'</span>'
+        +'</button>';
+    };
       /* n63: the club's own row sits on a light shade of its colour, so the eye separates "the club" from
          "its groups" without another heading doing the work. */
       var places='<div class="kind">The club</div>'
@@ -10665,7 +10667,7 @@ async function clRemove(id, label){
         + doorActions(kids)
         /* n76: the matches list scrolls inside itself, so anything under it reads as the end of the page.
            It goes last, with the ledgers and the admin above it. */
-        + '<div class="cols">'+nhFormBrk(d,"#6c3483","club") + nhMoversBrk(d,"#6c3483","club") + nhTourBrk(d)+'</div>' 
+        + '<div class="cols">'+nhFormBrk(d,"#6c3483","club") + nhMoversBrk(d,"#6c3483","club") + nhTourBrk(d) + nhMatchesBrk(d,25,"club")+'</div>' 
         + '<div class="brk"><h2>Ledgers</h2><div class="rows">'
         + '<button class="row" onclick="window.platGoClubLedger('+C+')"><span class="av" style="background:#2f2f2f">\u2261</span>'
         + '<span class="nm"><b>'+esc(W.PLAT.name)+' and All Club Ledgers</b><span>every match at the club \u2014 general play and every group \u00b7 and every registered club</span></span>'
@@ -10679,7 +10681,6 @@ async function clRemove(id, label){
         + '<span class="val"><span style="display:inline-grid;place-items:center;width:28px;height:28px;border-radius:50%;background:#6c3483;color:#fff;font-weight:800">\u203a</span></span></button>'
         + '</div></div>'
         + nhFoot("#3a1d6e","#1d0a41","Club admin")
-        + nhMatchesBrk(d,25,"club")                 /* n76: last, because it scrolls */
         + homeBar();
     });
   }
@@ -10723,9 +10724,9 @@ async function clRemove(id, label){
               +'<div class="n">'+esc(u?("beat a pair rated "+u.gap+" higher"):("none "+nhWhen()))+'</div></div>'; })()
         + '</div>'
         + nhActions(ink,deep)
-        + '<div class="cols">'+nhCharts(d,ink)+nhMoversBrk(d,ink,"board") + nhFormBrk(d,ink,"board") + nhTourBrk(d) + nhCardBrk(d)+'</div>'
+        + '<div class="cols">'+nhCharts(d,ink)+nhMoversBrk(d,ink,"board") + nhFormBrk(d,ink,"board") + nhTourBrk(d) + nhMatchesBrk(d,25,"board") + nhCardBrk(d)+'</div>'
         + nhFoot(ink,deep,"none")   /* n59: admin lives on the club door only */
-        + nhMatchesBrk(d,25,"board")   /* n76: last, because it scrolls inside itself */
+
         + homeBar();
     });
   }
