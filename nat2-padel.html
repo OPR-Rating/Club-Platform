@@ -1061,6 +1061,23 @@ st0.textContent += "html{overflow-y:scroll}";   // p98: the scrollbar's space is
       //                          people who have actually played the sport.
       var here = (function(){ try{ var a=document.querySelector(".screen.active"); return (a&&a.id)||""; }catch(e){ return ""; } })();
       var peopleQuery = /select=(id,)?full_name(,gender)?(,seed_rating)?(,current_rating)?(&|$)/.test(qs) && qs.indexOf("full_name=eq.")<0;
+      /* n67: LOOKING SOMEBODY UP IS NOT THE SAME AS LISTING THEM. When a pair is formed the app checks each
+         name with a full_name=eq. query scoped to the board you are standing on — and a member belongs to the
+         CLUB, appearing in a group only once they have played there. So a member added today could be picked
+         and then refused: "not a registered individual". The check now searches the club and all its boards;
+         the browsing list stays scoped to the board, which is what makes the picker short. */
+      /* n68: THE CHECK MUST REACH AS FAR AS THE PICKER. A member belongs to the club and appears in a group
+         the first time they play there — so scoping this lookup to the board made that first match
+         impossible: the picker offered the name and the check then refused it. Widening it to the club was
+         still not enough, because the picker also finds anyone in the REGISTER by typing, so a guest from
+         another club would hit the same wall. The rule now: the browsing list is scoped to the board (short
+         and local), and a lookup by name searches the whole register. A name the picker can offer is a name
+         the check can find — that is what stops this recurring. */
+      var nameLookup = qs.indexOf("full_name=eq.")>=0;   /* inside the individuals block already */
+      if(nameLookup && CID>0){
+        qs=qs.replace(/club_id=eq\.\d+/g,"pool_id=eq."+P);
+        return "plat_padel_v_pool_individuals?"+qs;
+      }
       if(peopleQuery){
         // "" is boot, before any screen is marked active — the parent loads its player cache then, so the
         // safe default is the register: a picker that is short of names is worse than a list that is long.
@@ -1074,7 +1091,14 @@ st0.textContent += "html{overflow-y:scroll}";   // p98: the scrollbar's space is
              own dozen. A group opens on the group; the club's own board opens on the club and its groups,
              which is right because general play is open to every member. Everyone else in the register is
              still one search away: type three letters and the glue asks for them by name. */
-          if(!pool && W.PLAT.parentId){ swapClub("club_id=eq."+CID); return "plat_padel_v_individuals?"+qs; }
+          /* n67: THE LIST IS NARROW, THE LOOKUP IS WIDE. n64 opened a group's picker on the group's own people,
+             which is right — but the same rule caught the query that CHECKS a name when the pair is formed
+             (it carries full_name=eq.), and a member registered to the club who has not yet played in this
+             group is not in the group's list. So a brand-new member could be picked and then refused with
+             "not a registered individual". A lookup by name searches the whole club; only the browsing list
+             is scoped to the board. */
+          var byName=/full_name=eq\./.test(qs);
+          if(!pool && W.PLAT.parentId && !byName){ swapClub("club_id=eq."+CID); return "plat_padel_v_individuals?"+qs; }
           if(!pool && W.PLAT.myBoards && W.PLAT.myBoards.length){ swapClub("club_id=in.("+W.PLAT.myBoards.join(",")+")"); return "plat_padel_v_individuals?"+qs; }
           swapClub("pool_id=eq."+P); return "plat_padel_v_pool_individuals?"+qs;
         }
@@ -3544,7 +3568,7 @@ const CLUB_NAME = _club.name;  // shown in the logo as "OPR · <name>"
     link.setAttribute('href', href);
   }catch(e){ /* install stays on the static manifest — no functional impact */ }
 })();
-const OPR_VERSION = "OPR-DOUBLES v2026.09.03-56 · NAT fork n66 (no voice) (of PLAT p117)";  // MANUAL PAIR CREATION REMOVED FROM ADMIN: Create a pair, Bulk create pairs and Re-derive all pairs are gone (they only made match-less ghost pairs, and Re-derive rewrote every stored initial club-wide). Pairs are born automatically at match entry. Current pairs list untouched; the underlying JS is left in place unreferenced, so no other code path changes. Includes v47 (set-score fix + double-tap guard) and all prior.
+const OPR_VERSION = "OPR-DOUBLES v2026.09.03-56 · NAT fork n68 (no voice) (of PLAT p117)";  // MANUAL PAIR CREATION REMOVED FROM ADMIN: Create a pair, Bulk create pairs and Re-derive all pairs are gone (they only made match-less ghost pairs, and Re-derive rewrote every stored initial club-wide). Pairs are born automatically at match entry. Current pairs list untouched; the underlying JS is left in place unreferenced, so no other code path changes. Includes v47 (set-score fix + double-tap guard) and all prior.
 // Explanation shown above the individual ladder. Open on load so it's read; collapsible
 // (state kept for the session) and scrolls away. Mechanics only — no outcome framing, so
 // members aren't nudged away from playing stronger opponents. Every clause maps to a real
