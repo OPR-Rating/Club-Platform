@@ -9753,10 +9753,10 @@ async function clRemove(id, label){
      +"#nh .tile .v{font-size:23px;font-weight:800;margin-top:5px}#nh .tile .n{font-size:11.5px;color:#6f6780;margin-top:2px}"
      +"#nh .shaded{background:var(--nhtint,rgba(108,52,131,.07));border-radius:12px}"
      +"#nh .shaded .row{border-top:none}"
-     +"#nh .fourgrid{display:grid;grid-template-columns:1fr 1fr;gap:9px;padding:4px 12px 12px}"
-     +"#nh .fourbtn{border:1px solid #e6e0ee;background:#fff;border-radius:14px;padding:14px 8px;font:inherit;font-weight:700;font-size:13px;"
+     +"#nh .fourgrid{display:grid;grid-template-columns:repeat(4,1fr);gap:7px;padding:2px 12px 12px}"
+     +"#nh .fourbtn{border:1px solid #e6e0ee;background:#fff;border-radius:12px;padding:10px 3px;font:inherit;font-weight:700;font-size:10.5px;"
      +"cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:8px;line-height:1.25;text-align:center;color:#241d33}"
-     +"#nh .fourbtn svg{width:22px;height:22px;stroke:var(--nhc,#6c3483);fill:none;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round}"
+     +"#nh .fourbtn svg{width:19px;height:19px;stroke:var(--nhc,#6c3483);fill:none;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round}"
      +"#nh .kind{font-size:11px;letter-spacing:.09em;text-transform:uppercase;color:#8a8196;font-weight:800;padding:9px 8px 2px}"
      /* n53: A LAPTOP IS NOT A BIG PHONE. On a wide screen the single column left the page mostly empty, so the
         brackets sit two abreast, the band spreads, and the tiles run four across. Same pieces, more room. */
@@ -10013,12 +10013,10 @@ async function clRemove(id, label){
             led:'<svg viewBox="0 0 24 24"><path d="M4 5a2 2 0 0 1 2-2h13v16H6a2 2 0 0 0-2 2V5Z"/><path d="M8 7h7M8 11h7"/></svg>'};
     return '<div class="doit">'
       +'<button class="primary" style="background:linear-gradient(135deg,'+ink+','+deep+')" onclick="window.nhGo(\'entry\')">'+ic.score+'Enter a score</button>'
-      +'<button onclick="window.nhGo(\'card\')">'+ic.card+'Court card</button>'
       +'<button onclick="window.nhGo(\'ladders\')">'+ic.lad+'Ratings &amp; ladders</button>'
-      +'<button onclick="window.nhGo(\'tournaments\')">'+ic.cup+'Tournaments</button>'
       +'<button onclick="window.nhGo(\'profiles\')">'+ic.per+'Profiles</button>'
-      /* n61: the ledgers belong in this row too — from a board you reach the club's whole record, and the
-         register's, without going back out to the door first. */
+      +'<button onclick="window.nhGo(\'card\')">'+ic.card+'Court card</button>'
+      +'<button onclick="window.nhGo(\'tournaments\')">'+ic.cup+'Tournaments</button>'
       +'<button onclick="window.nhGo(\'ledger\')">'+ic.led+'Ledgers</button>'
       +'</div>';
   }
@@ -10565,16 +10563,37 @@ async function clRemove(id, label){
      one asks where: general play, or one of the groups. Tournaments are not among the four because a running
      tournament already announces itself in its own bracket; the court card is what people reach for on the
      night and has to be findable. */
+  /* n76: A FIXED BAR AT THE FOOT. Whatever screen you are on, one thumb reach gets you back to the club's
+     front door — and there is room beside it for the two or three other things worth having always to hand. */
+  function homeBar(){
+    var C=(W.PLAT.parentId||W.PLAT.cid||0);
+    if(!C) return "";
+    var ic={home:'<svg viewBox="0 0 24 24"><path d="M3 11l9-7 9 7"/><path d="M5 10v10h14V10"/></svg>',
+            score:'<svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>',
+            me:'<svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="3.4"/><path d="M5 20c1.2-3.4 4-5 7-5s5.8 1.6 7 5"/></svg>'};
+    var b=function(icon,label,href,on){
+      return '<a href="'+href+'" style="flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;'
+        +'text-decoration:none;color:'+(on?"var(--nhc,#6c3483)":"#7a6f8a")+';font-size:10px;font-weight:700;padding:7px 2px">'+icon+esc(label)+'</a>';
+    };
+    return '<div style="height:66px"></div>'
+      +'<div id="nhBar" style="position:fixed;left:0;right:0;bottom:0;z-index:60;background:#fff;border-top:1px solid #e6e0ee;'
+      +'box-shadow:0 -2px 12px rgba(26,16,48,.07);display:flex;max-width:520px;margin:0 auto;padding-bottom:env(safe-area-inset-bottom)">'
+      + b(ic.home,"Club home",PAGE+"?club="+C,true)
+      + b(ic.score,"Enter a score",PAGE+"?club="+W.PLAT.cid+((Number(W.PLAT.cid)===Number(C))?"&board=1":"")+"&go=entry",false)
+      + b(ic.me,"My page",PAGE+"?club="+C+"&go=me",false)
+      +'</div>';
+  }
   function doorActions(kids){
     var ic={score:'<svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>',
             lad:'<svg viewBox="0 0 24 24"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/></svg>',
             per:'<svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="3.4"/><path d="M5 20c1.2-3.4 4-5 7-5s5.8 1.6 7 5"/></svg>',
             card:'<svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="1.6"/><path d="M3 12h18M12 4v16"/></svg>'};
     var four=[["score","Enter a score","Where did you play?",ic.score],
-              ["ladders","Ratings &amp; ladders","Whose ratings?",ic.lad],
+              ["ladders","Ratings","Whose ratings and ladders?",ic.lad],
               ["profiles","Profiles","Whose members?",ic.per],
               ["card","Court card","Which board\u2019s card?",ic.card]];
-    return '<div class="brk"><h2>What would you like to do?</h2>'
+    /* n76: no sentence, just the four, all in one row */
+    return '<div class="brk"><div class="kind" style="padding:11px 14px 2px">Go to</div>' 
       +'<div class="fourgrid">'
       + four.map(function(f){ return '<button class="fourbtn" onclick="window.doorPick(\''+f[0]+'\')">'+f[3]+esc(f[1]).replace("&amp;","&")+'</button>'; }).join("")
       +'</div><div id="doorWhere" style="display:none;padding:2px 10px 12px"></div></div>';
@@ -10617,7 +10636,7 @@ async function clRemove(id, label){
           +'<span style="margin-top:5px">'+esc(sub)+'</span></span>'
           /* n64: the little \u203a was too quiet to read as "tap here". A round chevron in the board's colour
            says it plainly, without shouting. */
-        +'<span class="val"><span style="display:inline-grid;place-items:center;width:28px;height:28px;border-radius:50%;'
+        +'<span class="val" style="align-self:flex-start;margin-top:4px"><span style="display:inline-grid;place-items:center;width:30px;height:30px;border-radius:50%;'
         +'background:'+col+';color:#fff;font-size:15px;font-weight:800;line-height:1">\u203a</span></span></button>';
       };
       /* n63: the club's own row sits on a light shade of its colour, so the eye separates "the club" from
@@ -10644,7 +10663,9 @@ async function clRemove(id, label){
         + (d.tour?('<span>'+esc(d.tour.name)+' running</span>'):'')+'</div></div>'
         + '<div class="brk"><h2>Where you play</h2><div class="rows">'+places+'</div></div>'
         + doorActions(kids)
-        + '<div class="cols">'+nhFormBrk(d,"#6c3483","club") + nhMoversBrk(d,"#6c3483","club") + nhTourBrk(d) + nhMatchesBrk(d,25,"club")+'</div>'   /* n59 */ 
+        /* n76: the matches list scrolls inside itself, so anything under it reads as the end of the page.
+           It goes last, with the ledgers and the admin above it. */
+        + '<div class="cols">'+nhFormBrk(d,"#6c3483","club") + nhMoversBrk(d,"#6c3483","club") + nhTourBrk(d)+'</div>' 
         + '<div class="brk"><h2>Ledgers</h2><div class="rows">'
         + '<button class="row" onclick="window.platGoClubLedger('+C+')"><span class="av" style="background:#2f2f2f">\u2261</span>'
         + '<span class="nm"><b>'+esc(W.PLAT.name)+' and All Club Ledgers</b><span>every match at the club \u2014 general play and every group \u00b7 and every registered club</span></span>'
@@ -10657,7 +10678,9 @@ async function clRemove(id, label){
         + '<span>'+(meName()?"your rating, form, partnerships and matches":"tap your name once and this becomes your home page")+'</span></span>'
         + '<span class="val"><span style="display:inline-grid;place-items:center;width:28px;height:28px;border-radius:50%;background:#6c3483;color:#fff;font-weight:800">\u203a</span></span></button>'
         + '</div></div>'
-        + nhFoot("#3a1d6e","#1d0a41","Club admin");   /* the one way in */
+        + nhFoot("#3a1d6e","#1d0a41","Club admin")
+        + nhMatchesBrk(d,25,"club")                 /* n76: last, because it scrolls */
+        + homeBar();
     });
   }
 
@@ -10700,8 +10723,10 @@ async function clRemove(id, label){
               +'<div class="n">'+esc(u?("beat a pair rated "+u.gap+" higher"):("none "+nhWhen()))+'</div></div>'; })()
         + '</div>'
         + nhActions(ink,deep)
-        + '<div class="cols">'+nhCharts(d,ink)+nhMoversBrk(d,ink,"board") + nhFormBrk(d,ink,"board") + nhTourBrk(d) + nhMatchesBrk(d,25,"board") + nhCardBrk(d)+'</div>'
-        + nhFoot(ink,deep,"none");   /* n59: admin lives on the club door only */
+        + '<div class="cols">'+nhCharts(d,ink)+nhMoversBrk(d,ink,"board") + nhFormBrk(d,ink,"board") + nhTourBrk(d) + nhCardBrk(d)+'</div>'
+        + nhFoot(ink,deep,"none")   /* n59: admin lives on the club door only */
+        + nhMatchesBrk(d,25,"board")   /* n76: last, because it scrolls inside itself */
+        + homeBar();
     });
   }
   /* What has just been played, across the whole club — the door's own short list. */
@@ -12312,7 +12337,7 @@ async function clRemove(id, label){
     var b=document.getElementById("platSessBody"); if(!b) return;
     var open=SESS.open.filter(function(s){ return (s.courts||[]).some(function(k){return k.status==="open";}); });
     if(!open.length){
-      b.innerHTML='<div class="empty-state"><div class="icon">\ud83c\udfbe</div><p>No courts in play. Make tonight\u2019s courts, or enter a match without a session.</p></div>'
+      b.innerHTML='<div class="empty-state"><div class="icon" style="font-size:30px;line-height:1">\u25A6</div><p>Create future matches \u2014 set tonight\u2019s courts and who is on them, then the scores come back to the card.</p></div>'
         +'<button class="btn btn-primary" onclick="window.platSessMake()">Make tonight\u2019s courts</button>'
         +'<button class="btn btn-secondary" style="margin-top:8px" onclick="window.platSessPlain()">&larr; Back</button>';
       return;
@@ -12359,7 +12384,7 @@ async function clRemove(id, label){
   }
   W.platSessShare=function(id){
     var s=SESS.open.find(function(x){return x.id===id;}); if(!s) return;
-    var c=cardLines(s), t="\ud83c\udfbe "+c.head+"\n\n";
+    var c=cardLines(s), t=c.head+"\n\n";
     c.matched.forEach(function(k){ t+="Court "+(k.court_no||"")+":  "+k.t1p1+" & "+k.t1p2+"  v  "+k.t2p1+" & "+k.t2p2+"\n"; });
     if(c.loose.length){ t+="\nStill to be matched:\n"; c.loose.forEach(function(k){ t+="  "+k.t1p1+" & "+k.t1p2+"\n"; }); }
     t+="\nEnter your score in the app: "+location.origin+location.pathname+"?club="+W.PLAT.cid;
@@ -12514,7 +12539,7 @@ async function clRemove(id, label){
             wrap.innerHTML='<div style="font-size:11.5px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;color:#8a7f9c;margin:0 0 8px;text-align:center">Or use a court card</div>';
             var mk=function(label,fn){ var b=document.createElement("button"); b.type="button"; b.className="btn"; b.textContent=label;
               b.style.cssText="margin-top:8px;background:rgba("+sessRgb()+",.10);color:"+darken(sessCol(),0.25)+";border:2px solid "+sessCol()+";font-weight:800"; b.onclick=fn; return b; };
-            wrap.appendChild(mk("\ud83c\udfbe Create a court card", function(){ sessScreen(); W.showScreen("platSessScreen"); W.platSessMake(); }));
+            wrap.appendChild(mk("Create future matches", function(){ sessScreen(); W.showScreen("platSessScreen"); W.platSessMake(); }));
             wrap.appendChild(mk("\u271a Enter a court result", function(){ sessScreen(); W.showScreen("platSessScreen"); W.platSessOpen(); }));
             host.appendChild(wrap);
           }
