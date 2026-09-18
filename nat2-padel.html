@@ -3531,7 +3531,7 @@ const CLUB_NAME = _club.name;  // shown in the logo as "OPR · <name>"
     link.setAttribute('href', href);
   }catch(e){ /* install stays on the static manifest — no functional impact */ }
 })();
-const OPR_VERSION = "OPR-DOUBLES v2026.09.03-56 · NAT fork n50 (no voice) (of PLAT p117)";  // MANUAL PAIR CREATION REMOVED FROM ADMIN: Create a pair, Bulk create pairs and Re-derive all pairs are gone (they only made match-less ghost pairs, and Re-derive rewrote every stored initial club-wide). Pairs are born automatically at match entry. Current pairs list untouched; the underlying JS is left in place unreferenced, so no other code path changes. Includes v47 (set-score fix + double-tap guard) and all prior.
+const OPR_VERSION = "OPR-DOUBLES v2026.09.03-56 · NAT fork n51 (no voice) (of PLAT p117)";  // MANUAL PAIR CREATION REMOVED FROM ADMIN: Create a pair, Bulk create pairs and Re-derive all pairs are gone (they only made match-less ghost pairs, and Re-derive rewrote every stored initial club-wide). Pairs are born automatically at match entry. Current pairs list untouched; the underlying JS is left in place unreferenced, so no other code path changes. Includes v47 (set-score fix + double-tap guard) and all prior.
 // Explanation shown above the individual ladder. Open on load so it's read; collapsible
 // (state kept for the session) and scrolls away. Mechanics only — no outcome framing, so
 // members aren't nudged away from playing stronger opponents. Every clause maps to a real
@@ -9721,20 +9721,25 @@ async function clRemove(id, label){
 
      +"#homeScreen{overflow:hidden}"
      +"#nh .band{color:#fff;padding:15px 16px 18px;position:sticky;top:0;z-index:20;overflow:hidden;border-radius:0 0 18px 18px}"
-     +"#nh .band.opr{background:url('./header_bg2.png') center/cover,linear-gradient(105deg,#1d0a41,#5b17ac 52%,#047fdd)}"
+     +"#nh .band.opr{background:url('./header_bg2.png') center top/cover,linear-gradient(105deg,#1d0a41,#5b17ac 52%,#047fdd)}"
      +"#nh .mark{display:inline-flex;align-items:center;gap:9px;font-size:11px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;opacity:.95}"
      +"#nh .mark .logo{font-size:17px;letter-spacing:.06em;text-transform:none;background:rgba(255,255,255,.14);border:1px solid rgba(255,255,255,.34);border-radius:9px;padding:2px 9px}"
      +"#nh h1{font-size:25px;line-height:1.1;margin:9px 0 3px;font-weight:800}"
      +"#nh .sub{font-size:12.5px;opacity:.88}"
      +"#nh .pulse{display:flex;gap:7px;flex-wrap:wrap;margin-top:11px}"
-     +"#nh .pulse span,#nh .pulse a{background:rgba(255,255,255,.16);border:1px solid rgba(255,255,255,.3);border-radius:99px;padding:5px 11px;font-size:12px;font-weight:700;color:#fff;text-decoration:none}"
+     /* n78: the only two numbers on the banner were ghosts on the gradient. One lime for what is live, one
+        white for what is on record, and the way back stays quiet. */
+     +"#nh .pulse span,#nh .pulse a{border-radius:99px;padding:6px 12px;font-size:12px;font-weight:800;text-decoration:none;border:none}"
+     +"#nh .pulse span{background:rgba(255,255,255,.93);color:#2b2337}"
+     +"#nh .pulse .live{background:#c4e000;color:#1a1a1a}"
+     +"#nh .pulse a{background:rgba(255,255,255,.18);border:1px solid rgba(255,255,255,.45);color:#fff}"
      +/* n60: the page was white cards and grey type, which read as unfinished rather than calm. Each bracket now
    carries a thin edge in the board's colour and a tinted heading strip, so the page belongs to the group you
    are standing in. The tint is the same colour at 7%, so it never fights the numbers. */
       "#nh .brk{background:#fff;border:1px solid #e6e0ee;border-radius:14px;margin:12px 12px 0;overflow:hidden;box-shadow:0 1px 3px rgba(26,16,48,.05)}"
      +"#nh .brk h2{color:#4a4256}"
      +"#nh .more{color:var(--nhc,#6c3483);background:#fcfbfd}"
-     +"#nh .brk h2{font-size:12.5px;letter-spacing:.08em;text-transform:uppercase;font-weight:800;margin:0;padding:11px 14px 4px}"
+     +"#nh .brk h2{font-size:13px;letter-spacing:.05em;text-transform:uppercase;font-weight:800;color:#5b2d8e;margin:0;padding:12px 14px 5px}"
      +"#nh .rows{padding:2px 6px 4px}"
      +"#nh .row{display:flex;align-items:center;gap:11px;padding:9px 8px;width:100%;background:none;border:none;text-align:left;font:inherit;color:inherit;cursor:pointer}"
      +"#nh .row+.row{border-top:1px solid #efeaf5}"
@@ -9757,7 +9762,14 @@ async function clRemove(id, label){
      +"#nh .fourbtn{border:1px solid #e6e0ee;background:#fff;border-radius:12px;padding:10px 3px;font:inherit;font-weight:700;font-size:10.5px;"
      +"cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:8px;line-height:1.25;text-align:center;color:#241d33}"
      +"#nh .fourbtn svg{width:19px;height:19px;stroke:var(--nhc,#6c3483);fill:none;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round}"
-     +"#nh .kind{font-size:11px;letter-spacing:.09em;text-transform:uppercase;color:#8a8196;font-weight:800;padding:6px 8px 1px}"
+     /* n79: the five figures never had their styles in the app — only in the standalone preview — so they
+        rendered as raw text on a real member page. */
+     +"#nh .five{display:grid;grid-template-columns:repeat(5,1fr);gap:7px;margin:12px 12px 0}"
+     +"#nh .fig{background:#fff;border:1px solid #e6e0ee;border-radius:12px;padding:10px 4px;text-align:center}"
+     +"#nh .fig b{display:block;font-size:16px;font-weight:800;color:var(--nhc,#6c3483)}"
+     +"#nh .fig span{display:block;font-size:9.5px;color:#6f6780;margin-top:3px;line-height:1.2}"
+     +"@media(max-width:430px){#nh .five{grid-template-columns:repeat(3,1fr)}}"
+     +"#nh .kind{font-size:11.5px;letter-spacing:.07em;text-transform:uppercase;color:#7a6f8a;font-weight:800;padding:6px 8px 1px}"
      /* n53: A LAPTOP IS NOT A BIG PHONE. On a wide screen the single column left the page mostly empty, so the
         brackets sit two abreast, the band spreads, and the tiles run four across. Same pieces, more room. */
      /* n77: A LAPTOP SHOWS THE APP, NOT A SPREAD. Two columns and a 1080px band left everything scattered
@@ -10384,8 +10396,21 @@ async function clRemove(id, label){
             donut:{cW:cW,ccW:ccW,ccL:ccL,cL:cL}, recentN:recentN, recent:Math.round(recent)};
   }
 
+  /* n79: NO MATCHES DOES NOT CHANGE THE LAYOUT. A new member used to lose the chart, the partnerships and
+     the matches — three quarters of their page — which is exactly when somebody is looking hardest to see
+     what they have joined. Every bracket stays; each says plainly that it fills with the first match. */
+  function meEmpty(msg){
+    return '<div style="padding:10px 14px 16px;font-size:12.5px;color:#5f5770;line-height:1.55">'+esc(msg)+'</div>';
+  }
   function meChartBlock(me,st,all){
-    if(!st.matches.length) return "";
+    if(!st.matches.length){
+      return '<div style="margin:12px 12px 0">'
+        +'<button type="button" disabled style="width:100%;text-align:left;background:#f6f0fa;border:1.5px solid #e6ddec;border-radius:10px;'
+        +'padding:11px 14px;font-size:14px;font-weight:800;color:#a79ab5;font-family:inherit">\u25B8 Chart Snapshot</button>'
+        + meEmpty("Your chart is drawn from the matches you play \u2014 win rate, the close ones, who you play against, "
+          +"how steady you are and which way you are going. It appears with your first result.")
+        +'</div>';
+    }
     var A=meAxes(me,st,all), d=A.donut;
     var key=function(c,t,v){ return '<span><span style="display:inline-block;width:8px;height:8px;background:'+c+';border-radius:2px"></span> '+t+' '+v+'</span>'; };
     return '<div style="margin:12px 12px 0">'
@@ -10461,8 +10486,17 @@ async function clRemove(id, label){
         h+='<div class="brk"><h2>My rating \u00b7 '+st.trail.length+' rated matches</h2><div style="padding:4px 14px 14px">'
           + nhChart(nhAsRatings(st.trail,rating), col, rating?("now "+rating):null)
           +'</div></div>';
+      } else {
+        h+='<div class="brk"><h2>My rating</h2>'
+          + meEmpty("You start on "+(rating||"your seed")+". The line shows where it goes \u2014 it begins with your first match.")
+          +'</div>';
       }
 
+      if(!st.partners.length){
+        h+='<div class="brk"><h2>My partnerships</h2>'
+          + meEmpty("Every pair you play in gets its own rating and its own history. Your first match makes the first one.")
+          +'</div>';
+      }
       if(st.partners.length){
         h+='<div class="brk"><h2>My partnerships \u00b7 '+st.partners.length+'</h2>'
           +'<div class="rows" style="max-height:330px;overflow-y:auto">'
@@ -10475,6 +10509,11 @@ async function clRemove(id, label){
           +'</div><div style="padding:8px 14px 12px;font-size:12px;color:#5f5770">Tap a partnership for every match you have played together, with the set scores.</div></div>';
       }
 
+      if(!st.matches.length){
+        h+='<div class="brk">'+nhLimeBar("My recent matches")
+          + meEmpty("Nothing yet. Enter a score and it appears here \u2014 your pair first, the score your way round.")
+          +'</div>';
+      }
       if(st.matches.length){
         h+='<div class="brk">'+nhLimeBar("My recent matches")
           +'<div class="rows" style="max-height:340px;overflow-y:auto">'
@@ -10585,6 +10624,38 @@ async function clRemove(id, label){
       + b(ic.me,"My page",PAGE+"?club="+C+"&go=me",false)
       +'</div>';
   }
+  /* n78: THE LAST MATCH, AS A RIBBON. A door that says what happened here last night is a club; one that
+     lists its own sections is a contents page. Initials in the board's colour for now — real faces once
+     members claim their names and add a photo, which the claim already supports. */
+  function lastMatchRibbon(d){
+    var m=(d.matches||[])[0]; if(!m) return "";
+    var who=[m.t1p1,m.t1p2,m.t2p1,m.t2p2].filter(Boolean).join(" & ").split(" & ")
+      .map(function(x){ return x.trim(); }).filter(Boolean).slice(0,4);
+    var bd=(W.PLAT.clubs||[]).find(function(c){ return Number(c.id)===Number(m.club_id); });
+    var col=(bd&&bd.colour)||"#6c3483";
+    var ag=ago(m.match_date), when=(ag<1)?"today":((ag<2)?"yesterday":(Math.round(ag)+" days ago"));
+    var score=String(m.set_scores||"").trim() || ((m.t1_sets!=null)?(m.t1_sets+"\u2013"+m.t2_sets):"");
+    return '<div class="brk" style="display:flex;align-items:center;gap:11px;padding:11px 13px">'
+      +'<div style="font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:#8a8196;font-weight:800;line-height:1.3;flex:0 0 auto">Last<br>match</div>'
+      +'<div style="display:flex;flex:0 0 auto">'
+      + who.map(function(n,i){ return '<span style="width:30px;height:30px;border-radius:50%;background:'+col+';color:#fff;display:grid;'
+          +'place-items:center;font-size:11px;font-weight:800;border:2px solid #fff;margin-left:'+(i?"-9px":"0")+'">'+esc(inits(n))+'</span>'; }).join("")
+      +'</div>'
+      +'<div style="flex:1;min-width:0;text-align:right">'
+      +'<div style="font-size:16px;font-weight:800;letter-spacing:-.2px">'+esc(score)+'</div>'
+      +'<div style="font-size:11.5px;color:#5f5770;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'
+      +(bd?('<span style="color:'+col+';font-weight:700">'+esc(bd.name)+'</span> \u00b7 '):'')+esc(when)+'</div></div></div>';
+  }
+  /* n78: a board's own count, in its own colour, with a lime pip when something happened today. A live board
+     glows and a quiet one stays quiet — and it is counting real matches, not a mood. */
+  function boardPulse(id,col,matches){
+    var ms=(matches||[]).filter(function(m){ return Number(m.club_id)===Number(id); });
+    if(!ms.length) return '<span style="font-size:11.5px;color:#8a8196">no matches yet</span>';
+    var today=ms.filter(function(m){ return ago(m.match_date)<1; }).length;
+    return '<span style="font-size:13.5px;font-weight:800;color:'+col+'">'+ms.length+'</span>'
+      +'<span style="font-size:11px;color:#8a8196;margin-left:3px">matches</span>'
+      +(today?('<span style="display:inline-block;background:#c4e000;color:#1a1a1a;border-radius:99px;padding:2px 7px;font-size:10.5px;font-weight:800;margin-left:6px">'+today+' today</span>'):'');
+  }
   function doorActions(kids){
     var ic={score:'<svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>',
             lad:'<svg viewBox="0 0 24 24"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/></svg>',
@@ -10595,10 +10666,12 @@ async function clRemove(id, label){
               ["profiles","Profiles","Whose members?",ic.per],
               ["card","Court card","Which board\u2019s card?",ic.card]];
     /* n76: no sentence, just the four, all in one row */
-    return '<div class="brk"><div class="kind" style="padding:11px 14px 2px">Go to</div>' 
+    /* n80: FOUR IN ONE ROW, as asked for. The lime primary and three beneath was my own change and it undid
+       the one-row layout from an hour earlier; the row is what a thumb reaches across. */
+    return '<div class="brk"><div class="kind" style="padding:11px 14px 2px">Go to</div>'
       +'<div class="fourgrid">'
       + four.map(function(f){ return '<button class="fourbtn" onclick="window.doorPick(\''+f[0]+'\')">'+f[3]+esc(f[1]).replace("&amp;","&")+'</button>'; }).join("")
-      +'</div><div id="doorWhere" style="display:none;padding:2px 10px 12px"></div></div>';
+      +'</div><div id="doorWhere" style="display:none;padding:2px 12px 14px"></div></div>';
   }
   W.doorPick=function(what){
     var box=document.getElementById("doorWhere"); if(!box) return;
@@ -10631,14 +10704,16 @@ async function clRemove(id, label){
     /* n77: THE THREE PIECES ON ONE LINE. The disc, the pill and the chevron were each aligned to the row's
        middle while the pill sat above its caption, so nothing lined up. They now share one line and the
        caption sits beneath, indented to the pill. */
-    var row=function(name,col,sub,href){
+    var row=function(name,col,sub,href,pulse){
       return '<button class="row" style="flex-wrap:wrap;align-items:center;row-gap:3px" onclick="location.href=\''+href+'\'">'
         +'<span class="av" style="background:'+col+'">'+esc(inits(name))+'</span>'
         +'<span style="flex:1;min-width:0;display:block;background:'+col+';color:#fff;font-weight:800;font-size:14px;'
         +'border-radius:99px;padding:7px 14px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+esc(name)+'</span>'
         +'<span style="display:inline-grid;place-items:center;width:30px;height:30px;border-radius:50%;flex:0 0 30px;'
         +'background:'+col+';color:#fff;font-size:16px;font-weight:800;line-height:1">\u203a</span>'
-        +'<span style="flex-basis:100%;padding-left:45px;font-size:12.5px;color:#5f5770">'+esc(sub)+'</span>'
+        +'<span style="flex-basis:100%;padding-left:45px;display:flex;align-items:center;gap:8px;font-size:12.5px;color:#5f5770">'
+        +'<span style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+esc(sub)+'</span>'
+        +'<span style="flex:0 0 auto;white-space:nowrap">'+(pulse||"")+'</span></span>'
         +'</button>';
     };
       /* n63: the club's own row sits on a light shade of its colour, so the eye separates "the club" from
@@ -10647,22 +10722,23 @@ async function clRemove(id, label){
         /* the shade is a background on the row itself, not a box around it — a box added padding and pushed
            the avatar and the chevron out of line with the groups below. */
         + '<div class="shaded">'
-        + row(W.PLAT.name+" \u2014 general play", "#6c3483", "Open to every member \u00b7 matches outside the groups", PAGE+"?club="+C+"&board=1")
+        + row(W.PLAT.name+" \u2014 general play", "#6c3483", "Open to every member \u00b7 matches outside the groups", PAGE+"?club="+C+"&board=1", boardPulse(C,"#6c3483",d.matches))
         + '</div>';
       if(kids.length){
         places+='<div class="kind">Groups \u00b7 each runs itself</div>';
         kids.forEach(function(g){
           var n=(d.matches||[]).filter(function(m){ return Number(m.club_id)===Number(g.id); }).length;
-          places+=row(g.name, clubPal(g.id)[0], n?(n+" recent "+(n===1?"match":"matches")):"its own board, ladder and card", PAGE+"?club="+g.id);
+          places+=row(g.name, clubPal(g.id)[0], "its own board, ladder and card", PAGE+"?club="+g.id, boardPulse(g.id,clubPal(g.id)[0],d.matches));
         });
       }
       w.innerHTML =
         '<div class="band opr"><div class="mark"><span class="logo">OPR</span>Open Padel Ratings</div>'
         + '<h1>'+esc(W.PLAT.name||"")+'</h1>'
         + '<div class="sub">'+esc(W.PLAT.poolName||"")+'</div>'
-        + '<div class="pulse"><span>'+wk+(wk===1?' match':' matches')+' this week</span>'
+        + '<div class="pulse"><span class="live">'+wk+(wk===1?' match':' matches')+' this week</span>'
         + '<span>'+((d.pairs||[]).length)+' pairs on record</span>'   /* n59: nobody named in the band */
         + (d.tour?('<span>'+esc(d.tour.name)+' running</span>'):'')+'</div></div>'
+        + lastMatchRibbon(d)
         + '<div class="brk"><h2>Where you play</h2><div class="rows">'+places+'</div></div>'
         + doorActions(kids)
         /* n76: the matches list scrolls inside itself, so anything under it reads as the end of the page.
@@ -10709,7 +10785,7 @@ async function clRemove(id, label){
         + '<h1>'+esc(W.PLAT.name||"")+'</h1>'
         + '<div class="sub">'+(W.PLAT.parentId?"Its own board, ladder, tournaments and court cards":"Open to every member \u2014 matches outside the groups")+'</div>'
         + '<div class="pulse">'+(club?('<a href="'+PAGE+'?club='+club.id+'">\u2039 '+esc(club.name)+'</a>'):'')
-        + '<span>'+wk+(wk===1?' match':' matches')+' '+nhWhen()+'</span>'
+        + '<span class="live">'+wk+(wk===1?' match':' matches')+' '+nhWhen()+'</span>'
         /* n58: no mover named in the band — it repeated the same person on every screen. A count instead. */
         + '<span>'+((d.matches||[]).length)+' on record</span>'+'</div></div>'
         /* n52: four tiles, as the place page had before — top pair and biggest move are the two people read */
