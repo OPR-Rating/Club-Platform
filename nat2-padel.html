@@ -955,7 +955,7 @@ st0.textContent += "html{overflow-y:scroll}";   // p98: the scrollbar's space is
     var p = CID ? _fetch(PLAT+"/rest/v1/plat_clubs?id=eq."+CID+"&select=id,pool_id,name,colour,is_general",{headers:hdrs()}).then(function(r){return r.json();}).then(function(rows){ var c=rows&&rows[0]; if(c){ W.PLAT.pool=c.pool_id; W.PLAT.name=c.name; W.PLAT.colour=c.colour||""; try{ sessionStorage.setItem("plat_padel_name_"+CID,c.name); }catch(e){} } })
                 : Promise.resolve();
     return p.then(function(){ if(!W.PLAT.pool) return; return Promise.all([
-        _fetch(PLAT+"/rest/v1/plat_clubs?pool_id=eq."+W.PLAT.pool+"&select=id,name,colour,is_general&order=id",{headers:hdrs()}).then(function(r){return r.json();}).then(function(rows){ W.PLAT.clubs=Array.isArray(rows)?rows:[]; }),
+        _fetch(PLAT+"/rest/v1/plat_clubs?pool_id=eq."+W.PLAT.pool+"&select=id,name,colour,is_general,options&order=id",{headers:hdrs()}).then(function(r){return r.json();}).then(function(rows){ W.PLAT.clubs=Array.isArray(rows)?rows:[]; }),
         _fetch(PLAT+"/rest/v1/plat_pools?id=eq."+W.PLAT.pool+"&select=name,org_id",{headers:hdrs()}).then(function(r){return r.json();}).then(function(rows){ W.PLAT.poolName=(rows&&rows[0]&&rows[0].name)||""; W.PLAT.orgId=(rows&&rows[0]&&rows[0].org_id)||0; })
       ]); })
       // NAT: which board belongs to which club — the one new fact, read from the one new table
@@ -3538,7 +3538,7 @@ const CLUB_NAME = _club.name;  // shown in the logo as "OPR · <name>"
     link.setAttribute('href', href);
   }catch(e){ /* install stays on the static manifest — no functional impact */ }
 })();
-const OPR_VERSION = "OPR-DOUBLES v2026.09.03-56 · NAT fork n56 (no voice) (of PLAT p117)";  // MANUAL PAIR CREATION REMOVED FROM ADMIN: Create a pair, Bulk create pairs and Re-derive all pairs are gone (they only made match-less ghost pairs, and Re-derive rewrote every stored initial club-wide). Pairs are born automatically at match entry. Current pairs list untouched; the underlying JS is left in place unreferenced, so no other code path changes. Includes v47 (set-score fix + double-tap guard) and all prior.
+const OPR_VERSION = "OPR-DOUBLES v2026.09.03-56 · NAT fork n61 (no voice) (of PLAT p117)";  // MANUAL PAIR CREATION REMOVED FROM ADMIN: Create a pair, Bulk create pairs and Re-derive all pairs are gone (they only made match-less ghost pairs, and Re-derive rewrote every stored initial club-wide). Pairs are born automatically at match entry. Current pairs list untouched; the underlying JS is left in place unreferenced, so no other code path changes. Includes v47 (set-score fix + double-tap guard) and all prior.
 // Explanation shown above the individual ladder. Open on load so it's read; collapsible
 // (state kept for the session) and scrolls away. Mechanics only — no outcome framing, so
 // members aren't nudged away from playing stronger opponents. Every clause maps to a real
@@ -9247,7 +9247,7 @@ async function clRemove(id, label){
   function goClubLedger(id){ try{ sessionStorage.setItem("plat_from_door_padel",String(W.PLAT.pool)); }catch(e){} location.href=PAGE+"?club=0&pool="+W.PLAT.pool+"&nat="+id; }
   W.platGoBoard=goBoard; W.platGoClubLedger=goClubLedger;
   /* p3 LANDING: hero + one button per club (+ Overall); the rest of the home screen is hidden. */
-  var PAL=[["#6c3483","#3a1d6e"],["#1f7a8c","#0f4c5c"],["#b5651d","#7a3e0a"],["#2e7d32","#1b4d1e"],["#c2185b","#7b1040"],["#455a64","#263238"],["#8e24aa","#4a148c"]];
+  var PAL=[["#7c3aed","#4c1d95"],["#0891b2","#0e5a6b"],["#ea580c","#9a3412"],["#16a34a","#14532d"],["#db2777","#831843"],["#475569","#1e293b"],["#2563eb","#1e3a8a"]];
   var LEDGER=["#1a1a1a","#3d3d3d"];
   function darken(hex,f){ try{ var n=parseInt(hex.slice(1),16), r=(n>>16)&255,gg=(n>>8)&255,b=n&255;
     var d=function(x){ return Math.max(0,Math.round(x*(1-f))); };
@@ -9260,7 +9260,9 @@ async function clRemove(id, label){
   // olive, gold, amber, red, magenta, slate — instead of the old set, which had two purples, two pinks
   // and two greens close enough to confuse. Every one clears 4.5:1 against white text, so a group name
   // reads on its own pill.
-  var SWATCH=["#6c3483","#283593","#1565c0","#00838f","#00695c","#2e7d32","#4e802b","#827717","#ae611c","#c62828","#ad1457","#455a64"];
+  /* n89: a brighter set. Every one still carries white text on a pill — the pills are the reason the colours
+     cannot go pastel — but these have far more life than the old museum range. */
+  var SWATCH=["#7c3aed","#2563eb","#0ea5e9","#0891b2","#059669","#16a34a","#65a30d","#d97706","#ea580c","#dc2626","#db2777","#475569"];
   function clubPill(c,small){ var p=clubPal(c.id); c=(natMode()&&isClubWithKids(c.id))?{id:c.id,name:"General play"}:c;   /* n3 */ return '<span style="display:inline-block;background:'+p[0]+';color:#fff;border-radius:99px;padding:'+(small?'1px 7px':'2px 9px')+';font-size:'+(small?'9.5px':'11px')+';font-weight:700;margin:2px 3px 0 0;white-space:nowrap;vertical-align:middle">'+esc(c.name)+'</span>'; }
   var BALL='<svg viewBox="0 0 100 100" width="30" height="30" xmlns="http://www.w3.org/2000/svg" style="filter:drop-shadow(0 0 6px rgba(196,224,0,.5))"><circle cx="50" cy="50" r="46" fill="url(#bg1)" stroke="#7da300" stroke-width="1"/><path d="M18 18 Q50 50 18 82" fill="none" stroke="#fbfff0" stroke-width="4" stroke-linecap="round"/><path d="M82 18 Q50 50 82 82" fill="none" stroke="#fbfff0" stroke-width="4" stroke-linecap="round"/><ellipse cx="40" cy="32" rx="14" ry="9" fill="rgba(255,255,255,0.35)"/></svg>';
   function landing(){
@@ -9739,7 +9741,7 @@ async function clRemove(id, label){
         white for what is on record, and the way back stays quiet. */
      +"#nh .pulse span,#nh .pulse a{border-radius:99px;padding:6px 12px;font-size:12px;font-weight:800;text-decoration:none;border:none}"
      +"#nh .pulse span{background:rgba(255,255,255,.93);color:#2b2337}"
-     +"#nh .pulse .live{background:#c4e000;color:#1a1a1a}"
+     +"#nh .pulse .live{background:#d4f425;color:#1a1a1a}"
      +"#nh .pulse a{background:rgba(255,255,255,.18);border:1px solid rgba(255,255,255,.45);color:#fff}"
      +/* n60: the page was white cards and grey type, which read as unfinished rather than calm. Each bracket now
    carries a thin edge in the board's colour and a tinted heading strip, so the page belongs to the group you
@@ -9771,7 +9773,7 @@ async function clRemove(id, label){
      +"cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:8px;line-height:1.25;text-align:center;color:#241d33}"
      +"#nh .fourbtn svg{width:19px;height:19px;stroke:var(--nhc,#6c3483);fill:none;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round}"
      /* n84: the one thing people came to do wears the lime */
-     +"#nh .fourbtn.lime{background:linear-gradient(135deg,#c4e000,#a9c900);border-color:transparent;color:#1a1a1a}"
+     +"#nh .fourbtn.lime{background:linear-gradient(135deg,#d4f425,#a9c900);border-color:transparent;color:#1a1a1a}"
      +"#nh .fourbtn.lime svg{stroke:#1a1a1a;stroke-width:2.2}"
      /* n79: the five figures never had their styles in the app — only in the standalone preview — so they
         rendered as raw text on a real member page. */
@@ -9846,7 +9848,7 @@ async function clRemove(id, label){
       + hot.map(function(p){
           var col=p.club_id?clubPal(p.club_id)[0]:ink;
           return '<div class="row">'
-          +'<span class="av" style="background:'+col+'">'+esc(inits(p.name))+'</span>'
+          + nhFace(halves(p.name).filter(function(x){ return (FACES||{})[x]; })[0] || p.name, col, 34)
           +'<span class="nm"><b>'+esc(p.name)+'</b><span>'+p.pct+'% of sets won</span></span>'
           +'<span class="val"><b class="'+(p.move>=0?"up":"dn")+'">'+(p.move>0?"+":"")+p.move+'</b><span>since start</span></span></div>'; }).join("")
       +'</div><button class="more" onclick="window.nhGo(\'ladders\')">Ratings and ladders \u2192</button></div>';
@@ -9959,7 +9961,7 @@ async function clRemove(id, label){
   }
   /* n65: the app's own lime bar over a list that scrolls inside its own box */
   function nhLimeBar(label){
-    return '<div style="background:#c4e000;color:#1a1a1a;font-weight:800;font-size:13px;letter-spacing:.02em;'
+    return '<div style="background:#d4f425;color:#1a1a1a;font-weight:800;font-size:13px;letter-spacing:.02em;'
       +'text-align:center;padding:10px 12px;border-bottom:1px solid rgba(0,0,0,.12)">'+esc(label)+'</div>';
   }
   /* n84: RECENT MATCHES, AS PLAT WRITES THEM. Date, match type, the S badge and a triangle; the names with
@@ -9974,7 +9976,7 @@ async function clRemove(id, label){
     var ev=String(m.event||"").trim(), low=ev.toLowerCase();
     var isLadder=(low==="ladder match");
     var isTour=(ev!=="" && low!=="social" && !isLadder);
-    if(isLadder) return '<span style="background:#c4e000;color:#2a3000;font-size:9px;font-weight:700;padding:1px 5px;border-radius:4px;margin-left:4px">L</span>';
+    if(isLadder) return '<span style="background:#d4f425;color:#2a3000;font-size:9px;font-weight:700;padding:1px 5px;border-radius:4px;margin-left:4px">L</span>';
     if(isTour)   return '<span style="background:#6c3483;color:#fff;font-size:9px;font-weight:700;padding:1px 5px;border-radius:4px;margin-left:4px">T</span>';
     return '<span style="background:#ccc;color:#333;font-size:9px;font-weight:700;padding:1px 5px;border-radius:4px;margin-left:4px">S</span>';
   }
@@ -10279,6 +10281,34 @@ async function clRemove(id, label){
   function mePinKey(){ return "opr_mepin_"+(W.PLAT.parentId||W.PLAT.cid); }
   function mePin(){ try{ return localStorage.getItem(mePinKey())||""; }catch(e){ return ""; } }
   function meIdOf(name,all){ var p=(all.people||[]).filter(function(x){ return x.full_name===name; })[0]; return p?(p.id||p.individual_id||null):null; }
+  /* n90: FACES, WHEREVER A NAME APPEARS. A photo that only shows on its owner's page is a photo nobody sees.
+     The claims are already fetched for the member page; they are now kept as a name -> picture map, so the
+     last-match ribbon, the movers and the in-form rows can wear real faces. One fetch, cached for the page,
+     so it costs nothing beyond the request already being made — and a name with no claim keeps its initials,
+     which is what everybody starts with. */
+  var FACES=null, FACESAT=0;
+  function nhFaces(){
+    if(FACES && (Date.now()-FACESAT)<60000) return Promise.resolve(FACES);
+    return Promise.all([
+      fetch(SBREST()+"nat_v_member_claim?pool_id=eq."+W.PLAT.pool+"&select=individual_id,photo").then(J).catch(function(){ return []; }),
+      nhFetch()
+    ]).then(function(r){
+      var claims=Array.isArray(r[0])?r[0]:[], people=(r[1]&&r[1].people)||[];
+      var byId={}; people.forEach(function(p){ if(p && p.id!=null) byId[Number(p.id)]=p.full_name; });
+      var map={};
+      claims.forEach(function(c){ var n=byId[Number(c.individual_id)]; if(n && c.photo) map[n]=c.photo; });
+      FACES=map; FACESAT=Date.now(); return map;
+    }).catch(function(){ FACES={}; FACESAT=Date.now(); return FACES; });
+  }
+  /* a disc: the person's picture if they have claimed their name, their initials if not */
+  function nhFace(name,col,size){
+    var px=size||30;
+    var img=(FACES||{})[name];
+    var base='width:'+px+'px;height:'+px+'px;border-radius:50%;display:grid;place-items:center;color:#fff;'
+      +'font-size:'+Math.round(px*0.38)+'px;font-weight:800;flex:0 0 '+px+'px;overflow:hidden;';
+    if(img) return '<span style="'+base+'background:#fff url('+img+') center/cover no-repeat"></span>';
+    return '<span style="'+base+'background:'+col+'">'+esc(inits(name))+'</span>';
+  }
   function meClaims(){
     return fetch(SBREST()+"nat_v_member_claim?pool_id=eq."+W.PLAT.pool+"&select=individual_id,photo").then(J)
       .then(function(r){ var m={}; (Array.isArray(r)?r:[]).forEach(function(c){ m[Number(c.individual_id)]={photo:c.photo}; }); return m; })
@@ -10715,59 +10745,117 @@ async function clRemove(id, label){
      night and has to be findable. */
   /* n76: A FIXED BAR AT THE FOOT. Whatever screen you are on, one thumb reach gets you back to the club's
      front door — and there is room beside it for the two or three other things worth having always to hand. */
-  function homeBar(){
-    var C=(W.PLAT.parentId||W.PLAT.cid||0);
-    if(!C) return "";
-    var sv='width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"';
-    var ic={home:'<svg '+sv+'><path d="M3 11l9-7 9 7"/><path d="M5 10v10h14V10"/></svg>',
-            score:'<svg '+sv+'><path d="M12 5v14M5 12h14"/></svg>',
-            me:'<svg '+sv+'><circle cx="12" cy="8" r="3.4"/><path d="M5 20c1.2-3.4 4-5 7-5s5.8 1.6 7 5"/></svg>'};
-    var b=function(icon,label,href,on){
-      /* n77: the icons had no size of their own, so on a laptop they filled the bar. Sized here, and the
-         stroke takes the row's colour. */
-      return '<a href="'+href+'" style="flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;'
-        +'text-decoration:none;color:'+(on?"var(--nhc,#6c3483)":"#7a6f8a")+';font-size:10px;font-weight:700;padding:8px 2px">'
-        +'<span style="display:block;width:22px;height:22px">'+icon+'</span>'+esc(label)+'</a>';
-    };
-    return '<div style="height:66px"></div>'
-      +'<div id="nhBar" style="position:fixed;left:0;right:0;bottom:0;z-index:60;background:#fff;border-top:1px solid #e6e0ee;'
-      +'box-shadow:0 -2px 12px rgba(26,16,48,.07);display:flex;max-width:560px;margin:0 auto;padding-bottom:env(safe-area-inset-bottom)">'
-      + b(ic.home,"Club home",PAGE+"?club="+C,true)
-      + b(ic.score,"Enter a score",PAGE+"?club="+W.PLAT.cid+((Number(W.PLAT.cid)===Number(C))?"&board=1":"")+"&go=entry",false)
-      + b(ic.me,"My page",PAGE+"?club="+C+"&go=me",false)
-      +'</div>';
-  }
-  /* n78: THE LAST MATCH, AS A RIBBON. A door that says what happened here last night is a club; one that
-     lists its own sections is a contents page. Initials in the board's colour for now — real faces once
-     members claim their names and add a photo, which the claim already supports. */
-  function lastMatchRibbon(d){
-    var m=(d.matches||[])[0]; if(!m) return "";
-    var who=[m.t1p1,m.t1p2,m.t2p1,m.t2p2].filter(Boolean).join(" & ").split(" & ")
-      .map(function(x){ return x.trim(); }).filter(Boolean).slice(0,4);
-    var bd=(W.PLAT.clubs||[]).find(function(c){ return Number(c.id)===Number(m.club_id); });
-    var col=(bd&&bd.colour)||"#6c3483";
-    var ag=ago(m.match_date), when=(ag<1)?"today":((ag<2)?"yesterday":(Math.round(ag)+" days ago"));
-    var score=String(m.set_scores||"").trim() || ((m.t1_sets!=null)?(m.t1_sets+"\u2013"+m.t2_sets):"");
-    return '<div class="brk" style="display:flex;align-items:center;gap:11px;padding:11px 13px">'
-      +'<div style="font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:#8a8196;font-weight:800;line-height:1.3;flex:0 0 auto">Last<br>match</div>'
-      +'<div style="display:flex;flex:0 0 auto">'
-      + who.map(function(n,i){ return '<span style="width:30px;height:30px;border-radius:50%;background:'+col+';color:#fff;display:grid;'
-          +'place-items:center;font-size:11px;font-weight:800;border:2px solid #fff;margin-left:'+(i?"-9px":"0")+'">'+esc(inits(n))+'</span>'; }).join("")
-      +'</div>'
-      +'<div style="flex:1;min-width:0;text-align:right">'
-      +'<div style="font-size:16px;font-weight:800;letter-spacing:-.2px">'+esc(score)+'</div>'
-      +'<div style="font-size:11.5px;color:#5f5770;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'
-      +(bd?('<span style="color:'+col+';font-weight:700">'+esc(bd.name)+'</span> \u00b7 '):'')+esc(when)+'</div></div></div>';
-  }
-  /* n78: a board's own count, in its own colour, with a lime pip when something happened today. A live board
-     glows and a quiet one stays quiet — and it is counting real matches, not a mood. */
+  /* n87: THE BAR BELONGS TO THE APP, NOT TO ONE SCREEN. It was written into the home screen's own markup, so
+     it disappeared the moment anybody opened the ladders, a profile or the score sheet — exactly when a way
+     home is most wanted — and only came back on a hard refresh. It is now a single element attached to the
+     page itself, built once and left alone, so it is on every screen. */
+  function homeBar(){ nhBarMount(); return ""; }
+  /* n88: RESTORED. These two were deleted by an earlier rewrite of the matches bracket, which broke the club
+     door from n56 to n58 — every test after it happened to open a board rather than a door. The door is now
+     covered by the regression run. */
   function boardPulse(id,col,matches){
     var ms=(matches||[]).filter(function(m){ return Number(m.club_id)===Number(id); });
     if(!ms.length) return '<span style="font-size:11.5px;color:#8a8196">no matches yet</span>';
     var today=ms.filter(function(m){ return ago(m.match_date)<1; }).length;
     return '<span style="font-size:13.5px;font-weight:800;color:'+col+'">'+ms.length+'</span>'
       +'<span style="font-size:11px;color:#8a8196;margin-left:3px">matches</span>'
-      +(today?('<span style="display:inline-block;background:#c4e000;color:#1a1a1a;border-radius:99px;padding:2px 7px;font-size:10.5px;font-weight:800;margin-left:6px">'+today+' today</span>'):'');
+      +(today?('<span style="display:inline-block;background:#d4f425;color:#1a1a1a;border-radius:99px;padding:2px 7px;font-size:10.5px;font-weight:800;margin-left:6px">'+today+' today</span>'):'');
+  }
+  W.nhWhoPlayed=function(){
+    var el=document.getElementById("nhWho"), t=document.getElementById("nhWhoT");
+    if(!el) return; var open=(el.style.display!=="none");
+    el.style.display=open?"none":"block"; if(t) t.style.transform=open?"":"rotate(180deg)";
+  };
+  /* the last match, with the four discs — and, on a tap, who they actually are */
+  function lastMatchRibbon(d){
+    var m=(d.matches||[])[0]; if(!m) return "";
+    var sides=nhSides(m);
+    var who=[m.t1p1,m.t1p2,m.t2p1,m.t2p2].filter(Boolean).join(" & ").split(" & ")
+      .map(function(x){ return x.trim(); }).filter(Boolean).slice(0,4);
+    var bd=(W.PLAT.clubs||[]).find(function(c){ return Number(c.id)===Number(m.club_id); });
+    var col=(bd&&bd.colour)||"#6c3483";
+    var ag=ago(m.match_date), when=(ag<1)?"today":((ag<2)?"yesterday":(Math.round(ag)+" days ago"));
+    var score=String(m.set_scores||"").trim() || ((m.t1_sets!=null)?(m.t1_sets+"\u2013"+m.t2_sets):"");
+    return '<div class="brk"><div style="display:flex;align-items:center;gap:11px;padding:11px 13px">'
+      +'<div style="font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:#8a8196;font-weight:800;line-height:1.3;flex:0 0 auto">Last<br>match</div>'
+      +'<div style="display:flex;flex:0 0 auto">'
+      /* n90: a real face where somebody has claimed their name, initials where they have not */
+      + who.map(function(n,i){ return '<span style="display:inline-block;border:2px solid #fff;border-radius:50%;margin-left:'+(i?"-9px":"0")+'">'
+          + nhFace(n,col,30) + '</span>'; }).join("")
+      +'</div>'
+      +'<div style="flex:1;min-width:0;text-align:right">'
+      +'<div style="font-size:16px;font-weight:800;letter-spacing:-.2px">'+esc(score)+'</div>'
+      +'<div style="font-size:11.5px;color:#5f5770;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'
+      +(bd?('<span style="color:'+col+';font-weight:700">'+esc(bd.name)+'</span> \u00b7 '):'')+esc(when)+'</div></div>'
+      +'<button onclick="window.nhWhoPlayed()" style="background:none;border:none;cursor:pointer;color:'+col+';font-size:15px;padding:0 0 0 4px">'
+      +'<span id="nhWhoT" style="display:inline-block;transition:transform .15s">\u25be</span></button>'
+      +'</div>'
+      +'<div id="nhWho" style="display:none;margin:0 12px 12px;padding:10px 12px;background:#faf8fc;border:1px solid #efeaf5;border-radius:12px">'
+      +'<div style="font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:#8a8196;font-weight:800;margin-bottom:6px">Who played</div>'
+      +'<div style="font-size:13.5px;font-weight:700;line-height:1.5">'+esc(sides[0])+'</div>'
+      +'<div style="font-size:12px;color:#8a8196;margin:2px 0">v</div>'
+      +'<div style="font-size:13.5px;font-weight:700;line-height:1.5">'+esc(sides[1])+'</div>'
+      +'</div></div>';
+  }
+  /* n88: the club's own board may be renamed — plat_clubs.options.general_label */
+  function nhGeneralName(){
+    var C=(W.PLAT.parentId||W.PLAT.cid);
+    var c=(W.PLAT.clubs||[]).find(function(x){ return Number(x.id)===Number(C); });
+    var lbl=(c&&c.options&&c.options.general_label)||null;
+    return lbl || ((c?c.name:(W.PLAT.name||"The club"))+" \u2014 general play");
+  }
+  /* the chooser, for when the bar cannot know which board you mean */
+  W.nhBarWhere=function(){
+    var C=(W.PLAT.parentId||W.PLAT.cid||0); if(!C) return;
+    var kids=kidsOf(C).sort(function(a,b){ return String(a.name).localeCompare(String(b.name)); });
+    var box=document.getElementById("nhBarWhere");
+    if(box){ box.remove(); return; }
+    box=document.createElement("div"); box.id="nhBarWhere"; box.dataset.platKeep="1";
+    var pill=function(label,col,href){
+      return '<a href="'+href+'" style="display:block;background:'+col+';color:#fff;text-decoration:none;font-weight:800;'
+        +'font-size:14px;border-radius:99px;padding:12px 16px;margin-top:8px;text-align:center">'+esc(label)+'</a>'; };
+    box.style.cssText="position:fixed;left:0;right:0;bottom:62px;z-index:2147483000;max-width:560px;margin:0 auto;"
+      +"background:#fff;border:1px solid #e6e0ee;border-radius:16px 16px 0 0;box-shadow:0 -6px 22px rgba(26,16,48,.16);padding:12px 14px 16px";
+    box.innerHTML='<div style="font-size:12.5px;color:#5f5770;margin:0 2px 2px">Where did you play?</div>'
+      + pill(nhGeneralName(), "#6c3483", PAGE+"?club="+C+"&board=1&go=entry")
+      + kids.map(function(g){ return pill(g.name, clubPal(g.id)[0], PAGE+"?club="+g.id+"&go=entry"); }).join("")
+      + '<button onclick="document.getElementById(\'nhBarWhere\').remove()" style="display:block;width:100%;margin-top:10px;'
+      + 'background:none;border:none;font:inherit;font-size:12.5px;color:#8a8196;cursor:pointer">Not now</button>';
+    document.body.appendChild(box);
+  };
+  function nhBarMount(){
+    var C=(W.PLAT.parentId||W.PLAT.cid||0);
+    if(!C) return;
+    var bar=document.getElementById("nhBar");
+    if(!bar){
+      bar=document.createElement("div"); bar.id="nhBar"; bar.dataset.platKeep="1";
+      document.body.appendChild(bar);
+      var st=document.createElement("style"); st.id="nhBarCss";
+      st.textContent="#nhBar{position:fixed;left:0;right:0;bottom:0;z-index:2147483000;background:#fff;"
+        +"border-top:1px solid #e6e0ee;box-shadow:0 -2px 12px rgba(26,16,48,.08);display:flex;"
+        +"max-width:560px;margin:0 auto;padding-bottom:env(safe-area-inset-bottom)}"
+        +"#nhBar a{flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;text-decoration:none;"
+        +"font-size:10px;font-weight:700;padding:8px 2px;color:#7a6f8a}"
+        +"#nhBar a.on{color:var(--nhc,#6c3483)}"
+        +"#nhBar svg{width:22px;height:22px;display:block}"
+        /* every screen gets room for it, so nothing is trapped underneath */
+        +".screen{padding-bottom:70px!important}";
+      document.head.appendChild(st);
+    }
+    var sv='width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"';
+    var ic={home:'<svg '+sv+'><path d="M3 11l9-7 9 7"/><path d="M5 10v10h14V10"/></svg>',
+            score:'<svg '+sv+'><path d="M12 5v14M5 12h14"/></svg>',
+            me:'<svg '+sv+'><circle cx="12" cy="8" r="3.4"/><path d="M5 20c1.2-3.4 4-5 7-5s5.8 1.6 7 5"/></svg>'};
+    var here=W.PLAT.cid, board=(Number(here)===Number(C))?"&board=1":"";
+    /* n88: ENTER A SCORE HAS TO ASK WHERE. Wired to one board, a group member tapping it from anywhere landed
+       on general play — the wrong place, silently. On a board it enters THAT board; anywhere else it opens the
+       same chooser the door uses. */
+    /* a DOOR is not a board: standing there, the app cannot know which board you mean, so it asks */
+    var onBoard=(Number(here)>0 && !W.PLAT.clubDoor);
+    bar.innerHTML='<a class="on" href="'+PAGE+'?club='+C+'">'+ic.home+'Club home</a>'
+      + (onBoard ? ('<a href="'+PAGE+'?club='+here+board+'&go=entry">'+ic.score+'Enter a score</a>')
+                 : ('<a href="#" onclick="event.preventDefault();window.nhBarWhere()">'+ic.score+'Enter a score</a>'))
+      +'<a href="'+PAGE+'?club='+C+'&go=me">'+ic.me+'My page</a>';
   }
   function doorActions(kids){
     var ic={score:'<svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>',
@@ -10798,7 +10886,7 @@ async function clRemove(id, label){
         +'font-weight:800;font-size:14px;border-radius:99px;padding:11px 16px;margin-top:8px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+esc(label)+'</a>';
     };
     var h='<div style="font-size:12.5px;color:#5f5770;margin:2px 2px 2px">'+esc(ask)+'</div>'
-      + pill(W.PLAT.name+" \u2014 general play","#6c3483",go(C))
+      + pill(nhGeneralName(),"#6c3483",go(C))
       + kids.map(function(g){ return pill(g.name, clubPal(g.id)[0], go(g.id)); }).join("");
     if(what==="ladders"||what==="profiles"){
       h+= pill("Everyone at "+W.PLAT.name+" \u00b7 the ledger","#2f2f2f",PAGE+"?club=0&pool="+W.PLAT.pool+"&nat="+C+"&go="+what);
@@ -10811,7 +10899,9 @@ async function clRemove(id, label){
     var w=nhWrap(); if(!w) return;
     nhCSS(); nhInk("#6c3483"); nhHeaderSkin("#3a1d6e","#1d0a41");
     var C=W.PLAT.cid, kids=kidsOf(C).sort(function(a,b){ return String(a.name).localeCompare(String(b.name)); });
-    nhFetch().then(function(d){
+    /* n90: the faces come with the figures, so a door draws once with everything it needs */
+    Promise.all([nhFetch(),nhFaces()]).then(function(rr){
+      var d=rr[0];
       nhWindow(d.matches||[]); var wk=(d.matches||[]).filter(function(m){ return ago(m.match_date)<=NHWIN; }).length;
       var mv=nhMovers(d.matches||[]);
     /* n77: THE THREE PIECES ON ONE LINE. The disc, the pill and the chevron were each aligned to the row's
@@ -10835,7 +10925,7 @@ async function clRemove(id, label){
         /* the shade is a background on the row itself, not a box around it — a box added padding and pushed
            the avatar and the chevron out of line with the groups below. */
         + '<div class="shaded">'
-        + row(W.PLAT.name+" \u2014 general play", "#6c3483", "Open to every member \u00b7 matches outside the groups", PAGE+"?club="+C+"&board=1", boardPulse(C,"#6c3483",d.matches))
+        + row(nhGeneralName(), "#6c3483", "For matches outside the groups", PAGE+"?club="+C+"&board=1", boardPulse(C,"#6c3483",d.matches))
         + '</div>';
       if(!kids.length){
         /* n81: a club with no groups has one place to play, and the door says so rather than hiding itself */
@@ -10890,17 +10980,24 @@ async function clRemove(id, label){
        and it had no chip at all. */
     var club=(W.PLAT.parentId?(W.PLAT.clubs||[]).find(function(c){ return c.id===W.PLAT.parentId; })
                              :(isClubWithKids(W.PLAT.cid)?{id:W.PLAT.cid,name:W.PLAT.name}:null));
-    nhFetch().then(function(all){
+    Promise.all([nhFetch(),nhFaces()]).then(function(rr){
+      var all=rr[0];
       var mine=(all.matches||[]).filter(function(m){ return Number(m.club_id)===Number(W.PLAT.cid); });
       var d={matches:mine,pairs:(all.pairs||[]).filter(function(p){ return Number(p.club_id)===Number(W.PLAT.cid); }),
              people:all.people,tour:all.tour,
              /* n81: this board's running tournaments — the club may have several at once */
              tours:(all.tours||[]).filter(function(t){ return Number(t.club_id)===Number(W.PLAT.cid); })};
+      /* n86: EXAMPLE DATA MUST NEVER HIDE REAL PLAY. The rule was "fewer than five matches, show a sample",
+         so a board with one real match showed five invented ones instead — the member's own match vanished
+         and the band counted fiction. A sample is only ever shown when there is NOTHING to show, and even
+         then the counts stay honest: they describe what the board actually has. */
       NHEG=false;
-      if(mine.length<5){ d=nhExample(); mine=d.matches; }   /* n52 */
-      nhWindow(mine); var wk=mine.filter(function(m){ return ago(m.match_date)<=NHWIN; }).length;
+      var realCount=mine.length;
+      if(!mine.length){ d=nhExample(); mine=d.matches; }
+      d.realCount=realCount;
+      nhWindow(mine); var wk=NHEG?0:mine.filter(function(m){ return ago(m.match_date)<=NHWIN; }).length;   /* n86 */
       var mv=nhMovers(mine), top=(d.pairs||[])[0];
-      var people={}; mine.forEach(function(m){ [m.t1p1,m.t1p2,m.t2p1,m.t2p2].forEach(function(v){ if(v) String(v).split(" & ").forEach(function(x){ people[x.trim()]=1; }); }); });
+      var people={}; (NHEG?[]:mine).forEach(function(m){ [m.t1p1,m.t1p2,m.t2p1,m.t2p2].forEach(function(v){ if(v) String(v).split(" & ").forEach(function(x){ people[x.trim()]=1; }); }); });
       w.innerHTML =
         '<div class="band" style="background:linear-gradient(135deg,'+ink+','+deep+')">'
         + '<div class="mark"><span class="logo">OPR</span>'+esc(club?club.name:(W.PLAT.poolName||"Open Padel Ratings"))+'</div>'
@@ -10909,10 +11006,10 @@ async function clRemove(id, label){
         + '<div class="pulse">'+(club?('<a href="'+PAGE+'?club='+club.id+'">\u2039 '+esc(club.name)+'</a>'):'')
         + '<span class="live">'+wk+(wk===1?' match':' matches')+' '+nhWhen()+'</span>'
         /* n58: no mover named in the band — it repeated the same person on every screen. A count instead. */
-        + '<span>'+((d.matches||[]).length)+' on record</span>'+'</div></div>'
+        + '<span>'+(NHEG?0:(d.matches||[]).length)+' on record</span>'+'</div></div>'
         /* n52: four tiles, as the place page had before — top pair and biggest move are the two people read */
         + '<div class="tiles">'
-        + '<div class="tile"><div class="k">'+esc(nhWhen().replace("this week","This week"))+'</div><div class="v">'+wk+'</div><div class="n">matches here</div></div>'
+        + '<div class="tile"><div class="k">'+esc(nhWhen().replace("this week","This week"))+'</div><div class="v">'+wk+'</div><div class="n">'+(NHEG?"no matches yet":"matches here")+'</div></div>'
         + '<div class="tile"><div class="k">Playing</div><div class="v">'+Object.keys(people).length+'</div><div class="n">with a match on record</div></div>'
         + '<div class="tile"><div class="k">Top pair</div><div class="v" style="font-size:15px;line-height:1.25">'+esc(top?top.name:"\u2014")+'</div><div class="n">'+(top?Math.round(top.current_rating):"")+'</div></div>'
         /* n59: the move was already said twice on this page; the upset is a different story each week */
@@ -11130,7 +11227,7 @@ async function clRemove(id, label){
           var line=null;
           Array.prototype.forEach.call(box.querySelectorAll("div"), function(x){ if(!line && /since inception/.test(x.textContent||"")) line=x; });
           if(line){ var sp=line.querySelector("span");
-            if(sp){ var t=Math.round(total); sp.textContent=(t>0?"+":"")+t; sp.style.color=(t>=0?"#c4e000":"#ff9d7a"); } }
+            if(sp){ var t=Math.round(total); sp.textContent=(t>0?"+":"")+t; sp.style.color=(t>=0?"#d4f425":"#ff9d7a"); } }
         }catch(e){}
         // p38: sits ABOVE the "Partnerships" heading, left-ranged, and reads as a plain statement:
         //   Move in <group>  -17.9
@@ -11346,6 +11443,9 @@ async function clRemove(id, label){
         +(sub?'<span style="display:block;font-size:11.5px;color:#777">'+esc(sub)+'</span>':'')+'</span>'
         +'<button class="menu-btn" style="min-height:30px;padding:4px 10px;font-size:12px" onclick="window.platRenameBoard('+c.id+')">Rename</button>'   /* n17: correcting a name was missing */
         +'<button class="menu-btn" style="min-height:30px;padding:4px 10px;font-size:12px" onclick="window.platClubColour('+c.id+')">Colour</button>'
+        /* n89: a club may call its own board what its members call it — the door read "X — general play"
+           because the label was built from the club's name and could be edited nowhere. */
+        +((!c.parent_id)?('<button class="menu-btn" style="min-height:30px;padding:4px 10px;font-size:12px" onclick="window.platGeneralLabel('+c.id+')">Name general play</button>'):'')
         +'<button style="min-height:30px;padding:4px 10px;font-size:12px;border:1px solid #c62828;color:#c62828;background:#fff;border-radius:8px;cursor:pointer" onclick="window.platClubTeardown('+c.id+')">Delete\u2026</button></div>'
         +'<div id="platTd'+c.id+'"></div>';
     }
@@ -11635,6 +11735,23 @@ async function clRemove(id, label){
   /* n16: a backup because you asked for one — the same rows, in the same shape, as the automatic snapshots,
      so Show snapshots lists them and Put back restores them unchanged. */
   /* n17: renaming was missing from the room — you could recolour a club but not correct its name. */
+  W.platGeneralLabel=function(id){
+    var c=(REG.clubs||[]).find(function(x){ return Number(x.id)===Number(id); })||{};
+    var cur=(c.options&&c.options.general_label)||"";
+    var v=prompt("What do your members call the club\u2019s own play?\n\nThis is the row on the door beneath \u201cThe club\u201d, for matches outside the groups.\nLeave it empty for \u201c"+(c.name||"the club")+" \u2014 general play\u201d.", cur);
+    if(v===null) return;
+    v=String(v).trim();
+    var m=document.getElementById("platRegMsg");
+    acall({action:"set_general_label",admin_pin:REG.pin,club_id:id,label:v}).then(function(r){
+      if(!r||!r.ok){ if(m){ m.style.color="#c00"; m.textContent=(r&&r.error)||"Could not save that name."; } return; }
+      [(W.PLAT.clubs||[]),(REG.clubs||[])].forEach(function(list){
+        list.forEach(function(x){ if(Number(x.id)===Number(id)){ x.options=x.options||{};
+          if(v) x.options.general_label=v; else delete x.options.general_label; } }); });
+      if(m){ m.style.color="#2e7d32"; m.textContent=v?("The club\u2019s own board is now \u201c"+v+"\u201d."):"Back to the default name."; }
+      regLoad();
+    });
+  };
+
   W.platRenameBoard=function(id){
     var cur=((REG.clubs||[]).find(function(c){ return Number(c.id)===Number(id); })||{}).name||"";
     var v=prompt("New name for "+cur, cur); if(v===null) return; v=String(v).trim();
@@ -12777,9 +12894,9 @@ async function clRemove(id, label){
     // p98: the Recent Matches banner is the product's green on every board, whatever the group's colour
     try{
       var rb=document.querySelector("#homeScreen .home-recent-col > div:first-child");
-      if(rb){ rb.dataset.platKeep="1"; rb.style.background="#c4e000"; rb.style.color="#2a3000"; rb.style.borderColor="#C97E0A"; }
+      if(rb){ rb.dataset.platKeep="1"; rb.style.background="#d4f425"; rb.style.color="#2a3000"; rb.style.borderColor="#C97E0A"; }
       var stR=document.createElement("style"); stR.id="platRecentBanner";
-      stR.textContent="#homeScreen .home-recent-col > div:first-child{background:#c4e000!important;color:#2a3000!important;border-color:#C97E0A!important}";
+      stR.textContent="#homeScreen .home-recent-col > div:first-child{background:#d4f425!important;color:#2a3000!important;border-color:#C97E0A!important}";
       document.head.appendChild(stR);
     }catch(e){}
     try{ if(W.PLAT.cid!==0) watchAndPaint(function(){ return (W.PLAT.colour||""); }); }catch(e){}
@@ -12797,7 +12914,7 @@ async function clRemove(id, label){
         st.textContent="#profileSearchScreen .screen-content{padding-top:8px !important}"   /* n31: the banner and the search box sat a long way apart */
           +"#profileSearchScreen .sub{margin:2px 0 8px !important}"
           +".rank-badge{background:"+cc+" !important;color:#fff !important}"
-          +".rank-badge.rank-1{background:#c4e000 !important;color:#1a1a1a !important}"
+          +".rank-badge.rank-1{background:#d4f425 !important;color:#1a1a1a !important}"
           +".rank-badge.rank-2{background:#BDC3C7 !important;color:#1a1a1a !important}"
           +".rank{color:"+cc+" !important}";
         if(!st.parentNode) document.head.appendChild(st);
@@ -12808,6 +12925,7 @@ async function clRemove(id, label){
     var ht=document.getElementById("heroTitle");
     try{ natChip(); }catch(e){}   // NAT: the chip climbs the ladder
     try{ goWhere(); }catch(e){}   /* n42: ?go= opens the screen the link asked for */
+    if(W.NEWAPP){ try{ nhBarMount(); }catch(e){} }   /* n87: the way home, on every screen */
     try{ pickerPatch(); }catch(e){}   // n13: club first, register on typing
     if(W.PLAT.landing){ var t1="OPR · "+(W.PLAT.poolName||"Clubs"); if(ht) ht.textContent=t1; document.title=t1; landing(); try{ doorChip(); }catch(e){} return; }
     // NAT: a club with groups opens on its DOOR (its board is ?club=C&board=1)
