@@ -3538,7 +3538,7 @@ const CLUB_NAME = _club.name;  // shown in the logo as "OPR · <name>"
     link.setAttribute('href', href);
   }catch(e){ /* install stays on the static manifest — no functional impact */ }
 })();
-const OPR_VERSION = "OPR-DOUBLES v2026.09.03-56 · NAT fork n54 (no voice) (of PLAT p117)";  // MANUAL PAIR CREATION REMOVED FROM ADMIN: Create a pair, Bulk create pairs and Re-derive all pairs are gone (they only made match-less ghost pairs, and Re-derive rewrote every stored initial club-wide). Pairs are born automatically at match entry. Current pairs list untouched; the underlying JS is left in place unreferenced, so no other code path changes. Includes v47 (set-score fix + double-tap guard) and all prior.
+const OPR_VERSION = "OPR-DOUBLES v2026.09.03-56 · NAT fork n55 (no voice) (of PLAT p117)";  // MANUAL PAIR CREATION REMOVED FROM ADMIN: Create a pair, Bulk create pairs and Re-derive all pairs are gone (they only made match-less ghost pairs, and Re-derive rewrote every stored initial club-wide). Pairs are born automatically at match entry. Current pairs list untouched; the underlying JS is left in place unreferenced, so no other code path changes. Includes v47 (set-score fix + double-tap guard) and all prior.
 // Explanation shown above the individual ladder. Open on load so it's read; collapsible
 // (state kept for the session) and scrolls away. Mechanics only — no outcome framing, so
 // members aren't nudged away from playing stronger opponents. Every clause maps to a real
@@ -9659,7 +9659,7 @@ async function clRemove(id, label){
     var inList="club_id=in.("+boards.join(",")+")";
     return Promise.all([
       fetch(B+"plat_matches?"+inList+"&discipline=eq.padel&select=id,club_id,match_date,match_type,event,t1p1,t1p2,t2p1,t2p2,t1_sets,t2_sets,t1_games,t2_games,set_scores,rating_delta&order=match_date.desc,id.desc&limit=120").then(J),
-      fetch(B+"plat_player_results?"+inList+"&discipline=eq.padel&select=name,club_id,current_rating,initial_rating,sets_played,sets_won&order=current_rating.desc&limit=60").then(J),
+      fetch(B+"plat_player_results?"+inList+"&discipline=eq.padel&select=name,club_id,current_rating,initial_rating,sets_played,sets_won&order=current_rating.desc&limit=2000").then(J),
       fetch(B+"plat_padel_v_individuals?"+inList+"&select=id,full_name,club_id,current_rating,seed_rating").then(J).catch(function(){ return []; }),
       fetch(B+"plat_padel_tournaments?"+inList+"&select=id,name,club_id,active,archived").then(J).catch(function(){ return []; })
     ]).then(function(r){
@@ -9770,6 +9770,9 @@ async function clRemove(id, label){
      +"#nh .fourbtn{border:1px solid #e6e0ee;background:#fff;border-radius:12px;padding:10px 3px;font:inherit;font-weight:700;font-size:10.5px;"
      +"cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:8px;line-height:1.25;text-align:center;color:#241d33}"
      +"#nh .fourbtn svg{width:19px;height:19px;stroke:var(--nhc,#6c3483);fill:none;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round}"
+     /* n84: the one thing people came to do wears the lime */
+     +"#nh .fourbtn.lime{background:linear-gradient(135deg,#c4e000,#a9c900);border-color:transparent;color:#1a1a1a}"
+     +"#nh .fourbtn.lime svg{stroke:#1a1a1a;stroke-width:2.2}"
      /* n79: the five figures never had their styles in the app — only in the standalone preview — so they
         rendered as raw text on a real member page. */
      +"#nh .five{display:grid;grid-template-columns:repeat(5,1fr);gap:7px;margin:12px 12px 0}"
@@ -9944,15 +9947,16 @@ async function clRemove(id, label){
     if(!el) return; var open=(el.style.display!=="none");
     el.style.display=open?"none":"block"; if(t) t.style.transform=open?"":"rotate(180deg)";
   };
-  function nhSetPills(m){
+  function nhSetPills(m,col){
     var raw=String(m.set_scores||"").trim();
     var sets=raw?raw.split(/[, ]+/).filter(Boolean):[];
     if(!sets.length) return '<span style="font-size:12px;color:#6f6780">Set scores were not recorded.</span>';
     return sets.map(function(sc){
       var p=String(sc).split(/[-\u2013\/]/), a=parseInt(p[0],10), b=parseInt(p[1],10);
       var win=(!isNaN(a)&&!isNaN(b))?(a>b):null;
-      var bg=(win===null)?"#eceaf1":(win?"#e6f4ea":"#fdeaea"), fg=(win===null)?"#4b4557":(win?"#1f8a4c":"#c0392b");
-      return '<span style="display:inline-block;background:'+bg+';color:'+fg+';border-radius:8px;padding:3px 9px;font-size:12.5px;font-weight:800;margin:2px 5px 2px 0">'+esc(sc)+'</span>';
+      /* n84: plat writes these in the board's colour, not red and green */
+      var bg=col||"#6c3483";
+      return '<span style="display:inline-block;background:'+bg+';color:#fff;border-radius:8px;padding:4px 11px;font-size:13px;font-weight:800;margin:3px 4px">'+esc(sc)+'</span>';
     }).join("");
   }
   /* n65: the app's own lime bar over a list that scrolls inside its own box */
@@ -9960,26 +9964,70 @@ async function clRemove(id, label){
     return '<div style="background:#c4e000;color:#1a1a1a;font-weight:800;font-size:13px;letter-spacing:.02em;'
       +'text-align:center;padding:10px 12px;border-bottom:1px solid rgba(0,0,0,.12)">'+esc(label)+'</div>';
   }
+  /* n84: RECENT MATCHES, AS PLAT WRITES THEM. Date, match type, the S badge and a triangle; the names with
+     the score between them; and the triangle opens the set pills with the sets and games beneath, exactly as
+     the app's own list does. The board's pill carries its colour. */
+  function nhMatchRow(m,scope){
+    var a=[m.t1p1,m.t1p2].filter(Boolean).join(" & "), b=[m.t2p1,m.t2p2].filter(Boolean).join(" & ");
+    var bd=(W.PLAT.clubs||[]).find(function(c){ return Number(c.id)===Number(m.club_id); });
+    var col=(bd&&bd.colour)||"#6c3483";
+    var id="m"+(m.id||Math.abs(Math.round(Math.random()*1e6)));
+    var sets=(m.t1_sets!=null)?(m.t1_sets+"-"+m.t2_sets):"";
+    var games=(m.t1_games!=null&&m.t2_games!=null)?(m.t1_games+"-"+m.t2_games):"";
+    var pillHTML=(scope!=="one"&&bd)?('<span style="display:inline-block;background:'+col+';color:#fff;border-radius:99px;'
+      +'padding:2px 9px;font-size:10px;font-weight:800;margin-right:6px;vertical-align:middle">'+esc(bd.name)+'</span>'):'';
+    return '<div style="border:1px solid #e9e4f0;border-radius:12px;padding:9px 11px;margin:6px 0;background:#fff">'
+      +'<div style="display:flex;align-items:center;gap:7px;font-size:11.5px;color:#8a8196;justify-content:center;flex-wrap:wrap">'
+      + pillHTML
+      +'<span>'+esc(String(m.match_date||"").slice(0,10))+'</span>'
+      +'<span style="color:'+col+';font-weight:700">'+esc(m.match_type||"")+'</span>'
+      +'<span style="background:#eceaf1;border-radius:5px;padding:1px 6px;font-size:10px;font-weight:800;color:#5f5770">S</span>'
+      +'<button onclick="window.nhSets(\''+id+'\')" style="background:none;border:none;cursor:pointer;color:'+col+';font-size:13px;padding:0 2px">'
+      +'<span id="nht'+id+'" style="display:inline-block;transition:transform .15s">\u25bc</span></button>'
+      +'</div>'
+      +'<div style="text-align:center;font-size:13.5px;font-weight:800;margin-top:3px;line-height:1.4">'
+      + esc(a)+' <span style="color:'+col+'">'+esc(sets)+'</span> '+esc(b)+'</div>'
+      +'<div id="nhs'+id+'" style="display:none;border-top:1px solid #efeaf5;margin-top:8px;padding-top:8px;text-align:center">'
+      + nhSetPills(m,col)
+      +'<div style="font-size:11.5px;color:#8a8196;margin-top:5px">'
+      +(sets?('Sets: '+esc(sets)):'')+(games?(' \u00b7 Games: '+esc(games)):'')+'</div></div>'
+      +'</div>';
+  }
   function nhMatchesBrk(d,n,scope){
-    var ms=(d.matches||[]).slice(0,n||20); if(!ms.length) return "";
-    /* n65: the app's lime bar, and a long list that scrolls inside its own box */
+    var ms=(d.matches||[]).slice(0,n||25); if(!ms.length) return "";
     return '<div class="brk">'+nhLimeBar("Recent matches"+(NHEG?" \u00b7 example":""))
-      +'<div class="rows" style="max-height:340px;overflow-y:auto;-webkit-overflow-scrolling:touch">'
-      + ms.map(function(m){
-          var a=[m.t1p1,m.t1p2].filter(Boolean).join(" & "), b=[m.t2p1,m.t2p2].filter(Boolean).join(" & ");
-          var bd=(W.PLAT.clubs||[]).find(function(c){ return Number(c.id)===Number(m.club_id); });
-          var col=(bd&&bd.colour)||"#6c3483";
-          var pill=(scope==="club"&&bd)?('<span style="display:inline-block;background:'+col+';color:#fff;border-radius:99px;padding:2px 9px;font-size:10.5px;font-weight:800;margin-top:4px">'+esc(bd.name)+'</span>'):'';
-          var id=m.id||Math.abs(Math.round(Math.random()*1e6));
-          return '<div><button class="row" onclick="window.nhSets(\''+id+'\')">'
-            +'<span class="nm"><b>'+esc(a)+'</b><span>'+esc(b)+'</span>'+pill+'</span>'
-            +'<span class="val"><b>'+((m.t1_sets==null)?"":(m.t1_sets+"\u2013"+m.t2_sets))+'</b>'
-            +'<span id="nht'+id+'" style="display:inline-block;font-size:15px;line-height:1;color:#7a6f8a;margin-left:6px;transition:transform .15s">\u25bc</span></span></button>'
-            +'<div id="nhs'+id+'" style="display:none;padding:0 12px 10px 20px">'+nhSetPills(m)+'</div></div>'; }).join("")
+      +'<div style="max-height:360px;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:4px 10px 8px">'
+      + ms.map(function(m){ return nhMatchRow(m,scope); }).join("")
       +'</div></div>';
   }
-  /* n59: the win against the strongest opposition, by rating gap. Approximate on purpose: a pair's rating
-     today is not exactly what it was on the night, and the alternative is storing ratings per match. */
+  /* n84: ALL THE TOURNAMENTS, ROLLED UP. Four running at once filled the page; now one bracket lists them and
+     each opens on a tap. */
+  W.nhTourOpen=function(k){
+    var el=document.getElementById("nhtour"+k), t=document.getElementById("nhtourT"+k);
+    if(!el) return; var open=(el.style.display!=="none");
+    el.style.display=open?"none":"block"; if(t) t.style.transform=open?"":"rotate(180deg)";
+  };
+  function nhTourBrk(d){
+    var list=(d.tours&&d.tours.length)?d.tours:(d.tour?[d.tour]:[]);
+    if(!list.length) return "";
+    return '<div class="brk">'+nhLimeBar("Recent tournament matches")
+      +'<div style="padding:6px 10px 10px">'
+      + list.map(function(t,k){
+          var nm=String(t.name||"").toLowerCase();
+          var ms=(d.matches||[]).filter(function(m){ return String(m.event||"").toLowerCase()===nm; }).slice(0,12);
+          return '<button onclick="window.nhTourOpen('+k+')" style="display:flex;width:100%;align-items:center;gap:9px;'
+            +'background:#fff;border:1px solid #e6e0ee;border-radius:99px;padding:10px 14px;margin-top:6px;font:inherit;'
+            +'font-weight:800;font-size:13.5px;color:#241d33;cursor:pointer;text-align:left">'
+            +'<span style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+esc(t.name)+'</span>'
+            +'<span style="font-size:11.5px;color:#8a8196;font-weight:700">'+ms.length+'</span>'
+            +'<span id="nhtourT'+k+'" style="display:inline-block;color:var(--nhc,#6c3483);transition:transform .15s">\u25bc</span></button>'
+            +'<div id="nhtour'+k+'" style="display:none;padding:2px 0 6px">'
+            + (ms.length ? ms.map(function(m){ return nhMatchRow(m,"one"); }).join("")
+                         : '<div style="padding:8px 4px;font-size:12.5px;color:#5f5770">Under way \u2014 no results entered yet.</div>')
+            +'<button class="more" onclick="window.nhGo(\'tournaments\')">Open the tournament \u2192</button></div>';
+        }).join("")
+      +'</div></div>';
+  }
   function nhUpset(d){
     var rate={}; (d.pairs||[]).forEach(function(p){ rate[p.name]=p.current_rating||0; });
     var best=null; nhWindow(d.matches||[]);
@@ -10011,27 +10059,6 @@ async function clRemove(id, label){
      bracket answers "what has just happened in it" without going to the sheet. */
   /* n81: ALL OF THEM. A club running four tournaments saw one — the bracket took the first and ignored the
      rest, which is exactly what an active club does at the height of a season. */
-  function nhTourBrk(d){
-    var list=(d.tours&&d.tours.length)?d.tours:(d.tour?[d.tour]:[]);
-    if(!list.length) return "";
-    if(list.length>1) return list.map(function(t){ return nhOneTour(d,t); }).join("");
-    return nhOneTour(d,list[0]);
-  }
-  function nhOneTour(d,tour){
-    if(!tour) return "";
-    var nm=String(tour.name||"").toLowerCase();
-    var ms=(d.matches||[]).filter(function(m){ return String(m.event||"").toLowerCase()===nm; }).slice(0,12);
-    var body = ms.length
-      ? ms.map(function(m){
-          var a=[m.t1p1,m.t1p2].filter(Boolean).join(" & "), b=[m.t2p1,m.t2p2].filter(Boolean).join(" & ");
-          return '<div class="row"><span class="nm"><b>'+esc(a)+'</b><span>'+esc(b)+'</span></span>'
-            +'<span class="val"><b>'+((m.t1_sets==null)?"":(m.t1_sets+"\u2013"+m.t2_sets))+'</b><span>'+esc(String(m.match_date||"").slice(5))+'</span></span></div>'; }).join("")
-      : '<div class="row"><span class="av" style="background:#c4a000">\u{1F3C6}</span>'
-        +'<span class="nm"><b>'+esc(tour.name)+'</b><span>under way \u00b7 no results entered yet</span></span></div>';
-    return '<div class="brk">'+nhLimeBar(tour.name+" \u00b7 running now")
-      +'<div class="rows" style="max-height:280px;overflow-y:auto;-webkit-overflow-scrolling:touch">'+body
-      +'</div><button class="more" onclick="window.nhGo(\'tournaments\')">Open the tournament \u2192</button></div>';
-  }
   function nhActions(ink,deep){
     var ic={score:'<svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>',
             card:'<svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="1.6"/><path d="M3 12h18M12 4v16"/></svg>',
@@ -10741,7 +10768,7 @@ async function clRemove(id, label){
        the one-row layout from an hour earlier; the row is what a thumb reaches across. */
     return '<div class="brk"><div class="kind" style="padding:11px 14px 2px">Go to</div>'
       +'<div class="fourgrid">'
-      + four.map(function(f){ return '<button class="fourbtn" onclick="window.doorPick(\''+f[0]+'\')">'+f[3]+esc(f[1]).replace("&amp;","&")+'</button>'; }).join("")
+      + four.map(function(f,k){ return '<button class="fourbtn'+(k===0?" lime":"")+'" onclick="window.doorPick(\''+f[0]+'\')">'+f[3]+esc(f[1]).replace("&amp;","&")+'</button>'; }).join("")
       +'</div><div id="doorWhere" style="display:none;padding:2px 12px 14px"></div></div>';
   }
   W.doorPick=function(what){
@@ -10815,13 +10842,13 @@ async function clRemove(id, label){
         + '<div class="sub">'+esc(W.PLAT.poolName||"")+'</div>'
         + '<div class="pulse"><span class="live">'+wk+(wk===1?' match':' matches')+' this week</span>'
         + '<span>'+((d.pairs||[]).length)+' pairs on record</span>'   /* n59: nobody named in the band */
-        + (d.tour?('<span>'+esc(d.tour.name)+' running</span>'):'')+'</div></div>'
+        + (((d.tours||[]).length>1)?('<span>'+d.tours.length+' tournaments running</span>'):(d.tour?('<span>'+esc(d.tour.name)+'</span>'):''))+'</div></div>'
         + lastMatchRibbon(d)
         + '<div class="brk"><h2>Where you play</h2><div class="rows">'+places+'</div></div>'
         + doorActions(kids)
         /* n76: the matches list scrolls inside itself, so anything under it reads as the end of the page.
            It goes last, with the ledgers and the admin above it. */
-        + '<div class="cols">'+nhFormBrk(d,"#6c3483","club") + nhMoversBrk(d,"#6c3483","club") + nhTourBrk(d) + nhMatchesBrk(d,25,"club")+'</div>' 
+        + '<div class="cols">'+nhFormBrk(d,"#6c3483","club") + nhMoversBrk(d,"#6c3483","club") + nhMatchesBrk(d,25,"club") + nhTourBrk(d)+'</div>' 
         + '<div class="brk"><h2>Ledgers</h2><div class="rows">'
         + '<button class="row" onclick="window.platGoClubLedger('+C+')"><span class="av" style="background:#2f2f2f">\u2261</span>'
         + '<span class="nm"><b>'+esc(W.PLAT.name)+' and All Club Ledgers</b><span>every match at the club \u2014 general play and every group \u00b7 and every registered club</span></span>'
@@ -10880,7 +10907,7 @@ async function clRemove(id, label){
               +'<div class="n">'+esc(u?("beat a pair rated "+u.gap+" higher"):("none "+nhWhen()))+'</div></div>'; })()
         + '</div>'
         + nhActions(ink,deep)
-        + '<div class="cols">'+nhCharts(d,ink)+nhMoversBrk(d,ink,"board") + nhFormBrk(d,ink,"board") + nhTourBrk(d) + nhMatchesBrk(d,25,"board") + nhCardBrk(d)+'</div>'
+        + '<div class="cols">'+nhCharts(d,ink)+nhMoversBrk(d,ink,"board") + nhFormBrk(d,ink,"board") + nhMatchesBrk(d,25,"board") + nhTourBrk(d) + nhCardBrk(d)+'</div>'
         + nhFoot(ink,deep,"none")   /* n59: admin lives on the club door only */
 
         + homeBar();
