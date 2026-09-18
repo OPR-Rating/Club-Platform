@@ -1069,6 +1069,12 @@ st0.textContent += "html{overflow-y:scroll}";   // p98: the scrollbar's space is
           // n13: in a national register the entry picker opens on THIS CLUB's people — its own board and its
           // groups. Everyone else in the register is still reachable: type three letters and the glue asks
           // for them by name. (A plain register is unchanged: the whole register, as p56 intended.)
+          /* n64: THE PICKER OPENS ON THIS BOARD'S OWN PEOPLE. n13 opened it on the whole club — its board and
+             every group — so a group entering a score scrolled past the club's entire membership to find its
+             own dozen. A group opens on the group; the club's own board opens on the club and its groups,
+             which is right because general play is open to every member. Everyone else in the register is
+             still one search away: type three letters and the glue asks for them by name. */
+          if(!pool && W.PLAT.parentId){ swapClub("club_id=eq."+CID); return "plat_padel_v_individuals?"+qs; }
           if(!pool && W.PLAT.myBoards && W.PLAT.myBoards.length){ swapClub("club_id=in.("+W.PLAT.myBoards.join(",")+")"); return "plat_padel_v_individuals?"+qs; }
           swapClub("pool_id=eq."+P); return "plat_padel_v_pool_individuals?"+qs;
         }
@@ -3538,7 +3544,7 @@ const CLUB_NAME = _club.name;  // shown in the logo as "OPR · <name>"
     link.setAttribute('href', href);
   }catch(e){ /* install stays on the static manifest — no functional impact */ }
 })();
-const OPR_VERSION = "OPR-DOUBLES v2026.09.03-56 · NAT fork n62 (no voice) (of PLAT p117)";  // MANUAL PAIR CREATION REMOVED FROM ADMIN: Create a pair, Bulk create pairs and Re-derive all pairs are gone (they only made match-less ghost pairs, and Re-derive rewrote every stored initial club-wide). Pairs are born automatically at match entry. Current pairs list untouched; the underlying JS is left in place unreferenced, so no other code path changes. Includes v47 (set-score fix + double-tap guard) and all prior.
+const OPR_VERSION = "OPR-DOUBLES v2026.09.03-56 · NAT fork n63 (no voice) (of PLAT p117)";  // MANUAL PAIR CREATION REMOVED FROM ADMIN: Create a pair, Bulk create pairs and Re-derive all pairs are gone (they only made match-less ghost pairs, and Re-derive rewrote every stored initial club-wide). Pairs are born automatically at match entry. Current pairs list untouched; the underlying JS is left in place unreferenced, so no other code path changes. Includes v47 (set-score fix + double-tap guard) and all prior.
 // Explanation shown above the individual ladder. Open on load so it's read; collapsible
 // (state kept for the session) and scrolls away. Mechanics only — no outcome framing, so
 // members aren't nudged away from playing stronger opponents. Every clause maps to a real
@@ -10209,6 +10215,7 @@ async function clRemove(id, label){
      BAND and nothing else — its own screen, unchanged, under a header that matches the rest of the app. */
   function newLedgerHome(){
     nhCSS(); nhInk("#2f2f2f"); nhHeaderSkin("#2f2f2f","#141414");
+    try{ nhBarMount(); }catch(e){}   /* n63: the way home was missing from every ledger page */
     var host=document.getElementById("homeScreen"); if(!host) return;
     var isClub=!!W.PLAT.nat, name=isClub?(W.PLAT.natName||"Club"):(W.PLAT.poolName||"All Registered Clubs");
     var B=SBREST(), where=(W.PLAT.natIds&&W.PLAT.natIds.length)?("club_id=in.("+W.PLAT.natIds.join(",")+")"):("pool_id=eq."+W.PLAT.pool);
@@ -10824,8 +10831,13 @@ async function clRemove(id, label){
     document.body.appendChild(box);
   };
   function nhBarMount(){
-    var C=(W.PLAT.parentId||W.PLAT.cid||0);
-    if(!C) return;
+    /* n63: on a ledger the club id is 0 — the club is in W.PLAT.nat — so the bar never mounted there and the
+       way home vanished on exactly the pages people get lost on. */
+    var C=(W.PLAT.parentId||(W.PLAT.cid>0?W.PLAT.cid:0)||W.PLAT.nat||0);
+    /* n63: on the REGISTER's own ledger there is no club at all — home is the register's door, and there is
+       no "my page" to offer, so the bar shows two. */
+    var regOnly=(!C && Number(W.PLAT.cid)===0 && !!W.PLAT.pool);
+    if(!C && !regOnly) return;
     var bar=document.getElementById("nhBar");
     if(!bar){
       bar=document.createElement("div"); bar.id="nhBar"; bar.dataset.platKeep="1";
@@ -10851,11 +10863,12 @@ async function clRemove(id, label){
        on general play — the wrong place, silently. On a board it enters THAT board; anywhere else it opens the
        same chooser the door uses. */
     /* a DOOR is not a board: standing there, the app cannot know which board you mean, so it asks */
-    var onBoard=(Number(here)>0 && !W.PLAT.clubDoor);
-    bar.innerHTML='<a class="on" href="'+PAGE+'?club='+C+'">'+ic.home+'Club home</a>'
+    var onBoard=(Number(here)>0 && !W.PLAT.clubDoor);   /* a door or a ledger cannot know which board you mean */
+    var homeHref=regOnly?(PAGE+"?pool="+W.PLAT.pool):(PAGE+"?club="+C);
+    bar.innerHTML='<a class="on" href="'+homeHref+'">'+ic.home+(regOnly?"Register":"Club home")+'</a>'
       + (onBoard ? ('<a href="'+PAGE+'?club='+here+board+'&go=entry">'+ic.score+'Enter a score</a>')
                  : ('<a href="#" onclick="event.preventDefault();window.nhBarWhere()">'+ic.score+'Enter a score</a>'))
-      +'<a href="'+PAGE+'?club='+C+'&go=me">'+ic.me+'My page</a>';
+      + (regOnly?'':('<a href="'+PAGE+'?club='+C+'&go=me">'+ic.me+'My page</a>'));
   }
   function doorActions(kids){
     var ic={score:'<svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>',
@@ -10961,23 +10974,24 @@ async function clRemove(id, label){
           lastLine='<div style="margin-top:9px;padding-top:9px;border-top:1px solid #e9e4f0;font-size:12px;color:#5f5770">Nothing played here yet.</div>';
         }
         return '<button onclick="location.href=\''+href+'\'" style="display:block;width:calc(100% - 24px);text-align:left;background:#fff;'
-          +'border:1px solid #cfc5e0;border-radius:16px;padding:13px 14px;margin:10px 12px 0;font:inherit;cursor:pointer">'
+          /* n63: an even border in the board's own colour — a thickened left edge alone looked unbalanced.
+             The disc, the pill and the count share one line; the caption sits under, indented to the pill. */
+          +'border:2px solid '+col+';border-radius:16px;padding:13px 14px;margin:10px 12px 0;font:inherit;cursor:pointer">'
           +'<div style="display:flex;align-items:center;gap:10px">'
           + nhFace(name,col,36)
-          +'<span style="flex:1;min-width:0">'
-          +'<span style="display:block;background:'+col+';color:#fff;font-weight:800;font-size:14px;border-radius:99px;'
-          +'padding:6px 13px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+esc(name)+'</span>'
-          +'<span style="display:block;font-size:11.5px;color:#5f5770;margin-top:4px">'+esc(sub)+'</span></span>'
-          +'<span style="text-align:right;flex:0 0 auto">'
-          +'<span style="display:block;font-size:18px;font-weight:800;color:'+col+';line-height:1">'+ms.length+'</span>'
+          +'<span style="flex:1;min-width:0;display:block;background:'+col+';color:#fff;font-weight:800;font-size:14px;'
+          +'border-radius:99px;padding:7px 13px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+esc(name)+'</span>'
+          +'<span style="flex:0 0 auto;text-align:right;line-height:1.15">'
+          +'<span style="display:block;font-size:18px;font-weight:800;color:'+col+'">'+ms.length+'</span>'
           +'<span style="display:block;font-size:10px;color:#8a8196">matches</span></span></div>'
+          +'<div style="font-size:11.5px;color:#5f5770;margin:6px 0 0 46px">'+esc(sub)+'</div>' 
           + (today?('<div style="margin-top:8px"><span style="background:#d4f425;color:#1a1a1a;border-radius:99px;padding:3px 10px;font-size:11px;font-weight:800">'+today+' today</span></div>'):'')
           + lastLine +'</button>';
       };
       var heading=function(t){ return '<div style="font-size:12px;letter-spacing:.09em;text-transform:uppercase;color:#7a6f8a;font-weight:800;margin:18px 14px 0">'+esc(t)+'</div>'; };
       var ledgerRow=function(title,sub,col,onclick){
         return '<button onclick="'+onclick+'" style="display:flex;width:calc(100% - 24px);align-items:center;gap:11px;text-align:left;'
-          +'background:#fff;border:1px solid #cfc5e0;border-left:5px solid '+col+';border-radius:14px;padding:12px 13px;margin:10px 12px 0;font:inherit;cursor:pointer">'
+          +'background:#fff;border:1px solid #cfc5e0;border-radius:14px;padding:12px 13px;margin:10px 12px 0;font:inherit;cursor:pointer">'
           +'<span style="flex:1;min-width:0"><span style="display:block;font-size:14.5px;font-weight:800;color:#241d33">'+esc(title)+'</span>'
           +'<span style="display:block;font-size:12px;color:#5f5770;margin-top:2px">'+esc(sub)+'</span></span>'
           +'<span style="display:inline-grid;place-items:center;width:28px;height:28px;border-radius:50%;background:'+col+';color:#fff;font-weight:800">\u203a</span></button>';
@@ -11002,7 +11016,7 @@ async function clRemove(id, label){
         + 'font:inherit;font-weight:800;font-size:16px;color:#1a1a1a;cursor:pointer">+ &nbsp;Enter a score</button>'
         + '<div id="doorWhere" style="display:none;padding:2px 12px 4px"></div>'
         /* the engine */
-        + heading("Where the play happens")
+        + heading("Where things happen \u00b7 tap to enter")
         + card(nhGeneralName(), "#6c3483", "Open to every member", PAGE+"?club="+C+"&board=1", C)
         + kids.map(function(g){ return card(g.name, clubPal(g.id)[0], "A group \u00b7 its own ladder and card", PAGE+"?club="+g.id, g.id); }).join("")
         /* two records, no toggle, each saying how wide it is */
@@ -11016,9 +11030,11 @@ async function clRemove(id, label){
         /* everything else, small */
         + heading("Everything else")
         + '<div style="display:flex;gap:8px;margin:10px 12px 0;flex-wrap:wrap">'
-        + quiet("Ratings","window.doorPick('ladders')")
-        + quiet("Profiles","window.doorPick('profiles')")
-        + quiet("Court card","window.doorPick('card')")
+        /* n63: these were opening the chooser panel that lives further up the page, so from the foot they
+           looked dead. They ask the same question, in place. */
+        + quiet("Ratings","window.doorPick('ladders');window.scrollTo(0,0)")
+        + quiet("Profiles","window.doorPick('profiles');window.scrollTo(0,0)")
+        + quiet("Court card","window.doorPick('card');window.scrollTo(0,0)")
         + quiet((meName()?esc(meName()):"My page"),"location.href='"+PAGE+"?club="+C+"&go=me'")
         + quiet("Club admin","window.nhAdminPage()")
         + quiet("About OPR","showScreen('aboutScreen')")
@@ -12997,7 +13013,10 @@ async function clRemove(id, label){
       return; }
     if(W.PLAT.cid===0){ var t2="OPR · "+(W.PLAT.nat?(W.PLAT.natName||"Club"):(W.PLAT.poolName||"Overall"))+" · Ledger"; if(ht) ht.textContent=t2; document.title=t2;
       if(W.NEWAPP){ try{ newLedgerHome(); }catch(e){} }   /* n51: the ledger's home, new shape */
-      ledgerOnly(); try{ natToggle(); }catch(e){}
+      ledgerOnly();
+      /* n63: the toggle was the thing that swapped one ledger for the other without saying so. The door now
+         offers both by name, so it is gone from the new app; the old app keeps it. */
+      if(!W.NEWAPP){ try{ natToggle(); }catch(e){} }
       /* n32: standing on the COMBINED ledger is the register owner's place as surely as the door is — and it
          is where combined.html lands, so arriving that way left every club door afterwards looking like a
          member's, with no way back. Stamp it here too. A club's own ledger (nat set) does not count: that is
