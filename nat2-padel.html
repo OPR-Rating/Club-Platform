@@ -3576,7 +3576,7 @@ const CLUB_NAME = _club.name;  // shown in the logo as "OPR · <name>"
 // unaffected; this fixes the far commoner "install from the app page" route.
 (function(){
   try{
-    const url = './nat2-padel.html?club=' + CLUB_ID;   // NAT MARKED HUNK: install reopens the fork
+    const url = './' + (location.pathname.split('/').pop() || 'nat-padel.html') + '?club=' + CLUB_ID;   // NAT MARKED HUNK: install reopens THIS file, whatever it is called
     const mf = {
       name: 'OPR · ' + CLUB_NAME,
       short_name: (String(CLUB_NAME).length > 12 ? String(CLUB_NAME).slice(0,12) : String(CLUB_NAME)) || 'OPR',
@@ -3596,7 +3596,7 @@ const CLUB_NAME = _club.name;  // shown in the logo as "OPR · <name>"
     link.setAttribute('href', href);
   }catch(e){ /* install stays on the static manifest — no functional impact */ }
 })();
-const OPR_VERSION = "OPR-DOUBLES v2026.09.03-56 · NAT fork n90 (no voice) (of PLAT p117)";  // MANUAL PAIR CREATION REMOVED FROM ADMIN: Create a pair, Bulk create pairs and Re-derive all pairs are gone (they only made match-less ghost pairs, and Re-derive rewrote every stored initial club-wide). Pairs are born automatically at match entry. Current pairs list untouched; the underlying JS is left in place unreferenced, so no other code path changes. Includes v47 (set-score fix + double-tap guard) and all prior.
+const OPR_VERSION = "OPR-DOUBLES v2026.09.03-56 · NAT fork n92 (no voice) (of PLAT p117)";  // MANUAL PAIR CREATION REMOVED FROM ADMIN: Create a pair, Bulk create pairs and Re-derive all pairs are gone (they only made match-less ghost pairs, and Re-derive rewrote every stored initial club-wide). Pairs are born automatically at match entry. Current pairs list untouched; the underlying JS is left in place unreferenced, so no other code path changes. Includes v47 (set-score fix + double-tap guard) and all prior.
 // Explanation shown above the individual ladder. Open on load so it's read; collapsible
 // (state kept for the session) and scrolls away. Mechanics only — no outcome framing, so
 // members aren't nudged away from playing stronger opponents. Every clause maps to a real
@@ -9284,15 +9284,15 @@ async function clRemove(id, label){
   });
 </script>
 <script>
-/* NAT GLUE — nat2-padel.html n1: the PLAT p117 glue with the CLUB RUNG (national door, club door, club ledger,
+/* NAT GLUE — nat-padel.html n1: the PLAT p117 glue with the CLUB RUNG (national door, club door, club ledger,
    National grid toggle, chips that climb the ladder, General Admin on nat_admin). Every change is marked NAT. */
 /* PLAT GLUE — club strip under the hero, club dropdown at ✚ Enter, hero name from the platform. */
 (function(){
   var W=window;
-  /* n50: THE APP'S OWN NAME, WORKED OUT, NOT WRITTEN IN. A build under another filename (nat2-padel.html,
-     say) used to keep sending people to nat2-padel.html for a group or a club door — so half the taps landed
+  /* n50: THE APP'S OWN NAME, WORKED OUT, NOT WRITTEN IN. A build under another filename (nat-padel.html,
+     say) used to keep sending people to nat-padel.html for a group or a club door — so half the taps landed
      in the old app. It now reads the file it is actually running as. */
-  var PAGE=(function(){ try{ return location.pathname.split("/").pop() || "nat2-padel.html"; }catch(e){ return "nat2-padel.html"; } })();
+  var PAGE=(function(){ try{ return location.pathname.split("/").pop() || "nat-padel.html"; }catch(e){ return "nat-padel.html"; } })();
   // NAT: the ladder — is this board a club with groups? which club is a group of?
   function kidsOf(id){ return (W.PLAT.clubs||[]).filter(function(c){ return c.parent_id===id; }); }
   function isClubWithKids(id){ return kidsOf(id).length>0; }
@@ -11260,9 +11260,17 @@ W.mePair=function(name){
     Promise.all([
       fetch(B+"nat_v_member_group?pool_id=eq."+W.PLAT.pool+"&select=full_name,club_id,group_name&order=full_name.asc").then(J).catch(function(){ return []; }),
       fetch(B+"plat_padel_v_pool_individuals?pool_id=eq."+W.PLAT.pool+"&select=full_name,current_rating,seed_rating&order=full_name.asc").then(J).catch(function(){ return []; }),
-      fetch(B+"plat_clubs?select=id,name,colour").then(J).catch(function(){ return []; })
+      fetch(B+"plat_clubs?select=id,name,colour").then(J).catch(function(){ return []; }),
+      /* n92: the real rating per person comes from the per-board view across every board in the register;
+         the pool view names people but carries no rating for those outside the region you stand in */
+      fetch(B+"plat_clubs?pool_id=eq."+W.PLAT.pool+"&select=id").then(J).catch(function(){ return []; }).then(function(cs){
+        var ids=(Array.isArray(cs)?cs:[]).map(function(c){ return c.id; }); if(!ids.length) return [];
+        return fetch(B+"plat_padel_v_individuals?club_id=in.("+ids.join(",")+")&select=full_name,club_id,current_rating,seed_rating").then(J).catch(function(){ return []; });
+      })
     ]).then(function(r){
-      var groups=Array.isArray(r[0])?r[0]:[], people=Array.isArray(r[1])?r[1]:[], clubs=Array.isArray(r[2])?r[2]:[];
+      var groups=Array.isArray(r[0])?r[0]:[], people=Array.isArray(r[1])?r[1]:[], clubs=Array.isArray(r[2])?r[2]:[], perBoard=Array.isArray(r[3])?r[3]:[];
+      var RT={}; perBoard.forEach(function(x){ if(x.current_rating!=null && (RT[x.full_name]==null)) RT[x.full_name]=x.current_rating; });
+      people.forEach(function(p){ if(p.current_rating==null && RT[p.full_name]!=null) p.current_rating=RT[p.full_name]; });
       var G={}; groups.forEach(function(g){ G[g.full_name]=g; });
       var COL={}; clubs.forEach(function(c){ COL[Number(c.id)]=c.colour||null; });
       var mine=people.filter(function(p){
@@ -11299,13 +11307,23 @@ W.mePair=function(name){
   function recProfiles(sc,w){
     w.innerHTML = recBand(sc,"Member profiles", sc.base, "Records") + recPanel(sc,"Finding who has played\u2026","") + homeBar();
     var B=SBREST();
+    /* n92: THE REGISTER'S PROFILES CARRY THEIR STATS. The pool-wide view names everybody but does not carry a
+       rating for people outside the region you came from, so external members showed with empty pills. Both
+       widths now read the per-board view — the region's boards, or EVERY board in the register — and a person
+       who plays on more than one board is shown once, on the board where they have played most. */
     var q = sc.wide
-      ? "plat_padel_v_pool_individuals?pool_id=eq."+W.PLAT.pool+"&select=id,full_name,gender,current_rating,seed_rating&order=full_name.asc"
-      : "plat_padel_v_individuals?club_id=in.("+sc.boards.join(",")+")&select=id,full_name,gender,current_rating,seed_rating&order=full_name.asc";
+      ? null
+      : "plat_padel_v_individuals?club_id=in.("+sc.boards.join(",")+")&select=id,club_id,full_name,gender,current_rating,seed_rating&order=full_name.asc";
     var mq = sc.wide
       ? "plat_matches?pool_id=eq."+W.PLAT.pool+"&discipline=eq.padel&select=club_id,t1p1,t1p2,t2p1,t2p2&limit=6000"
       : "plat_matches?club_id=in.("+sc.boards.join(",")+")&discipline=eq.padel&select=club_id,t1p1,t1p2,t2p1,t2p2&limit=6000";
-    Promise.all([fetch(B+q).then(J).catch(function(){ return []; }),
+    var peopleP = q ? fetch(B+q).then(J).catch(function(){ return []; })
+      : fetch(B+"plat_clubs?pool_id=eq."+W.PLAT.pool+"&select=id").then(J).catch(function(){ return []; }).then(function(cs){
+          var ids=(Array.isArray(cs)?cs:[]).map(function(c){ return c.id; });
+          if(!ids.length) return [];
+          return fetch(B+"plat_padel_v_individuals?club_id=in.("+ids.join(",")+")&select=id,club_id,full_name,gender,current_rating,seed_rating&order=full_name.asc").then(J).catch(function(){ return []; });
+        });
+    Promise.all([peopleP,
                  fetch(B+mq).then(J).catch(function(){ return []; }),
                  fetch(B+"plat_clubs?select=id,name,colour").then(J).catch(function(){ return []; })]).then(function(rr){
       var rows=Array.isArray(rr[0])?rr[0]:[], ms=Array.isArray(rr[1])?rr[1]:[], clubs=Array.isArray(rr[2])?rr[2]:[];
@@ -11314,7 +11332,14 @@ W.mePair=function(name){
       var played={}, count={};
       ms.forEach(function(m){ [m.t1p1,m.t1p2,m.t2p1,m.t2p2].forEach(function(v){ halves(v).forEach(function(n){
         count[n]=(count[n]||0)+1; (played[n]=played[n]||{})[m.club_id]=((played[n]||{})[m.club_id]||0)+1; }); }); });
-      var seen={}; rows=rows.filter(function(p){ if(seen[p.full_name]) return false; seen[p.full_name]=1; return count[p.full_name]>0; });
+      var best={};
+      rows.forEach(function(p){
+        if(!(count[p.full_name]>0)) return;
+        var here=((played[p.full_name]||{})[p.club_id]||0), has=(p.current_rating!=null)?1:0;
+        var cur=best[p.full_name];
+        if(!cur || (has>cur._has) || (has===cur._has && here>cur._here)){ p._here=here; p._has=has; best[p.full_name]=p; }
+      });
+      rows=Object.keys(best).sort().map(function(n){ return best[n]; });
       rows.forEach(function(p){ p.matches=count[p.full_name]||0; p.boards=Object.keys(played[p.full_name]||{}).map(Number); });
       W.__recPeople=rows; W.__recClubs=CL; W.__recCol=sc.col;
       w.innerHTML = recBand(sc,"Member profiles", sc.base, "Records")
@@ -12559,7 +12584,7 @@ W.nhOpenPair=function(name){
       }).join("")||'<span style="color:#888">No clubs yet.</span>';
     });
   }
-  var DOOR_BASE=(function(){ try{ return location.origin+location.pathname; }catch(e){ return "nat2-padel.html"; } })();
+  var DOOR_BASE=(function(){ try{ return location.origin+location.pathname; }catch(e){ return "nat-padel.html"; } })();
   W.platCopyDoor=function(u){
     var m=document.getElementById("platRegMsg");
     var done=function(){ if(m){ m.style.color="#2e7d32"; m.textContent="Address copied \u2014 send it to the club."; } };
@@ -12964,14 +12989,14 @@ W.nhOpenPair=function(name){
   function fixManifest(){
     try{
       var name, url;
-      if(W.PLAT.landing){ name="OPR · "+(W.PLAT.poolName||"Clubs"); url="./nat2-padel.html?pool="+W.PLAT.pool; }
-      else if(W.PLAT.cid===0){ name="OPR · "+((W.PLAT.nat?W.PLAT.natName:W.PLAT.poolName)||"Overall")+" · Ledger"; url="./nat2-padel.html?club=0&pool="+W.PLAT.pool+(W.PLAT.nat?("&nat="+W.PLAT.nat):""); }   // NAT
-      else { if(!W.PLAT.name) return; name="OPR · "+W.PLAT.name; url="./nat2-padel.html?club="+W.PLAT.cid; }
+      if(W.PLAT.landing){ name="OPR · "+(W.PLAT.poolName||"Clubs"); url="./"+PAGE+"?pool="+W.PLAT.pool; }
+      else if(W.PLAT.cid===0){ name="OPR · "+((W.PLAT.nat?W.PLAT.natName:W.PLAT.poolName)||"Overall")+" · Ledger"; url="./"+PAGE+"?club=0&pool="+W.PLAT.pool+(W.PLAT.nat?("&nat="+W.PLAT.nat):""); }   // NAT
+      else { if(!W.PLAT.name) return; name="OPR · "+W.PLAT.name; url="./"+PAGE+"?club="+W.PLAT.cid; }
       var shortN=(W.PLAT.landing?String(W.PLAT.poolName||"OPR Clubs"):(W.PLAT.cid===0?String((W.PLAT.poolName||"")+" Ledger").trim():String(W.PLAT.name||"OPR")));
       if(shortN.length>12) shortN=shortN.slice(0,12);
       // each app is scoped to its OWN page: with scope "./" an installed app covered the whole folder, so
       // Chrome reported "already installed" for every other page in it.
-      var mf={ id:url, name:name, short_name:shortN, start_url:url, scope:"./nat2-padel.html", display:"standalone",
+      var mf={ id:url, name:name, short_name:shortN, start_url:url, scope:"./"+PAGE, display:"standalone",
                background_color:"#1c110a", theme_color:"#1c110a",
                icons:[{src:"./icon-192.png",sizes:"192x192",type:"image/png"},{src:"./icon-512.png",sizes:"512x512",type:"image/png"}] };
       var href="data:application/manifest+json,"+encodeURIComponent(JSON.stringify(mf));
