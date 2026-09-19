@@ -1159,12 +1159,16 @@ st0.textContent += "html{overflow-y:scroll}";   // p98: the scrollbar's space is
         var pb={}; try{ pb=JSON.parse(init.body||"{}"); }catch(e){}
         var call=function(fnName,payload){ return _fetch(PLAT+"/functions/v1/"+fnName,{method:"POST",headers:fnHdrs(init.headers),body:JSON.stringify(payload)}).then(function(r){return r.json();}); };
         if(method==="POST"&&tbl==="individuals"){
-          var target=Number(pb.club_id)||CID; if(!target) return jsonResp({message:"Choose a club to register into."},400);
+          /* n86: A BOARD'S ROOM WRITES TO THAT BOARD. The old admin screen carries plat's original club chooser
+             — Club Alpha, The Padel Ballies, Sun and Fun Padel, all in pool 7 — and this line honoured whatever
+             it chose. Twenty-five test members were written into pool 7 that way while Andre stood in a
+             sandbox group. In the new app the target is the board you are standing on, full stop. */
+          var target=(W.NEWAPP&&CID>0)?CID:(Number(pb.club_id)||CID); if(!target) return jsonResp({message:"Choose a club to register into."},400);
           return call("nat_admin",{action:"add_member",club_id:target,admin_pin:apin,full_name:pb.full_name,gender:pb.gender,pin:pb.pin||null,seeds:{padel:(pb.seed_rating!=null&&pb.seed_rating!==""?Number(pb.seed_rating):null)}})
             .then(function(o){ if(!o||!o.ok) return jsonResp({message:(o&&o.error)||"could not register"},400); return jsonResp([o.member],201); });
         }
         if(method==="PATCH"&&tbl==="individuals"&&rid){
-          var payload={action:"edit_member",club_id:CID,admin_pin:apin,individual_id:rid};
+          var payload={action:"edit_member",club_id:CID,admin_pin:apin,individual_id:rid};   /* the room's own board */
           if(pb.full_name!=null) payload.new_name=pb.full_name; if(pb.pin!==undefined) payload.pin=pb.pin==null?"":pb.pin; if(pb.gender!=null) payload.gender=pb.gender;
           if(pb.seed_rating!=null) payload.seeds={padel:Number(pb.seed_rating)};
           return call("nat_admin",payload).then(function(o){ if(!o||!o.ok) return jsonResp({message:(o&&o.error)||"edit failed"},400); return jsonResp([],204); });
@@ -3574,7 +3578,7 @@ const CLUB_NAME = _club.name;  // shown in the logo as "OPR · <name>"
     link.setAttribute('href', href);
   }catch(e){ /* install stays on the static manifest — no functional impact */ }
 })();
-const OPR_VERSION = "OPR-DOUBLES v2026.09.03-56 · NAT fork n84 (no voice) (of PLAT p117)";  // MANUAL PAIR CREATION REMOVED FROM ADMIN: Create a pair, Bulk create pairs and Re-derive all pairs are gone (they only made match-less ghost pairs, and Re-derive rewrote every stored initial club-wide). Pairs are born automatically at match entry. Current pairs list untouched; the underlying JS is left in place unreferenced, so no other code path changes. Includes v47 (set-score fix + double-tap guard) and all prior.
+const OPR_VERSION = "OPR-DOUBLES v2026.09.03-56 · NAT fork n86 (no voice) (of PLAT p117)";  // MANUAL PAIR CREATION REMOVED FROM ADMIN: Create a pair, Bulk create pairs and Re-derive all pairs are gone (they only made match-less ghost pairs, and Re-derive rewrote every stored initial club-wide). Pairs are born automatically at match entry. Current pairs list untouched; the underlying JS is left in place unreferenced, so no other code path changes. Includes v47 (set-score fix + double-tap guard) and all prior.
 // Explanation shown above the individual ladder. Open on load so it's read; collapsible
 // (state kept for the session) and scrolls away. Mechanics only — no outcome framing, so
 // members aren't nudged away from playing stronger opponents. Every clause maps to a real
@@ -9641,6 +9645,21 @@ async function clRemove(id, label){
         if(go==="me"){ try{ newMePage(); return true; }catch(e){ return false; } }
         if(go==="records") return true;   /* n75: the dispatcher draws this one; nothing else should */
         if(go==="profiles"){
+          /* n86: on plat's Team Profile list, a tap opens the member's own page (one profile, everywhere) */
+          if(W.NEWAPP){
+            var tick=setInterval(function(){
+              var items=document.querySelectorAll("#playerList li.player-item");
+              if(!items.length) return;
+              Array.prototype.forEach.call(items,function(li){
+                if(li.dataset.nhWired) return;
+                var nm=(li.querySelector(".player-name")||{}).textContent||"";
+                if(!nm) return;
+                li.dataset.nhWired="1";
+                li.setAttribute("onclick","window.nhOpenProfile("+JSON.stringify(nm).replace(/"/g,"&quot;")+")");
+              });
+            },400);
+            setTimeout(function(){ clearInterval(tick); }, 60000);
+          }
           var pr=""; try{ pr=new URLSearchParams(location.search).get("pair")||""; }catch(e){}
           if(pr && typeof loadProfile==="function"){
             /* n83: a pair named in the link opens straight away, in this scope */
@@ -9651,7 +9670,24 @@ async function clRemove(id, label){
         if(go==="admin"){
           if(W.PLAT.cid===0){ var t=document.getElementById("platRegTile");
             if(t){ showScreen("aboutScreen"); setTimeout(function(){ t.click(); },80); return true; } return false; }
-          if(typeof openAdmin==="function"){ openAdmin(); return true; }
+          if(typeof openAdmin==="function"){
+            openAdmin();
+            /* n86: THE ROOM BELONGS TO THIS BOARD. The old admin screen carries plat's own club chooser (Club
+               Alpha, The Padel Ballies, Sun and Fun Padel — pool 7), and a member added while it pointed there
+               went to pool 7. In the new app the chooser shows this board and nothing else. */
+            if(W.NEWAPP && W.PLAT.cid>0){
+              var lock=setInterval(function(){
+                var sel=document.getElementById("adminClubSelect"); if(!sel) return;
+                var nm=nhBoardName(W.PLAT.cid)||W.PLAT.name||("Board "+W.PLAT.cid);
+                if(sel.options.length!==1 || String(sel.value)!==String(W.PLAT.cid)){
+                  sel.innerHTML='<option value="'+W.PLAT.cid+'">'+esc(nm)+'</option>'; sel.value=String(W.PLAT.cid);
+                }
+                sel.disabled=true; sel.style.opacity="1"; sel.style.background="#f5f2f9";
+              },500);
+              setTimeout(function(){ clearInterval(lock); },120000);
+            }
+            return true;
+          }
           return false;
         }
         if(go==="ladders" && typeof showScreen==="function"){ showScreen("laddersScreen"); return true; }
@@ -10478,7 +10514,13 @@ async function clRemove(id, label){
     try{ localStorage.removeItem(meKey()); localStorage.removeItem(mePinKey()); }catch(e){}
     newMePage();
   };
-  W.mePair=function(nm){ try{ if(typeof loadProfile==="function") loadProfile(nm,""); }catch(e){} };
+  W.mePair=function(name){
+    /* n85: PLAT'S PAIR PROFILE, on the ledger route where the query reaches every board in the region — from
+       the door it looked at one board and came back empty. Plat's page rolls the pair's matches out under
+       the two names; back returns to this profile. */
+    var C=(W.PLAT.parentId||W.PLAT.cid||W.PLAT.nat||0);
+    location.href=PAGE+"?club=0&pool="+W.PLAT.pool+"&nat="+C+"&go=profiles&pair="+encodeURIComponent(name)+"&back="+encodeURIComponent(location.search||"");
+  }
   function halves(v){ return String(v||"").split(" & ").map(function(x){ return x.trim(); }).filter(Boolean); }
 
   /* everything about one person, from the matches the club already holds */
@@ -10664,7 +10706,7 @@ async function clRemove(id, label){
             +'<span class="val"><b class="'+(v>=0?"up":"dn")+'">'+fmt(v)+'</b><span>move</span></span></div>';
         }).join("")
       +'</div>'
-      +'<button class="more" onclick="window.nhGo(\'ledger\')">See all matches in the ledger \u2192</button></div>';
+      +'<button class="more" onclick="document.getElementById(\'meMatches\')&&document.getElementById(\'meMatches\').scrollIntoView({behavior:\'smooth\',block:\'start\'})">See all my matches \u2193</button></div>';
     return h;
   }
   function meEmpty(msg){
@@ -10776,8 +10818,11 @@ async function clRemove(id, label){
         + '<span class="sub">'+(homeId?("plays mostly at "+esc(nhBoardName(homeId))):"no matches yet")+'</span></span></div>'
         + '<div style="display:flex;align-items:baseline;gap:10px;margin-top:12px">'
         + '<span style="font-size:38px;font-weight:800;letter-spacing:-1px;line-height:1">'+(rating||"\u2014")+'</span>'
-        + (lvl?('<span class="pill">level '+lvl.toFixed(1)+'</span>'):'')
-        + (rk?('<span class="pill">rank '+rk.rank+' of '+rk.of+'</span>'):'')
+        /* n85: level and rank each in a bordered chip — one shape, two facts, easy to scan */
+        + (lvl?('<span style="display:inline-flex;flex-direction:column;align-items:center;border:1.5px solid rgba(255,255,255,.55);border-radius:12px;padding:5px 12px;line-height:1.1">'
+              +'<b style="font-size:15px">'+lvl.toFixed(1)+'</b><span style="font-size:9.5px;letter-spacing:.08em;text-transform:uppercase;opacity:.85">level</span></span>'):'')
+        + (rk?('<span style="display:inline-flex;flex-direction:column;align-items:center;border:1.5px solid rgba(255,255,255,.55);border-radius:12px;padding:5px 12px;line-height:1.1">'
+              +'<b style="font-size:15px">'+rk.rank+'<span style="font-weight:600;opacity:.8;font-size:11px"> / '+rk.of+'</span></b><span style="font-size:9.5px;letter-spacing:.08em;text-transform:uppercase;opacity:.85">rank</span></span>'):'')
         + '</div>'
         /* n78: opened from the records, the way back is the page that sent us; your own page goes home */
         + (function(){ var bq=""; try{ bq=new URLSearchParams(location.search).get("back")||""; }catch(e){}
@@ -10785,13 +10830,14 @@ async function clRemove(id, label){
         + '<span>'+(st.move>0?"+":"")+Math.round(st.move)+' '+nhWhen()+'</span>'
         + Object.keys(st.boards).map(function(id){ return '<span>'+esc(nhBoardName(id))+' \u00b7 '+st.boards[id]+'</span>'; }).join("")
         + '</div></div>'
-        + nhActions(col,deep);
-
+        ;
+      /* n85: the five figures sit right under the header; the action row comes after them */
       h+='<div class="five">'
         + [[st.matches.length,"Matches"],[st.matches.filter(function(m){ return ago(m.match_date)<=56; }).length,"Last 8 weeks"],
            [st.setsW+"/"+(st.setsW+st.setsL),"Sets won"],[pct+"%","Win %"],[(gd>0?"+":"")+gd.toFixed(2),"Game diff/set"]]
             .map(function(x){ return '<div class="fig"><b>'+esc(String(x[0]))+'</b><span>'+esc(x[1])+'</span></div>'; }).join("")
         +'</div>'
+      h+=nhActions(col,deep)
         + meMoveBy(st)                       /* n84: move by group, as plat shows it but readable */
         + meChartBlock(me,st,all)            /* n69: plat's Chart Snapshot, below the five figures */
         +'<div class="cols">';
@@ -10844,12 +10890,12 @@ async function clRemove(id, label){
       }
 
       if(!st.matches.length){
-        h+='<div class="brk">'+nhLimeBar("My recent matches")
+        h+='<div class="brk" id="meMatches">'+nhLimeBar("My recent matches")
           + meEmpty("Nothing yet. Enter a score and it appears here \u2014 your pair first, the score your way round.")
           +'</div>';
       }
       if(st.matches.length){
-        h+='<div class="brk">'+nhLimeBar("My recent matches")
+        h+='<div class="brk" id="meMatches">'+nhLimeBar("My recent matches")
           +'<div class="rows" style="max-height:340px;overflow-y:auto">'
           + st.matches.slice(0,25).map(function(m){
               var t1=halves(m.t1p1).concat(halves(m.t1p2)), iAmT1=(t1.indexOf(me)>=0);
@@ -11076,7 +11122,10 @@ async function clRemove(id, label){
     w.innerHTML = recBand(sc, sc.wide?"Every region, every group, every member \u2014 one rating each":"Members, profiles and the ladders",
                           PAGE+"?club="+sc.C, W.PLAT.name||"back")
       + recPill(sc,"List all members", sc.wide?"Everyone in the register, with their group":"Everyone here, with their group", sc.base+"&view=members")
-      + recPill(sc,"Member profiles", "Anyone who has played \u2014 their record, wherever they played", sc.base+"&view=profiles")
+      /* n86: PLAT'S TEAM PROFILE PAGE, in the region's scope — the same page a group shows, exactly. The one
+         change: a name opens the member's single profile page, not plat's partnerships screen. */
+      + recPill(sc,"Member profiles", "Anyone who has played \u2014 tap a name for their profile",
+                PAGE+(sc.wide?("?club=0&pool="+W.PLAT.pool):("?club=0&pool="+W.PLAT.pool+"&nat="+sc.C))+"&go=profiles&back="+encodeURIComponent(sc.base.replace(PAGE,"")))
       /* n83: PLAT'S LADDERS, NOT A COPY. Pair Ratings (Men's · Ladies' · Mixed · All Sorts), Universal, the
          Club Ladder and the Form wall already exist in plat; the records open that page in the region's scope
          (or the register's), skinned to match, with back returning to the records sheet. */
@@ -11178,21 +11227,36 @@ async function clRemove(id, label){
     }).join("") : '<div style="padding:14px;font-size:13px;color:#5f5770">No member by that name.</div>';
   };
   W.recFilter=function(){
+    /* n85: PLAT'S OWN ROW. Letter disc, name, Male/Female, then four pills as renderIndivList draws them:
+       rating (blue for men, pink for ladies), level (rating/200), move since seed, and rank in brackets among
+       the same gender. Copied, not approximated. */
     var v=String((document.getElementById("recFind")||{}).value||"").trim().toLowerCase();
-    var rows=(W.__recPeople||[]).filter(function(p){ return !v || String(p.full_name).toLowerCase().indexOf(v)>=0; });
+    var all=(W.__recPeople||[]);
+    var rank={}; ["M","F"].forEach(function(g){
+      all.filter(function(x){ return x.gender===g && x.current_rating!=null; })
+         .slice().sort(function(a,b){ return b.current_rating-a.current_rating; })
+         .forEach(function(x,i){ rank[x.full_name]=i+1; }); });
+    var rows=all.filter(function(p){ return !v || String(p.full_name).toLowerCase().indexOf(v)===0 || String(p.full_name).toLowerCase().indexOf(" "+v)>=0; });
     var box=document.getElementById("recNames"), cnt=document.getElementById("recCount");
     if(cnt) cnt.textContent=rows.length;
     if(!box) return;
+    var pill=function(txt,bg,fg,w){ return '<span style="display:inline-block;width:'+w+'px;text-align:center;padding:2px 0;border-radius:99px;font-size:10px;font-weight:800;background:'+bg+';color:'+fg+';margin-left:4px">'+esc(String(txt))+'</span>'; };
     box.innerHTML = rows.length ? rows.map(function(p){
+      var cur=(p.current_rating!=null)?Math.round(p.current_rating):null;
+      var lvl=(cur!=null)?(cur/200).toFixed(1):"";
+      var init=(p.seed_rating!=null)?Math.round(p.seed_rating):null;
+      var mv=(cur!=null&&init!=null)?(cur-init):null, mvStr=(mv==null)?"\u2014":((mv>0?"+":"")+mv), mvFg=(mv==null||mv>=0)?"#1e8449":"#c0392b";
+      var rateBg=(p.gender==="F")?"#ffe6f0":"#e3edff", rateFg=(p.gender==="F")?"#a02166":"#2148a0";
+      var rk=rank[p.full_name], rkStr=(rk!=null)?("("+rk+")"):"\u2014";
       var who=String(p.full_name).replace(/'/g,"\\'");
-      var mv=(p.move>0?"+":"")+p.move;
-      return '<button data-plat-keep="1" onclick="window.nhOpenProfile(\''+who+'\')" style="display:flex;width:100%;align-items:center;gap:9px;'
+      return '<button data-plat-keep="1" onclick="window.nhOpenProfile(\''+who+'\')" style="display:flex;width:100%;align-items:center;gap:10px;'
         +'padding:10px 13px;border:none;border-top:1px solid #f0ecf6;background:#fff;font:inherit;text-align:left;cursor:pointer">'
-        + nhFace(p.full_name,"#6c3483",32)
+        +'<span style="width:34px;height:34px;border-radius:50%;background:#6c3483;color:#fff;display:grid;place-items:center;font-weight:800;font-size:14px;flex:0 0 34px">'+esc(String(p.full_name||"?")[0])+'</span>'
         +'<span style="flex:1;min-width:0"><span style="display:block;font-size:14px;font-weight:700;color:#241d33;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+esc(p.full_name)+'</span>'
-        +'<span style="display:block;font-size:11.5px;color:#8a8196">'+(p.gender==="F"?"Female":(p.gender==="M"?"Male":""))+'</span></span>'
-        +'<span style="text-align:right;flex:0 0 auto;line-height:1.15"><span style="display:block;font-size:14px;font-weight:800;color:#6c3483">'+esc(String(Math.round(p.current_rating)))+'</span>'
-        +'<span style="display:block;font-size:11px;color:'+(p.move>=0?"#1f8a4c":"#c0392b")+';font-weight:700">'+mv+' <span style="color:#8a8196;font-weight:600">('+p.matches+')</span></span></span></button>';
+        +'<span style="display:block;font-size:11.5px;color:#8a8196">'+(p.gender==="M"?"Male":(p.gender==="F"?"Female":""))+'</span></span>'
+        +'<span style="white-space:nowrap;flex-shrink:0">'
+        + pill(cur!=null?cur:"",rateBg,rateFg,46) + pill(lvl,"#efe9e3","#6b4a2f",34) + pill(mvStr,"#f0f0f0",mvFg,40) + pill(rkStr,rateBg,rateFg,34)
+        +'</span></button>';
     }).join("") : '<div style="padding:14px;font-size:13px;color:#5f5770">No one by that name has played here.</div>';
   };
   /* ---- ladders: the pairs, by kind, from the system's own results ---------------------------------------- */
