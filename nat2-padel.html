@@ -870,6 +870,20 @@
     // ledger's charcoal and stripping OPR's banner off it. The ledger is the one with a pool but no club
     // AND not the landing page.
     var isLedger = (CID===0 && !LANDING);
+    /* n90: ON THE WAY TO ADMIN, THE PAGE IS BLANK UNTIL THE ROOM IS UP. This runs before the first paint,
+       which is the only place a hold like this works — the later one in the glue arrived after the ledger's
+       landing page had already shown for a few frames. Released when the admin room is on screen, or at 5s. */
+    if(isLedger && /[?&]go=admin/.test(String(location.search||"")) && W.NEWAPP){
+      try{
+        var hold=document.createElement("style"); hold.id="nhHold0";
+        hold.textContent="html body #homeScreen,html body #nh,html body .screen:not(#platRegScreen){display:none!important}";
+        (document.head||document.documentElement).appendChild(hold);
+        var t0=Date.now(), tk=setInterval(function(){
+          var up=document.querySelector("#platRegScreen.active");
+          if(up || Date.now()-t0>5000){ var x=document.getElementById("nhHold0"); if(x) x.remove(); clearInterval(tk); }
+        },60);
+      }catch(e){}
+    }
     /* n88: the first-frame skin follows the colour rule too — a region's ledger (nat= in the URL) is purple
        from its very first paint; only the register's is charcoal */
     var isRegionLedger = isLedger && /[?&]nat=\d+/.test(String(location.search||"")) && W.NEWAPP;
@@ -3582,7 +3596,7 @@ const CLUB_NAME = _club.name;  // shown in the logo as "OPR · <name>"
     link.setAttribute('href', href);
   }catch(e){ /* install stays on the static manifest — no functional impact */ }
 })();
-const OPR_VERSION = "OPR-DOUBLES v2026.09.03-56 · NAT fork n89 (no voice) (of PLAT p117)";  // MANUAL PAIR CREATION REMOVED FROM ADMIN: Create a pair, Bulk create pairs and Re-derive all pairs are gone (they only made match-less ghost pairs, and Re-derive rewrote every stored initial club-wide). Pairs are born automatically at match entry. Current pairs list untouched; the underlying JS is left in place unreferenced, so no other code path changes. Includes v47 (set-score fix + double-tap guard) and all prior.
+const OPR_VERSION = "OPR-DOUBLES v2026.09.03-56 · NAT fork n90 (no voice) (of PLAT p117)";  // MANUAL PAIR CREATION REMOVED FROM ADMIN: Create a pair, Bulk create pairs and Re-derive all pairs are gone (they only made match-less ghost pairs, and Re-derive rewrote every stored initial club-wide). Pairs are born automatically at match entry. Current pairs list untouched; the underlying JS is left in place unreferenced, so no other code path changes. Includes v47 (set-score fix + double-tap guard) and all prior.
 // Explanation shown above the individual ladder. Open on load so it's read; collapsible
 // (state kept for the session) and scrolls away. Mechanics only — no outcome framing, so
 // members aren't nudged away from playing stronger opponents. Every clause maps to a real
@@ -9831,6 +9845,17 @@ async function clRemove(id, label){
       + "#nh ~ * button[onclick*='aboutScreen']{display:none!important}";
     if(!st.parentNode) document.head.appendChild(st);
   }
+  /* n90: A HIDDEN SCREEN MUST NOT TAKE TAPS. Plat's inactive screens were sitting at full size over the page,
+     invisible but catching pointer events — so on the ladders page the band's back link could not be tapped.
+     Hidden means gone. */
+  (function(){
+    try{
+      if(document.getElementById("nhHiddenFix")) return;
+      var st=document.createElement("style"); st.id="nhHiddenFix";
+      st.textContent=".screen.hidden{display:none!important;pointer-events:none!important}";
+      (document.head||document.documentElement).appendChild(st);
+    }catch(e){}
+  })();
   function nhCSS(){
     if(document.getElementById("nhCss")) return;
     var st=document.createElement("style"); st.id="nhCss";
@@ -10286,7 +10311,7 @@ async function clRemove(id, label){
       +'<div class="mark"><span class="logo">OPR</span>Admin control</div>'
       +'<h1>'+esc(club.name)+'</h1>'
       +'<div class="sub">Every room this region has, and the code each one takes</div>'
-      +'<div class="pulse"><a href="'+PAGE+'?club='+C+'">\u2039 '+esc(club.name)+'</a></div></div>'
+      +'<div class="pulse"><a href="'+PAGE+'?club='+C+'" onclick="return window.nhBack(this.href)">\u2039 '+esc(club.name)+'</a></div></div>'
       + body;
   };
   W.nhAdmin=function(){
@@ -10335,10 +10360,24 @@ async function clRemove(id, label){
     try{
       if(!W.NEWAPP) return;
       if(!/[?&]club=0/.test(String(location.search||""))) return;
+      var toAdmin=/[?&]go=admin/.test(String(location.search||""));
       var m=document.createElement("style"); m.id="nhHold";
-      m.textContent=".screen{visibility:hidden!important}";
+      /* n90: ON THE WAY TO ADMIN, NOTHING SHOWS UNTIL THE ROOM IS UP. The ledger's own landing page —
+         "Current Ratings and Ladders · Overall Profile · Recent Matches · Loading…" — was drawn first and sat
+         there for a second before the admin room opened over it. That is the "ratings page flash". Held
+         blank, including the new ledger home, until the room is on screen (or 5s, so a failure never leaves
+         a white page). */
+      m.textContent=".screen{visibility:hidden!important}"+(toAdmin?"#nh,#homeScreen{visibility:hidden!important}":"");
       (document.head||document.documentElement).appendChild(m);
-      setTimeout(function(){ var x=document.getElementById("nhHold"); if(x) x.remove(); }, 1200);
+      if(toAdmin){
+        var t0=Date.now();
+        var tk=setInterval(function(){
+          var up=document.querySelector("#platRegScreen.active, .screen.active#platRegScreen");
+          if(up || Date.now()-t0>5000){ var x=document.getElementById("nhHold"); if(x) x.remove(); clearInterval(tk); }
+        },80);
+      } else {
+        setTimeout(function(){ var x=document.getElementById("nhHold"); if(x) x.remove(); }, 1200);
+      }
     }catch(e){}
   })();
   function nhReveal(){ try{ var x=document.getElementById("nhHold"); if(x) x.remove(); }catch(e){} }
@@ -10385,10 +10424,10 @@ async function clRemove(id, label){
        line is for the REGISTER's ledger, which belongs to no single club. */
     var bq=""; try{ bq=new URLSearchParams(location.search).get("back")||""; }catch(e){}
     var frm=nhFrom() || (isClub ? Number(W.PLAT.nat||0) : 0);
-    if(bq) back='<a href="'+PAGE+esc(bq)+'">\u2039 Records</a>';   /* n83: sent here by the records sheet */
-    else if(frm) back='<a href="'+PAGE+'?club='+frm+'">\u2039 '+esc(W.PLAT.natName||"back")+'</a>';
+    if(bq) back='<a href="'+PAGE+esc(bq)+'" onclick="return window.nhBack(this.href)">\u2039 Records</a>';   /* n83: sent here by the records sheet */
+    else if(frm) back='<a href="'+PAGE+'?club='+frm+'" onclick="return window.nhBack(this.href)">\u2039 '+esc(W.PLAT.natName||"back")+'</a>';
     else { var last=null; try{ last=sessionStorage.getItem("nat_last_club_"+W.PLAT.pool); }catch(e){}
-      if(last){ var bits=last.split("|"); back='<a href="'+PAGE+'?club='+bits[0]+'">\u2039 '+esc(bits[1]||"club")+'</a>'; } }
+      if(last){ var bits=last.split("|"); back='<a href="'+PAGE+'?club='+bits[0]+'" onclick="return window.nhBack(this.href)">\u2039 '+esc(bits[1]||"club")+'</a>'; } }
     /* on the register's own ledger the tables cover every club, so the button says so */
     if(!isClub){ setTimeout(function(){
       Array.prototype.forEach.call(document.querySelectorAll("#homeScreen .menu-btn"),function(b){
@@ -10826,7 +10865,7 @@ W.mePair=function(name){
         +(lvl?('<span style="display:inline-flex;flex-direction:column;align-items:center;border:1.5px solid rgba(255,255,255,.55);border-radius:12px;padding:5px 12px;line-height:1.1"><b style="font-size:15px">'+lvl+'</b><span style="font-size:9.5px;letter-spacing:.08em;text-transform:uppercase;opacity:.85">level</span></span>'):'')
         +(move!=null?('<span style="display:inline-flex;flex-direction:column;align-items:center;border:1.5px solid rgba(255,255,255,.55);border-radius:12px;padding:5px 12px;line-height:1.1"><b style="font-size:15px">'+(move>0?"+":"")+move+'</b><span style="font-size:9.5px;letter-spacing:.08em;text-transform:uppercase;opacity:.85">move</span></span>'):'')
         +'</div>'
-        +'<div class="pulse"><a href="'+backHref+'">\u2039 back</a>'+(kind?('<span>'+kind+'</span>'):'')+'<span>'+ms.length+' match'+(ms.length===1?"":"es")+'</span></div></div>';
+        +'<div class="pulse"><a href="'+backHref+'" onclick="return window.nhBack(this.href)">\u2039 back</a>'+(kind?('<span>'+kind+'</span>'):'')+'<span>'+ms.length+' match'+(ms.length===1?"":"es")+'</span></div></div>';
       h+='<div class="five">'
         + [[ms.length,"Matches"],[sets,"Sets played"],[won,"Sets won"],[pct!=null?(pct+"%"):"\u2014","Win %"],[gd!=null?((+gd>0?"+":"")+gd):"\u2014","Game diff/set"]]
             .map(function(x){ return '<div class="fig"><b>'+esc(String(x[0]))+'</b><span>'+esc(x[1])+'</span></div>'; }).join("")
@@ -10900,7 +10939,7 @@ W.mePair=function(name){
         + '</div>'
         /* n78: opened from the records, the way back is the page that sent us; your own page goes home */
         + (function(){ var bq=""; try{ bq=new URLSearchParams(location.search).get("back")||""; }catch(e){}
-             return '<div class="pulse"><a href="'+(bq?(PAGE+bq):(PAGE+'?club='+C))+'">\u2039 '+esc(bq?"back":club.name)+'</a>'; })()
+             return '<div class="pulse"><a href="'+(bq?(PAGE+bq):(PAGE+'?club='+C))+'" onclick="return window.nhBack(this.href)">\u2039 '+esc(bq?"back":club.name)+'</a>'; })()
         + '<span>'+(st.move>0?"+":"")+Math.round(st.move)+' '+nhWhen()+'</span>'
         + Object.keys(st.boards).map(function(id){ return '<span>'+esc(nhBoardName(id))+' \u00b7 '+st.boards[id]+'</span>'; }).join("")
         + '</div></div>'
@@ -11003,7 +11042,7 @@ W.mePair=function(name){
     W.__mePeopleFull=all.people||[];
     return '<div class="band opr"><div class="mark"><span class="logo">OPR</span>Open Padel Ratings</div>'
       +'<h1>Which one is you?</h1><div class="sub">'+esc(club.name)+' \u00b7 tap your name once and this becomes your page</div>'
-      +'<div class="pulse"><a href="'+PAGE+'?club='+club.id+'">\u2039 '+esc(club.name)+'</a></div></div>'
+      +'<div class="pulse"><a href="'+PAGE+'?club='+club.id+'" onclick="return window.nhBack(this.href)">\u2039 '+esc(club.name)+'</a></div></div>'
       +'<div class="brk"><h2>Find your name</h2><div style="padding:0 12px 12px">'
       +'<input id="meHunt" placeholder="Start typing\u2026" oninput="window.meHunt()" '
       +'style="width:100%;padding:11px 12px;border:1.5px solid #ddd;border-radius:10px;font:inherit;margin:2px 0 8px">'
@@ -11175,7 +11214,7 @@ W.mePair=function(name){
       +'<div class="mark"><span class="logo">OPR</span>'+esc(sc.wide?"The register":"Records")+'</div>'
       +'<h1>'+esc(sc.title)+'</h1>'
       +'<div class="sub">'+esc(sub)+'</div>'
-      +'<div class="pulse"><a href="'+backHref+'">\u2039 '+esc(backLabel)+'</a></div></div>';
+      +'<div class="pulse"><a href="'+backHref+'" onclick="return window.nhBack(this.href)">\u2039 '+esc(backLabel)+'</a></div></div>';
   }
   function recPill(sc,label,sub,href){
     return '<a href="'+href+'" data-plat-keep="1" style="display:flex;width:calc(100% - 24px);align-items:center;gap:10px;box-sizing:border-box;'
@@ -11510,6 +11549,32 @@ W.nhOpenPair=function(name){
   function nhBuildLabel(){
     try{ var m=(document.documentElement.innerHTML.match(/NAT fork (n\d+)/)||[])[1]; return m?("OPR \u00b7 build "+m):"OPR"; }catch(e){ return "OPR"; }
   }
+  /* n90: A BACK THAT GOES BACK. Every "‹ back" was a forward navigation to the previous page, so the browser's
+     history kept growing — records, ladders, records, profile, pair, profile… — and the phone's own back
+     gesture walked into stale pages (the old ladders page "popping up all over the app"). Now a back link
+     steps back through history when the page it wants is the one behind us, and otherwise REPLACES the
+     current entry, so the trail never holds a page you have already left. */
+  /* the app keeps its own trail of pages, so "back" knows whether the page it wants is the one behind it */
+  function nhTrail(){ try{ return JSON.parse(sessionStorage.getItem("nh_trail")||"[]"); }catch(e){ return []; } }
+  function nhTrailSave(t){ try{ sessionStorage.setItem("nh_trail", JSON.stringify(t.slice(-30))); }catch(e){} }
+  (function(){
+    try{
+      var here=String(location.search||""), t=nhTrail();
+      if(t.length && t[t.length-1]===here) return;                 /* reload: same page */
+      if(t.length>1 && t[t.length-2]===here){ t.pop(); nhTrailSave(t); return; }   /* we went back: unwind */
+      t.push(here); nhTrailSave(t);
+    }catch(e){}
+  })();
+  W.nhBack=function(href){
+    try{
+      var want="?"+(String(href||"").split("?")[1]||"");
+      var t=nhTrail();
+      if(t.length>1 && t[t.length-2]===want && history.length>1){ history.back(); return false; }
+      /* not behind us: replace, so the page we are leaving does not linger in the trail */
+      t.pop(); nhTrailSave(t);
+      location.replace(href); return false;
+    }catch(e){ location.href=href; return false; }
+  };;
   function nhBarMount(){
     /* n63: on a ledger the club id is 0 — the club is in W.PLAT.nat — so the bar never mounted there and the
        way home vanished on exactly the pages people get lost on. */
@@ -11776,7 +11841,7 @@ W.nhOpenPair=function(name){
         + '<div class="mark"><span class="logo">OPR</span>'+esc(club?club.name:(W.PLAT.poolName||"Open Padel Ratings"))+'</div>'
         + '<h1>'+esc(W.PLAT.name||"")+'</h1>'
         + '<div class="sub">'+(W.PLAT.parentId?"Its own board, ladder, tournaments and court cards":"Open to every member \u2014 matches outside the groups")+'</div>'
-        + '<div class="pulse">'+(club?('<a href="'+PAGE+'?club='+club.id+'">\u2039 '+esc(club.name)+'</a>'):'')
+        + '<div class="pulse">'+(club?('<a href="'+PAGE+'?club='+club.id+'" onclick="return window.nhBack(this.href)">\u2039 '+esc(club.name)+'</a>'):'')
         + '<span class="live">'+wk+(wk===1?' match':' matches')+' '+nhWhen()+'</span>'
         /* n58: no mover named in the band — it repeated the same person on every screen. A count instead. */
         + '<span>'+(NHEG?0:(d.matches||[]).length)+' on record</span>'+'</div></div>'
@@ -12627,7 +12692,11 @@ W.nhOpenPair=function(name){
        that the admin route never carried, which is why leaving kept landing you on the ledger again. */
     var frm=((typeof nhFrom==="function")?nhFrom():0) || Number(W.PLAT.nat||0) || Number(W.PLAT.parentId||0)
             || (Number(W.PLAT.cid||0)>0?Number(W.PLAT.cid):0);
-    if(W.NEWAPP && frm){ location.href=PAGE+"?club="+frm; return; }
+    if(W.NEWAPP && frm){
+      /* n90: hide everything before leaving, so the ledger's landing page cannot show on the way out */
+      try{ var m=document.createElement("style"); m.textContent="body>*{visibility:hidden!important}"; document.head.appendChild(m); }catch(e){}
+      location.href=PAGE+"?club="+frm; return;
+    }
     regRender();
   };
   W.platAddPoolMember=function(){
