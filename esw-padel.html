@@ -3574,7 +3574,7 @@ const CLUB_NAME = _club.name;  // shown in the logo as "OPR · <name>"
     link.setAttribute('href', href);
   }catch(e){ /* install stays on the static manifest — no functional impact */ }
 })();
-const OPR_VERSION = "OPR-DOUBLES v2026.09.03-56 · NAT fork n80 (no voice) (of PLAT p117)";  // MANUAL PAIR CREATION REMOVED FROM ADMIN: Create a pair, Bulk create pairs and Re-derive all pairs are gone (they only made match-less ghost pairs, and Re-derive rewrote every stored initial club-wide). Pairs are born automatically at match entry. Current pairs list untouched; the underlying JS is left in place unreferenced, so no other code path changes. Includes v47 (set-score fix + double-tap guard) and all prior.
+const OPR_VERSION = "OPR-DOUBLES v2026.09.03-56 · NAT fork n81 (no voice) (of PLAT p117)";  // MANUAL PAIR CREATION REMOVED FROM ADMIN: Create a pair, Bulk create pairs and Re-derive all pairs are gone (they only made match-less ghost pairs, and Re-derive rewrote every stored initial club-wide). Pairs are born automatically at match entry. Current pairs list untouched; the underlying JS is left in place unreferenced, so no other code path changes. Includes v47 (set-score fix + double-tap guard) and all prior.
 // Explanation shown above the individual ladder. Open on load so it's read; collapsible
 // (state kept for the session) and scrolls away. Mechanics only — no outcome framing, so
 // members aren't nudged away from playing stronger opponents. Every clause maps to a real
@@ -12420,6 +12420,22 @@ async function clRemove(id, label){
     m.style.color="#666"; m.textContent="Adding…";
     acall({action:"add_pool_member",pool_id:W.PLAT.pool,admin_pin:REG.pin,full_name:name,
            gender:document.getElementById("platPSex").value,seed:document.getElementById("platPSeed").value}).then(function(r){
+      /* n81: THE JOIN RULE. A name that already exists IS that person: the function says who — "We have Murray
+         Aberdein, 1770, Kloof Padel Ballies" — and one Yes gives them the membership here. No "different
+         person": a genuinely different person needs a name that tells them apart. */
+      if(r && r.needs_confirm && r.exact){
+        if(W.confirm(r.error||("We have "+name+" already. Welcome them here?"))){
+          m.style.color="#666"; m.textContent="Welcoming "+name+"\u2026";
+          acall({action:"add_pool_member",pool_id:W.PLAT.pool,admin_pin:REG.pin,full_name:name,
+                 gender:document.getElementById("platPSex").value,seed:document.getElementById("platPSeed").value,confirm_same:true}).then(function(r2){
+            if(!r2||!r2.ok){ m.style.color="#c00"; m.textContent=(r2&&r2.error)||"Could not add them."; return; }
+            document.getElementById("platPName").value="";
+            m.style.color="#2e7d32"; m.textContent=name+" is welcome here \u2014 same person, same rating"+(r.group?(", still "+r.group):"")+".";
+            REGMAP=null; regLoad();
+          });
+        } else { m.style.color="#8a6d3b"; m.textContent="Not added. For a different person, use a name that tells them apart."; }
+        return;
+      }
       if(!r||!r.ok){ m.style.color="#c00"; m.textContent=(r&&r.error)||"Failed."; return; }
       document.getElementById("platPName").value="";
       m.style.color="#2e7d32"; m.textContent=(r.already_there? name+" is already in the register." : "Added "+name+" — they join a group the first time they play.");
