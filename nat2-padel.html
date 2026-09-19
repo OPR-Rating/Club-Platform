@@ -1098,7 +1098,13 @@ st0.textContent += "html{overflow-y:scroll}";   // p98: the scrollbar's space is
              "not a registered individual". A lookup by name searches the whole club; only the browsing list
              is scoped to the board. */
           var byName=/full_name=eq\./.test(qs);
-          if(!pool && W.PLAT.parentId && !byName){ swapClub("club_id=eq."+CID); return "plat_padel_v_individuals?"+qs; }
+          /* n69: REVERTED. n64 scoped a group's picker to club_id=eq.<group>, on my assumption that somebody
+             "joins" a group by playing there. That assumption is wrong: this view lists a person under the
+             club they are REGISTERED to, and nothing moves them when they play in a group. So the group's
+             list held only the handful registered directly to it, and a member who had already played there
+             — Matt, at Sun Fun — was missing from the dropdown and had to be typed in every time, showing
+             up tagged with his home club. The picker lists the club and all its boards again, which is the
+             only list this data can actually produce. */
           if(!pool && W.PLAT.myBoards && W.PLAT.myBoards.length){ swapClub("club_id=in.("+W.PLAT.myBoards.join(",")+")"); return "plat_padel_v_individuals?"+qs; }
           swapClub("pool_id=eq."+P); return "plat_padel_v_pool_individuals?"+qs;
         }
@@ -3568,7 +3574,7 @@ const CLUB_NAME = _club.name;  // shown in the logo as "OPR · <name>"
     link.setAttribute('href', href);
   }catch(e){ /* install stays on the static manifest — no functional impact */ }
 })();
-const OPR_VERSION = "OPR-DOUBLES v2026.09.03-56 · NAT fork n68 (no voice) (of PLAT p117)";  // MANUAL PAIR CREATION REMOVED FROM ADMIN: Create a pair, Bulk create pairs and Re-derive all pairs are gone (they only made match-less ghost pairs, and Re-derive rewrote every stored initial club-wide). Pairs are born automatically at match entry. Current pairs list untouched; the underlying JS is left in place unreferenced, so no other code path changes. Includes v47 (set-score fix + double-tap guard) and all prior.
+const OPR_VERSION = "OPR-DOUBLES v2026.09.03-56 · NAT fork n73 (no voice) (of PLAT p117)";  // MANUAL PAIR CREATION REMOVED FROM ADMIN: Create a pair, Bulk create pairs and Re-derive all pairs are gone (they only made match-less ghost pairs, and Re-derive rewrote every stored initial club-wide). Pairs are born automatically at match entry. Current pairs list untouched; the underlying JS is left in place unreferenced, so no other code path changes. Includes v47 (set-score fix + double-tap guard) and all prior.
 // Explanation shown above the individual ladder. Open on load so it's read; collapsible
 // (state kept for the session) and scrolls away. Mechanics only — no outcome framing, so
 // members aren't nudged away from playing stronger opponents. Every clause maps to a real
@@ -10261,6 +10267,21 @@ async function clRemove(id, label){
   function nhFrom(){
     try{ var m=String(location.search||"").match(/[?&]from=(\d+)/); return m?Number(m[1]):0; }catch(e){ return 0; }
   }
+  /* n69: NO FLASH OF THE OLD PAGE. Opening a ledger showed the parent's own home screen for a beat before
+     the new one replaced it — the "old build buffering" — because the parent renders first and the fork
+     dresses it afterwards. The page is held blank from the first moment the URL says "ledger" and revealed
+     only when the new one is in place (or after a second, so a failure can never leave a white page). */
+  (function(){
+    try{
+      if(!W.NEWAPP) return;
+      if(!/[?&]club=0/.test(String(location.search||""))) return;
+      var m=document.createElement("style"); m.id="nhHold";
+      m.textContent=".screen{visibility:hidden!important}";
+      (document.head||document.documentElement).appendChild(m);
+      setTimeout(function(){ var x=document.getElementById("nhHold"); if(x) x.remove(); }, 1200);
+    }catch(e){}
+  })();
+  function nhReveal(){ try{ var x=document.getElementById("nhHold"); if(x) x.remove(); }catch(e){} }
   function newLedgerHome(){
     /* n65: A CLUB'S LEDGER IS THE CLUB, so it wears the club's purple — the same purple as the Records row
        that led here. The REGISTER's ledger, which spans every club, stays charcoal. Two widths, two colours,
@@ -10298,12 +10319,14 @@ async function clRemove(id, label){
       document.head.appendChild(sv); }
     /* the way back, and the way into admin — a ledger had neither */
     var back="";
-    /* n66: if a door sent us here, that door is the way back — not another ledger */
-    var frm=nhFrom();
-    if(frm) back='<a href="'+PAGE+'?club='+frm+'">\u2039 back</a>';
-    else if(isClub) back='<a href="'+PAGE+'?club='+W.PLAT.nat+'">\u2039 '+esc(W.PLAT.natName||"the club")+'</a>';
+    /* n69: THE WAY OUT IS THE CLUB, ALWAYS. This hung on a ?from= value, so every route that did not carry
+       one — the admin route among them — sent you back to the ledger you were trying to leave. A club ledger
+       belongs to exactly one club, so that club's door is the way out, parameter or no parameter. The last
+       line is for the REGISTER's ledger, which belongs to no single club. */
+    var frm=nhFrom() || (isClub ? Number(W.PLAT.nat||0) : 0);
+    if(frm) back='<a href="'+PAGE+'?club='+frm+'">\u2039 '+esc(W.PLAT.natName||"back")+'</a>';
     else { var last=null; try{ last=sessionStorage.getItem("nat_last_club_"+W.PLAT.pool); }catch(e){}
-      if(last){ var bits=last.split("|"); back='<a href="'+PAGE+'?club=0&pool='+W.PLAT.pool+'&nat='+bits[0]+'">\u2039 '+esc((bits[1]||"club")+" ledger")+'</a>'; } }
+      if(last){ var bits=last.split("|"); back='<a href="'+PAGE+'?club='+bits[0]+'">\u2039 '+esc(bits[1]||"club")+'</a>'; } }
     /* on the register's own ledger the tables cover every club, so the button says so */
     if(!isClub){ setTimeout(function(){
       Array.prototype.forEach.call(document.querySelectorAll("#homeScreen .menu-btn"),function(b){
@@ -10862,11 +10885,14 @@ async function clRemove(id, label){
       +'</div></div>';
   }
   /* n88: the club's own board may be renamed — plat_clubs.options.general_label */
+  /* n71: the label a region's own board wears when it has no groups yet. It is a GROUP now, so it carries
+     the region's name — not "X — general play", which described a structure that no longer exists. The
+     ledger can name it anything (options.general_label). */
   function nhGeneralName(){
     var C=(W.PLAT.parentId||W.PLAT.cid);
     var c=(W.PLAT.clubs||[]).find(function(x){ return Number(x.id)===Number(C); });
     var lbl=(c&&c.options&&c.options.general_label)||null;
-    return lbl || ((c?c.name:(W.PLAT.name||"The club"))+" \u2014 general play");
+    return lbl || (c?c.name:(W.PLAT.name||"Group 1"));
   }
   /* the chooser, for when the bar cannot know which board you mean */
   W.nhBarWhere=function(){
@@ -10881,16 +10907,130 @@ async function clRemove(id, label){
     box.style.cssText="position:fixed;left:0;right:0;bottom:62px;z-index:2147483000;max-width:560px;margin:0 auto;"
       +"background:#fff;border:1px solid #e6e0ee;border-radius:16px 16px 0 0;box-shadow:0 -6px 22px rgba(26,16,48,.16);padding:12px 14px 16px";
     box.innerHTML='<div style="font-size:12.5px;color:#5f5770;margin:0 2px 2px">Where did you play?</div>'
-      + pill(nhGeneralName(), "#6c3483", PAGE+"?club="+C+"&board=1&go=entry")
+      + (kids.length ? "" : pill(nhGeneralName(), clubPal(C)[0], PAGE+"?club="+C+"&board=1&go=entry"))
       + kids.map(function(g){ return pill(g.name, clubPal(g.id)[0], PAGE+"?club="+g.id+"&go=entry"); }).join("")
       + '<button onclick="document.getElementById(\'nhBarWhere\').remove()" style="display:block;width:100%;margin-top:10px;'
       + 'background:none;border:none;font:inherit;font-size:12.5px;color:#8a8196;cursor:pointer">Not now</button>';
     document.body.appendChild(box);
   };
+  /* n69: the app remembers the last door you stood at, so "home" is that door even from the register's
+     ledger — where the URL names no club at all. */
+  function nhRememberDoor(){
+    try{ var C=(W.PLAT.parentId||W.PLAT.cid); if(C>0) sessionStorage.setItem("nh_door", String(C)); }catch(e){}
+  }
+  function nhLastDoor(){
+    try{ var v=Number(sessionStorage.getItem("nh_door")||0); return v>0?v:0; }catch(e){ return 0; }
+  }
+  /* n70: THE RECORDS, AS THREE THINGS. "Ledger" was one word covering a member list, the profiles and the
+     ladders, at two different widths, with a toggle nobody could see. Tapping a records row now opens the
+     three plainly, and the width — this region, or every registered club — is fixed by which row you tapped. */
+  W.nhRecords=function(C){
+    var box=document.getElementById("nhRecordsBox"); if(!box) return;
+    if(box.dataset.open===String(C)){ box.style.display="none"; box.dataset.open=""; return; }
+    var wide=(Number(C)===0);
+    var col=wide?"#2f2f2f":"#6c3483";
+    var scope=wide?("?club=0&pool="+W.PLAT.pool):("?club=0&pool="+W.PLAT.pool+"&nat="+C);
+    var pill=function(label,sub,go){
+      return '<button data-plat-keep="1" onclick="'+go+'" style="display:flex;width:100%;align-items:center;gap:10px;text-align:left;'
+        +'background:#fff;border:1px solid #d8d0e6;border-radius:14px;padding:11px 13px;margin-top:8px;font:inherit;cursor:pointer">'
+        +'<span style="flex:1;min-width:0"><span style="display:block;font-size:14px;font-weight:800;color:#241d33">'+esc(label)+'</span>'
+        +'<span style="display:block;font-size:11.5px;color:#5f5770;margin-top:2px">'+esc(sub)+'</span></span>'
+        +'<span style="display:inline-grid;place-items:center;width:26px;height:26px;border-radius:50%;background:'+col+';color:#fff;font-weight:800">\u203a</span></button>';
+    };
+    box.innerHTML =
+        pill("List all members", wide?"Everyone in the register, with their group":"Everyone here, with their group",
+             "window.nhMemberList("+C+")")
+      + pill("Member profiles", "Anyone who has played \u2014 their record, wherever they played",
+             "location.href='"+PAGE+scope+"&go=profiles'")
+      + pill("Ratings and ladders", wide?"Every club, one rating each":"This region's ladders",
+             "location.href='"+PAGE+scope+"&go=ladders'");
+    box.style.display="block"; box.dataset.open=String(C);
+    try{ box.scrollIntoView({behavior:"smooth",block:"nearest"}); }catch(e){}
+  };
+  /* the member list: name, the group pill they carry, and their rating. Somebody the ledger registered who
+     has not played yet has no group, and the list says so rather than leaving a gap. */
+  /* open a member's profile from the list — the app's own profile screen, so it is the same page they would
+     reach from anywhere else, with cross-region play included */
+  W.nhOpenProfile=function(name){
+    try{
+      if(typeof loadProfileIndividual==="function"){
+        loadProfileIndividual(name);
+        /* the profile screen has to be brought forward as well as filled, or the page sits on the door
+           with a profile nobody can see */
+        try{ if(typeof showScreen==="function") showScreen("profileScreen"); }catch(e){}
+        return;
+      }
+      if(typeof showProfileSearch==="function"){ showProfileSearch(); }
+      location.href=PAGE+"?club="+(W.PLAT.parentId||W.PLAT.cid||0)+"&go=profiles";
+    }catch(e){
+      location.href=PAGE+"?club="+(W.PLAT.parentId||W.PLAT.cid||0)+"&go=profiles";
+    }
+  };
+  /* no matches means no profile — say it where they tapped, once */
+  W.nhNoProfile=function(btn,name){
+    try{
+      var next=btn.nextSibling;
+      if(next && next.className==="nhNote"){ next.remove(); return; }
+      var d=document.createElement("div"); d.className="nhNote"; d.dataset.platKeep="1";
+      d.style.cssText="padding:8px 13px 10px;font-size:12px;color:#5f5770;background:#faf8fc;border-top:1px solid #f0ecf6";
+      d.textContent=name+" has no profile yet \u2014 it starts with their first match.";
+      btn.parentNode.insertBefore(d, btn.nextSibling);
+    }catch(e){}
+  };
+  W.nhMemberList=function(C){
+    var box=document.getElementById("nhRecordsBox"); if(!box) return;
+    var wide=(Number(C)===0), col=wide?"#2f2f2f":"#6c3483";
+    box.innerHTML='<div style="padding:14px 4px;font-size:13px;color:#5f5770">Reading the register\u2026</div>';
+    var B=SBREST();
+    Promise.all([
+      fetch(B+"nat_v_member_group?pool_id=eq."+W.PLAT.pool+"&select=full_name,club_id,group_name,pill_source&order=full_name.asc").then(J).catch(function(){ return []; }),
+      fetch(B+"plat_padel_v_pool_individuals?pool_id=eq."+W.PLAT.pool+"&select=full_name,current_rating,seed_rating&order=full_name.asc").then(J).catch(function(){ return []; }),
+      fetch(B+"plat_clubs?select=id,name,colour").then(J).catch(function(){ return []; })
+    ]).then(function(r){
+      var pills=Array.isArray(r[0])?r[0]:[], people=Array.isArray(r[1])?r[1]:[], allClubs=Array.isArray(r[2])?r[2]:[];
+      /* n72: THE PILL IS THE WAYFINDING, so its colour has to be that group's own — not a fallback. The list
+         reads every club in the register, because at register width a member's group belongs to another
+         region whose colours this page has never loaded. Purple is never used here: it means the region
+         itself, and a group wearing it would send somebody to the wrong place. */
+      var COL={}; allClubs.forEach(function(c){ if(c && c.id!=null) COL[Number(c.id)]=c.colour||null; });
+      var byName={}; pills.forEach(function(p){ byName[p.full_name]=p; });
+      var mine=people.filter(function(p){
+        if(wide) return true;
+        var g=byName[p.full_name];
+        if(!g||!g.club_id) return true;                    /* still to play: they belong to the region */
+        return (W.PLAT.myBoards||[]).indexOf(Number(g.club_id))>=0 || Number(g.club_id)===Number(C);
+      });
+      if(!mine.length){ box.innerHTML='<div style="padding:14px 4px;font-size:13px;color:#5f5770">Nobody registered yet.</div>'; return; }
+      box.innerHTML='<div style="background:#fff;border:1px solid #d8d0e6;border-radius:14px;margin-top:8px;overflow:hidden">'
+        +'<div style="background:'+col+';color:#fff;font-weight:800;font-size:13px;padding:9px 13px">'
+        + (wide?"Every registered member":("Members \u00b7 "+esc(W.PLAT.name||"")))+' \u00b7 '+mine.length+'</div>'
+        +'<div style="max-height:420px;overflow-y:auto">'
+        + mine.map(function(p){
+            var g=byName[p.full_name]||{};
+            var label=g.group_name||"still to play";
+            var none=!g.club_id;
+            var gcol=none ? "#8a8196" : (COL[Number(g.club_id)] || clubPal(g.club_id)[0]);
+            var rating=(p.current_rating!=null?p.current_rating:(p.seed_rating!=null?p.seed_rating:"\u2014"));
+            /* n73: a name opens that person's profile. Somebody the ledger registered who has not played has
+               no profile to open, so the row says so in place instead of being a tap that does nothing. */
+            var who=String(p.full_name).replace(/'/g,"\\'");
+            var act=none?("window.nhNoProfile(this,'"+who+"')"):("window.nhOpenProfile('"+who+"')");
+            return '<button data-plat-keep="1" onclick="'+act+'" style="display:flex;width:100%;align-items:center;gap:9px;'
+              +'padding:9px 13px;border:none;border-top:1px solid #f0ecf6;background:#fff;font:inherit;text-align:left;cursor:pointer">' 
+              +'<span style="flex:1;min-width:0;font-size:13.5px;font-weight:700;color:#241d33;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+esc(p.full_name)+'</span>'
+              +'<span style="flex:0 0 auto;background:'+(none?"#f1eef6":gcol)+';color:'+(none?"#5f5770":"#fff")+';border-radius:99px;'
+              +'padding:3px 10px;font-size:10.5px;font-weight:800;max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+esc(label)+'</span>'
+              +'<span style="flex:0 0 46px;text-align:right;font-size:13px;font-weight:800;color:'+col+'">'+esc(String(rating))+'</span>'
+              +'</div>';
+          }).join("")
+        +'</div></div>';
+    });
+  };
   function nhBarMount(){
     /* n63: on a ledger the club id is 0 — the club is in W.PLAT.nat — so the bar never mounted there and the
        way home vanished on exactly the pages people get lost on. */
-    var C=(W.PLAT.parentId||(W.PLAT.cid>0?W.PLAT.cid:0)||W.PLAT.nat||0);
+    nhRememberDoor();
+    var C=(W.PLAT.parentId||(W.PLAT.cid>0?W.PLAT.cid:0)||W.PLAT.nat||nhLastDoor()||0);
     /* n63: on the REGISTER's own ledger there is no club at all — home is the register's door, and there is
        no "my page" to offer, so the bar shows two. */
     var regOnly=(!C && Number(W.PLAT.cid)===0 && !!W.PLAT.pool);
@@ -10956,7 +11096,7 @@ async function clRemove(id, label){
         +'font-weight:800;font-size:14px;border-radius:99px;padding:11px 16px;margin-top:8px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+esc(label)+'</a>';
     };
     var h='<div style="font-size:12.5px;color:#5f5770;margin:2px 2px 2px">'+esc(ask)+'</div>'
-      + pill(nhGeneralName(),"#6c3483",go(C))
+      + (kidsOf(C).length ? "" : pill(nhGeneralName(),clubPal(C)[0],go(C)))   /* n71: groups only, unless there are none yet */
       + kids.map(function(g){ return pill(g.name, clubPal(g.id)[0], go(g.id)); }).join("");
     if(what==="ladders"||what==="profiles"){
       h+= pill("Everyone at "+W.PLAT.name+" \u00b7 the ledger","#2f2f2f",PAGE+"?club=0&pool="+W.PLAT.pool+"&nat="+C+"&go="+what);
@@ -10996,7 +11136,7 @@ async function clRemove(id, label){
            the avatar and the chevron out of line with the groups below. */
         + '<div class="shaded">'
         + row(nhGeneralName(), "#6c3483", "For matches outside the groups", PAGE+"?club="+C+"&board=1", boardPulse(C,"#6c3483",d.matches))
-        + '</div>';
+        + '</button>';
       if(!kids.length){
         /* n81: a club with no groups has one place to play, and the door says so rather than hiding itself */
         places+='<div class="kind">Groups</div>'
@@ -11080,15 +11220,22 @@ async function clRemove(id, label){
         /* n65: THE CLUB'S OWN BOARD IS A BOARD. It was hardwired purple while every group wore its own
            colour, so the place most clubs play most read as the app's furniture. It now takes the colour the
            club chose, like any other board — purple is reserved for the CLUB'S RECORDS, below. */
-        + card(nhGeneralName(), clubPal(C)[0], "Open to every member", PAGE+"?club="+C+"&board=1", C)
-        + kids.map(function(g){ return card(g.name, clubPal(g.id)[0], "A group \u00b7 its own ladder and card", PAGE+"?club="+g.id, g.id); }).join("")
+        /* n71: GROUPS ONLY. A region has groups and nothing else — there is no club board and no general
+           play. A region with no groups yet still has somewhere its matches live, so its own board shows as
+           the first group under the region's name until the ledger makes real ones; nothing already
+           recorded is orphaned. */
+        + (kids.length
+            ? kids.map(function(g){ return card(g.name, clubPal(g.id)[0], "A group \u00b7 its own ladder and card", PAGE+"?club="+g.id, g.id); }).join("")
+            : card(nhGeneralName(), clubPal(C)[0], "The first group \u00b7 rename or add more in the ledger", PAGE+"?club="+C+"&board=1", C))
         /* two records, no toggle, each saying how wide it is */
         + heading("The records")
+        /* n70: the region's records open as three plain choices rather than one word that meant several
+           things. "All registered clubs" below offers the same three at register scope. */
         /* n65: PURPLE IS THE CLUB ITSELF. Fixed, never chosen: wherever you see it you are looking at the
            club's whole record. Boards wear their own colours; the register's ledger stays charcoal. */
-        + ledgerRow(W.PLAT.name, "Every match at this club \u2014 general play and every group", "#6c3483", "window.platGoClubLedger("+C+")")
-        + ledgerRow("All registered clubs", "Every match at every club in the register \u2014 one rating each", "#2f2f2f",
-                    "location.href='"+PAGE+"?club=0&pool="+W.PLAT.pool+"'")
+        + ledgerRow(W.PLAT.name, "Members, profiles and the ladders \u2014 everyone here", "#6c3483", "window.nhRecords("+C+")")
+        + ledgerRow("All registered clubs", "The same three, for every club in the register", "#2f2f2f", "window.nhRecords(0)")
+        + '<div id="nhRecordsBox" style="display:none;padding:2px 12px 4px"></div>' 
         + lastMatchRibbon(d)
         /* the glimpses — Recent matches exactly as it is */
         + '<div class="cols">'+nhFormBrk(d,"#6c3483","club") + nhMoversBrk(d,"#6c3483","club") + nhMatchesBrk(d,25,"club") + nhTourBrk(d)+'</div>'
@@ -11979,9 +12126,13 @@ async function clRemove(id, label){
   /* n66: Close returns to the door that sent you here. It used to lock the room and leave you standing on
      the ledger — so going in to rename something meant finding your own way back. */
   W.platRegLock=function(){
-    REG.pin=""; REG.role=""; regRender();
-    var frm=(typeof nhFrom==="function")?nhFrom():0;
-    if(frm && W.NEWAPP){ location.href=PAGE+"?club="+frm; }
+    REG.pin=""; REG.role="";
+    /* n69: Close and back both lead to the CLUB, not to the ledger underneath. This hung on a ?from= value
+       that the admin route never carried, which is why leaving kept landing you on the ledger again. */
+    var frm=((typeof nhFrom==="function")?nhFrom():0) || Number(W.PLAT.nat||0) || Number(W.PLAT.parentId||0)
+            || (Number(W.PLAT.cid||0)>0?Number(W.PLAT.cid):0);
+    if(W.NEWAPP && frm){ location.href=PAGE+"?club="+frm; return; }
+    regRender();
   };
   W.platAddPoolMember=function(){
     var m=document.getElementById("platRegMsg");
