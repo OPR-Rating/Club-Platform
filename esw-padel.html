@@ -870,15 +870,19 @@
     // ledger's charcoal and stripping OPR's banner off it. The ledger is the one with a pool but no club
     // AND not the landing page.
     var isLedger = (CID===0 && !LANDING);
+    /* n88: the first-frame skin follows the colour rule too — a region's ledger (nat= in the URL) is purple
+       from its very first paint; only the register's is charcoal */
+    var isRegionLedger = isLedger && /[?&]nat=\d+/.test(String(location.search||"")) && W.NEWAPP;
+    var L0 = isRegionLedger ? "#6c3483" : "#1a1a1a", L1 = isRegionLedger ? "#1d0a41" : "#3d3d3d";
     st0.textContent = isLedger
       ? "#homeScreen .btn-enter{display:none!important}"
         + "#homeScreen .menu-btn[onclick*='tournamentScreen']{display:none!important}"
         + "#homeScreen .menu-grid{grid-template-columns:1fr 1fr!important;max-width:1000px;margin-left:auto;margin-right:auto}"
         + "button[onclick='openAdmin()']{display:none!important}"
-        + ".hero,.screen .header{background:linear-gradient(135deg,#1a1a1a,#3d3d3d)!important}"
+        + ".hero,.screen .header{background:linear-gradient(135deg,"+L0+","+L1+")!important}"
         + ".ladder-table th,#tournamentSheetContent th{background:#3d3d3d!important}"
-        + ".club-panel>div:first-child,.club-panel-head,.club-panel h3{background:linear-gradient(135deg,#1a1a1a,#3d3d3d)!important}"
-        + "#homeScreen .menu-btn{border-color:#1a1a1a!important;color:#1a1a1a!important}"
+        + ".club-panel>div:first-child,.club-panel-head,.club-panel h3{background:linear-gradient(135deg,"+L0+","+L1+")!important}"
+        + "#homeScreen .menu-btn{border-color:"+L0+"!important;color:"+L0+"!important}"
         + "#playerList .player-gender{display:none}#playerList .player-name{line-height:1.25}"
         + ".home-hero{background-image:none!important;background:linear-gradient(135deg,#1a1a1a,#3d3d3d)!important}"
       : "";
@@ -3578,7 +3582,7 @@ const CLUB_NAME = _club.name;  // shown in the logo as "OPR · <name>"
     link.setAttribute('href', href);
   }catch(e){ /* install stays on the static manifest — no functional impact */ }
 })();
-const OPR_VERSION = "OPR-DOUBLES v2026.09.03-56 · NAT fork n87 (no voice) (of PLAT p117)";  // MANUAL PAIR CREATION REMOVED FROM ADMIN: Create a pair, Bulk create pairs and Re-derive all pairs are gone (they only made match-less ghost pairs, and Re-derive rewrote every stored initial club-wide). Pairs are born automatically at match entry. Current pairs list untouched; the underlying JS is left in place unreferenced, so no other code path changes. Includes v47 (set-score fix + double-tap guard) and all prior.
+const OPR_VERSION = "OPR-DOUBLES v2026.09.03-56 · NAT fork n88 (no voice) (of PLAT p117)";  // MANUAL PAIR CREATION REMOVED FROM ADMIN: Create a pair, Bulk create pairs and Re-derive all pairs are gone (they only made match-less ghost pairs, and Re-derive rewrote every stored initial club-wide). Pairs are born automatically at match entry. Current pairs list untouched; the underlying JS is left in place unreferenced, so no other code path changes. Includes v47 (set-score fix + double-tap guard) and all prior.
 // Explanation shown above the individual ladder. Open on load so it's read; collapsible
 // (state kept for the session) and scrolls away. Mechanics only — no outcome framing, so
 // members aren't nudged away from playing stronger opponents. Every clause maps to a real
@@ -9288,12 +9292,13 @@ async function clRemove(id, label){
   W.platGoBoard=goBoard; W.platGoClubLedger=goClubLedger;
   /* p3 LANDING: hero + one button per club (+ Overall); the rest of the home screen is hidden. */
   var PAL=[["#7c3aed","#4c1d95"],["#0891b2","#0e5a6b"],["#ea580c","#9a3412"],["#16a34a","#14532d"],["#db2777","#831843"],["#475569","#1e293b"],["#2563eb","#1e3a8a"]];
-  var LEDGER=["#1a1a1a","#3d3d3d"];
+  var LEDGER_BASE=["#1a1a1a","#3d3d3d"], LEDGER=LEDGER_BASE;
   function darken(hex,f){ try{ var n=parseInt(hex.slice(1),16), r=(n>>16)&255,gg=(n>>8)&255,b=n&255;
     var d=function(x){ return Math.max(0,Math.round(x*(1-f))); };
     return "#"+[d(r),d(gg),d(b)].map(function(x){return ("0"+x.toString(16)).slice(-2);}).join(""); }catch(e){ return hex; } }
-  function clubPal(id){ var cs=W.PLAT.clubs||[]; var i=cs.findIndex(function(c){return c.id===id;});
-    if(i<0) return LEDGER;
+  function clubPal(id){ var cs=W.PLAT.clubs||[]; var i=cs.findIndex(function(c){return Number(c.id)===Number(id);});
+    /* n88: a board the page has not met is still a BOARD — a palette colour by id, never the register's charcoal */
+    if(i<0) return PAL[Math.abs(Number(id)||0)%PAL.length];
     var col=cs[i].colour; if(col && /^#[0-9a-fA-F]{6}$/.test(col)) return [col, darken(col,0.42)];
     return PAL[i%PAL.length]; }
   // A twelve-colour palette spread right around the wheel — purple, indigo, blue, cyan, teal, green,
@@ -9644,6 +9649,7 @@ async function clRemove(id, label){
       try{
         if(go==="me"){ try{ newMePage(); return true; }catch(e){ return false; } }
         if(go==="records") return true;   /* n75: the dispatcher draws this one; nothing else should */
+        if(go==="pair") return true;      /* n88: likewise */
         if(go==="profiles"){
           /* n86: on plat's Team Profile list, a tap opens the member's own page (one profile, everywhere) */
           if(W.NEWAPP){
@@ -9802,6 +9808,10 @@ async function clRemove(id, label){
        club ledger's inner pages — profiles, ladders — kept reading charcoal however the rest was coloured,
        which is the whole point of the colour rule undone. */
     st.textContent += ".home-hero,.hero,.hero-panel{background:linear-gradient(135deg,"+ink+","+deep+") !important}";
+    /* n88: plat's inner screens each carry a .header bar of their own — Ratings and Ladders, Profiles,
+       Tournaments, Enter Score. They kept the ledger's charcoal on a purple page. They follow the page now. */
+    st.textContent += ".screen .header,.screen > .header{background:linear-gradient(135deg,"+ink+","+deep+") !important;color:#fff !important}";
+    st.textContent += ".screen .header .back-btn,.screen .header button{color:#fff !important}";
     if(!st.parentNode) document.head.appendChild(st);
   }
   /* n66: ONE DOOR INTO ADMIN, ONE INTO ABOUT — SWEPT, NOT PATCHED. The parent page carries its own "Admin
@@ -10514,13 +10524,11 @@ async function clRemove(id, label){
     try{ localStorage.removeItem(meKey()); localStorage.removeItem(mePinKey()); }catch(e){}
     newMePage();
   };
-  W.mePair=function(name){
-    /* n85: PLAT'S PAIR PROFILE, on the ledger route where the query reaches every board in the region — from
-       the door it looked at one board and came back empty. Plat's page rolls the pair's matches out under
-       the two names; back returns to this profile. */
+W.mePair=function(name){
+    /* n88: the fresh pair page, back to this profile */
     var C=(W.PLAT.parentId||W.PLAT.cid||W.PLAT.nat||0);
-    location.href=PAGE+"?club=0&pool="+W.PLAT.pool+"&nat="+C+"&go=profiles&pair="+encodeURIComponent(name)+"&back="+encodeURIComponent(location.search||"");
-  }
+    location.href=PAGE+"?club="+C+"&go=pair&pair="+encodeURIComponent(name)+"&back="+encodeURIComponent(location.search||"");
+  };
   function halves(v){ return String(v||"").split(" & ").map(function(x){ return x.trim(); }).filter(Boolean); }
 
   /* everything about one person, from the matches the club already holds */
@@ -10767,6 +10775,72 @@ async function clRemove(id, label){
       var known={}; (W.PLAT.clubs||[]).forEach(function(c){ known[Number(c.id)]=1; });
       (Array.isArray(r[3])?r[3]:[]).forEach(function(c){ if(!known[Number(c.id)]){ (W.PLAT.clubs=W.PLAT.clubs||[]).push(c); known[Number(c.id)]=1; } });
       return { matches:Array.isArray(r[0])?r[0]:[], pairs:Array.isArray(r[1])?r[1]:[], pills:pills };
+    });
+  }
+  /* n88: THE PAIR PAGE, BUILT FRESH. Opened from a member's partnerships, from a ladder, from anywhere: the
+     pair's own page on the new skin, in the colour of the group the pair belongs to, with plat's figures
+     read from the system (rating, level, move, sets, win %, game diff) and plat's match rows beneath. One
+     back, to whatever page sent us. This replaces plat's pair screen, which arrived with its own header and
+     its own back and never matched the page around it. */
+  function newPairPage(){
+    var q=new URLSearchParams(location.search);
+    var pair=q.get("pair")||"", back=q.get("back")||"";
+    var C=(W.PLAT.parentId||W.PLAT.cid||W.PLAT.nat||0);
+    var w=nhWrap(); if(!w) return;
+    nhCSS(); nhOneWayIn(); nhInk("#6c3483"); nhHeaderSkin("#6c3483","#1d0a41");
+    w.innerHTML='<div class="band" style="background:linear-gradient(135deg,#6c3483,#1d0a41)"><div class="mark"><span class="logo">OPR</span>Pair</div><h1>'+esc(pair)+'</h1></div>'
+      +'<div style="padding:16px 14px;font-size:13px;color:#5f5770">Reading the record\u2026</div>'+homeBar();
+    var B=SBREST(), P=W.PLAT.pool, like="*"+encodeURIComponent(pair)+"*";
+    Promise.all([
+      fetch(B+"plat_player_results?pool_id=eq."+P+"&discipline=eq.padel&name=eq."+encodeURIComponent(pair)
+            +"&select=name,gender,club_id,current_rating,initial_rating,sets_played,sets_won,game_diff_per_set&limit=20").then(J).catch(function(){ return []; }),
+      fetch(B+"plat_matches?pool_id=eq."+P+"&discipline=eq.padel&or=(t1p1.eq."+encodeURIComponent(pair)+",t2p1.eq."+encodeURIComponent(pair)+")"
+            +"&select=id,club_id,match_date,match_type,event,t1p1,t1p2,t2p1,t2p2,t1_sets,t2_sets,t1_games,t2_games,set_scores,display_t1,display_t2,rating_delta"
+            +"&order=match_date.desc,id.desc&limit=500").then(J).catch(function(){ return []; }),
+      fetch(B+"plat_clubs?select=id,name,colour,pool_id").then(J).catch(function(){ return []; })
+    ]).then(function(r){
+      var rows=Array.isArray(r[0])?r[0]:[], ms=Array.isArray(r[1])?r[1]:[], clubs=Array.isArray(r[2])?r[2]:[];
+      var known={}; (W.PLAT.clubs||[]).forEach(function(c){ known[Number(c.id)]=1; });
+      clubs.forEach(function(c){ if(!known[Number(c.id)]){ (W.PLAT.clubs=W.PLAT.clubs||[]).push(c); known[Number(c.id)]=1; } });
+      /* the pair may hold a record on more than one board; the one with the most sets is its home */
+      rows.sort(function(a,b){ return (b.sets_played||0)-(a.sets_played||0); });
+      var pr=rows[0]||null;
+      var gid=pr?pr.club_id:(ms[0]?ms[0].club_id:C);
+      var col=clubPal(gid)[0], deep=nhDeep(col); nhInk(col); nhHeaderSkin(col,deep);
+      var rating=pr?Math.round(pr.current_rating):null, init=pr?Math.round(pr.initial_rating):null;
+      var move=(rating!=null&&init!=null)?(rating-init):null;
+      var lvl=(rating!=null)?(rating/200).toFixed(1):null;
+      var sets=pr?(pr.sets_played||0):0, won=pr?(pr.sets_won||0):0;
+      var pct=sets?Math.round(100*won/sets):null;
+      var gd=(pr&&pr.game_diff_per_set!=null)?(+pr.game_diff_per_set).toFixed(2):null;
+      var kind=(pr&&pr.gender==="F")?"Ladies\u2019":((pr&&pr.gender==="M")?"Men\u2019s":((pr&&pr.gender)?"Mixed":""));
+      var names=halves(pair);
+      var backHref=back?(PAGE+back):(PAGE+"?club="+C);
+      var h='<div class="band" style="background:linear-gradient(135deg,'+col+','+deep+')">'
+        +'<div class="mark"><span class="logo">OPR</span>Pair \u00b7 '+esc(nhBoardName(gid)||"")+'</div>'
+        +'<div style="display:flex;align-items:center;gap:10px;margin-top:6px">'
+        +'<span style="display:flex">'+names.map(function(n,i){ return '<span style="display:inline-block;border:2px solid #fff;border-radius:50%;margin-left:'+(i?"-9px":"0")+'">'+nhFace(n,col,36)+'</span>'; }).join("")+'</span>'
+        +'<h1 style="margin:0;font-size:20px">'+esc(pair)+'</h1></div>'
+        +'<div style="display:flex;align-items:baseline;gap:10px;margin-top:12px">'
+        +'<span style="font-size:38px;font-weight:800;letter-spacing:-1px;line-height:1">'+(rating!=null?rating:"\u2014")+'</span>'
+        +(lvl?('<span style="display:inline-flex;flex-direction:column;align-items:center;border:1.5px solid rgba(255,255,255,.55);border-radius:12px;padding:5px 12px;line-height:1.1"><b style="font-size:15px">'+lvl+'</b><span style="font-size:9.5px;letter-spacing:.08em;text-transform:uppercase;opacity:.85">level</span></span>'):'')
+        +(move!=null?('<span style="display:inline-flex;flex-direction:column;align-items:center;border:1.5px solid rgba(255,255,255,.55);border-radius:12px;padding:5px 12px;line-height:1.1"><b style="font-size:15px">'+(move>0?"+":"")+move+'</b><span style="font-size:9.5px;letter-spacing:.08em;text-transform:uppercase;opacity:.85">move</span></span>'):'')
+        +'</div>'
+        +'<div class="pulse"><a href="'+backHref+'">\u2039 back</a>'+(kind?('<span>'+kind+'</span>'):'')+'<span>'+ms.length+' match'+(ms.length===1?"":"es")+'</span></div></div>';
+      h+='<div class="five">'
+        + [[ms.length,"Matches"],[sets,"Sets played"],[won,"Sets won"],[pct!=null?(pct+"%"):"\u2014","Win %"],[gd!=null?((+gd>0?"+":"")+gd):"\u2014","Game diff/set"]]
+            .map(function(x){ return '<div class="fig"><b>'+esc(String(x[0]))+'</b><span>'+esc(x[1])+'</span></div>'; }).join("")
+        +'</div>';
+      /* the two people, each a way to their own page */
+      h+='<div class="brk"><h2>The pair</h2><div class="rows">'
+        + names.map(function(n){ return '<button class="row" onclick="window.nhOpenProfile(\''+n.replace(/'/g,"\\'")+'\')">'+nhFace(n,col,34)
+            +'<span class="nm"><b>'+esc(n)+'</b><span>open their profile</span></span><span class="val"><b style="color:#cfc6da">\u203a</b></span></button>'; }).join("")
+        +'</div></div>';
+      /* every match, plat's rows */
+      h+= ms.length
+        ? nhMatchesBrk({matches:ms},500,"board")
+        : '<div class="brk">'+nhLimeBar("Matches")+meEmpty("This pair has not played yet.")+'</div>';
+      w.innerHTML=h+homeBar();
     });
   }
   function newMePage(){
@@ -11202,7 +11276,7 @@ async function clRemove(id, label){
         count[n]=(count[n]||0)+1; (played[n]=played[n]||{})[m.club_id]=((played[n]||{})[m.club_id]||0)+1; }); }); });
       var seen={}; rows=rows.filter(function(p){ if(seen[p.full_name]) return false; seen[p.full_name]=1; return count[p.full_name]>0; });
       rows.forEach(function(p){ p.matches=count[p.full_name]||0; p.boards=Object.keys(played[p.full_name]||{}).map(Number); });
-      W.__recPeople=rows; W.__recClubs=CL;
+      W.__recPeople=rows; W.__recClubs=CL; W.__recCol=sc.col;
       w.innerHTML = recBand(sc,"Member profiles", sc.base, "Records")
         +'<div style="margin:12px 14px 0;text-align:center;font-size:12px;color:#7a6688">Tap a name to open the profile.</div>'
         +'<div style="margin:8px 12px 0"><input id="recFind" data-plat-keep="1" placeholder="Search your name..." autocomplete="off" '
@@ -11240,7 +11314,7 @@ async function clRemove(id, label){
       var who=String(p.full_name).replace(/'/g,"\\'");
       return '<button data-plat-keep="1" onclick="window.nhOpenProfile(\''+who+'\')" style="display:flex;width:100%;align-items:center;gap:10px;'
         +'padding:10px 13px;border:none;border-top:1px solid #f0ecf6;background:#fff;font:inherit;text-align:left;cursor:pointer">'
-        +'<span style="width:36px;height:36px;border-radius:50%;background:#6c3483;color:#fff;display:grid;place-items:center;font-weight:800;font-size:15px;flex:0 0 36px">'+esc(String(p.full_name||"?")[0])+'</span>'
+        +'<span style="width:36px;height:36px;border-radius:50%;background:'+(W.__recCol||"#6c3483")+';color:#fff;display:grid;place-items:center;font-weight:800;font-size:15px;flex:0 0 36px">'+esc(String(p.full_name||"?")[0])+'</span>'
         +'<span style="flex:1;min-width:0"><span style="display:block;font-size:14px;font-weight:700;color:#241d33;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+esc(p.full_name)+'</span>'
         +'<span style="display:block;font-size:11.5px;color:#8a8196">'+(p.gender==="M"?"Male":(p.gender==="F"?"Female":""))+'</span>'
         +(boards?('<span style="display:block;margin-top:2px">'+boards+'</span>'):'')+'</span>'
@@ -11316,14 +11390,10 @@ async function clRemove(id, label){
             +'<span style="text-align:right;font-size:12px;color:#5f5770">'+pct+'%</span></button>';
         }).join("");
   };
-  W.nhOpenPair=function(name){
-    /* n83: the pair profile is plat's, and it reads the pair from the scope it is standing in — so open it on
-       the ledger route (region or register), where the shim widens the query to every board in reach. Opening
-       it from the door left it looking at one board and finding nothing. */
-    var sc=recScope();
-    location.href=PAGE+(sc.wide?("?club=0&pool="+W.PLAT.pool):("?club=0&pool="+W.PLAT.pool+"&nat="+sc.C))
-      +"&go=profiles&pair="+encodeURIComponent(name)+"&back="+encodeURIComponent(location.search||"");
-  };
+W.nhOpenPair=function(name){
+    var C=(W.PLAT.parentId||W.PLAT.cid||W.PLAT.nat||0);
+    location.href=PAGE+"?club="+C+"&go=pair&pair="+encodeURIComponent(name)+"&back="+encodeURIComponent(location.search||"");
+  };;
   W.nhRecords=function(C){
     var box=document.getElementById("nhRecordsBox"); if(!box) return;
     if(box.dataset.open===String(C)){ box.style.display="none"; box.dataset.open=""; return; }
@@ -11760,6 +11830,12 @@ async function clRemove(id, label){
 
   /* OVERALL: read-only ledger — no score entry, no tournaments, no admin link */
   function ledgerTheme(){
+    /* n88: THE LEDGER THEME FOLLOWS THE COLOUR RULE. This theme painted every inner header, table head and
+       panel in charcoal on ANY ledger — which is why a region's Ratings and Ladders still carried charcoal
+       remnants after everything around it went purple. A region's ledger is purple; only the register's is
+       charcoal. */
+    var isRegion = !!(W.NEWAPP && W.PLAT.nat);
+    var LEDGER = isRegion ? ["#6c3483","#1d0a41"] : LEDGER_BASE;
     var st=document.createElement("style"); st.id="platLedgerTheme";
     st.textContent=".hero,.screen .header{background:linear-gradient(135deg,"+LEDGER[0]+","+LEDGER[1]+") !important;background-image:linear-gradient(135deg,"+LEDGER[0]+","+LEDGER[1]+") !important}"
       +".ladder-table th,#tournamentSheetContent th{background:"+LEDGER[1]+" !important}"
@@ -13693,6 +13769,7 @@ async function clRemove(id, label){
     /* n75: a ?go= that draws a page of its own must not then be painted over by the door underneath it */
     var goq=(function(){ try{ return (new URLSearchParams(location.search).get("go")||"").toLowerCase(); }catch(e){ return ""; } })();
     if(W.NEWAPP && goq==="records"){ try{ newRecordsPage(); }catch(e){} return; }
+    if(W.NEWAPP && goq==="pair"){ try{ newPairPage(); }catch(e){} return; }
     if(W.NEWAPP && goq==="me") return;
     if(W.PLAT.clubDoor){ var t3="OPR · "+(W.PLAT.name||"Club"); if(ht) ht.textContent=t3; document.title=t3;
       if(W.NEWAPP){ try{ newClubDoor(); }catch(e){} return; }   /* n50: the new front door */
