@@ -3574,7 +3574,7 @@ const CLUB_NAME = _club.name;  // shown in the logo as "OPR · <name>"
     link.setAttribute('href', href);
   }catch(e){ /* install stays on the static manifest — no functional impact */ }
 })();
-const OPR_VERSION = "OPR-DOUBLES v2026.09.03-56 · NAT fork n76 (no voice) (of PLAT p117)";  // MANUAL PAIR CREATION REMOVED FROM ADMIN: Create a pair, Bulk create pairs and Re-derive all pairs are gone (they only made match-less ghost pairs, and Re-derive rewrote every stored initial club-wide). Pairs are born automatically at match entry. Current pairs list untouched; the underlying JS is left in place unreferenced, so no other code path changes. Includes v47 (set-score fix + double-tap guard) and all prior.
+const OPR_VERSION = "OPR-DOUBLES v2026.09.03-56 · NAT fork n78 (no voice) (of PLAT p117)";  // MANUAL PAIR CREATION REMOVED FROM ADMIN: Create a pair, Bulk create pairs and Re-derive all pairs are gone (they only made match-less ghost pairs, and Re-derive rewrote every stored initial club-wide). Pairs are born automatically at match entry. Current pairs list untouched; the underlying JS is left in place unreferenced, so no other code path changes. Includes v47 (set-score fix + double-tap guard) and all prior.
 // Explanation shown above the individual ladder. Open on load so it's read; collapsible
 // (state kept for the session) and scrolls away. Mechanics only — no outcome framing, so
 // members aren't nudged away from playing stronger opponents. Every clause maps to a real
@@ -10661,14 +10661,47 @@ async function clRemove(id, label){
       + (A.recent>0?"+":"") + A.recent + ' rating in that time</div>'
       +'</div></div>';
   }
+  /* n78: THE WHOLE REGISTER, FOR ONE PERSON. The board fetch only covers this region's groups, but a profile
+     has to tell the whole story — Murray's partnerships at Kloof AND at Sun Fun AND anywhere else in the
+     register. So for the named person we read every match and every pair they appear in across the pool,
+     the pill each member carries, and every club's name and colour so the other regions' groups can be
+     named and coloured correctly. */
+  function meWide(name){
+    var B=SBREST(), P=W.PLAT.pool, n=encodeURIComponent(name);
+    var like="*"+encodeURIComponent(name)+"*";
+    return Promise.all([
+      fetch(B+"plat_matches?pool_id=eq."+P+"&discipline=eq.padel&or=(t1p1.ilike."+like+",t1p2.ilike."+like+",t2p1.ilike."+like+",t2p2.ilike."+like+")"
+            +"&select=id,club_id,match_date,match_type,event,t1p1,t1p2,t2p1,t2p2,t1_sets,t2_sets,t1_games,t2_games,set_scores,display_t1,display_t2,rating_delta"
+            +"&order=match_date.desc,id.desc&limit=2000").then(J).catch(function(){ return []; }),
+      fetch(B+"plat_player_results?pool_id=eq."+P+"&discipline=eq.padel&name=ilike."+like
+            +"&select=name,club_id,current_rating,initial_rating,sets_played,sets_won&limit=500").then(J).catch(function(){ return []; }),
+      fetch(B+"nat_v_member_group?pool_id=eq."+P+"&select=full_name,club_id").then(J).catch(function(){ return []; }),
+      fetch(B+"plat_clubs?select=id,name,colour,pool_id").then(J).catch(function(){ return []; })
+    ]).then(function(r){
+      var pills={}; (Array.isArray(r[2])?r[2]:[]).forEach(function(x){ if(x.club_id) pills[x.full_name]=Number(x.club_id); });
+      /* other regions' groups become known to the page, so they can be named and coloured */
+      var known={}; (W.PLAT.clubs||[]).forEach(function(c){ known[Number(c.id)]=1; });
+      (Array.isArray(r[3])?r[3]:[]).forEach(function(c){ if(!known[Number(c.id)]){ (W.PLAT.clubs=W.PLAT.clubs||[]).push(c); known[Number(c.id)]=1; } });
+      return { matches:Array.isArray(r[0])?r[0]:[], pairs:Array.isArray(r[1])?r[1]:[], pills:pills };
+    });
+  }
   function newMePage(){
     var w=nhWrap(); if(!w) return;
     nhCSS(); nhOneWayIn();
     var C=(W.PLAT.parentId||W.PLAT.cid);
     var club=(W.PLAT.clubs||[]).find(function(c){ return Number(c.id)===Number(C); })||{id:C,name:W.PLAT.name};
-    Promise.all([nhFetch(),meClaims()]).then(function(res){
-      var all=res[0], claims=res[1]||{}; W.__meTaken=claims;
-      var me=meName();
+    var whoQ=(function(){ try{ return new URLSearchParams(location.search).get("who")||""; }catch(e){ return ""; } })();
+    var target=whoQ||meName();
+    Promise.all([nhFetch(),meClaims(), target?meWide(target):Promise.resolve(null)]).then(function(res){
+      var all=Object.assign({},res[0]), claims=res[1]||{}; W.__meTaken=claims;
+      /* the person's own matches and pairs come from the whole register */
+      if(res[2]){ all.matches=res[2].matches; all.pairs=res[2].pairs; all.pills=res[2].pills; }
+      /* n78: ONE PROFILE PAGE FOR EVERYBODY. The records, the ladders, a partner's name — all of them open
+         this same page for the person named in ?who=, read-only (no claiming, no photo change). Without
+         ?who= it is your own page, as before. */
+      var who=(function(){ try{ return new URLSearchParams(location.search).get("who")||""; }catch(e){ return ""; } })();
+      var viewing=!!who;
+      var me=viewing?who:meName();
       if(!me){ w.innerHTML=meClaimScreen(all,club); setTimeout(function(){ W.meHunt(); },0); return; }
       W.__meId=meIdOf(me,all);
       var myPhoto=(W.__meId&&claims[Number(W.__meId)])?claims[Number(W.__meId)].photo:null;
@@ -10681,7 +10714,12 @@ async function clRemove(id, label){
          and when the lookup missed it fell through to the ledger's charcoal, which is what turned this page
          black after one match. The club is the stable thing a member belongs to; each group's colour still
          appears on the rows that belong to it. */
-      var col=(club&&club.colour)||"#6c3483", deep=nhDeep(col); nhInk(col);
+      /* n78: the page wears the MEMBER'S GROUP colour — the pill they carry, which is the group of their first
+         match — so a profile looks the same wherever it is opened from. The page that hosts it keeps its own
+         band (purple for the region's records, charcoal for the register's); this block is the same everywhere. */
+      var myGroup=(all.pills||{})[me];
+      var gcol=myGroup?(clubPal(myGroup)[0]):null;
+      var col=gcol||(club&&club.colour)||"#6c3483", deep=nhDeep(col); nhInk(col);
       nhHeaderSkin(col,deep);
       var pct=(st.setsW+st.setsL)?Math.round(100*st.setsW/(st.setsW+st.setsL)):0;
       var gd=st.gdn?(st.gd/st.gdn):0;
@@ -10699,7 +10737,9 @@ async function clRemove(id, label){
         + (lvl?('<span class="pill">level '+lvl.toFixed(1)+'</span>'):'')
         + (rk?('<span class="pill">rank '+rk.rank+' of '+rk.of+'</span>'):'')
         + '</div>'
-        + '<div class="pulse"><a href="'+PAGE+'?club='+C+'">\u2039 '+esc(club.name)+'</a>'
+        /* n78: opened from the records, the way back is the page that sent us; your own page goes home */
+        + (function(){ var bq=""; try{ bq=new URLSearchParams(location.search).get("back")||""; }catch(e){}
+             return '<div class="pulse"><a href="'+(bq?(PAGE+bq):(PAGE+'?club='+C))+'">\u2039 '+esc(bq?"back":club.name)+'</a>'; })()
         + '<span>'+(st.move>0?"+":"")+Math.round(st.move)+' '+nhWhen()+'</span>'
         + Object.keys(st.boards).map(function(id){ return '<span>'+esc(nhBoardName(id))+' \u00b7 '+st.boards[id]+'</span>'; }).join("")
         + '</div></div>'
@@ -10734,15 +10774,30 @@ async function clRemove(id, label){
           +'</div>';
       }
       if(st.partners.length){
-        h+='<div class="brk"><h2>My partnerships \u00b7 '+st.partners.length+'</h2>'
-          +'<div class="rows" style="max-height:330px;overflow-y:auto">'
-          + st.partners.map(function(x){
+        /* n78: EVERY PARTNERSHIP, EVERYWHERE, GROUPED. "Partnerships in Kloof Padel Ballies", then "in Sun Fun
+           Padel", then any other region he has played in — each under its own heading in that group's colour,
+           the member's own group first. One page tells the whole story of who they have played with. */
+        var byGroup={}; st.partners.forEach(function(x){ (byGroup[x.club_id]=byGroup[x.club_id]||[]).push(x); });
+        var order=Object.keys(byGroup).sort(function(a,b){
+          if(myGroup && Number(a)===Number(myGroup)) return -1; if(myGroup && Number(b)===Number(myGroup)) return 1;
+          return byGroup[b].length-byGroup[a].length; });
+        h+='<div class="brk"><h2>'+(viewing?"Partnerships":"My partnerships")+' \u00b7 '+st.partners.length+'</h2>';
+        order.forEach(function(gid){
+          var gc=clubPal(gid)[0];
+          h+='<div style="display:flex;align-items:center;gap:8px;padding:10px 14px 4px">'
+            +'<span style="width:10px;height:10px;border-radius:50%;background:'+gc+'"></span>'
+            +'<span style="font-size:11.5px;letter-spacing:.06em;text-transform:uppercase;font-weight:800;color:'+gc+'">Partnerships in '+esc(nhBoardName(gid)||"another region")+'</span>'
+            +'<span style="font-size:11px;color:#8a8196">\u00b7 '+byGroup[gid].length+'</span></div>';
+          h+='<div class="rows">'
+          + byGroup[gid].map(function(x){
               var other=halves(x.name).filter(function(n){ return n!==me; })[0]||x.name;
               return '<button class="row" onclick="window.mePair(\''+String(x.name).replace(/'/g,"\\'")+'\')">'
                 +'<span class="av" style="background:'+clubPal(x.club_id)[0]+'">'+esc(inits(other))+'</span>'
                 +'<span class="nm"><b>'+esc(x.name)+'</b><span>rating '+x.rating+' \u00b7 '+x.won+' of '+x.played+' sets \u00b7 '+esc(nhBoardName(x.club_id))+'</span></span>'
                 +'<span class="val"><b class="'+(x.move>=0?"up":"dn")+'">'+(x.move>0?"+":"")+x.move+'</b><span>since start</span></span></button>'; }).join("")
-          +'</div><div style="padding:8px 14px 12px;font-size:12px;color:#5f5770">Tap a partnership for every match you have played together, with the set scores.</div></div>';
+          +'</div>';
+        });
+        h+='<div style="padding:8px 14px 12px;font-size:12px;color:#5f5770">Tap a partnership for every match you have played together, with the set scores.</div></div>';
       }
 
       if(!st.matches.length){
@@ -10767,10 +10822,10 @@ async function clRemove(id, label){
           +'</div></div>';
       }
       h+='</div>'
-        +'<div style="margin:14px 12px 0;display:flex;gap:9px;flex-wrap:wrap">'
+        +(viewing?'':'<div style="margin:14px 12px 0;display:flex;gap:9px;flex-wrap:wrap">'
         +'<button class="more" style="flex:1 1 150px;border:1px solid '+col+';border-radius:99px;background:#fff" onclick="window.mePhotoPick()">'+(myPhoto?"Change my picture":"Add my picture")+'</button>'
         +(myPhoto?('<button class="more" style="flex:1 1 120px;border:1px solid #ddd;border-radius:99px;background:#fff;color:#7a6f8a" onclick="window.mePhotoClear()">Remove it</button>'):'')
-        +'</div>'
+        +'</div>')   /* n78: the picture is the owner's to change, not a visitor's */
         +'<div style="font-size:11.5px;color:#5f5770;margin:8px 14px 0;line-height:1.5">Your picture is seen by everyone in the register. '
         +'Only your PIN can change it \u2014 and you will not be asked for the PIN again on this phone.</div>'
         +'<div style="margin:12px 12px 0"><button class="more" style="border:1px solid #ddd;border-radius:99px;background:#fff;color:#7a6f8a" onclick="window.meForget()">This isn\u2019t me \u2014 use a different name</button></div>';
@@ -10933,35 +10988,203 @@ async function clRemove(id, label){
   /* n75: THE RECORDS PAGE. Its own band, its own breadcrumb, its own way back — and the three choices sit on
      it rather than unfolding underneath the door. Purple for the region, charcoal for the register, which is
      the same rule as everywhere else. */
-  function newRecordsPage(){
-    var wide=/[?&]all=1/.test(String(location.search||""));
+  /* n77: THE RECORDS, BUILT FRESH. Three pages of their own — members, profiles, ladders — drawn by the app
+     from the system's data, not the parent's screens dressed up. That is why the earlier ones showed charcoal
+     headers and back buttons that went somewhere else: they were somebody else's pages. Each of these has the
+     same band (purple for the region, charcoal for the register), the same breadcrumb, and one back that
+     always returns to the records sheet it came from. */
+  function recScope(){
+    var q=new URLSearchParams(location.search);
+    var wide=(q.get("all")==="1");
     var C=(W.PLAT.parentId||W.PLAT.cid||0);
-    var col=wide?"#2f2f2f":"#6c3483", deep=wide?"#141414":"#1d0a41";
-    nhCSS(); nhOneWayIn(); nhInk(col); nhHeaderSkin(col,deep);
-    var w=nhWrap(); if(!w) return;
-    var scope=wide?("?club=0&pool="+W.PLAT.pool):("?club=0&pool="+W.PLAT.pool+"&nat="+C);
-    var pill=function(label,sub,go){
-      return '<button data-plat-keep="1" onclick="'+go+'" style="display:flex;width:calc(100% - 24px);align-items:center;gap:10px;'
-        +'text-align:left;background:#fff;border:1px solid #d8d0e6;border-radius:14px;padding:13px 14px;margin:10px 12px 0;font:inherit;cursor:pointer">'
-        +'<span style="flex:1;min-width:0"><span style="display:block;font-size:14.5px;font-weight:800;color:#241d33">'+esc(label)+'</span>'
-        +'<span style="display:block;font-size:12px;color:#5f5770;margin-top:2px">'+esc(sub)+'</span></span>'
-        +'<span style="display:inline-grid;place-items:center;width:28px;height:28px;border-radius:50%;background:'+col+';color:#fff;font-weight:800">\u203a</span></button>';
-    };
-    w.innerHTML =
-      '<div class="band" style="background:linear-gradient(135deg,'+col+','+deep+')">'
-      +'<div class="mark"><span class="logo">OPR</span>'+esc(wide?"The register":"Records")+'</div>'
-      +'<h1>'+esc(wide?"All registered clubs":(W.PLAT.name||"The region"))+'</h1>'
-      +'<div class="sub">'+esc(wide?"Every club on the system \u2014 one rating each":"Members, profiles and the ladders")+'</div>'
-      +'<div class="pulse"><a href="'+PAGE+'?club='+C+'">\u2039 back</a></div></div>'
-      + pill("List all members", wide?"Everyone in the register, with their group":"Everyone here, with their group",
-             "window.nhMemberList("+(wide?0:C)+")")
-      + pill("Member profiles", "Anyone who has played \u2014 their record, wherever they played",
-             "location.href='"+PAGE+scope+"&go=profiles'")
-      + pill("Ratings and ladders", wide?"Every club, one rating each":"This region's ladders",
-             "location.href='"+PAGE+scope+"&go=ladders'")
-      + '<div id="nhRecordsBox" style="display:none;margin:12px 12px 0"></div>'
+    return { wide:wide, C:C, view:(q.get("view")||"").toLowerCase(),
+             col:wide?"#2f2f2f":"#6c3483", deep:wide?"#141414":"#1d0a41",
+             title:wide?"All registered clubs":(W.PLAT.name||"The region"),
+             boards:(W.PLAT.myBoards&&W.PLAT.myBoards.length)?W.PLAT.myBoards:[C],
+             base:PAGE+"?club="+C+"&go=records"+(wide?"&all=1":"") };
+  }
+  function recBand(sc, sub, backHref, backLabel){
+    /* the records are purple; nothing on these pages is repainted to a board's colour */
+    W.PLAT.colour="#6c3483";
+    nhCSS(); nhOneWayIn(); nhInk(sc.col); nhHeaderSkin(sc.col, sc.deep);
+    return '<div class="band" style="background:linear-gradient(135deg,'+sc.col+','+sc.deep+')">'
+      +'<div class="mark"><span class="logo">OPR</span>'+esc(sc.wide?"The register":"Records")+'</div>'
+      +'<h1>'+esc(sc.title)+'</h1>'
+      +'<div class="sub">'+esc(sub)+'</div>'
+      +'<div class="pulse"><a href="'+backHref+'">\u2039 '+esc(backLabel)+'</a></div></div>';
+  }
+  function recPill(sc,label,sub,href){
+    return '<a href="'+href+'" data-plat-keep="1" style="display:flex;width:calc(100% - 24px);align-items:center;gap:10px;box-sizing:border-box;'
+      +'text-decoration:none;background:#fff;border:1px solid #d8d0e6;border-radius:14px;padding:13px 14px;margin:10px 12px 0">'
+      +'<span style="flex:1;min-width:0"><span style="display:block;font-size:14.5px;font-weight:800;color:#241d33">'+esc(label)+'</span>'
+      +'<span style="display:block;font-size:12px;color:#5f5770;margin-top:2px">'+esc(sub)+'</span></span>'
+      +'<span style="display:inline-grid;place-items:center;width:28px;height:28px;border-radius:50%;background:'+sc.col+';color:#fff;font-weight:800">\u203a</span></a>';
+  }
+  function recPanel(sc, head, inner){
+    return '<div data-plat-keep="1" style="margin:12px 12px 0;background:#fff;border:1px solid '+sc.col+';border-radius:16px;overflow:hidden">'
+      +'<div style="background:'+sc.col+';color:#fff;font-weight:800;font-size:13px;padding:10px 13px">'+head+'</div>'
+      + inner +'</div>';
+  }
+  function newRecordsPage(){
+    var sc=recScope(); var w=nhWrap(); if(!w) return;
+    if(sc.view==="members")  return recMembers(sc,w);
+    if(sc.view==="profiles") return recProfiles(sc,w);
+    if(sc.view==="ladders")  return recLadders(sc,w);
+    w.innerHTML = recBand(sc, sc.wide?"Every club on the system \u2014 one rating each":"Members, profiles and the ladders",
+                          PAGE+"?club="+sc.C, W.PLAT.name||"back")
+      + recPill(sc,"List all members", sc.wide?"Everyone in the register, with their group":"Everyone here, with their group", sc.base+"&view=members")
+      + recPill(sc,"Member profiles", "Anyone who has played \u2014 their record, wherever they played", sc.base+"&view=profiles")
+      + recPill(sc,"Ratings and ladders", sc.wide?"Every club, one rating each":"This region's ladders", sc.base+"&view=ladders")
       + homeBar();
   }
+  /* ---- members: name · group pill · rating ------------------------------------------------------------ */
+  function recMembers(sc,w){
+    w.innerHTML = recBand(sc,"List all members", sc.base, "Records")
+      + recPanel(sc, "Reading the register\u2026", "") + homeBar();
+    var B=SBREST();
+    Promise.all([
+      fetch(B+"nat_v_member_group?pool_id=eq."+W.PLAT.pool+"&select=full_name,club_id,group_name&order=full_name.asc").then(J).catch(function(){ return []; }),
+      fetch(B+"plat_padel_v_pool_individuals?pool_id=eq."+W.PLAT.pool+"&select=full_name,current_rating,seed_rating&order=full_name.asc").then(J).catch(function(){ return []; }),
+      fetch(B+"plat_clubs?select=id,name,colour").then(J).catch(function(){ return []; })
+    ]).then(function(r){
+      var groups=Array.isArray(r[0])?r[0]:[], people=Array.isArray(r[1])?r[1]:[], clubs=Array.isArray(r[2])?r[2]:[];
+      var G={}; groups.forEach(function(g){ G[g.full_name]=g; });
+      var COL={}; clubs.forEach(function(c){ COL[Number(c.id)]=c.colour||null; });
+      var mine=people.filter(function(p){
+        if(sc.wide) return true;
+        var g=G[p.full_name]; if(!g||!g.club_id) return true;            /* still to play: belongs to the region */
+        return sc.boards.indexOf(Number(g.club_id))>=0;
+      });
+      var rows=mine.map(function(p){
+        var g=G[p.full_name]||{}, none=!g.club_id;
+        var gcol=none?"#8a8196":(COL[Number(g.club_id)]||clubPal(g.club_id)[0]);
+        var rating=(p.current_rating!=null)?p.current_rating:((p.seed_rating!=null)?p.seed_rating:"\u2014");
+        var who=String(p.full_name).replace(/'/g,"\\'");
+        var act=none?("window.nhNoProfile(this,'"+who+"')"):("window.nhOpenProfile('"+who+"')");
+        return '<button data-plat-keep="1" onclick="'+act+'" style="display:flex;width:100%;align-items:center;gap:9px;padding:10px 13px;'
+          +'border:none;border-top:1px solid #f0ecf6;background:#fff;font:inherit;text-align:left;cursor:pointer">'
+          +'<span style="flex:1;min-width:0;font-size:13.5px;font-weight:700;color:#241d33;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+esc(p.full_name)+'</span>'
+          +'<span style="flex:0 0 auto;background:'+(none?"#f1eef6":gcol)+';color:'+(none?"#5f5770":"#fff")+';border-radius:99px;padding:3px 10px;'
+          +'font-size:10.5px;font-weight:800;max-width:130px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+esc(g.group_name||"still to play")+'</span>'
+          +'<span style="flex:0 0 46px;text-align:right;font-size:13px;font-weight:800;color:'+sc.col+'">'+esc(String(rating))+'</span></button>';
+      }).join("");
+      W.__recMembers=mine.map(function(p){ var g=G[p.full_name]||{}; return {p:p,g:g,col:(!g.club_id)?"#8a8196":(COL[Number(g.club_id)]||clubPal(g.club_id)[0])}; });
+      w.innerHTML = recBand(sc,"List all members", sc.base, "Records")
+        +'<div style="margin:12px 12px 0"><input id="recFindM" data-plat-keep="1" placeholder="Find a member" autocomplete="off" '
+        +'style="width:100%;box-sizing:border-box;padding:13px 14px;border:1.5px solid '+sc.col+';border-radius:14px;font:inherit;font-size:15px" '
+        +'oninput="window.recFilterM()"></div>'
+        + recPanel(sc, esc(sc.wide?"Every registered member":("Members \u00b7 "+(W.PLAT.name||"")))+' \u00b7 <span id="recCountM">'+mine.length+'</span>',
+                   '<div id="recMembers" style="max-height:60vh;overflow-y:auto"></div>')
+        + homeBar();
+      W.__recCol=sc.col; W.recFilterM();
+    });
+  }
+  /* ---- profiles: a search bar and the names of everyone who has played ----------------------------------- */
+  function recProfiles(sc,w){
+    w.innerHTML = recBand(sc,"Member profiles", sc.base, "Records") + recPanel(sc,"Finding who has played\u2026","") + homeBar();
+    var B=SBREST();
+    var q = sc.wide
+      ? "plat_padel_v_pool_individuals?pool_id=eq."+W.PLAT.pool+"&current_rating=not.is.null&select=full_name,current_rating&order=full_name.asc"
+      : "plat_padel_v_individuals?club_id=in.("+sc.boards.join(",")+")&current_rating=not.is.null&select=full_name,current_rating&order=full_name.asc";
+    fetch(B+q).then(J).catch(function(){ return []; }).then(function(rows){
+      rows=Array.isArray(rows)?rows:[];
+      var seen={}; rows=rows.filter(function(p){ if(seen[p.full_name]) return false; seen[p.full_name]=1; return true; });
+      W.__recPeople=rows;
+      w.innerHTML = recBand(sc,"Member profiles", sc.base, "Records")
+        +'<div style="margin:12px 12px 0"><input id="recFind" data-plat-keep="1" placeholder="Find a name" autocomplete="off" '
+        +'style="width:100%;box-sizing:border-box;padding:13px 14px;border:1.5px solid '+sc.col+';border-radius:14px;font:inherit;font-size:15px" '
+        +'oninput="window.recFilter()"></div>'
+        + recPanel(sc, esc(sc.wide?"Everyone who has played":("Played at "+(W.PLAT.name||"")))+' \u00b7 <span id="recCount">'+rows.length+'</span>',
+                   '<div id="recNames" style="max-height:60vh;overflow-y:auto"></div>')
+        + homeBar();
+      W.recFilter();
+    });
+  }
+  W.recFilterM=function(){
+    var v=String((document.getElementById("recFindM")||{}).value||"").trim().toLowerCase();
+    var list=(W.__recMembers||[]).filter(function(x){ return !v || String(x.p.full_name).toLowerCase().indexOf(v)>=0; });
+    var box=document.getElementById("recMembers"), cnt=document.getElementById("recCountM"); if(cnt) cnt.textContent=list.length;
+    if(!box) return;
+    var col=W.__recCol||"#6c3483";
+    box.innerHTML = list.length ? list.map(function(x){
+      var p=x.p, g=x.g, none=!g.club_id;
+      var rating=(p.current_rating!=null)?p.current_rating:((p.seed_rating!=null)?p.seed_rating:"\u2014");
+      var who=String(p.full_name).replace(/'/g,"\\'");
+      var act=none?("window.nhNoProfile(this,'"+who+"')"):("window.nhOpenProfile('"+who+"')");
+      return '<button data-plat-keep="1" onclick="'+act+'" style="display:flex;width:100%;align-items:center;gap:9px;padding:10px 13px;'
+        +'border:none;border-top:1px solid #f0ecf6;background:#fff;font:inherit;text-align:left;cursor:pointer">'
+        +'<span style="flex:1;min-width:0;font-size:13.5px;font-weight:700;color:#241d33;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+esc(p.full_name)+'</span>'
+        +'<span style="flex:0 0 auto;background:'+(none?"#f1eef6":x.col)+';color:'+(none?"#5f5770":"#fff")+';border-radius:99px;padding:3px 10px;'
+        +'font-size:10.5px;font-weight:800;max-width:130px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+esc(g.group_name||"still to play")+'</span>'
+        +'<span style="flex:0 0 46px;text-align:right;font-size:13px;font-weight:800;color:'+col+'">'+esc(String(rating))+'</span></button>';
+    }).join("") : '<div style="padding:14px;font-size:13px;color:#5f5770">No member by that name.</div>';
+  };
+  W.recFilter=function(){
+    var v=String((document.getElementById("recFind")||{}).value||"").trim().toLowerCase();
+    var rows=(W.__recPeople||[]).filter(function(p){ return !v || String(p.full_name).toLowerCase().indexOf(v)>=0; });
+    var box=document.getElementById("recNames"), cnt=document.getElementById("recCount");
+    if(cnt) cnt.textContent=rows.length;
+    if(!box) return;
+    box.innerHTML = rows.length ? rows.map(function(p){
+      var who=String(p.full_name).replace(/'/g,"\\'");
+      return '<button data-plat-keep="1" onclick="window.nhOpenProfile(\''+who+'\')" style="display:flex;width:100%;align-items:center;gap:9px;'
+        +'padding:11px 13px;border:none;border-top:1px solid #f0ecf6;background:#fff;font:inherit;text-align:left;cursor:pointer">'
+        + nhFace(p.full_name,"#6c3483",30)
+        +'<span style="flex:1;min-width:0;font-size:14px;font-weight:700;color:#241d33;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+esc(p.full_name)+'</span>'
+        +'<span style="font-size:13px;font-weight:800;color:#6c3483">'+esc(String(p.current_rating))+'</span></button>';
+    }).join("") : '<div style="padding:14px;font-size:13px;color:#5f5770">No one by that name has played here.</div>';
+  };
+  /* ---- ladders: the pairs, by kind, from the system's own results ---------------------------------------- */
+  function recLadders(sc,w){
+    w.innerHTML = recBand(sc,"Ratings and ladders", sc.base, "Records") + recPanel(sc,"Reading the results\u2026","") + homeBar();
+    var B=SBREST();
+    var q = sc.wide
+      ? "plat_player_results?pool_id=eq."+W.PLAT.pool+"&discipline=eq.padel"
+      : "plat_player_results?club_id=in.("+sc.boards.join(",")+")&discipline=eq.padel";
+    fetch(B+q+"&select=name,gender,club_id,current_rating,initial_rating,sets_played,sets_won&order=current_rating.desc&limit=3000")
+      .then(J).catch(function(){ return []; }).then(function(rows){
+        rows=(Array.isArray(rows)?rows:[]).filter(function(r){ return (r.sets_played||0)>0; });
+        W.__recPairs=rows; W.__recTab="M";
+        var tabs=[["M","Men\u2019s"],["F","Ladies\u2019"],["X","Mixed"],["A","All sorts"]];
+        w.innerHTML = recBand(sc,"Ratings and ladders", sc.base, "Records")
+          +'<div id="recTabs" style="display:flex;gap:6px;margin:12px 12px 0">'
+          + tabs.map(function(t){ return '<button data-plat-keep="1" data-k="'+t[0]+'" onclick="window.recTab(\''+t[0]+'\')" style="flex:1;font:inherit;font-size:12.5px;font-weight:800;'
+              +'padding:9px 4px;border-radius:99px;border:1.5px solid '+sc.col+';background:#fff;color:'+sc.col+';cursor:pointer">'+t[1]+'</button>'; }).join("")
+          +'</div>'
+          + recPanel(sc, '<span id="recLadHead">Ladder</span>', '<div id="recLadder"></div>')
+          + homeBar();
+        W.recTab("M");
+      });
+  }
+  W.recTab=function(k){
+    var sc=recScope(); W.__recTab=k;
+    Array.prototype.forEach.call(document.querySelectorAll("#recTabs button"),function(b){
+      var on=(b.dataset.k===k); b.style.background=on?sc.col:"#fff"; b.style.color=on?"#fff":sc.col;
+    });
+    var kinds={M:function(g){ return g==="M"; }, F:function(g){ return g==="F"; },
+               X:function(g){ return g==="X"||g==="MX"||g==="Mixed"; }, A:function(g){ return !(g==="M"||g==="F"||g==="X"||g==="MX"||g==="Mixed"); }};
+    var rows=(W.__recPairs||[]).filter(function(r){ return kinds[k](String(r.gender||"")); });
+    var head=document.getElementById("recLadHead"); if(head) head.textContent={M:"Men\u2019s pairs",F:"Ladies\u2019 pairs",X:"Mixed pairs",A:"All sorts"}[k]+" \u00b7 "+rows.length;
+    var box=document.getElementById("recLadder"); if(!box) return;
+    if(!rows.length){ box.innerHTML='<div style="padding:14px;font-size:13px;color:#5f5770">No pairs on this ladder yet.</div>'; return; }
+    box.innerHTML='<div style="display:grid;grid-template-columns:34px 1fr 54px 56px 46px;gap:6px;padding:7px 12px;font-size:10px;letter-spacing:.08em;'
+      +'text-transform:uppercase;color:#8a8196;font-weight:800;border-bottom:1px solid #f0ecf6"><span>#</span><span>Pair</span><span style="text-align:right">Rating</span>'
+      +'<span style="text-align:right">Sets</span><span style="text-align:right">Win</span></div>'
+      + rows.map(function(r,i){
+          var pct=r.sets_played?Math.round(100*r.sets_won/r.sets_played):0;
+          var who=String(r.name).replace(/'/g,"\\'");
+          return '<button data-plat-keep="1" onclick="window.nhOpenPair(\''+who+'\')" style="display:grid;grid-template-columns:34px 1fr 54px 56px 46px;gap:6px;width:100%;'
+            +'align-items:center;padding:9px 12px;border:none;border-top:1px solid #f4f1f8;background:#fff;font:inherit;text-align:left;cursor:pointer">'
+            +'<span style="font-weight:800;color:#8a8196;font-size:12px">'+(i+1)+'</span>'
+            +'<span style="min-width:0;font-size:13px;font-weight:700;color:#241d33;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+esc(r.name)+'</span>'
+            +'<span style="text-align:right;font-size:13.5px;font-weight:800;color:'+sc.col+'">'+esc(String(r.current_rating))+'</span>'
+            +'<span style="text-align:right;font-size:12px;color:#5f5770">'+esc(String(r.sets_won))+'/'+esc(String(r.sets_played))+'</span>'
+            +'<span style="text-align:right;font-size:12px;color:#5f5770">'+pct+'%</span></button>';
+        }).join("");
+  };
+  W.nhOpenPair=function(name){
+    try{ if(typeof loadProfile==="function"){ loadProfile(name,""); try{ showScreen("profileScreen"); }catch(e){} return; } }catch(e){}
+  };
   W.nhRecords=function(C){
     var box=document.getElementById("nhRecordsBox"); if(!box) return;
     if(box.dataset.open===String(C)){ box.style.display="none"; box.dataset.open=""; return; }
@@ -10995,6 +11218,11 @@ async function clRemove(id, label){
   /* open a member's profile from the list — the app's own profile screen, so it is the same page they would
      reach from anywhere else, with cross-region play included */
   W.nhOpenProfile=function(name){
+    /* n78: one profile page for everybody — the app's own, not the parent's */
+    var C=(W.PLAT.parentId||W.PLAT.cid||W.PLAT.nat||nhLastDoor()||0);
+    var back=encodeURIComponent(location.search||"");
+    location.href=PAGE+"?club="+C+"&go=me&who="+encodeURIComponent(name)+"&back="+back;
+    return;
     try{
       if(typeof loadProfileIndividual==="function"){
         loadProfileIndividual(name);
