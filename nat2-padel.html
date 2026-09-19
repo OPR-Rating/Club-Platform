@@ -3574,7 +3574,7 @@ const CLUB_NAME = _club.name;  // shown in the logo as "OPR · <name>"
     link.setAttribute('href', href);
   }catch(e){ /* install stays on the static manifest — no functional impact */ }
 })();
-const OPR_VERSION = "OPR-DOUBLES v2026.09.03-56 · NAT fork n78 (no voice) (of PLAT p117)";  // MANUAL PAIR CREATION REMOVED FROM ADMIN: Create a pair, Bulk create pairs and Re-derive all pairs are gone (they only made match-less ghost pairs, and Re-derive rewrote every stored initial club-wide). Pairs are born automatically at match entry. Current pairs list untouched; the underlying JS is left in place unreferenced, so no other code path changes. Includes v47 (set-score fix + double-tap guard) and all prior.
+const OPR_VERSION = "OPR-DOUBLES v2026.09.03-56 · NAT fork n80 (no voice) (of PLAT p117)";  // MANUAL PAIR CREATION REMOVED FROM ADMIN: Create a pair, Bulk create pairs and Re-derive all pairs are gone (they only made match-less ghost pairs, and Re-derive rewrote every stored initial club-wide). Pairs are born automatically at match entry. Current pairs list untouched; the underlying JS is left in place unreferenced, so no other code path changes. Includes v47 (set-score fix + double-tap guard) and all prior.
 // Explanation shown above the individual ladder. Open on load so it's read; collapsible
 // (state kept for the session) and scrolls away. Mechanics only — no outcome framing, so
 // members aren't nudged away from playing stronger opponents. Every clause maps to a real
@@ -10214,8 +10214,8 @@ async function clRemove(id, label){
     /* n76: TWO ROOMS, NOT THREE. This page still spoke the old language — "The club", its own board listed
        as general play, the ledger tacked on at the end. There is no club and no general play now: there is
        the REGION'S LEDGER, which makes groups and members, and the GROUPS, each with its own room. */
-    var body='<div class="brk"><h2>'+esc(club.name)+' \u00b7 ledger</h2><div class="rows">'
-      + pill("Ledger control", "members, groups, colours, codes, backups", "#6c3483",
+    var body='<div class="brk"><h2>Region Ledger \u00b7 '+esc(club.name)+'</h2><div class="rows">'
+      + pill(esc(club.name)+" \u2014 Region Ledger", "members, groups, colours, codes, backups", "#6c3483",
              "location.href='"+PAGE+"?club=0&pool="+W.PLAT.pool+"&nat="+C+"&go=admin&from="+C+"'")
       +'</div></div>';
     body+='<div class="brk"><h2>Groups</h2><div class="rows">'
@@ -10339,7 +10339,7 @@ async function clRemove(id, label){
         if(/current ratings and ladders/i.test(b.textContent||"") && !/all clubs/i.test(b.textContent||""))
           b.textContent="Current Ratings and Ladders \u2014 All Clubs";
       }); },400); }
-    band.innerHTML='<div class="mark"><span class="logo">OPR</span>Ledger</div>'
+    band.innerHTML='<div class="mark"><span class="logo">OPR</span>'+(isClubLedger?"Region Ledger":"Global Ledger")+'</div>'
       +'<h1>'+esc(name)+'</h1>'
       +'<div class="sub">'+(isClub?"Every match at the club \u2014 general play and every group":"Every match at every registered club \u2014 one rating each")+'</div>'
       +'<div class="pulse">'+back
@@ -10999,7 +10999,7 @@ async function clRemove(id, label){
     var C=(W.PLAT.parentId||W.PLAT.cid||0);
     return { wide:wide, C:C, view:(q.get("view")||"").toLowerCase(),
              col:wide?"#2f2f2f":"#6c3483", deep:wide?"#141414":"#1d0a41",
-             title:wide?"All registered clubs":(W.PLAT.name||"The region"),
+             title:wide?"Global Ledger":(W.PLAT.name||"The region"),
              boards:(W.PLAT.myBoards&&W.PLAT.myBoards.length)?W.PLAT.myBoards:[C],
              base:PAGE+"?club="+C+"&go=records"+(wide?"&all=1":"") };
   }
@@ -11030,11 +11030,15 @@ async function clRemove(id, label){
     if(sc.view==="members")  return recMembers(sc,w);
     if(sc.view==="profiles") return recProfiles(sc,w);
     if(sc.view==="ladders")  return recLadders(sc,w);
-    w.innerHTML = recBand(sc, sc.wide?"Every club on the system \u2014 one rating each":"Members, profiles and the ladders",
+    w.innerHTML = recBand(sc, sc.wide?"Every region, every group, every member \u2014 one rating each":"Members, profiles and the ladders",
                           PAGE+"?club="+sc.C, W.PLAT.name||"back")
       + recPill(sc,"List all members", sc.wide?"Everyone in the register, with their group":"Everyone here, with their group", sc.base+"&view=members")
       + recPill(sc,"Member profiles", "Anyone who has played \u2014 their record, wherever they played", sc.base+"&view=profiles")
       + recPill(sc,"Ratings and ladders", sc.wide?"Every club, one rating each":"This region's ladders", sc.base+"&view=ladders")
+      /* n79: the Global Ledger's admin room, reachable from any door through this page — the master's code,
+         or the register's. It was a link only one person knew. */
+      + (sc.wide ? recPill(sc,"Global Ledger admin", "regions, groups and members across the register \u2014 register or master code",
+                            PAGE+"?club=0&pool="+W.PLAT.pool+"&go=admin&from="+sc.C) : "")
       + homeBar();
   }
   /* ---- members: name · group pill · rating ------------------------------------------------------------ */
@@ -11508,7 +11512,7 @@ async function clRemove(id, label){
            record is a place you go to, with its own band and its own way back. */
         + ledgerRow(W.PLAT.name, "Members, profiles and the ladders \u2014 everyone here", "#6c3483",
                     "location.href='"+PAGE+"?club="+C+"&go=records'")
-        + ledgerRow("All registered clubs", "The same three, for every club in the register", "#2f2f2f",
+        + ledgerRow("Global Ledger", "Every region, every group, every member", "#2f2f2f",
                     "location.href='"+PAGE+"?club="+C+"&go=records&all=1'")
         + lastMatchRibbon(d)
         /* the glimpses — Recent matches exactly as it is */
@@ -11962,7 +11966,8 @@ async function clRemove(id, label){
       /* n72: BEFORE A CODE IS TYPED THIS IS THE WHOLE REGISTER. A club admin opening the room sees every
          club's people, which is right — it is how a duplicate is spotted — but it reads as "my club has 149
          members" unless it says so plainly. */
-      +'<div style="font-size:12px;color:#666;margin-bottom:8px">'+rows.length+' players \u00b7 '+REG.clubs.length+' clubs \u00b7 one rating each</div>'
+      +'<div style="font-size:12px;color:#666;margin-bottom:8px">'+rows.length+' members'
+      +(W.PLAT.nat?(' \u00b7 '+esc(W.PLAT.natName||"this region")+' only'):(' \u00b7 '+REG.clubs.length+' clubs \u00b7 the whole register'))+'</div>'
       +((REG.role==="club"||W.PLAT.nat)?'':'<div style="background:#fdf6e3;border:1px solid #f0e2c0;border-radius:10px;padding:10px 12px;margin:0 0 10px;font-size:12.5px;color:#6b5a2a;line-height:1.5">'
         +'<b>This is the whole register</b> \u2014 every club in it, so you can see whether somebody is already '
         +'registered elsewhere before you add them. Type your club\u2019s code above and the list narrows to your own members.</div>')
