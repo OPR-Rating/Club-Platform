@@ -3582,7 +3582,7 @@ const CLUB_NAME = _club.name;  // shown in the logo as "OPR · <name>"
     link.setAttribute('href', href);
   }catch(e){ /* install stays on the static manifest — no functional impact */ }
 })();
-const OPR_VERSION = "OPR-DOUBLES v2026.09.03-56 · NAT fork n88 (no voice) (of PLAT p117)";  // MANUAL PAIR CREATION REMOVED FROM ADMIN: Create a pair, Bulk create pairs and Re-derive all pairs are gone (they only made match-less ghost pairs, and Re-derive rewrote every stored initial club-wide). Pairs are born automatically at match entry. Current pairs list untouched; the underlying JS is left in place unreferenced, so no other code path changes. Includes v47 (set-score fix + double-tap guard) and all prior.
+const OPR_VERSION = "OPR-DOUBLES v2026.09.03-56 · NAT fork n89 (no voice) (of PLAT p117)";  // MANUAL PAIR CREATION REMOVED FROM ADMIN: Create a pair, Bulk create pairs and Re-derive all pairs are gone (they only made match-less ghost pairs, and Re-derive rewrote every stored initial club-wide). Pairs are born automatically at match entry. Current pairs list untouched; the underlying JS is left in place unreferenced, so no other code path changes. Includes v47 (set-score fix + double-tap guard) and all prior.
 // Explanation shown above the individual ladder. Open on load so it's read; collapsible
 // (state kept for the session) and scrolls away. Mechanics only — no outcome framing, so
 // members aren't nudged away from playing stronger opponents. Every clause maps to a real
@@ -10821,7 +10821,7 @@ W.mePair=function(name){
         +'<div style="display:flex;align-items:center;gap:10px;margin-top:6px">'
         +'<span style="display:flex">'+names.map(function(n,i){ return '<span style="display:inline-block;border:2px solid #fff;border-radius:50%;margin-left:'+(i?"-9px":"0")+'">'+nhFace(n,col,36)+'</span>'; }).join("")+'</span>'
         +'<h1 style="margin:0;font-size:20px">'+esc(pair)+'</h1></div>'
-        +'<div style="display:flex;align-items:baseline;gap:10px;margin-top:12px">'
+        +'<div style="display:flex;align-items:center;gap:10px;margin-top:12px">'
         +'<span style="font-size:38px;font-weight:800;letter-spacing:-1px;line-height:1">'+(rating!=null?rating:"\u2014")+'</span>'
         +(lvl?('<span style="display:inline-flex;flex-direction:column;align-items:center;border:1.5px solid rgba(255,255,255,.55);border-radius:12px;padding:5px 12px;line-height:1.1"><b style="font-size:15px">'+lvl+'</b><span style="font-size:9.5px;letter-spacing:.08em;text-transform:uppercase;opacity:.85">level</span></span>'):'')
         +(move!=null?('<span style="display:inline-flex;flex-direction:column;align-items:center;border:1.5px solid rgba(255,255,255,.55);border-radius:12px;padding:5px 12px;line-height:1.1"><b style="font-size:15px">'+(move>0?"+":"")+move+'</b><span style="font-size:9.5px;letter-spacing:.08em;text-transform:uppercase;opacity:.85">move</span></span>'):'')
@@ -10890,7 +10890,7 @@ W.mePair=function(name){
         + (myPhoto?"":esc(inits(me)))+'</span>' 
         + '<span><h1 style="margin:0 0 2px">'+esc(me)+'</h1>'
         + '<span class="sub">'+(homeId?("plays mostly at "+esc(nhBoardName(homeId))):"no matches yet")+'</span></span></div>'
-        + '<div style="display:flex;align-items:baseline;gap:10px;margin-top:12px">'
+        + '<div style="display:flex;align-items:center;gap:10px;margin-top:12px">'
         + '<span style="font-size:38px;font-weight:800;letter-spacing:-1px;line-height:1">'+(rating||"\u2014")+'</span>'
         /* n85: level and rank each in a bordered chip — one shape, two facts, easy to scan */
         + (lvl?('<span style="display:inline-flex;flex-direction:column;align-items:center;border:1.5px solid rgba(255,255,255,.55);border-radius:12px;padding:5px 12px;line-height:1.1">'
@@ -10911,9 +10911,10 @@ W.mePair=function(name){
            [st.setsW+"/"+(st.setsW+st.setsL),"Sets won"],[pct+"%","Win %"],[(gd>0?"+":"")+gd.toFixed(2),"Game diff/set"]]
             .map(function(x){ return '<div class="fig"><b>'+esc(String(x[0]))+'</b><span>'+esc(x[1])+'</span></div>'; }).join("")
         +'</div>'
-      h+=nhActions(col,deep)
-        + meMoveBy(st)                       /* n84: move by group, as plat shows it but readable */
-        + meChartBlock(me,st,all)            /* n69: plat's Chart Snapshot, below the five figures */
+      /* n89: header · five figures · chart · move by group · then the action row and the rest */
+      h+= meChartBlock(me,st,all)
+        + meMoveBy(st)
+        + nhActions(col,deep)
         +'<div class="cols">';
 
       /* n82: ONE MATCH IS STILL A LINE. The chart needed two points and a single rated match gave one, so a
