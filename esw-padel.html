@@ -3574,7 +3574,7 @@ const CLUB_NAME = _club.name;  // shown in the logo as "OPR · <name>"
     link.setAttribute('href', href);
   }catch(e){ /* install stays on the static manifest — no functional impact */ }
 })();
-const OPR_VERSION = "OPR-DOUBLES v2026.09.03-56 · NAT fork n81 (no voice) (of PLAT p117)";  // MANUAL PAIR CREATION REMOVED FROM ADMIN: Create a pair, Bulk create pairs and Re-derive all pairs are gone (they only made match-less ghost pairs, and Re-derive rewrote every stored initial club-wide). Pairs are born automatically at match entry. Current pairs list untouched; the underlying JS is left in place unreferenced, so no other code path changes. Includes v47 (set-score fix + double-tap guard) and all prior.
+const OPR_VERSION = "OPR-DOUBLES v2026.09.03-56 · NAT fork n82 (no voice) (of PLAT p117)";  // MANUAL PAIR CREATION REMOVED FROM ADMIN: Create a pair, Bulk create pairs and Re-derive all pairs are gone (they only made match-less ghost pairs, and Re-derive rewrote every stored initial club-wide). Pairs are born automatically at match entry. Current pairs list untouched; the underlying JS is left in place unreferenced, so no other code path changes. Includes v47 (set-score fix + double-tap guard) and all prior.
 // Explanation shown above the individual ladder. Open on load so it's read; collapsible
 // (state kept for the session) and scrolls away. Mechanics only — no outcome framing, so
 // members aren't nudged away from playing stronger opponents. Every clause maps to a real
@@ -9640,6 +9640,14 @@ async function clRemove(id, label){
       try{
         if(go==="me"){ try{ newMePage(); return true; }catch(e){ return false; } }
         if(go==="records") return true;   /* n75: the dispatcher draws this one; nothing else should */
+        if(go==="profiles"){
+          var pr=""; try{ pr=new URLSearchParams(location.search).get("pair")||""; }catch(e){}
+          if(pr && typeof loadProfile==="function"){
+            /* n83: a pair named in the link opens straight away, in this scope */
+            setTimeout(function(){ try{ loadProfile(pr,""); showScreen("profileScreen"); }catch(e){} }, 400);
+            return true;
+          }
+        }
         if(go==="admin"){
           if(W.PLAT.cid===0){ var t=document.getElementById("platRegTile");
             if(t){ showScreen("aboutScreen"); setTimeout(function(){ t.click(); },80); return true; } return false; }
@@ -10329,8 +10337,10 @@ async function clRemove(id, label){
        one — the admin route among them — sent you back to the ledger you were trying to leave. A club ledger
        belongs to exactly one club, so that club's door is the way out, parameter or no parameter. The last
        line is for the REGISTER's ledger, which belongs to no single club. */
+    var bq=""; try{ bq=new URLSearchParams(location.search).get("back")||""; }catch(e){}
     var frm=nhFrom() || (isClub ? Number(W.PLAT.nat||0) : 0);
-    if(frm) back='<a href="'+PAGE+'?club='+frm+'">\u2039 '+esc(W.PLAT.natName||"back")+'</a>';
+    if(bq) back='<a href="'+PAGE+esc(bq)+'">\u2039 Records</a>';   /* n83: sent here by the records sheet */
+    else if(frm) back='<a href="'+PAGE+'?club='+frm+'">\u2039 '+esc(W.PLAT.natName||"back")+'</a>';
     else { var last=null; try{ last=sessionStorage.getItem("nat_last_club_"+W.PLAT.pool); }catch(e){}
       if(last){ var bits=last.split("|"); back='<a href="'+PAGE+'?club='+bits[0]+'">\u2039 '+esc(bits[1]||"club")+'</a>'; } }
     /* on the register's own ledger the tables cover every club, so the button says so */
@@ -11034,7 +11044,11 @@ async function clRemove(id, label){
                           PAGE+"?club="+sc.C, W.PLAT.name||"back")
       + recPill(sc,"List all members", sc.wide?"Everyone in the register, with their group":"Everyone here, with their group", sc.base+"&view=members")
       + recPill(sc,"Member profiles", "Anyone who has played \u2014 their record, wherever they played", sc.base+"&view=profiles")
-      + recPill(sc,"Ratings and ladders", sc.wide?"Every club, one rating each":"This region's ladders", sc.base+"&view=ladders")
+      /* n83: PLAT'S LADDERS, NOT A COPY. Pair Ratings (Men's · Ladies' · Mixed · All Sorts), Universal, the
+         Club Ladder and the Form wall already exist in plat; the records open that page in the region's scope
+         (or the register's), skinned to match, with back returning to the records sheet. */
+      + recPill(sc,"Ratings and ladders", sc.wide?"Every club \u2014 pair ratings, Universal, Club Ladder, Form":"Pair ratings, Universal, Club Ladder, Form",
+                PAGE+(sc.wide?("?club=0&pool="+W.PLAT.pool):("?club=0&pool="+W.PLAT.pool+"&nat="+sc.C))+"&go=ladders&back="+encodeURIComponent(sc.base.replace(PAGE,"")))
       /* n79: the Global Ledger's admin room, reachable from any door through this page — the master's code,
          or the register's. It was a link only one person knew. */
       + (sc.wide ? recPill(sc,"Global Ledger admin", "regions, groups and members across the register \u2014 register or master code",
@@ -11087,17 +11101,24 @@ async function clRemove(id, label){
   function recProfiles(sc,w){
     w.innerHTML = recBand(sc,"Member profiles", sc.base, "Records") + recPanel(sc,"Finding who has played\u2026","") + homeBar();
     var B=SBREST();
+    /* n82: the row reads as plat's profile list — disc, name, gender, rating, move since start, (matches) */
     var q = sc.wide
-      ? "plat_padel_v_pool_individuals?pool_id=eq."+W.PLAT.pool+"&current_rating=not.is.null&select=full_name,current_rating&order=full_name.asc"
-      : "plat_padel_v_individuals?club_id=in.("+sc.boards.join(",")+")&current_rating=not.is.null&select=full_name,current_rating&order=full_name.asc";
-    fetch(B+q).then(J).catch(function(){ return []; }).then(function(rows){
-      rows=Array.isArray(rows)?rows:[];
+      ? "plat_padel_v_pool_individuals?pool_id=eq."+W.PLAT.pool+"&current_rating=not.is.null&select=full_name,gender,current_rating,seed_rating&order=full_name.asc"
+      : "plat_padel_v_individuals?club_id=in.("+sc.boards.join(",")+")&current_rating=not.is.null&select=full_name,gender,current_rating,seed_rating&order=full_name.asc";
+    var mq = sc.wide
+      ? "plat_matches?pool_id=eq."+W.PLAT.pool+"&discipline=eq.padel&select=t1p1,t1p2,t2p1,t2p2&limit=5000"
+      : "plat_matches?club_id=in.("+sc.boards.join(",")+")&discipline=eq.padel&select=t1p1,t1p2,t2p1,t2p2&limit=5000";
+    Promise.all([fetch(B+q).then(J).catch(function(){ return []; }), fetch(B+mq).then(J).catch(function(){ return []; })]).then(function(rr){
+      var rows=Array.isArray(rr[0])?rr[0]:[], ms=Array.isArray(rr[1])?rr[1]:[];
+      var count={}; ms.forEach(function(m){ [m.t1p1,m.t1p2,m.t2p1,m.t2p2].forEach(function(v){ halves(v).forEach(function(n){ count[n]=(count[n]||0)+1; }); }); });
       var seen={}; rows=rows.filter(function(p){ if(seen[p.full_name]) return false; seen[p.full_name]=1; return true; });
+      rows.forEach(function(p){ p.matches=count[p.full_name]||0; p.move=Math.round(((p.current_rating||0)-(p.seed_rating||p.current_rating||0))*10)/10; });
       W.__recPeople=rows;
       w.innerHTML = recBand(sc,"Member profiles", sc.base, "Records")
         +'<div style="margin:12px 12px 0"><input id="recFind" data-plat-keep="1" placeholder="Find a name" autocomplete="off" '
         +'style="width:100%;box-sizing:border-box;padding:13px 14px;border:1.5px solid '+sc.col+';border-radius:14px;font:inherit;font-size:15px" '
         +'oninput="window.recFilter()"></div>'
+        + '<div style="margin:12px 14px 0;font-size:12.5px;color:#5f5770">Tap a name to open the profile.</div>'
         + recPanel(sc, esc(sc.wide?"Everyone who has played":("Played at "+(W.PLAT.name||"")))+' \u00b7 <span id="recCount">'+rows.length+'</span>',
                    '<div id="recNames" style="max-height:60vh;overflow-y:auto"></div>')
         + homeBar();
@@ -11131,11 +11152,14 @@ async function clRemove(id, label){
     if(!box) return;
     box.innerHTML = rows.length ? rows.map(function(p){
       var who=String(p.full_name).replace(/'/g,"\\'");
+      var mv=(p.move>0?"+":"")+p.move;
       return '<button data-plat-keep="1" onclick="window.nhOpenProfile(\''+who+'\')" style="display:flex;width:100%;align-items:center;gap:9px;'
-        +'padding:11px 13px;border:none;border-top:1px solid #f0ecf6;background:#fff;font:inherit;text-align:left;cursor:pointer">'
-        + nhFace(p.full_name,"#6c3483",30)
-        +'<span style="flex:1;min-width:0;font-size:14px;font-weight:700;color:#241d33;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+esc(p.full_name)+'</span>'
-        +'<span style="font-size:13px;font-weight:800;color:#6c3483">'+esc(String(p.current_rating))+'</span></button>';
+        +'padding:10px 13px;border:none;border-top:1px solid #f0ecf6;background:#fff;font:inherit;text-align:left;cursor:pointer">'
+        + nhFace(p.full_name,"#6c3483",32)
+        +'<span style="flex:1;min-width:0"><span style="display:block;font-size:14px;font-weight:700;color:#241d33;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+esc(p.full_name)+'</span>'
+        +'<span style="display:block;font-size:11.5px;color:#8a8196">'+(p.gender==="F"?"Female":(p.gender==="M"?"Male":""))+'</span></span>'
+        +'<span style="text-align:right;flex:0 0 auto;line-height:1.15"><span style="display:block;font-size:14px;font-weight:800;color:#6c3483">'+esc(String(Math.round(p.current_rating)))+'</span>'
+        +'<span style="display:block;font-size:11px;color:'+(p.move>=0?"#1f8a4c":"#c0392b")+';font-weight:700">'+mv+' <span style="color:#8a8196;font-weight:600">('+p.matches+')</span></span></span></button>';
     }).join("") : '<div style="padding:14px;font-size:13px;color:#5f5770">No one by that name has played here.</div>';
   };
   /* ---- ladders: the pairs, by kind, from the system's own results ---------------------------------------- */
@@ -11187,7 +11211,12 @@ async function clRemove(id, label){
         }).join("");
   };
   W.nhOpenPair=function(name){
-    try{ if(typeof loadProfile==="function"){ loadProfile(name,""); try{ showScreen("profileScreen"); }catch(e){} return; } }catch(e){}
+    /* n83: the pair profile is plat's, and it reads the pair from the scope it is standing in — so open it on
+       the ledger route (region or register), where the shim widens the query to every board in reach. Opening
+       it from the door left it looking at one board and finding nothing. */
+    var sc=recScope();
+    location.href=PAGE+(sc.wide?("?club=0&pool="+W.PLAT.pool):("?club=0&pool="+W.PLAT.pool+"&nat="+sc.C))
+      +"&go=profiles&pair="+encodeURIComponent(name)+"&back="+encodeURIComponent(location.search||"");
   };
   W.nhRecords=function(C){
     var box=document.getElementById("nhRecordsBox"); if(!box) return;
