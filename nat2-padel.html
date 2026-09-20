@@ -3610,7 +3610,7 @@ const CLUB_NAME = _club.name;  // shown in the logo as "OPR · <name>"
     link.setAttribute('href', href);
   }catch(e){ /* install stays on the static manifest — no functional impact */ }
 })();
-const OPR_VERSION = "OPR-DOUBLES v2026.09.03-56 · NAT fork n100 (no voice) (of PLAT p117)";  // MANUAL PAIR CREATION REMOVED FROM ADMIN: Create a pair, Bulk create pairs and Re-derive all pairs are gone (they only made match-less ghost pairs, and Re-derive rewrote every stored initial club-wide). Pairs are born automatically at match entry. Current pairs list untouched; the underlying JS is left in place unreferenced, so no other code path changes. Includes v47 (set-score fix + double-tap guard) and all prior.
+const OPR_VERSION = "OPR-DOUBLES v2026.09.03-56 · NAT fork n101 (no voice) (of PLAT p117)";  // MANUAL PAIR CREATION REMOVED FROM ADMIN: Create a pair, Bulk create pairs and Re-derive all pairs are gone (they only made match-less ghost pairs, and Re-derive rewrote every stored initial club-wide). Pairs are born automatically at match entry. Current pairs list untouched; the underlying JS is left in place unreferenced, so no other code path changes. Includes v47 (set-score fix + double-tap guard) and all prior.
 // Explanation shown above the individual ladder. Open on load so it's read; collapsible
 // (state kept for the session) and scrolls away. Mechanics only — no outcome framing, so
 // members aren't nudged away from playing stronger opponents. Every clause maps to a real
@@ -10653,10 +10653,18 @@ W.mePair=function(name){
       out.moveAll=(out.moveAll||0)+d;
     });
     out.matches.reverse();
+    /* n101: plat's figures for a partnership — Matches is the count of the pair's own matches, Move is the sum of
+       the deltas across them (one decimal), and the list is ordered most matches first, rating breaking ties */
+    var pairMatches={}, pairMove={};
+    (all.matches||[]).forEach(function(m){
+      var d=(m.rating_delta!=null?+m.rating_delta:0);
+      if(m.t1p1){ pairMatches[m.t1p1]=(pairMatches[m.t1p1]||0)+1; pairMove[m.t1p1]=(pairMove[m.t1p1]||0)+d; }
+      if(m.t2p1){ pairMatches[m.t2p1]=(pairMatches[m.t2p1]||0)+1; pairMove[m.t2p1]=(pairMove[m.t2p1]||0)-d; }
+    });
     out.partners=(all.pairs||[]).filter(function(p){ return halves(p.name).indexOf(name)>=0; })
-      .map(function(p){ return {name:p.name,club_id:p.club_id,rating:Math.round(p.current_rating||0),
-        move:Math.round((p.current_rating||0)-(p.initial_rating||0)),played:p.sets_played||0,won:p.sets_won||0}; })
-      .sort(function(a,b){ return b.rating-a.rating; });
+      .map(function(p){ return {name:p.name,club_id:p.club_id,gender:p.gender,rating:Math.round(p.current_rating||0),
+        move:Math.round((pairMove[p.name]||0)*10)/10,matches:(pairMatches[p.name]||0),played:p.sets_played||0,won:p.sets_won||0}; })
+      .sort(function(a,b){ return (b.matches-a.matches)||(b.rating-a.rating); });
     return out;
   }
   /* "6-4 3-6 6-3" -> [15,13] */
@@ -10860,7 +10868,7 @@ W.mePair=function(name){
             +"&select=id,club_id,match_date,match_type,event,t1p1,t1p2,t2p1,t2p2,t1_sets,t2_sets,t1_games,t2_games,set_scores,display_t1,display_t2,rating_delta"
             +"&order=match_date.desc,id.desc&limit=2000").then(J).catch(function(){ return []; }),
       fetch(B+"plat_player_results?pool_id=eq."+P+"&discipline=eq.padel&name=ilike."+like
-            +"&select=name,club_id,current_rating,initial_rating,sets_played,sets_won&limit=500").then(J).catch(function(){ return []; }),
+            +"&select=name,gender,club_id,current_rating,initial_rating,sets_played,sets_won&limit=500").then(J).catch(function(){ return []; }),
       fetch(B+"nat_v_member_group?pool_id=eq."+P+"&select=full_name,club_id").then(J).catch(function(){ return []; }),
       fetch(B+"plat_clubs?pool_id=eq."+W.PLAT.pool+"&select=id,name,colour,pool_id").then(J).catch(function(){ return []; }),
       /* n93: THE PERSON'S OWN RATING, WHEREVER THEY ARE REGISTERED. The page took the rating from the people
@@ -11061,13 +11069,24 @@ W.mePair=function(name){
             +'<span style="width:10px;height:10px;border-radius:50%;background:'+gc+'"></span>'
             +'<span style="font-size:11.5px;letter-spacing:.06em;text-transform:uppercase;font-weight:800;color:'+gc+'">Partnerships in '+esc(nhBoardName(gid)||"another region")+'</span>'
             +'<span style="font-size:11px;color:#8a8196">\u00b7 '+byGroup[gid].length+'</span></div>';
-          h+='<div class="rows">'
+          /* n101: PLAT'S PARTNERSHIP CARD, COPIED. One card per pair: the name bold, the category as a pill on
+             the right (Men's blue, Ladies pink, Mixed green — plat's own colours), then Rating · Matches · Move
+             on one line. The same card the group's member page shows; the grouping by group stays. */
+          var catOf=function(x){ var g=String(x.gender||"").toUpperCase(); return g==="M"?["Men\u2019s","#e3edff","#2148a0"]:(g==="F"||g==="L")?["Ladies","#ffe6f0","#a02166"]:["Mixed","#e9f7e5","#2a7d1f"]; };
+          h+='<div style="padding:4px 12px 4px">'
           + byGroup[gid].map(function(x){
-              var other=halves(x.name).filter(function(n){ return n!==me; })[0]||x.name;
-              return '<button class="row" onclick="window.mePair(\''+String(x.name).replace(/'/g,"\\'")+'\')">'
-                +'<span class="av" style="background:'+clubPal(x.club_id)[0]+'">'+esc(inits(other))+'</span>'
-                +'<span class="nm"><b>'+esc(x.name)+'</b><span>rating '+x.rating+' \u00b7 '+x.won+' of '+x.played+' sets \u00b7 '+esc(nhBoardName(x.club_id))+'</span></span>'
-                +'<span class="val"><b class="'+(x.move>=0?"up":"dn")+'">'+(x.move>0?"+":"")+x.move+'</b><span>since start</span></span></button>'; }).join("")
+              var cat=catOf(x), mvCol=(x.move>=0)?"#1e8449":"#c0392b";
+              return '<div onclick="window.mePair(\''+String(x.name).replace(/'/g,"\\\\'")+'\')" style="cursor:pointer;background:#fff;border:1px solid rgba(108,52,131,.16);'
+                +'border-radius:12px;padding:12px 14px;margin-bottom:10px;box-shadow:0 1px 3px rgba(0,0,0,.05)">'
+                +'<div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">'
+                +'<span style="font-weight:700;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+esc(x.name)+'</span>'
+                +'<span style="display:inline-block;padding:2px 8px;border-radius:99px;font-size:11px;font-weight:700;background:'+cat[1]+';color:'+cat[2]+'">'+cat[0]+'</span></div>'
+                +'<div style="display:flex;gap:16px;font-size:13px;color:#5b3a6e">'
+                +'<span>Rating <b style="color:'+gc+'">'+esc(String(x.rating))+'</b></span>'
+                +'<span>Matches <b>'+esc(String(x.matches!=null?x.matches:x.played))+'</b></span>'
+                +'<span>Move <b style="color:'+mvCol+'">'+(x.move>0?"+":"")+esc(String(x.move))+'</b></span>'
+                +'</div></div>';
+            }).join("")
           +'</div>';
         });
         h+='<div style="padding:8px 14px 12px;font-size:12px;color:#5f5770">Tap a partnership for every match you have played together, with the set scores.</div></div>';
