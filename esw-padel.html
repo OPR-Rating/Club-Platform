@@ -870,6 +870,17 @@
     // ledger's charcoal and stripping OPR's banner off it. The ledger is the one with a pool but no club
     // AND not the landing page.
     var isLedger = (CID===0 && !LANDING);
+    /* n103: THE OLD LEDGER LANDING NO LONGER EXISTS. A ledger route with nothing asked of it (no ?go=) used to
+       draw plat's landing — "Current Ratings and Ladders · Overall Profile · Recent Matches" — and every back
+       arrow that fell through ended up there. In the new app that address redirects: a region's ledger goes to
+       the region's records, the register's ledger goes to the master page. */
+    if(isLedger && W.NEWAPP && !/[?&]go=/.test(String(location.search||""))){
+      try{
+        var q0=new URLSearchParams(location.search), nat0=Number(q0.get("nat")||0), pool0=q0.get("pool")||"";
+        var here0=location.pathname.split("/").pop()||"nat-padel.html";
+        location.replace(here0+(nat0?("?club="+nat0+"&go=records"):("?pool="+pool0)));
+      }catch(e){}
+    }
     /* n90: ON THE WAY TO ADMIN, THE PAGE IS BLANK UNTIL THE ROOM IS UP. This runs before the first paint,
        which is the only place a hold like this works — the later one in the glue arrived after the ledger's
        landing page had already shown for a few frames. Released when the admin room is on screen, or at 5s. */
@@ -3610,7 +3621,7 @@ const CLUB_NAME = _club.name;  // shown in the logo as "OPR · <name>"
     link.setAttribute('href', href);
   }catch(e){ /* install stays on the static manifest — no functional impact */ }
 })();
-const OPR_VERSION = "OPR-DOUBLES v2026.09.03-56 · NAT fork n102 (no voice) (of PLAT p117)";  // MANUAL PAIR CREATION REMOVED FROM ADMIN: Create a pair, Bulk create pairs and Re-derive all pairs are gone (they only made match-less ghost pairs, and Re-derive rewrote every stored initial club-wide). Pairs are born automatically at match entry. Current pairs list untouched; the underlying JS is left in place unreferenced, so no other code path changes. Includes v47 (set-score fix + double-tap guard) and all prior.
+const OPR_VERSION = "OPR-DOUBLES v2026.09.03-56 · NAT fork n104 (no voice) (of PLAT p117)";  // MANUAL PAIR CREATION REMOVED FROM ADMIN: Create a pair, Bulk create pairs and Re-derive all pairs are gone (they only made match-less ghost pairs, and Re-derive rewrote every stored initial club-wide). Pairs are born automatically at match entry. Current pairs list untouched; the underlying JS is left in place unreferenced, so no other code path changes. Includes v47 (set-score fix + double-tap guard) and all prior.
 // Explanation shown above the individual ladder. Open on load so it's read; collapsible
 // (state kept for the session) and scrolls away. Mechanics only — no outcome framing, so
 // members aren't nudged away from playing stronger opponents. Every clause maps to a real
@@ -9335,7 +9346,10 @@ async function clRemove(id, label){
   // reads on its own pill.
   /* n89: a brighter set. Every one still carries white text on a pill — the pills are the reason the colours
      cannot go pastel — but these have far more life than the old museum range. */
-  var SWATCH=["#7c3aed","#2563eb","#0ea5e9","#0891b2","#059669","#16a34a","#65a30d","#d97706","#ea580c","#dc2626","#db2777","#475569"];
+  /* n104: twenty-four, not twelve — the bright set AND the original set, so a region can balance its groups.
+     OPR's own purple leads, then the brights, then the deeper originals. All hold white text on a pill. */
+  var SWATCH=["#6c3483","#7c3aed","#2563eb","#0ea5e9","#0891b2","#059669","#16a34a","#65a30d","#d97706","#ea580c","#dc2626","#db2777",
+              "#283593","#1565c0","#00838f","#00695c","#2e7d32","#4e802b","#827717","#ae611c","#c62828","#ad1457","#455a64","#475569"];
   function clubPill(c,small){ var p=clubPal(c.id); c=(natMode()&&isClubWithKids(c.id))?{id:c.id,name:"General play"}:c;   /* n3 */ return '<span style="display:inline-block;background:'+p[0]+';color:#fff;border-radius:99px;padding:'+(small?'1px 7px':'2px 9px')+';font-size:'+(small?'9.5px':'11px')+';font-weight:700;margin:2px 3px 0 0;white-space:nowrap;vertical-align:middle">'+esc(c.name)+'</span>'; }
   var BALL='<svg viewBox="0 0 100 100" width="30" height="30" xmlns="http://www.w3.org/2000/svg" style="filter:drop-shadow(0 0 6px rgba(196,224,0,.5))"><circle cx="50" cy="50" r="46" fill="url(#bg1)" stroke="#7da300" stroke-width="1"/><path d="M18 18 Q50 50 18 82" fill="none" stroke="#fbfff0" stroke-width="4" stroke-linecap="round"/><path d="M82 18 Q50 50 82 82" fill="none" stroke="#fbfff0" stroke-width="4" stroke-linecap="round"/><ellipse cx="40" cy="32" rx="14" ry="9" fill="rgba(255,255,255,0.35)"/></svg>';
   function landing(){
@@ -10187,7 +10201,7 @@ async function clRemove(id, label){
   function nhMatchesBrk(d,n,scope){
     var ms=(d.matches||[]).slice(0,n||25); if(!ms.length) return "";
     return '<div class="brk">'+nhLimeBar("Recent matches"+(NHEG?" \u00b7 example":""))
-      +'<div style="max-height:360px;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:4px 10px 8px">'
+      +'<div style="max-height:'+(scope==="club"?600:360)+'px;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:4px 10px 8px">'
       + ms.map(function(m){ return nhMatchRow(m,scope); }).join("")
       +'</div></div>';
   }
@@ -11769,9 +11783,11 @@ W.nhOpenPair=function(name){
      every back arrow on the page is re-pointed there. Runs on its own, whatever path drew the screen. */
   (function(){
     if(!W.NEWAPP) return;
-    var bq=""; try{ bq=new URLSearchParams(location.search).get("back")||""; }catch(e){}
-    if(!bq) return;
-    var href=PAGE+bq;
+    var bq="", frm=0; try{ var q=new URLSearchParams(location.search); bq=q.get("back")||""; frm=Number(q.get("from")||0); }catch(e){}
+    /* n103: the way back is where you came from — ?back= if a page said so, else the door that opened admin
+       (?from=), else the region's door. Never plat's goHome(), which is the retired landing. */
+    var href = bq ? (PAGE+bq) : (frm ? (PAGE+"?club="+frm) : (W.PLAT.nat ? (PAGE+"?club="+W.PLAT.nat) : ((W.PLAT.parentId&&W.PLAT.cid&&W.PLAT.parentId!==W.PLAT.cid) ? (PAGE+"?club="+W.PLAT.parentId) : "")));
+    if(!href) return;
     setInterval(function(){
       try{
         var arrows=document.querySelectorAll('.screen .back-btn, .screen [onclick*="goHome"]');
@@ -12069,8 +12085,10 @@ W.nhOpenPair=function(name){
               +'<div class="v" style="font-size:15px;line-height:1.25">'+esc(u?u.who:"\u2014")+'</div>'
               +'<div class="n">'+esc(u?("beat a pair rated "+u.gap+" higher"):("none "+nhWhen()))+'</div></div>'; })()
         + '</div>'
+        /* n104: In form sits above the action row on a group's page */
+        + nhFormBrk(d,ink,"board")
         + nhActions(ink,deep)
-        + '<div class="cols">'+nhCharts(d,ink)+nhMoversBrk(d,ink,"board") + nhFormBrk(d,ink,"board") + nhMatchesBrk(d,25,"board") + nhTourBrk(d) + nhCardBrk(d)+'</div>'
+        + '<div class="cols">'+nhCharts(d,ink)+nhMoversBrk(d,ink,"board") + nhMatchesBrk(d,25,"board") + nhTourBrk(d) + nhCardBrk(d)+'</div>'
         + nhFoot(ink,deep,"none")   /* n59: admin lives on the club door only */
 
         + homeBar();
