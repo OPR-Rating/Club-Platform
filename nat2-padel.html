@@ -3610,7 +3610,7 @@ const CLUB_NAME = _club.name;  // shown in the logo as "OPR · <name>"
     link.setAttribute('href', href);
   }catch(e){ /* install stays on the static manifest — no functional impact */ }
 })();
-const OPR_VERSION = "OPR-DOUBLES v2026.09.03-56 · NAT fork n101 (no voice) (of PLAT p117)";  // MANUAL PAIR CREATION REMOVED FROM ADMIN: Create a pair, Bulk create pairs and Re-derive all pairs are gone (they only made match-less ghost pairs, and Re-derive rewrote every stored initial club-wide). Pairs are born automatically at match entry. Current pairs list untouched; the underlying JS is left in place unreferenced, so no other code path changes. Includes v47 (set-score fix + double-tap guard) and all prior.
+const OPR_VERSION = "OPR-DOUBLES v2026.09.03-56 · NAT fork n102 (no voice) (of PLAT p117)";  // MANUAL PAIR CREATION REMOVED FROM ADMIN: Create a pair, Bulk create pairs and Re-derive all pairs are gone (they only made match-less ghost pairs, and Re-derive rewrote every stored initial club-wide). Pairs are born automatically at match entry. Current pairs list untouched; the underlying JS is left in place unreferenced, so no other code path changes. Includes v47 (set-score fix + double-tap guard) and all prior.
 // Explanation shown above the individual ladder. Open on load so it's read; collapsible
 // (state kept for the session) and scrolls away. Mechanics only — no outcome framing, so
 // members aren't nudged away from playing stronger opponents. Every clause maps to a real
@@ -11324,6 +11324,76 @@ W.mePair=function(name){
       +'<div style="background:'+sc.col+';color:#fff;font-weight:800;font-size:13px;padding:10px 13px">'+head+'</div>'
       + inner +'</div>';
   }
+  /* n102: THE MASTER PAGE. One page listing every region in the register — its colour, its groups with their
+     match counts, and a way into each: the door, the records, the region's ledger admin — plus the Global
+     records and the Global Ledger admin at the top. Laptop-friendly: two columns when there is room. Andre's
+     desk when a phone call comes in: open the master, open the region, compare with the next. Replaces the
+     blank landing at ?pool=<register>. */
+  function newMasterPage(){
+    var w=nhWrap(); if(!w) return;
+    nhCSS(); nhOneWayIn(); nhInk("#2f2f2f"); nhHeaderSkin("#2f2f2f","#141414");
+    /* the master is a desk page — it may use a laptop's width, unlike the phone-width pages */
+    (function(){ var st=document.createElement("style"); st.textContent="#nh,#homeScreen,#nhBar,.screen,.screen-content,#nh>*{max-width:1180px!important}"; document.head.appendChild(st); })();
+    var P=W.PLAT.pool, B=SBREST();
+    w.innerHTML='<div class="band" style="background:linear-gradient(135deg,#2f2f2f,#141414)"><div class="mark"><span class="logo">OPR</span>Master</div>'
+      +'<h1>'+esc(W.PLAT.poolName||"The register")+'</h1><div class="sub">Reading the register\u2026</div></div>'+homeBar();
+    Promise.all([
+      fetch(B+"plat_clubs?pool_id=eq."+P+"&select=id,name,colour,options&order=name.asc").then(J).catch(function(){ return []; }),
+      fetch(B+"nat_club_parent?select=group_id,club_id").then(J).catch(function(){ return []; }),
+      fetch(B+"plat_matches?pool_id=eq."+P+"&discipline=eq.padel&select=club_id,match_date&limit=20000").then(J).catch(function(){ return []; }),
+      fetch(B+"plat_memberships?select=club_id&limit=20000").then(J).catch(function(){ return []; })
+    ]).then(function(r){
+      var clubs=Array.isArray(r[0])?r[0]:[], par=Array.isArray(r[1])?r[1]:[], ms=Array.isArray(r[2])?r[2]:[], mem=Array.isArray(r[3])?r[3]:[];
+      var ids={}; clubs.forEach(function(c){ ids[Number(c.id)]=c; });
+      var parentOf={}; par.forEach(function(x){ if(ids[Number(x.group_id)]&&ids[Number(x.club_id)]) parentOf[Number(x.group_id)]=Number(x.club_id); });
+      var count={}, week={}, last={}; var now=Date.now();
+      ms.forEach(function(m){ var k=Number(m.club_id); count[k]=(count[k]||0)+1;
+        var t=Date.parse(m.match_date); if(!isNaN(t)){ if(now-t<7*86400000) week[k]=(week[k]||0)+1; if(!last[k]||t>last[k]) last[k]=t; } });
+      var members={}; mem.forEach(function(x){ var k=Number(x.club_id); if(ids[k]) members[k]=(members[k]||0)+1; });
+      var regions=clubs.filter(function(c){ return parentOf[Number(c.id)]==null; });
+      var groupsOf=function(rid){ return clubs.filter(function(c){ return parentOf[Number(c.id)]===Number(rid); }); };
+      var colOf=function(c){ return (c.colour&&/^#[0-9a-fA-F]{6}$/.test(c.colour))?c.colour:clubPal(c.id)[0]; };
+      var ago=function(t){ if(!t) return "never"; var d=Math.round((now-t)/86400000); return d<1?"today":(d<2?"yesterday":(d+" days ago")); };
+      var link=function(label,href,col,dark){
+        return '<a href="'+href+'" data-plat-keep="1" style="display:inline-block;text-decoration:none;font-size:12px;font-weight:800;padding:7px 12px;border-radius:99px;'
+          +(dark?('background:'+col+';color:#fff;'):('background:#fff;color:'+col+';border:1.5px solid '+col+';'))+'margin:4px 6px 0 0">'+esc(label)+'</a>'; };
+      var totalM=ms.length, totalR=regions.length, totalG=clubs.length-regions.length;
+      var h='<div class="band" style="background:linear-gradient(135deg,#2f2f2f,#141414)"><div class="mark"><span class="logo">OPR</span>Master</div>'
+        +'<h1>'+esc(W.PLAT.poolName||"The register")+'</h1>'
+        +'<div class="sub">'+totalR+' region'+(totalR===1?"":"s")+' \u00b7 '+totalG+' group'+(totalG===1?"":"s")+' \u00b7 '+totalM+' matches on record</div>'
+        +'<div class="pulse">'
+        +'<a href="'+PAGE+'?club='+(regions[0]?regions[0].id:0)+'&go=records&all=1">Global records</a>'
+        +'<a href="'+PAGE+'?club=0&pool='+P+'&go=admin&from='+(regions[0]?regions[0].id:0)+'">Global Ledger admin</a>'
+        +'</div></div>';
+      h+='<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(340px,1fr));gap:12px;padding:12px">';
+      regions.forEach(function(rg){
+        var rc=colOf(rg), gs=groupsOf(rg.id);
+        var rcount=count[Number(rg.id)]||0, rweek=week[Number(rg.id)]||0, rlast=last[Number(rg.id)];
+        gs.forEach(function(g){ rcount+=count[Number(g.id)]||0; rweek+=week[Number(g.id)]||0; var l=last[Number(g.id)]; if(l&&(!rlast||l>rlast)) rlast=l; });
+        h+='<div data-plat-keep="1" style="background:#fff;border:1px solid #d8d0e6;border-top:5px solid #6c3483;border-radius:16px;padding:14px 14px 12px">'
+          +'<div style="display:flex;align-items:center;gap:10px">'
+          +'<span style="width:12px;height:12px;border-radius:50%;background:'+rc+';flex:0 0 12px"></span>'
+          +'<span style="flex:1;min-width:0;font-size:17px;font-weight:800;color:#241d33;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+esc(rg.name)+'</span>'
+          +'<span style="font-size:11.5px;color:#8a8196;white-space:nowrap">'+(members[Number(rg.id)]||0)+' members</span></div>'
+          +'<div style="display:flex;gap:14px;margin:8px 0 2px;font-size:12.5px;color:#5f5770">'
+          +'<span><b style="color:#241d33">'+rcount+'</b> matches</span><span><b style="color:'+(rweek?"#1f8a4c":"#241d33")+'">'+rweek+'</b> this week</span><span>last '+ago(rlast)+'</span></div>'
+          +'<div style="margin-top:8px">'
+          + (gs.length ? gs.map(function(g){ var gc=colOf(g);
+                return '<a href="'+PAGE+'?club='+g.id+'" style="display:inline-flex;align-items:center;gap:6px;text-decoration:none;background:'+gc+';color:#fff;border-radius:99px;'
+                  +'padding:4px 10px 4px 12px;font-size:11.5px;font-weight:800;margin:0 6px 6px 0">'+esc(g.name)+'<span style="background:rgba(255,255,255,.28);border-radius:99px;padding:1px 7px;font-size:10.5px">'+(count[Number(g.id)]||0)+'</span></a>'; }).join("")
+             : '<span style="font-size:12px;color:#8a8196">No groups yet</span>')
+          +'</div>'
+          +'<div style="border-top:1px solid #f0ecf6;margin-top:8px;padding-top:6px">'
+          + link("Door", PAGE+"?club="+rg.id, rc, true)
+          + link("Records", PAGE+"?club="+rg.id+"&go=records", "#6c3483", false)
+          + link("Region Ledger admin", PAGE+"?club=0&pool="+P+"&nat="+rg.id+"&go=admin&from="+rg.id, "#6c3483", false)
+          +'</div></div>';
+      });
+      h+='</div>';
+      h+='<div style="text-align:center;font-size:10.5px;color:#a79ab5;margin:14px 0 4px">'+esc(nhBuildLabel())+'</div>';
+      w.innerHTML=h+homeBar();
+    });
+  }
   function newRecordsPage(){
     var sc=recScope(); var w=nhWrap(); if(!w) return;
     if(sc.view==="members")  return recMembers(sc,w);
@@ -13982,6 +14052,8 @@ W.nhOpenPair=function(name){
     try{ goWhere(); }catch(e){}   /* n42: ?go= opens the screen the link asked for */
     if(W.NEWAPP){ try{ nhBarMount(); }catch(e){} }   /* n87: the way home, on every screen */
     try{ pickerPatch(); }catch(e){}   // n13: club first, register on typing
+    /* n102: in the new app the register's landing IS the master page — drawn before the old landing can run */
+    if(W.NEWAPP && W.PLAT.landing){ try{ newMasterPage(); }catch(e){} return; }   /* n102 */
     if(W.PLAT.landing){ var t1="OPR · "+(W.PLAT.poolName||"Clubs"); if(ht) ht.textContent=t1; document.title=t1; landing(); try{ doorChip(); }catch(e){} return; }
     // NAT: a club with groups opens on its DOOR (its board is ?club=C&board=1)
     /* n75: a ?go= that draws a page of its own must not then be painted over by the door underneath it */
