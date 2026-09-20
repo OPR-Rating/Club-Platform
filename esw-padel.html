@@ -3610,7 +3610,7 @@ const CLUB_NAME = _club.name;  // shown in the logo as "OPR · <name>"
     link.setAttribute('href', href);
   }catch(e){ /* install stays on the static manifest — no functional impact */ }
 })();
-const OPR_VERSION = "OPR-DOUBLES v2026.09.03-56 · NAT fork n98 (no voice) (of PLAT p117)";  // MANUAL PAIR CREATION REMOVED FROM ADMIN: Create a pair, Bulk create pairs and Re-derive all pairs are gone (they only made match-less ghost pairs, and Re-derive rewrote every stored initial club-wide). Pairs are born automatically at match entry. Current pairs list untouched; the underlying JS is left in place unreferenced, so no other code path changes. Includes v47 (set-score fix + double-tap guard) and all prior.
+const OPR_VERSION = "OPR-DOUBLES v2026.09.03-56 · NAT fork n100 (no voice) (of PLAT p117)";  // MANUAL PAIR CREATION REMOVED FROM ADMIN: Create a pair, Bulk create pairs and Re-derive all pairs are gone (they only made match-less ghost pairs, and Re-derive rewrote every stored initial club-wide). Pairs are born automatically at match entry. Current pairs list untouched; the underlying JS is left in place unreferenced, so no other code path changes. Includes v47 (set-score fix + double-tap guard) and all prior.
 // Explanation shown above the individual ladder. Open on load so it's read; collapsible
 // (state kept for the session) and scrolls away. Mechanics only — no outcome framing, so
 // members aren't nudged away from playing stronger opponents. Every clause maps to a real
@@ -10597,6 +10597,18 @@ async function clRemove(id, label){
     });
   };
   function meName(){ try{ return localStorage.getItem(meKey()); }catch(e){ return null; } }
+  /* n100: A CLAIM IS ONLY AS GOOD AS THE REGISTER. The claim lives on the phone; if the person it names is no
+     longer in this register — deleted, moved, a test name — the phone must not keep saying "that's you". Checked
+     once per page against the register's people; a stale claim is dropped and the door reads My page again. */
+  function meVerify(){
+    var n=meName(); if(!n) return Promise.resolve(false);
+    return fetch(SBREST()+"plat_padel_v_pool_individuals?pool_id=eq."+W.PLAT.pool+"&full_name=eq."+encodeURIComponent(n)+"&select=id&limit=1")
+      .then(J).then(function(r){
+        var ok=Array.isArray(r)&&r.length>0;
+        if(!ok){ try{ localStorage.removeItem(meKey()); }catch(e){} }
+        return ok;
+      }).catch(function(){ return true; });   /* offline: keep it — never punish a bad connection */
+  }
   W.meClaim=function(n){ try{ localStorage.setItem(meKey(),n); }catch(e){} newMePage(); };
   W.meForget=function(){
     /* this only forgets the name ON THIS PHONE. The claim stays in the register — releasing it is the
@@ -10943,7 +10955,8 @@ W.mePair=function(name){
     var club=(W.PLAT.clubs||[]).find(function(c){ return Number(c.id)===Number(C); })||{id:C,name:W.PLAT.name};
     var whoQ=(function(){ try{ return new URLSearchParams(location.search).get("who")||""; }catch(e){ return ""; } })();
     var target=whoQ||meName();
-    Promise.all([nhFetch(),meClaims(), target?meWide(target):Promise.resolve(null)]).then(function(res){
+    Promise.all([nhFetch(),meClaims(), target?meWide(target):Promise.resolve(null), whoQ?Promise.resolve(true):meVerify()]).then(function(res){
+      if(!whoQ && res[3]===false){ target=null; }   /* n100: the claimed person is gone — back to claiming */
       var all=Object.assign({},res[0]), claims=res[1]||{}; W.__meTaken=claims;
       /* the person's own matches and pairs come from the whole register */
       if(res[2]){ all.matches=res[2].matches; all.pairs=res[2].pairs; all.pills=res[2].pills; if(res[2].people&&res[2].people.length) all.people=res[2].people; }
@@ -10952,7 +10965,7 @@ W.mePair=function(name){
          ?who= it is your own page, as before. */
       var who=(function(){ try{ return new URLSearchParams(location.search).get("who")||""; }catch(e){ return ""; } })();
       var viewing=!!who;
-      var me=viewing?who:meName();
+      var me=viewing?who:(res[3]===false?null:meName());   /* n100: a dropped claim reads as no claim */
       if(!me){ w.innerHTML=meClaimScreen(all,club); setTimeout(function(){ W.meHunt(); },0); return; }
       W.__meId=meIdOf(me,all);
       var myPhoto=(W.__meId&&claims[Number(W.__meId)])?claims[Number(W.__meId)].photo:null;
@@ -11772,7 +11785,7 @@ W.nhOpenPair=function(name){
     nhCSS(); nhOneWayIn(); nhInk("#6c3483"); nhHeaderSkin("#3a1d6e","#1d0a41");
     var C=W.PLAT.cid, kids=kidsOf(C).sort(function(a,b){ return String(a.name).localeCompare(String(b.name)); });
     /* n90: the faces come with the figures, so a door draws once with everything it needs */
-    Promise.all([nhFetch(),nhFaces()]).then(function(rr){
+    Promise.all([nhFetch(),nhFaces(),meVerify()]).then(function(rr){
       var d=rr[0];
       nhWindow(d.matches||[]); var wk=(d.matches||[]).filter(function(m){ return ago(m.match_date)<=NHWIN; }).length;
       var mv=nhMovers(d.matches||[]);
@@ -11929,7 +11942,7 @@ W.nhOpenPair=function(name){
        and it had no chip at all. */
     var club=(W.PLAT.parentId?(W.PLAT.clubs||[]).find(function(c){ return c.id===W.PLAT.parentId; })
                              :(isClubWithKids(W.PLAT.cid)?{id:W.PLAT.cid,name:W.PLAT.name}:null));
-    Promise.all([nhFetch(),nhFaces()]).then(function(rr){
+    Promise.all([nhFetch(),nhFaces(),meVerify()]).then(function(rr){
       var all=rr[0];
       var mine=(all.matches||[]).filter(function(m){ return Number(m.club_id)===Number(W.PLAT.cid); });
       var d={matches:mine,pairs:(all.pairs||[]).filter(function(p){ return Number(p.club_id)===Number(W.PLAT.cid); }),
@@ -12535,7 +12548,12 @@ W.nhOpenPair=function(name){
     });
   };
   W.platClubColour=function(id){
-    var box=document.getElementById("platSwatch"); if(!box) return;
+    /* n99: THE PICKER OPENS UNDER THE ROW YOU TAPPED. It used to write into one container above the member box,
+       so for a group listed further down the room the swatches appeared out of sight — "no colour to choose".
+       Every board row carries its own slot; the picker uses it and scrolls it into view. */
+    var box=document.getElementById("platTd"+id) || document.getElementById("platSwatch"); if(!box) return;
+    Array.prototype.forEach.call(document.querySelectorAll('[id^="platTd"]'),function(el){ if(el!==box) el.innerHTML=""; });
+    try{ setTimeout(function(){ box.scrollIntoView({behavior:"smooth",block:"nearest"}); },50); }catch(e){}
     box.innerHTML='<div style="padding:8px 0;font-size:12px;color:#666">Colour for '+esc((REG.clubs.find(function(c){return c.id===id;})||{}).name)+'</div><div style="display:flex;flex-wrap:wrap;gap:6px">'
       +SWATCH.map(function(s){ return '<button onclick="window.platSetColour('+id+',\''+s+'\')" style="width:26px;height:26px;border-radius:50%;background:'+s+';border:2px solid transparent;cursor:pointer"></button>'; }).join('')+'</div>';
   };
