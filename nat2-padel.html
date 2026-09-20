@@ -3610,7 +3610,7 @@ const CLUB_NAME = _club.name;  // shown in the logo as "OPR · <name>"
     link.setAttribute('href', href);
   }catch(e){ /* install stays on the static manifest — no functional impact */ }
 })();
-const OPR_VERSION = "OPR-DOUBLES v2026.09.03-56 · NAT fork n97 (no voice) (of PLAT p117)";  // MANUAL PAIR CREATION REMOVED FROM ADMIN: Create a pair, Bulk create pairs and Re-derive all pairs are gone (they only made match-less ghost pairs, and Re-derive rewrote every stored initial club-wide). Pairs are born automatically at match entry. Current pairs list untouched; the underlying JS is left in place unreferenced, so no other code path changes. Includes v47 (set-score fix + double-tap guard) and all prior.
+const OPR_VERSION = "OPR-DOUBLES v2026.09.03-56 · NAT fork n98 (no voice) (of PLAT p117)";  // MANUAL PAIR CREATION REMOVED FROM ADMIN: Create a pair, Bulk create pairs and Re-derive all pairs are gone (they only made match-less ghost pairs, and Re-derive rewrote every stored initial club-wide). Pairs are born automatically at match entry. Current pairs list untouched; the underlying JS is left in place unreferenced, so no other code path changes. Includes v47 (set-score fix + double-tap guard) and all prior.
 // Explanation shown above the individual ladder. Open on load so it's read; collapsible
 // (state kept for the session) and scrolls away. Mechanics only — no outcome framing, so
 // members aren't nudged away from playing stronger opponents. Every clause maps to a real
@@ -10016,7 +10016,7 @@ async function clRemove(id, label){
       /* n97: on the door this opened plat's profile list scoped to the region's own board — empty, "no individuals
          registered". It goes to the records' profiles page for this scope instead. */
       +'</div><button class="more" onclick="'+(scope==="club"
-          ? ("location.href='"+PAGE+"?club="+(W.PLAT.parentId||W.PLAT.cid)+"&go=records&view=profiles'")
+          ? ("location.href='"+PAGE+"?club="+(W.PLAT.parentId||W.PLAT.cid)+"&go=records&view=profiles&back="+encodeURIComponent("?club="+(W.PLAT.parentId||W.PLAT.cid))+"'")
           : "window.nhGo('profiles')")+'">See player profiles here \u2192</button></div>';
   }
   function nhFormBrk(d,ink,scope){
@@ -10031,7 +10031,9 @@ async function clRemove(id, label){
           + nhFace(halves(p.name).filter(function(x){ return (FACES||{})[x]; })[0] || p.name, col, 34)
           +'<span class="nm"><b>'+esc(p.name)+'</b><span>'+p.pct+'% of sets won</span></span>'
           +'<span class="val"><b class="'+(p.move>=0?"up":"dn")+'">'+(p.move>0?"+":"")+p.move+'</b><span>since start</span></span></div>'; }).join("")
-      +'</div><button class="more" onclick="window.nhGo(\'ladders\')">Ratings and ladders \u2192</button></div>';
+      +'</div><button class="more" onclick="'+(scope==="club"
+        ? ("location.href='"+PAGE+"?club=0&pool="+W.PLAT.pool+"&nat="+(W.PLAT.parentId||W.PLAT.cid)+"&go=ladders&back="+encodeURIComponent("?club="+(W.PLAT.parentId||W.PLAT.cid))+"'")
+        : "window.nhGo('ladders')")+'">Ratings and ladders \u2192</button></div>';
   }
   function nhTrail(name,ms){
     var pts=[], run=0;
@@ -11262,7 +11264,13 @@ W.mePair=function(name){
              boards:(W.PLAT.myBoards&&W.PLAT.myBoards.length)?W.PLAT.myBoards:[C],
              base:PAGE+"?club="+C+"&go=records"+(wide?"&all=1":"") };
   }
+  /* n98: BACK GOES WHERE YOU CAME FROM. A records page opened from the door (a mover's foot link, say) carries
+     ?back=; its band returns there, not to the records sheet it never passed through. */
+  function recBackOverride(){
+    try{ var bq=new URLSearchParams(location.search).get("back")||""; return bq?PAGE+bq:null; }catch(e){ return null; }
+  }
   function recBand(sc, sub, backHref, backLabel){
+    var ov=recBackOverride(); if(ov){ backHref=ov; backLabel="back"; }
     /* the records are purple; nothing on these pages is repainted to a board's colour */
     W.PLAT.colour="#6c3483";
     nhCSS(); nhOneWayIn(); nhInk(sc.col); nhHeaderSkin(sc.col, sc.deep);
