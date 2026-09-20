@@ -3610,7 +3610,7 @@ const CLUB_NAME = _club.name;  // shown in the logo as "OPR · <name>"
     link.setAttribute('href', href);
   }catch(e){ /* install stays on the static manifest — no functional impact */ }
 })();
-const OPR_VERSION = "OPR-DOUBLES v2026.09.03-56 · NAT fork n96 (no voice) (of PLAT p117)";  // MANUAL PAIR CREATION REMOVED FROM ADMIN: Create a pair, Bulk create pairs and Re-derive all pairs are gone (they only made match-less ghost pairs, and Re-derive rewrote every stored initial club-wide). Pairs are born automatically at match entry. Current pairs list untouched; the underlying JS is left in place unreferenced, so no other code path changes. Includes v47 (set-score fix + double-tap guard) and all prior.
+const OPR_VERSION = "OPR-DOUBLES v2026.09.03-56 · NAT fork n97 (no voice) (of PLAT p117)";  // MANUAL PAIR CREATION REMOVED FROM ADMIN: Create a pair, Bulk create pairs and Re-derive all pairs are gone (they only made match-less ghost pairs, and Re-derive rewrote every stored initial club-wide). Pairs are born automatically at match entry. Current pairs list untouched; the underlying JS is left in place unreferenced, so no other code path changes. Includes v47 (set-score fix + double-tap guard) and all prior.
 // Explanation shown above the individual ladder. Open on load so it's read; collapsible
 // (state kept for the session) and scrolls away. Mechanics only — no outcome framing, so
 // members aren't nudged away from playing stronger opponents. Every clause maps to a real
@@ -9870,6 +9870,10 @@ async function clRemove(id, label){
     var st=document.getElementById("nhOneWay") || document.createElement("style");
     st.id="nhOneWay";
     st.textContent =
+      /* n97: in a GROUP, plat's Team Profile is the group's member page; the pills already say men (blue) and
+         ladies (pink), so the Male/Female line is noise */
+      "#profileSearchScreen .player-gender{display:none!important}"
+      +
       /* the parent's own admin link, wherever it renders */
       "button[onclick*='openAdmin']{display:none!important}"
       /* every About OPR button the parent or the old fork grows, except the door's quiet row */
@@ -10003,11 +10007,17 @@ async function clRemove(id, label){
       + mv.map(function(m){
           /* the disc wears the colour of the board where the move happened — never the page's colour */
           var col=m.club?clubPal(m.club)[0]:ink, where=m.club?nhBoardName(m.club):"";
-          return '<div class="row">'
+          /* n97: a mover's name opens their profile — the single page — with the way back to here */
+          var who=String(m.name).replace(/'/g,"\\'");
+          return '<button class="row" onclick="window.nhOpenProfile(\''+who+'\')">'
           +'<span class="av" style="background:'+col+'">'+esc(inits(m.name))+'</span>'
           +'<span class="nm"><b>'+esc(m.name)+'</b><span>'+(m.move>=0?"climbing":"giving ground")+(where?(" \u00b7 "+esc(where)):"")+'</span></span>'
-          +'<span class="val"><b class="'+(m.move>=0?"up":"dn")+'">'+(m.move>0?"\u25b2 +":"\u25bc ")+Math.round(m.move)+'</b><span>'+nhWhen()+'</span></span></div>'; }).join("")
-      +'</div><button class="more" onclick="window.nhGo(\'profiles\')">See player profiles here \u2192</button></div>';
+          +'<span class="val"><b class="'+(m.move>=0?"up":"dn")+'">'+(m.move>0?"\u25b2 +":"\u25bc ")+Math.round(m.move)+'</b><span>'+nhWhen()+'</span></span></button>'; }).join("")
+      /* n97: on the door this opened plat's profile list scoped to the region's own board — empty, "no individuals
+         registered". It goes to the records' profiles page for this scope instead. */
+      +'</div><button class="more" onclick="'+(scope==="club"
+          ? ("location.href='"+PAGE+"?club="+(W.PLAT.parentId||W.PLAT.cid)+"&go=records&view=profiles'")
+          : "window.nhGo('profiles')")+'">See player profiles here \u2192</button></div>';
   }
   function nhFormBrk(d,ink,scope){
     var hot=(d.pairs||[]).filter(function(p){ return (p.sets_played||0)>=3; })
@@ -10332,9 +10342,12 @@ async function clRemove(id, label){
           : pill(nhGeneralName(), "the first group \u2014 rename or add more in the ledger", clubPal(C)[0],
               "location.href='"+PAGE+"?club="+C+"&board=1&go=admin&from="+C+"'"))
       +'</div></div>';
-    /* n76: THE REGISTER'S ROOM IS NOT A REGION'S BUSINESS. It spans every club on the system and takes the
-       master code, so offering it here invites a region admin to try a door that was never theirs. It is
-       reached by whoever holds that code, by its own link. */
+    /* n97: ALL ADMIN IN ONE PLACE. The Global Ledger's room is offered here, in charcoal; it takes the register
+       or master code and a region code is refused at the door, so offering it costs nothing. */
+    body+='<div class="brk"><h2>The register</h2><div class="rows">'
+      + pill("Global Ledger admin", "every region, group and member \u2014 register or master code", "#2f2f2f",
+             "location.href='"+PAGE+"?club=0&pool="+W.PLAT.pool+"&go=admin&from="+C+"'")
+      +'</div></div>';
     w.innerHTML='<div class="band" style="background:linear-gradient(135deg,#3a1d6e,#1d0a41)">'
       +'<div class="mark"><span class="logo">OPR</span>Admin control</div>'
       +'<h1>'+esc(club.name)+'</h1>'
@@ -10990,9 +11003,12 @@ W.mePair=function(name){
             .map(function(x){ return '<div class="fig"><b>'+esc(String(x[0]))+'</b><span>'+esc(x[1])+'</span></div>'; }).join("")
         +'</div>'
       /* n89: header · five figures · chart · move by group · then the action row and the rest */
+      /* n97: opened from the RECORDS (region or global) the profile is for reading — the action row is hidden
+         here only; My page and every other route keep it */
+      var fromRecords=(function(){ try{ return /go(%3D|=)records/.test(new URLSearchParams(location.search).get("back")||""); }catch(e){ return false; } })();
       h+= meChartBlock(me,st,all)
         + meMoveBy(st)
-        + nhActions(col,deep)
+        + (fromRecords ? "" : nhActions(col,deep))
         +'<div class="cols">';
 
       /* n82: ONE MATCH IS STILL A LINE. The chart needed two points and a single rated match gave one, so a
@@ -11210,8 +11226,9 @@ W.mePair=function(name){
     box.style.cssText="position:fixed;left:0;right:0;bottom:62px;z-index:2147483000;max-width:560px;margin:0 auto;"
       +"background:#fff;border:1px solid #e6e0ee;border-radius:16px 16px 0 0;box-shadow:0 -6px 22px rgba(26,16,48,.16);padding:12px 14px 16px";
     box.innerHTML='<div style="font-size:12.5px;color:#5f5770;margin:0 2px 2px">Where did you play?</div>'
-      + (kids.length ? "" : pill(nhGeneralName(), clubPal(C)[0], PAGE+"?club="+C+"&board=1&go=entry"))
-      + kids.map(function(g){ return pill(g.name, clubPal(g.id)[0], PAGE+"?club="+g.id+"&go=entry"); }).join("")
+      /* n97: the way back from the score sheet is the door that opened it */
+      + (kids.length ? "" : pill(nhGeneralName(), clubPal(C)[0], PAGE+"?club="+C+"&board=1&go=entry&back="+encodeURIComponent("?club="+C)))
+      + kids.map(function(g){ return pill(g.name, clubPal(g.id)[0], PAGE+"?club="+g.id+"&go=entry&back="+encodeURIComponent("?club="+C)); }).join("")
       + '<button onclick="document.getElementById(\'nhBarWhere\').remove()" style="display:block;width:100%;margin-top:10px;'
       + 'background:none;border:none;font:inherit;font-size:12.5px;color:#8a8196;cursor:pointer">Not now</button>';
     document.body.appendChild(box);
@@ -11287,8 +11304,7 @@ W.mePair=function(name){
                 PAGE+(sc.wide?("?club=0&pool="+W.PLAT.pool):("?club=0&pool="+W.PLAT.pool+"&nat="+sc.C))+"&go=ladders&back="+encodeURIComponent(sc.base.replace(PAGE,"")))
       /* n79: the Global Ledger's admin room, reachable from any door through this page — the master's code,
          or the register's. It was a link only one person knew. */
-      + (sc.wide ? recPill(sc,"Global Ledger admin", "regions, groups and members across the register \u2014 register or master code",
-                            PAGE+"?club=0&pool="+W.PLAT.pool+"&go=admin&from="+sc.C) : "")
+      /* n97: all admin lives in Club admin; the Global Ledger room moved there */
       + homeBar();
   }
   /* ---- members: name · group pill · rating ------------------------------------------------------------ */
@@ -11322,13 +11338,13 @@ W.mePair=function(name){
         var gcol=none?"#8a8196":(COL[Number(g.club_id)]||clubPal(g.club_id)[0]);
         var rating=(p.current_rating!=null)?p.current_rating:((p.seed_rating!=null)?p.seed_rating:"\u2014");
         var who=String(p.full_name).replace(/'/g,"\\'");
-        var act=none?("window.nhNoProfile(this,'"+who+"')"):("window.nhOpenProfile('"+who+"')");
-        return '<button data-plat-keep="1" onclick="'+act+'" style="display:flex;width:100%;align-items:center;gap:9px;padding:10px 13px;'
-          +'border:none;border-top:1px solid #f0ecf6;background:#fff;font:inherit;text-align:left;cursor:pointer">'
+        /* n97: the member list is a table and nothing more; names open on the profiles page */
+        return '<div data-plat-keep="1" style="display:flex;width:100%;box-sizing:border-box;align-items:center;gap:9px;padding:10px 13px;'
+          +'border-top:1px solid #f0ecf6;background:#fff;font:inherit;text-align:left">'
           +'<span style="flex:1;min-width:0;font-size:13.5px;font-weight:700;color:#241d33;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+esc(p.full_name)+'</span>'
           +'<span style="flex:0 0 auto;background:'+(none?"#f1eef6":gcol)+';color:'+(none?"#5f5770":"#fff")+';border-radius:99px;padding:3px 10px;'
           +'font-size:10.5px;font-weight:800;max-width:130px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+esc(g.group_name||"still to play")+'</span>'
-          +'<span style="flex:0 0 46px;text-align:right;font-size:13px;font-weight:800;color:'+sc.col+'">'+esc(String(rating))+'</span></button>';
+          +'<span style="flex:0 0 46px;text-align:right;font-size:13px;font-weight:800;color:'+sc.col+'">'+esc(String(rating))+'</span></div>';
       }).join("");
       W.__recMembers=mine.map(function(p){ var g=G[p.full_name]||{}; return {p:p,g:g,col:(!g.club_id)?"#8a8196":(COL[Number(g.club_id)]||clubPal(g.club_id)[0])}; });
       w.innerHTML = recBand(sc,"List all members", sc.base, "Records")
@@ -11420,7 +11436,6 @@ W.mePair=function(name){
         +'padding:10px 13px;border:none;border-top:1px solid #f0ecf6;background:#fff;font:inherit;text-align:left;cursor:pointer">'
         +'<span style="width:36px;height:36px;border-radius:50%;background:'+(W.__recCol||"#6c3483")+';color:#fff;display:grid;place-items:center;font-weight:800;font-size:15px;flex:0 0 36px">'+esc(String(p.full_name||"?")[0])+'</span>'
         +'<span style="flex:1;min-width:0"><span style="display:block;font-size:14px;font-weight:700;color:#241d33;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+esc(p.full_name)+'</span>'
-        +'<span style="display:block;font-size:11.5px;color:#8a8196">'+(p.gender==="M"?"Male":(p.gender==="F"?"Female":""))+'</span>'
         +(boards?('<span style="display:block;margin-top:2px">'+boards+'</span>'):'')+'</span>'
         +'<span style="white-space:nowrap;flex-shrink:0">'
         + pill(cur!=null?cur:"",rateBg,rateFg,46) + pill(lvl,"#efe9e3","#6b4a2f",34) + pill(mvStr,"#f0f0f0",mvFg,40) + pill(rkStr,rateBg,rateFg,34)
@@ -11437,13 +11452,13 @@ W.mePair=function(name){
       var p=x.p, g=x.g, none=!g.club_id;
       var rating=(p.current_rating!=null)?p.current_rating:((p.seed_rating!=null)?p.seed_rating:"\u2014");
       var who=String(p.full_name).replace(/'/g,"\\'");
-      var act=none?("window.nhNoProfile(this,'"+who+"')"):("window.nhOpenProfile('"+who+"')");
-      return '<button data-plat-keep="1" onclick="'+act+'" style="display:flex;width:100%;align-items:center;gap:9px;padding:10px 13px;'
-        +'border:none;border-top:1px solid #f0ecf6;background:#fff;font:inherit;text-align:left;cursor:pointer">'
+      /* n97: the member list is a table and nothing more; names open on the profiles page */
+      return '<div data-plat-keep="1" style="display:flex;width:100%;box-sizing:border-box;align-items:center;gap:9px;padding:10px 13px;'
+        +'border-top:1px solid #f0ecf6;background:#fff;font:inherit;text-align:left">'
         +'<span style="flex:1;min-width:0;font-size:13.5px;font-weight:700;color:#241d33;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+esc(p.full_name)+'</span>'
         +'<span style="flex:0 0 auto;background:'+(none?"#f1eef6":x.col)+';color:'+(none?"#5f5770":"#fff")+';border-radius:99px;padding:3px 10px;'
         +'font-size:10.5px;font-weight:800;max-width:130px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+esc(g.group_name||"still to play")+'</span>'
-        +'<span style="flex:0 0 46px;text-align:right;font-size:13px;font-weight:800;color:'+col+'">'+esc(String(rating))+'</span></button>';
+        +'<span style="flex:0 0 46px;text-align:right;font-size:13px;font-weight:800;color:'+col+'">'+esc(String(rating))+'</span></div>';
     }).join("") : '<div style="padding:14px;font-size:13px;color:#5f5770">No member by that name.</div>';
   };
   /* ---- ladders: the pairs, by kind, from the system's own results ---------------------------------------- */
@@ -11657,6 +11672,13 @@ W.nhOpenPair=function(name){
       }catch(e){}
     },250);
   })();
+  /* n97: the group's member page is called what it is */
+  (function(){
+    if(!W.NEWAPP) return;
+    setInterval(function(){
+      try{ var h=document.querySelector("#profileSearchScreen .header h1"); if(h && h.textContent!=="Group Members") h.textContent="Group Members"; }catch(e){}
+    },400);
+  })();
   function nhBarMount(){
     /* n63: on a ledger the club id is 0 — the club is in W.PLAT.nat — so the bar never mounted there and the
        way home vanished on exactly the pages people get lost on. */
@@ -11721,7 +11743,8 @@ W.nhOpenPair=function(name){
     box.dataset.open=what; box.style.display="block";
     var C=W.PLAT.cid, kids=kidsOf(C).sort(function(a,b){ return String(a.name).localeCompare(String(b.name)); });
     var ask={score:"Where did you play?",ladders:"Whose ratings and ladders?",profiles:"Whose members?",card:"Which board\u2019s court card?"}[what];
-    var go=function(id){ return PAGE+"?club="+id+(id===C?"&board=1":"")+"&go="+(what==="score"?"entry":what); };
+    /* n97: the way back from a score sheet is the door that opened it */
+    var go=function(id){ return PAGE+"?club="+id+(id===C?"&board=1":"")+"&go="+(what==="score"?"entry":what)+"&back="+encodeURIComponent("?club="+C); };
     var pill=function(label,col,href){
       return '<a href="'+href+'" style="display:block;width:100%;box-sizing:border-box;background:'+col+';color:#fff;text-decoration:none;'
         +'font-weight:800;font-size:14px;border-radius:99px;padding:11px 16px;margin-top:8px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+esc(label)+'</a>';
@@ -11878,9 +11901,7 @@ W.nhOpenPair=function(name){
         + '<div style="display:flex;gap:8px;margin:10px 12px 0;flex-wrap:wrap">'
         /* n63: these were opening the chooser panel that lives further up the page, so from the foot they
            looked dead. They ask the same question, in place. */
-        + quiet("Ratings","window.doorPick('ladders');window.scrollTo(0,0)")
-        + quiet("Profiles","window.doorPick('profiles');window.scrollTo(0,0)")
-        + quiet("Court card","window.doorPick('card');window.scrollTo(0,0)")
+        /* n97: ratings, profiles and the court card belong to a group; the door keeps the three that are not */
         + quiet((meName()?esc(meName()):"My page"),"location.href='"+PAGE+"?club="+C+"&go=me'")
         + quiet("Club admin","window.nhAdminPage()")
         + quiet("About OPR","showScreen('aboutScreen')")
