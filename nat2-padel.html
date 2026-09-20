@@ -3626,7 +3626,7 @@ const CLUB_NAME = _club.name;  // shown in the logo as "OPR · <name>"
     link.setAttribute('href', href);
   }catch(e){ /* install stays on the static manifest — no functional impact */ }
 })();
-const OPR_VERSION = "OPR-DOUBLES v2026.09.03-56 · NAT fork n105 (no voice) (of PLAT p117)";  // MANUAL PAIR CREATION REMOVED FROM ADMIN: Create a pair, Bulk create pairs and Re-derive all pairs are gone (they only made match-less ghost pairs, and Re-derive rewrote every stored initial club-wide). Pairs are born automatically at match entry. Current pairs list untouched; the underlying JS is left in place unreferenced, so no other code path changes. Includes v47 (set-score fix + double-tap guard) and all prior.
+const OPR_VERSION = "OPR-DOUBLES v2026.09.03-56 · NAT fork n106 (no voice) (of PLAT p117)";  // MANUAL PAIR CREATION REMOVED FROM ADMIN: Create a pair, Bulk create pairs and Re-derive all pairs are gone (they only made match-less ghost pairs, and Re-derive rewrote every stored initial club-wide). Pairs are born automatically at match entry. Current pairs list untouched; the underlying JS is left in place unreferenced, so no other code path changes. Includes v47 (set-score fix + double-tap guard) and all prior.
 // Explanation shown above the individual ladder. Open on load so it's read; collapsible
 // (state kept for the session) and scrolls away. Mechanics only — no outcome framing, so
 // members aren't nudged away from playing stronger opponents. Every clause maps to a real
@@ -10998,6 +10998,11 @@ W.mePair=function(name){
       var myPhoto=(W.__meId&&claims[Number(W.__meId)])?claims[Number(W.__meId)].photo:null;
       var st=meFigures(me,all), p=(all.people||[]).filter(function(x){ return x.full_name===me; })[0];
       var rating=p?Math.round(p.current_rating||p.seed_rating||0):null, lvl=rating?(rating/200):null;
+      /* n106: THE SEED IS A FACT, NOT A SUM. "Started" used to be worked backwards from the current rating by
+         undoing each match's movement — and the moment one imported match carried no movement figure, or a
+         deleted match had moved the rating, the sum landed on 1783 for a member seeded at 1800. The seed on
+         the record is read and drawn; the line runs forward from it. */
+      var seed=(p&&p.seed_rating!=null)?Math.round(p.seed_rating):null;
       var rk=meRank(me,all);
       var homeId=Object.keys(st.boards).sort(function(a,b){ return st.boards[b]-st.boards[a]; })[0];
       /* n81: THE PAGE IS THE CLUB'S COLOUR, NOT A BOARD'S. Taking the colour of whichever board somebody had
@@ -11057,7 +11062,11 @@ W.mePair=function(name){
          member who had just played saw the empty state — exactly when they most wanted to see the move. The
          seed is the first point: where they started, and where they are now. */
       if(st.trail.length>=1){
-        var series=nhAsRatings(st.trail,rating);
+        var series=(seed!=null)
+          ? [seed].concat(st.trail.map(function(v){ return Math.round(seed+v); }))   /* forward from the seed on record */
+          : nhAsRatings(st.trail,rating);
+        /* the last point is what the record says today, so a line whose movements do not add up still ends true */
+        if(rating!=null && series.length) series[series.length-1]=rating;
         h+='<div class="brk"><h2>My rating \u00b7 '+st.trail.length+' rated '+(st.trail.length===1?"match":"matches")+'</h2>'
           +'<div style="padding:4px 14px 14px">'
           + nhChart(series, col, rating?("now "+rating):null)
