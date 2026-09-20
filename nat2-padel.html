@@ -3596,7 +3596,7 @@ const CLUB_NAME = _club.name;  // shown in the logo as "OPR · <name>"
     link.setAttribute('href', href);
   }catch(e){ /* install stays on the static manifest — no functional impact */ }
 })();
-const OPR_VERSION = "OPR-DOUBLES v2026.09.03-56 · NAT fork n92 (no voice) (of PLAT p117)";  // MANUAL PAIR CREATION REMOVED FROM ADMIN: Create a pair, Bulk create pairs and Re-derive all pairs are gone (they only made match-less ghost pairs, and Re-derive rewrote every stored initial club-wide). Pairs are born automatically at match entry. Current pairs list untouched; the underlying JS is left in place unreferenced, so no other code path changes. Includes v47 (set-score fix + double-tap guard) and all prior.
+const OPR_VERSION = "OPR-DOUBLES v2026.09.03-56 · NAT fork n93 (no voice) (of PLAT p117)";  // MANUAL PAIR CREATION REMOVED FROM ADMIN: Create a pair, Bulk create pairs and Re-derive all pairs are gone (they only made match-less ghost pairs, and Re-derive rewrote every stored initial club-wide). Pairs are born automatically at match entry. Current pairs list untouched; the underlying JS is left in place unreferenced, so no other code path changes. Includes v47 (set-score fix + double-tap guard) and all prior.
 // Explanation shown above the individual ladder. Open on load so it's read; collapsible
 // (state kept for the session) and scrolls away. Mechanics only — no outcome framing, so
 // members aren't nudged away from playing stronger opponents. Every clause maps to a real
@@ -10807,13 +10807,24 @@ W.mePair=function(name){
       fetch(B+"plat_player_results?pool_id=eq."+P+"&discipline=eq.padel&name=ilike."+like
             +"&select=name,club_id,current_rating,initial_rating,sets_played,sets_won&limit=500").then(J).catch(function(){ return []; }),
       fetch(B+"nat_v_member_group?pool_id=eq."+P+"&select=full_name,club_id").then(J).catch(function(){ return []; }),
-      fetch(B+"plat_clubs?select=id,name,colour,pool_id").then(J).catch(function(){ return []; })
+      fetch(B+"plat_clubs?pool_id=eq."+W.PLAT.pool+"&select=id,name,colour,pool_id").then(J).catch(function(){ return []; }),
+      /* n93: THE PERSON'S OWN RATING, WHEREVER THEY ARE REGISTERED. The page took the rating from the people
+         of the region you were standing in, so an external member — Andrew Kramer of Kloof, opened from North
+         Coast — showed a dash and no level. The whole register's per-board rows are read for that name. */
+      fetch(B+"plat_clubs?pool_id=eq."+P+"&select=id").then(J).catch(function(){ return []; }).then(function(cs){
+        var ids=(Array.isArray(cs)?cs:[]).map(function(c){ return c.id; }); if(!ids.length) return [];
+        return fetch(B+"plat_padel_v_individuals?club_id=in.("+ids.join(",")+")&select=id,club_id,full_name,gender,current_rating,seed_rating").then(J).catch(function(){ return []; });
+      })
     ]).then(function(r){
       var pills={}; (Array.isArray(r[2])?r[2]:[]).forEach(function(x){ if(x.club_id) pills[x.full_name]=Number(x.club_id); });
+      var everyone=Array.isArray(r[4])?r[4]:[];
       /* other regions' groups become known to the page, so they can be named and coloured */
       var known={}; (W.PLAT.clubs||[]).forEach(function(c){ known[Number(c.id)]=1; });
       (Array.isArray(r[3])?r[3]:[]).forEach(function(c){ if(!known[Number(c.id)]){ (W.PLAT.clubs=W.PLAT.clubs||[]).push(c); known[Number(c.id)]=1; } });
-      return { matches:Array.isArray(r[0])?r[0]:[], pairs:Array.isArray(r[1])?r[1]:[], pills:pills };
+      /* one row per person: the one that carries a rating, else the first */
+      var best={}; everyone.forEach(function(x){ var c=best[x.full_name]; if(!c || (x.current_rating!=null && c.current_rating==null)) best[x.full_name]=x; });
+      var people=Object.keys(best).map(function(n){ return best[n]; });
+      return { matches:Array.isArray(r[0])?r[0]:[], pairs:Array.isArray(r[1])?r[1]:[], pills:pills, people:people };
     });
   }
   /* n88: THE PAIR PAGE, BUILT FRESH. Opened from a member's partnerships, from a ladder, from anywhere: the
@@ -10836,7 +10847,7 @@ W.mePair=function(name){
       fetch(B+"plat_matches?pool_id=eq."+P+"&discipline=eq.padel&or=(t1p1.eq."+encodeURIComponent(pair)+",t2p1.eq."+encodeURIComponent(pair)+")"
             +"&select=id,club_id,match_date,match_type,event,t1p1,t1p2,t2p1,t2p2,t1_sets,t2_sets,t1_games,t2_games,set_scores,display_t1,display_t2,rating_delta"
             +"&order=match_date.desc,id.desc&limit=500").then(J).catch(function(){ return []; }),
-      fetch(B+"plat_clubs?select=id,name,colour,pool_id").then(J).catch(function(){ return []; })
+      fetch(B+"plat_clubs?pool_id=eq."+W.PLAT.pool+"&select=id,name,colour,pool_id").then(J).catch(function(){ return []; })
     ]).then(function(r){
       var rows=Array.isArray(r[0])?r[0]:[], ms=Array.isArray(r[1])?r[1]:[], clubs=Array.isArray(r[2])?r[2]:[];
       var known={}; (W.PLAT.clubs||[]).forEach(function(c){ known[Number(c.id)]=1; });
@@ -10892,7 +10903,7 @@ W.mePair=function(name){
     Promise.all([nhFetch(),meClaims(), target?meWide(target):Promise.resolve(null)]).then(function(res){
       var all=Object.assign({},res[0]), claims=res[1]||{}; W.__meTaken=claims;
       /* the person's own matches and pairs come from the whole register */
-      if(res[2]){ all.matches=res[2].matches; all.pairs=res[2].pairs; all.pills=res[2].pills; }
+      if(res[2]){ all.matches=res[2].matches; all.pairs=res[2].pairs; all.pills=res[2].pills; if(res[2].people&&res[2].people.length) all.people=res[2].people; }
       /* n78: ONE PROFILE PAGE FOR EVERYBODY. The records, the ladders, a partner's name — all of them open
          this same page for the person named in ?who=, read-only (no claiming, no photo change). Without
          ?who= it is your own page, as before. */
@@ -11260,7 +11271,7 @@ W.mePair=function(name){
     Promise.all([
       fetch(B+"nat_v_member_group?pool_id=eq."+W.PLAT.pool+"&select=full_name,club_id,group_name&order=full_name.asc").then(J).catch(function(){ return []; }),
       fetch(B+"plat_padel_v_pool_individuals?pool_id=eq."+W.PLAT.pool+"&select=full_name,current_rating,seed_rating&order=full_name.asc").then(J).catch(function(){ return []; }),
-      fetch(B+"plat_clubs?select=id,name,colour").then(J).catch(function(){ return []; }),
+      fetch(B+"plat_clubs?pool_id=eq."+W.PLAT.pool+"&select=id,name,colour").then(J).catch(function(){ return []; }),
       /* n92: the real rating per person comes from the per-board view across every board in the register;
          the pool view names people but carries no rating for those outside the region you stand in */
       fetch(B+"plat_clubs?pool_id=eq."+W.PLAT.pool+"&select=id").then(J).catch(function(){ return []; }).then(function(cs){
@@ -11325,7 +11336,7 @@ W.mePair=function(name){
         });
     Promise.all([peopleP,
                  fetch(B+mq).then(J).catch(function(){ return []; }),
-                 fetch(B+"plat_clubs?select=id,name,colour").then(J).catch(function(){ return []; })]).then(function(rr){
+                 fetch(B+"plat_clubs?pool_id=eq."+W.PLAT.pool+"&select=id,name,colour").then(J).catch(function(){ return []; })]).then(function(rr){
       var rows=Array.isArray(rr[0])?rr[0]:[], ms=Array.isArray(rr[1])?rr[1]:[], clubs=Array.isArray(rr[2])?rr[2]:[];
       var CL={}; clubs.forEach(function(c){ CL[Number(c.id)]=c; });
       /* who played where, and how often — plat's page shows the boards a person has played on */
@@ -11530,7 +11541,7 @@ W.nhOpenPair=function(name){
     Promise.all([
       fetch(B+"nat_v_member_group?pool_id=eq."+W.PLAT.pool+"&select=full_name,club_id,group_name,pill_source&order=full_name.asc").then(J).catch(function(){ return []; }),
       fetch(B+"plat_padel_v_pool_individuals?pool_id=eq."+W.PLAT.pool+"&select=full_name,current_rating,seed_rating&order=full_name.asc").then(J).catch(function(){ return []; }),
-      fetch(B+"plat_clubs?select=id,name,colour").then(J).catch(function(){ return []; })
+      fetch(B+"plat_clubs?pool_id=eq."+W.PLAT.pool+"&select=id,name,colour").then(J).catch(function(){ return []; })
     ]).then(function(r){
       var pills=Array.isArray(r[0])?r[0]:[], people=Array.isArray(r[1])?r[1]:[], allClubs=Array.isArray(r[2])?r[2]:[];
       /* n72: THE PILL IS THE WAYFINDING, so its colour has to be that group's own — not a fallback. The list
