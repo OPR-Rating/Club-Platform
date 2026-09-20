@@ -873,6 +873,20 @@
     /* n90: ON THE WAY TO ADMIN, THE PAGE IS BLANK UNTIL THE ROOM IS UP. This runs before the first paint,
        which is the only place a hold like this works — the later one in the glue arrived after the ledger's
        landing page had already shown for a few frames. Released when the admin room is on screen, or at 5s. */
+    /* n94: the same hold on the way to the LADDERS. Records → Ratings and ladders travels through the ledger
+       route, whose landing page ("Current Ratings and Ladders · Overall Profile · Recent Matches") drew first
+       and flashed before the tables appeared. Held blank until the ladders screen is on screen. */
+    if(isLedger && /[?&]go=ladders/.test(String(location.search||"")) && W.NEWAPP){
+      try{
+        var holdL=document.createElement("style"); holdL.id="nhHoldL";
+        holdL.textContent="html body #homeScreen,html body #nh,html body .screen:not(#laddersScreen){display:none!important}";
+        (document.head||document.documentElement).appendChild(holdL);
+        var tL=Date.now(), tkL=setInterval(function(){
+          var up=document.querySelector("#laddersScreen.active");
+          if(up || Date.now()-tL>5000){ var x=document.getElementById("nhHoldL"); if(x) x.remove(); clearInterval(tkL); }
+        },60);
+      }catch(e){}
+    }
     if(isLedger && /[?&]go=admin/.test(String(location.search||"")) && W.NEWAPP){
       try{
         var hold=document.createElement("style"); hold.id="nhHold0";
@@ -3596,7 +3610,7 @@ const CLUB_NAME = _club.name;  // shown in the logo as "OPR · <name>"
     link.setAttribute('href', href);
   }catch(e){ /* install stays on the static manifest — no functional impact */ }
 })();
-const OPR_VERSION = "OPR-DOUBLES v2026.09.03-56 · NAT fork n93 (no voice) (of PLAT p117)";  // MANUAL PAIR CREATION REMOVED FROM ADMIN: Create a pair, Bulk create pairs and Re-derive all pairs are gone (they only made match-less ghost pairs, and Re-derive rewrote every stored initial club-wide). Pairs are born automatically at match entry. Current pairs list untouched; the underlying JS is left in place unreferenced, so no other code path changes. Includes v47 (set-score fix + double-tap guard) and all prior.
+const OPR_VERSION = "OPR-DOUBLES v2026.09.03-56 · NAT fork n96 (no voice) (of PLAT p117)";  // MANUAL PAIR CREATION REMOVED FROM ADMIN: Create a pair, Bulk create pairs and Re-derive all pairs are gone (they only made match-less ghost pairs, and Re-derive rewrote every stored initial club-wide). Pairs are born automatically at match entry. Current pairs list untouched; the underlying JS is left in place unreferenced, so no other code path changes. Includes v47 (set-score fix + double-tap guard) and all prior.
 // Explanation shown above the individual ladder. Open on load so it's read; collapsible
 // (state kept for the session) and scrolls away. Mechanics only — no outcome framing, so
 // members aren't nudged away from playing stronger opponents. Every clause maps to a real
@@ -9710,7 +9724,26 @@ async function clRemove(id, label){
           }
           return false;
         }
-        if(go==="ladders" && typeof showScreen==="function"){ showScreen("laddersScreen"); return true; }
+        if(go==="ladders" && typeof showScreen==="function"){
+          showScreen("laddersScreen");
+          /* n94: PLAT'S BACK ARROW GOES WHERE WE CAME FROM. On the ladders screen it called showScreen('homeScreen'),
+             which on the ledger route is the landing page — the one place nobody should land. If Records sent
+             us here (?back=), the arrow returns to Records; the home bar still offers the door. */
+          try{
+            var bq=new URLSearchParams(location.search).get("back")||"";
+            if(bq && W.NEWAPP){
+              var wire=setInterval(function(){
+                var sc=document.getElementById("laddersScreen"); if(!sc) return;
+                var arrows=sc.querySelectorAll('[onclick*="goHome"],[onclick*="showScreen(\'homeScreen\')"],[onclick*="showScreen(\"homeScreen\")"],.back-btn');
+                if(!arrows.length) return;
+                Array.prototype.forEach.call(arrows,function(a){ a.setAttribute("onclick","location.href="+JSON.stringify(PAGE+bq).replace(/"/g,"'")); });
+                clearInterval(wire);
+              },150);
+              setTimeout(function(){ clearInterval(wire); },8000);
+            }
+          }catch(e){}
+          return true;
+        }
         if(go==="ladder" && typeof loadLadder==="function"){
           var title={mens:"Men's Pairs",ladies:"Ladies' Pairs",mixed:"Mixed Pairs",allsorts:"All Sorts",universal:"Universal Rating"}[t]||"Ratings";
           loadLadder(t,title); return true; }
@@ -10008,18 +10041,10 @@ async function clRemove(id, label){
   /* n58: TWO LINES, NOT A WEB. The radar said how the board plays; what people actually want to see is who
      went up and who came down, and the shape of each. One chart for the week's biggest climb, one for the
      steepest fall, each built from that person's own match deltas. */
-  function nhTrail(name,ms){
-    var pts=[], run=0;
-    ms.slice().reverse().forEach(function(m){
-      var d=(m.rating_delta!=null)?+m.rating_delta:0; if(!d) return;
-      var side=0;
-      [[m.t1p1,1],[m.t1p2,1],[m.t2p1,-1],[m.t2p2,-1]].forEach(function(p){
-        if(!p[0]) return; String(p[0]).split(" & ").forEach(function(x){ if(x.trim()===name) side=p[1]; });
-      });
-      if(!side) return; run+=d*side; pts.push(run);
-    });
-    return pts;
-  }
+  /* n95: a duplicate nhTrail(name,ms) sat here; removed — and a third, argument-less nhTrail() for the page
+     breadcrumb (now nhCrumbs) had been shadowing both, which is why the climb and fall charts said "not enough
+     rated matches" while pointing at eight of them. */
+
   /* n68: A LINE WITH NO NUMBERS ON IT IS A DECORATION. Every chart here now carries the figures that make it
      readable: where it started, where it ended, and the high and low it touched, with a dot on the last
      point. The series is turned into real RATINGS wherever the person's current rating is known, so the
@@ -10223,10 +10248,13 @@ async function clRemove(id, label){
     return '<div class="doit">'
       +'<button class="primary" style="background:linear-gradient(135deg,'+ink+','+deep+')" onclick="window.nhGo(\'entry\')">'+ic.score+'Enter a score</button>'
       +'<button onclick="window.nhGo(\'ladders\')">'+ic.lad+'Ratings &amp; ladders</button>'
-      +'<button onclick="window.nhGo(\'profiles\')">'+ic.per+'Profiles</button>'
+      /* n96: GROUP SECTION ONLY. "Profiles" here is the group's own member page — plat's Team Profile for this
+         group — which is a different thing from the player profile the records open. The word was misleading,
+         so it says what it is: Group members. And a group is a place you play, not a place you keep records,
+         so the Ledgers button is gone from it; the records are reached from the door. */
+      +'<button onclick="window.nhGo(\'profiles\')">'+ic.per+'Group members</button>'
       +'<button onclick="window.nhGo(\'card\')">'+ic.card+'Court card</button>'
       +'<button onclick="window.nhGo(\'tournaments\')">'+ic.cup+'Tournaments</button>'
-      +'<button onclick="window.nhGo(\'ledger\')">'+ic.led+'Ledgers</button>'
       +'</div>';
   }
   /* n58: these two were wired to screens that do not exist — the tournaments screen is singular, and the
@@ -11591,26 +11619,44 @@ W.nhOpenPair=function(name){
      steps back through history when the page it wants is the one behind us, and otherwise REPLACES the
      current entry, so the trail never holds a page you have already left. */
   /* the app keeps its own trail of pages, so "back" knows whether the page it wants is the one behind it */
-  function nhTrail(){ try{ return JSON.parse(sessionStorage.getItem("nh_trail")||"[]"); }catch(e){ return []; } }
-  function nhTrailSave(t){ try{ sessionStorage.setItem("nh_trail", JSON.stringify(t.slice(-30))); }catch(e){} }
+  function nhCrumbs(){ try{ return JSON.parse(sessionStorage.getItem("nh_trail")||"[]"); }catch(e){ return []; } }
+  function nhCrumbsSave(t){ try{ sessionStorage.setItem("nh_trail", JSON.stringify(t.slice(-30))); }catch(e){} }
   (function(){
     try{
-      var here=String(location.search||""), t=nhTrail();
+      var here=String(location.search||""), t=nhCrumbs();
       if(t.length && t[t.length-1]===here) return;                 /* reload: same page */
-      if(t.length>1 && t[t.length-2]===here){ t.pop(); nhTrailSave(t); return; }   /* we went back: unwind */
-      t.push(here); nhTrailSave(t);
+      if(t.length>1 && t[t.length-2]===here){ t.pop(); nhCrumbsSave(t); return; }   /* we went back: unwind */
+      t.push(here); nhCrumbsSave(t);
     }catch(e){}
   })();
   W.nhBack=function(href){
     try{
       var want="?"+(String(href||"").split("?")[1]||"");
-      var t=nhTrail();
+      var t=nhCrumbs();
       if(t.length>1 && t[t.length-2]===want && history.length>1){ history.back(); return false; }
       /* not behind us: replace, so the page we are leaving does not linger in the trail */
-      t.pop(); nhTrailSave(t);
+      t.pop(); nhCrumbsSave(t);
       location.replace(href); return false;
     }catch(e){ location.href=href; return false; }
   };;
+  /* n94: PLAT'S BACK ARROW RETURNS TO WHOEVER SENT US. On the ledger route the arrow calls goHome(), which is
+     the ledger's landing page — the one place nobody should land. If the URL carries ?back= (Records sent us),
+     every back arrow on the page is re-pointed there. Runs on its own, whatever path drew the screen. */
+  (function(){
+    if(!W.NEWAPP) return;
+    var bq=""; try{ bq=new URLSearchParams(location.search).get("back")||""; }catch(e){}
+    if(!bq) return;
+    var href=PAGE+bq;
+    setInterval(function(){
+      try{
+        var arrows=document.querySelectorAll('.screen .back-btn, .screen [onclick*="goHome"]');
+        Array.prototype.forEach.call(arrows,function(a){
+          if(a.dataset.nhBack) return;
+          a.dataset.nhBack="1"; a.setAttribute("onclick","location.href='"+href.replace(/'/g,"%27")+"'");
+        });
+      }catch(e){}
+    },250);
+  })();
   function nhBarMount(){
     /* n63: on a ledger the club id is 0 — the club is in W.PLAT.nat — so the bar never mounted there and the
        way home vanished on exactly the pages people get lost on. */
