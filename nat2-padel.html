@@ -1174,6 +1174,11 @@ st0.textContent += "html{overflow-y:scroll}";   // p98: the scrollbar's space is
       return "plat_"+tbl+"?"+qs+(qs?"&":"")+"discipline=eq."+DISC;
     }
     if(CLUB_TABLES[tbl]){ if(pool) swapClub("club_id=in.("+(clubIds||"0")+")"); return "plat_"+DISC+"_"+tbl+"?"+qs; }
+    /* n105: THE TOURNAMENT STATS TABLE WAS NEVER TRANSLATED. plat's stats sheet reads `tournament_results`
+       (per event, per category, per club); it lives on the platform as `plat_tournament_results`, not under
+       the discipline prefix, and it was in neither list — so the request went out untranslated, 404'd, and
+       the sheet showed "No tournament matches in this category yet" over a table full of rows. */
+    if(tbl==="tournament_results"){ if(pool) swapClub("club_id=in.("+(clubIds||"0")+")"); return "plat_tournament_results?"+qs; }
     return null;
   }
   var FN={submit_match:"plat_submit_match",recompute:"plat_recompute_"+DISC,admin:"nat_admin_padel",tournament:"plat_tournament_"+DISC,ladder:"plat_ladder_"+DISC};   // NAT: admin is the fork; everything else is the platform's own, used as it is
@@ -3621,7 +3626,7 @@ const CLUB_NAME = _club.name;  // shown in the logo as "OPR · <name>"
     link.setAttribute('href', href);
   }catch(e){ /* install stays on the static manifest — no functional impact */ }
 })();
-const OPR_VERSION = "OPR-DOUBLES v2026.09.03-56 · NAT fork n104 (no voice) (of PLAT p117)";  // MANUAL PAIR CREATION REMOVED FROM ADMIN: Create a pair, Bulk create pairs and Re-derive all pairs are gone (they only made match-less ghost pairs, and Re-derive rewrote every stored initial club-wide). Pairs are born automatically at match entry. Current pairs list untouched; the underlying JS is left in place unreferenced, so no other code path changes. Includes v47 (set-score fix + double-tap guard) and all prior.
+const OPR_VERSION = "OPR-DOUBLES v2026.09.03-56 · NAT fork n105 (no voice) (of PLAT p117)";  // MANUAL PAIR CREATION REMOVED FROM ADMIN: Create a pair, Bulk create pairs and Re-derive all pairs are gone (they only made match-less ghost pairs, and Re-derive rewrote every stored initial club-wide). Pairs are born automatically at match entry. Current pairs list untouched; the underlying JS is left in place unreferenced, so no other code path changes. Includes v47 (set-score fix + double-tap guard) and all prior.
 // Explanation shown above the individual ladder. Open on load so it's read; collapsible
 // (state kept for the session) and scrolls away. Mechanics only — no outcome framing, so
 // members aren't nudged away from playing stronger opponents. Every clause maps to a real
