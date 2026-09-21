@@ -870,6 +870,18 @@
     // ledger's charcoal and stripping OPR's banner off it. The ledger is the one with a pool but no club
     // AND not the landing page.
     var isLedger = (CID===0 && !LANDING);
+    /* n129: OPEN ON MY PAGE. If this phone's member switched it on, the FIRST page of a visit that lands on the club's
+       door goes to their page instead. Only the first: a flag for this visit means "Club home" and every later trip
+       to the door stay on the door. A page that already asks for something (?go=…) is never redirected. */
+    try{
+      if(W.NEWAPP && CID>0 && !/[?&]go=/.test(String(location.search||""))){
+        var first=!sessionStorage.getItem("nh_visit");
+        sessionStorage.setItem("nh_visit","1");
+        if(first && localStorage.getItem("opr_home_me_"+CID)==="1" && localStorage.getItem("opr_me_"+CID)){
+          location.replace((location.pathname.split("/").pop()||"nat-padel.html")+"?club="+CID+"&go=me");
+        }
+      } else { try{ sessionStorage.setItem("nh_visit","1"); }catch(e){} }
+    }catch(e){}
     /* n103: THE OLD LEDGER LANDING NO LONGER EXISTS. A ledger route with nothing asked of it (no ?go=) used to
        draw plat's landing — "Current Ratings and Ladders · Overall Profile · Recent Matches" — and every back
        arrow that fell through ended up there. In the new app that address redirects: a region's ledger goes to
@@ -3631,7 +3643,7 @@ const CLUB_NAME = _club.name;  // shown in the logo as "OPR · <name>"
     link.setAttribute('href', href);
   }catch(e){ /* install stays on the static manifest — no functional impact */ }
 })();
-const OPR_VERSION = "OPR-DOUBLES v2026.09.03-56 · NAT fork n128 (no voice) (of PLAT p117)";  // MANUAL PAIR CREATION REMOVED FROM ADMIN: Create a pair, Bulk create pairs and Re-derive all pairs are gone (they only made match-less ghost pairs, and Re-derive rewrote every stored initial club-wide). Pairs are born automatically at match entry. Current pairs list untouched; the underlying JS is left in place unreferenced, so no other code path changes. Includes v47 (set-score fix + double-tap guard) and all prior.
+const OPR_VERSION = "OPR-DOUBLES v2026.09.03-56 · NAT fork n130 (no voice) (of PLAT p117)";  // MANUAL PAIR CREATION REMOVED FROM ADMIN: Create a pair, Bulk create pairs and Re-derive all pairs are gone (they only made match-less ghost pairs, and Re-derive rewrote every stored initial club-wide). Pairs are born automatically at match entry. Current pairs list untouched; the underlying JS is left in place unreferenced, so no other code path changes. Includes v47 (set-score fix + double-tap guard) and all prior.
 // Explanation shown above the individual ladder. Open on load so it's read; collapsible
 // (state kept for the session) and scrolls away. Mechanics only — no outcome framing, so
 // members aren't nudged away from playing stronger opponents. Every clause maps to a real
@@ -9632,6 +9644,21 @@ async function clRemove(id, label){
      there, and nobody scrolls to the end of a list looking for themselves. Closed it is one line; tapped, it
      opens the names. It sits above the list, where somebody who cannot find themselves is already looking. */
   function waitingNote(){
+    /* n130: NOT IN THE NEW APP. Members belong to the region, so on a group's member page this listed half the region
+       as "still to record a match". Group members shows the people who have played in the group; everyone else is in
+       the records' List all members. */
+    if(W.NEWAPP){
+      /* n130: …and the table itself lists only the people who have PLAYED in this group. A member the group created who
+         has not played yet stays out of it until their first match here; they are in the records' List all members. */
+      var list=document.getElementById("playerList"); if(!list) return;
+      waitingList().then(function(names){
+        var wait={}; (names||[]).forEach(function(n){ wait[n]=1; });
+        Array.prototype.forEach.call(list.querySelectorAll("li.player-item"),function(li){
+          var n=li.querySelector(".player-name"); if(n && wait[n.textContent.trim()]) li.style.display="none";
+        });
+      });
+      return;
+    }
     if(!document.getElementById("playerList")) return;
     waitingList().then(function(names){
       var old=document.getElementById("platWaiting"); if(old) old.remove();
@@ -10394,13 +10421,87 @@ async function clRemove(id, label){
      bracket answers "what has just happened in it" without going to the sheet. */
   /* n81: ALL OF THEM. A club running four tournaments saw one — the bracket took the first and ignored the
      rest, which is exactly what an active club does at the height of a season. */
-  function nhActions(ink,deep){
+  /* n129: ON MY PAGE THE ACTIONS ASK WHICH GROUP. My page belongs to the region, so every button acted on the region's own
+     board — no matches ("146 people still to record a match"), no tournaments, only Social on the court card. With
+     mode "me" each button offers the region's groups, the member's own group first, and opens that group's page. */
+  function meHomeKey(){ return "opr_home_me_"+(W.PLAT.parentId||W.PLAT.cid); }
+  function meHomeOn(){ try{ return localStorage.getItem(meHomeKey())==="1"; }catch(e){ return false; } }
+  W.meHomeToggle=function(){
+    try{ if(meHomeOn()) localStorage.removeItem(meHomeKey()); else localStorage.setItem(meHomeKey(),"1"); }catch(e){}
+    var b=document.getElementById("meHomeSw"); if(!b) return; var on=meHomeOn();
+    b.style.background=on?(getComputedStyle(document.documentElement).getPropertyValue("--nhc")||"#6c3483"):"#d9d2e3";
+    b.firstElementChild.style.left=on?"24px":"4px";
+  };
+  /* n130: ON MY PAGE, TOURNAMENTS ARE MINE. Every tournament this member is entered in, in any of the region's groups:
+     its group, category, partner, and whether it is running or finished. Tap to open that group's tournament page. */
+  W.meTournaments=function(){
+    var box=document.getElementById("meWhere"); if(!box) return;
+    var me=(new URLSearchParams(location.search).get("who"))||meName()||""; if(!me) return;
+    var region=W.PLAT.parentId||W.PLAT.cid;
+    var boards=[region].concat(kidsOf(region).map(function(g){ return Number(g.id); }));
+    box.style.display="block"; box.innerHTML='<div style="font-size:12.5px;color:#5f5770;padding:4px 2px">Finding your tournaments\u2026</div>';
+    var B=SBREST(), nm=encodeURIComponent(me), inB="club_id=in.("+boards.join(",")+")";
+    Promise.all([
+      fetch(B+"plat_padel_tournament_entries?"+inB+"&or=(p1.eq."+nm+",p2.eq."+nm+")&select=club_id,tournament,category,p1,p2").then(J).catch(function(){ return []; }),
+      fetch(B+"plat_padel_tournaments?"+inB+"&select=club_id,name,active,archived,status,start_date").then(J).catch(function(){ return []; })
+    ]).then(function(r){
+      var ents=Array.isArray(r[0])?r[0]:[], tours=Array.isArray(r[1])?r[1]:[];
+      var T={}; tours.forEach(function(t){ T[t.club_id+"|"+t.name]=t; });
+      if(!ents.length){ box.innerHTML='<div style="font-size:13px;color:#5f5770;padding:6px 2px">You are not entered in any tournament yet.</div>'; return; }
+      ents.forEach(function(e){ var t=T[e.club_id+"|"+e.tournament]||{}; e.running=!!(t.active&&!t.archived); e.when=t.start_date||""; });
+      ents.sort(function(a,b){ return (b.running-a.running) || String(b.when).localeCompare(String(a.when)); });
+      var back=encodeURIComponent(location.search||"");
+      box.innerHTML='<div style="font-size:12.5px;color:#5f5770;margin:2px 2px 8px">My tournaments</div>'
+        + ents.map(function(e){
+            var c=clubPal(e.club_id)[0], partner=(e.p1===me?e.p2:e.p1)||"", g=(W.PLAT.clubs||[]).filter(function(x){ return Number(x.id)===Number(e.club_id); })[0]||{};
+            return '<a href="'+PAGE+'?club='+e.club_id+'&go=tournaments&back='+back+'" style="display:block;text-decoration:none;background:#fff;border:1.5px solid '+c+';border-radius:12px;padding:10px 13px;margin-bottom:8px">'
+              +'<div style="display:flex;align-items:center;gap:8px"><b style="flex:1;color:#241d33;font-size:14px">'+esc(e.tournament)+'</b>'
+              +'<span style="font-size:11px;font-weight:800;padding:2px 8px;border-radius:99px;'+(e.running?'background:#d4f425;color:#2a3000':'background:#eee;color:#666')+'">'+(e.running?"running":"finished")+'</span></div>'
+              +'<div style="font-size:12px;color:#5f5770;margin-top:3px"><span style="color:'+c+';font-weight:800">'+esc(g.name||"")+'</span>'
+              +(e.category?' \u00b7 '+esc(e.category):'')+(partner?' \u00b7 with '+esc(partner):'')+'</div></a>';
+          }).join("");
+    });
+  };
+  W.meAct=function(what){
+    if(what==="tournaments") return W.meTournaments();
+    var region=W.PLAT.parentId||W.PLAT.cid;
+    var gs=kidsOf(region).slice(); if(!gs.length) gs=[{id:region,name:W.PLAT.name||""}];
+    var mine=Number(W.__meGroup||0);
+    gs.sort(function(a,b){ return (Number(b.id)===mine)-(Number(a.id)===mine) || String(a.name).localeCompare(String(b.name)); });
+    var back=encodeURIComponent(location.search||"");
+    var url=function(id){ return PAGE+"?club="+id+"&go="+what+"&back="+back; };
+    if(gs.length===1){ location.href=url(gs[0].id); return; }
+    var box=document.getElementById("meWhere"); if(!box) return;
+    var label={entry:"Enter a score",ladders:"Ratings & ladders",profiles:"Group members",card:"Court card",tournaments:"Tournaments"}[what]||"";
+    box.innerHTML='<div style="font-size:12.5px;color:#5f5770;margin:2px 2px 8px">'+esc(label)+' \u2014 which group?</div>'
+      + gs.map(function(g){ var c=clubPal(g.id)[0];
+          return '<a href="'+url(g.id)+'" style="display:flex;align-items:center;gap:10px;text-decoration:none;background:#fff;border:1.5px solid '+c+';border-radius:12px;padding:11px 13px;margin-bottom:8px">'
+            +'<span style="width:11px;height:11px;border-radius:50%;background:'+c+'"></span>'
+            +'<b style="flex:1;color:#241d33;font-size:14px">'+esc(g.name)+'</b>'
+            +(Number(g.id)===mine?'<span style="font-size:11px;font-weight:800;color:'+c+'">your group</span>':'')+'</a>'; }).join("");
+    box.style.display="block";
+    try{ box.scrollIntoView({behavior:"smooth",block:"nearest"}); }catch(e){}
+  };
+  function nhActions(ink,deep,mode){
+    if(mode==="me" && !nhActions.icons){ nhActions(ink,deep); }
+    if(mode==="me"){
+      var mb=function(what,cls,style,icon,label){ return '<button'+(cls?' class="'+cls+'"':'')+(style?' style="'+style+'"':'')+' onclick="window.meAct(\''+what+'\')">'+icon+label+'</button>'; };
+      var I=nhActions.icons;
+      return '<div class="doit">'
+        + mb("entry","primary","background:linear-gradient(135deg,"+ink+","+deep+")",I.score,"Enter a score")
+        + mb("ladders","","",I.lad,"Ratings &amp; ladders")
+        + mb("profiles","","",I.per,"Group members")
+        + mb("card","","",I.card,"Court card")
+        + mb("tournaments","","",I.cup,"Tournaments")
+        + '</div><div id="meWhere" style="display:none;padding:10px 12px 0"></div>';
+    }
     var ic={score:'<svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>',
             card:'<svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="1.6"/><path d="M3 12h18M12 4v16"/></svg>',
             lad:'<svg viewBox="0 0 24 24"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/></svg>',
             cup:'<svg viewBox="0 0 24 24"><path d="M7 4h10v4a5 5 0 0 1-10 0V4Z"/><path d="M17 5h3v2a3 3 0 0 1-3 3M7 5H4v2a3 3 0 0 0 3 3"/><path d="M12 13v4M9 21h6"/></svg>',
             per:'<svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="3.4"/><path d="M5 20c1.2-3.4 4-5 7-5s5.8 1.6 7 5"/></svg>',
             led:'<svg viewBox="0 0 24 24"><path d="M4 5a2 2 0 0 1 2-2h13v16H6a2 2 0 0 0-2 2V5Z"/><path d="M8 7h7M8 11h7"/></svg>'};
+    nhActions.icons=ic;
     return '<div class="doit">'
       +'<button class="primary" style="background:linear-gradient(135deg,'+ink+','+deep+')" onclick="window.nhGo(\'entry\')">'+ic.score+'Enter a score</button>'
       +'<button onclick="window.nhGo(\'ladders\')">'+ic.lad+'Ratings &amp; ladders</button>'
@@ -11148,7 +11249,7 @@ W.mePair=function(name){
       /* n78: the page wears the MEMBER'S GROUP colour — the pill they carry, which is the group of their first
          match — so a profile looks the same wherever it is opened from. The page that hosts it keeps its own
          band (purple for the region's records, charcoal for the register's); this block is the same everywhere. */
-      var myGroup=(all.pills||{})[me];
+      var myGroup=(all.pills||{})[me]; W.__meGroup=myGroup||null;
       var gcol=myGroup?(clubPal(myGroup)[0]):null;
       var col=gcol||(club&&club.colour)||"#6c3483", deep=nhDeep(col); nhInk(col);
       nhHeaderSkin(col,deep);
@@ -11190,7 +11291,7 @@ W.mePair=function(name){
       var fromRecords=(function(){ try{ return /go(%3D|=)records/.test(new URLSearchParams(location.search).get("back")||""); }catch(e){ return false; } })();
       h+= meChartBlock(me,st,all)
         + meMoveBy(st)
-        + (fromRecords ? "" : nhActions(col,deep))
+        + (fromRecords ? "" : nhActions(col,deep,"me"))
         +'<div class="cols">';
 
       /* n82: ONE MATCH IS STILL A LINE. The chart needed two points and a single rated match gave one, so a
@@ -11284,6 +11385,11 @@ W.mePair=function(name){
         +'</div>')   /* n78: the picture is the owner's to change, not a visitor's */
         +'<div style="font-size:11.5px;color:#5f5770;margin:8px 14px 0;line-height:1.5">Your picture is seen by everyone in the register. '
         +'Only your PIN can change it \u2014 and you will not be asked for the PIN again on this phone.</div>'
+        /* n129: a member can have the app open on their own page instead of the door */
+        +'<div style="margin:12px 12px 0;display:flex;align-items:center;gap:10px;background:#fff;border:1px solid #e6e0ee;border-radius:12px;padding:11px 13px">'
+        +'<span style="flex:1;font-size:13.5px;font-weight:700;color:#241d33">Open OPR on my page<span style="display:block;font-size:11.5px;font-weight:400;color:#7a6f8a">When you open the app, land here instead of the club door.</span></span>'
+        +'<button data-plat-keep="1" id="meHomeSw" onclick="window.meHomeToggle()" style="flex:0 0 46px;height:26px;border:none;border-radius:99px;position:relative;cursor:pointer;background:'+(meHomeOn()?col:"#d9d2e3")+'">'
+        +'<span style="position:absolute;top:4px;left:'+(meHomeOn()?"24px":"4px")+';width:18px;height:18px;border-radius:50%;background:#fff;box-shadow:0 1px 2px rgba(0,0,0,.25)"></span></button></div>'
         +'<div style="margin:12px 12px 0"><button class="more" style="border:1px solid #ddd;border-radius:99px;background:#fff;color:#7a6f8a" onclick="window.meForget()">This isn\u2019t me \u2014 use a different name</button></div>';
       w.innerHTML=h;
     });
@@ -11600,6 +11706,17 @@ W.mePair=function(name){
       w.innerHTML=recBand(sc,"List all clubs", sc.base, "Records")+recPanel(sc,"Every region and its groups", body)+homeBar();
     });
   }
+  /* n129: the score screen's event list keeps each event once, however many times it is filled */
+  (function(){
+    var dedupe=function(sel){ var seen={}; Array.prototype.slice.call(sel.options).forEach(function(o){ var k=o.value+"|"+o.textContent; if(seen[k]) o.remove(); else seen[k]=1; }); };
+    var t=setInterval(function(){ var sel=document.getElementById("matchEvent"); if(!sel) return; clearInterval(t);
+      dedupe(sel); try{ new MutationObserver(function(){ dedupe(sel); }).observe(sel,{childList:true}); }catch(e){} }, 700);
+    setTimeout(function(){ clearInterval(t); }, 60000);
+  })();
+  W.doorRecordsToggle=function(){
+    var b=document.getElementById("doorRecBody"), c=document.getElementById("doorRecCaret"); if(!b) return;
+    var open=b.style.display==="none"; b.style.display=open?"block":"none"; if(c) c.textContent=open?"\u25b4":"\u25be";
+  };
   function doorHidden(){ try{ return JSON.parse(localStorage.getItem("nh_door_hide_"+(W.__doorC||W.PLAT.cid))||"[]").map(Number); }catch(e){ return []; } }
   function doorHiddenSave(a){ try{ localStorage.setItem("nh_door_hide_"+(W.__doorC||W.PLAT.cid), JSON.stringify(a)); }catch(e){} }
   function doorGroupCards(){
@@ -12065,7 +12182,7 @@ W.nhOpenPair=function(name){
      sits under Climb, and tournaments follow Recent, so none of those earns a pill. Up returns to the top. */
   /* Records is on the door because with several groups it sits well below the fold, and it matters */
   var NH_JUMP_DOOR =[["Form & Move",/^\s*in form/i],["Recent",/^\s*recent matches/i],["Tournaments",/^\s*recent tournament/i],
-                     ["Records",/^\s*the records\s*$/i],["Up",null]];
+                     ["Records",/^\s*the records/i],["Up",null]];
   var NH_JUMP_GROUP=[["Climb",/^\s*biggest climb/i],["Move",/^\s*movers/i],["Recent",/^\s*recent matches/i],["Card",/^\s*card matches/i],["Up",null]];
   var NH_JUMP=NH_JUMP_GROUP;
   /* n114: AIM BELOW WHAT IS PINNED. The band is sticky and so is the strip, and the page scrolls inside #nh, not
@@ -12381,7 +12498,9 @@ W.nhOpenPair=function(name){
         /* two records, no toggle, each saying how wide it is */
         /* n118: THE RECORDS ARE A SECTION, NOT A LINE OF TEXT. They sit in a card under a shaded band like every
            other section on the door — the band the eye finds, and the pill "Records" lands on. */
-        + '<div class="brk"><h2>The records</h2><div style="padding:2px 0 10px">'
+        /* n129: the records roll open when tapped, and stay rolled up otherwise — the door stays short */
+        + '<div class="brk" id="doorRecords"><h2 onclick="window.doorRecordsToggle()" style="display:flex;align-items:center;cursor:pointer">The records'
+        + '<span id="doorRecCaret" style="margin-left:auto;font-size:12px">\u25be</span></h2><div id="doorRecBody" style="display:none;padding:2px 0 10px">'
         /* n70: the region's records open as three plain choices rather than one word that meant several
            things. "All registered clubs" below offers the same three at register scope. */
         /* n65: PURPLE IS THE CLUB ITSELF. Fixed, never chosen: wherever you see it you are looking at the
@@ -14004,7 +14123,8 @@ W.nhOpenPair=function(name){
     try{ var ev=document.getElementById("matchEvent"), dt=document.getElementById("matchDate"), ty=document.getElementById("matchType"), sp=document.getElementById("setsPlayed");
       SESS.event=(ev&&ev.value)||"Social"; SESS.date=(dt&&dt.value)||new Date().toISOString().slice(0,10);
       SESS.type=(ty&&ty.value)||""; SESS.sets=(sp&&sp.value)?parseInt(sp.value,10):3;
-      SESS.events=[]; if(ev) Array.prototype.forEach.call(ev.options,function(o){ if(o.value) SESS.events.push(o.value); });
+      /* n129: each event once — the score screen's list could be filled twice on a group page, and the card copied both */
+      SESS.events=[]; if(ev) Array.prototype.forEach.call(ev.options,function(o){ if(o.value && SESS.events.indexOf(o.value)<0) SESS.events.push(o.value); });
       if(!SESS.events.length) SESS.events=["Social"];
     }catch(e){ SESS.event="Social"; SESS.date=new Date().toISOString().slice(0,10); SESS.type=""; SESS.sets=3; SESS.events=["Social"]; }
     SESS.divs=null; SESS.typeLocked=false;
