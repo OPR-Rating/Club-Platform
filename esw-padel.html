@@ -874,11 +874,16 @@
        draw plat's landing — "Current Ratings and Ladders · Overall Profile · Recent Matches" — and every back
        arrow that fell through ended up there. In the new app that address redirects: a region's ledger goes to
        the region's records, the register's ledger goes to the master page. */
+    /* n112: ONLY REDIRECT WHEN THERE IS SOMEWHERE REAL TO GO. Opened with no address at all (a laptop check, a
+       bare link), the page has no register and no region; redirecting to "?pool=" with nothing after it lands on
+       the same condition and redirects again, for ever — the title flicked between the two. Now it moves only
+       when the URL names a region (nat) or a register (pool), and never to the address it is already on. */
     if(isLedger && W.NEWAPP && !/[?&]go=/.test(String(location.search||""))){
       try{
-        var q0=new URLSearchParams(location.search), nat0=Number(q0.get("nat")||0), pool0=q0.get("pool")||"";
+        var q0=new URLSearchParams(location.search), nat0=Number(q0.get("nat")||0), pool0=Number(q0.get("pool")||0);
         var here0=location.pathname.split("/").pop()||"nat-padel.html";
-        location.replace(here0+(nat0?("?club="+nat0+"&go=records"):("?pool="+pool0)));
+        var to0 = nat0 ? ("?club="+nat0+"&go=records") : (pool0 && /[?&]club=0/.test(location.search) ? ("?pool="+pool0) : "");
+        if(to0 && to0!==String(location.search||"")) location.replace(here0+to0);
       }catch(e){}
     }
     /* n90: ON THE WAY TO ADMIN, THE PAGE IS BLANK UNTIL THE ROOM IS UP. This runs before the first paint,
@@ -3626,7 +3631,7 @@ const CLUB_NAME = _club.name;  // shown in the logo as "OPR · <name>"
     link.setAttribute('href', href);
   }catch(e){ /* install stays on the static manifest — no functional impact */ }
 })();
-const OPR_VERSION = "OPR-DOUBLES v2026.09.03-56 · NAT fork n110 (no voice) (of PLAT p117)";  // MANUAL PAIR CREATION REMOVED FROM ADMIN: Create a pair, Bulk create pairs and Re-derive all pairs are gone (they only made match-less ghost pairs, and Re-derive rewrote every stored initial club-wide). Pairs are born automatically at match entry. Current pairs list untouched; the underlying JS is left in place unreferenced, so no other code path changes. Includes v47 (set-score fix + double-tap guard) and all prior.
+const OPR_VERSION = "OPR-DOUBLES v2026.09.03-56 · NAT fork n113 (no voice) (of PLAT p117)";  // MANUAL PAIR CREATION REMOVED FROM ADMIN: Create a pair, Bulk create pairs and Re-derive all pairs are gone (they only made match-less ghost pairs, and Re-derive rewrote every stored initial club-wide). Pairs are born automatically at match entry. Current pairs list untouched; the underlying JS is left in place unreferenced, so no other code path changes. Includes v47 (set-score fix + double-tap guard) and all prior.
 // Explanation shown above the individual ladder. Open on load so it's read; collapsible
 // (state kept for the session) and scrolls away. Mechanics only — no outcome framing, so
 // members aren't nudged away from playing stronger opponents. Every clause maps to a real
@@ -9845,7 +9850,8 @@ async function clRemove(id, label){
     return NHWIN;
   }
   function nhWhen(){ return (NHWIN<=7)?"this week":("last "+NHWIN+" days"); }
-  function nhMovers(ms){
+  /* n111: all=true returns everyone who moved, not just the three biggest */
+  function nhMovers(ms,all){
     var sum={}, board={};
     nhWindow(ms);
     ms.forEach(function(m){
@@ -9857,7 +9863,7 @@ async function clRemove(id, label){
       });
     });
     return Object.keys(sum).map(function(n){ return {name:n,move:sum[n],club:board[n]}; })
-      .sort(function(a,b){ return Math.abs(b.move)-Math.abs(a.move); }).slice(0,3);
+      .sort(function(a,b){ return Math.abs(b.move)-Math.abs(a.move); }).slice(0, all?100000:3);
   }
   /* n52: ONE HEADER FOR EVERYTHING. Every inner screen — Enter Score, the ladders, a profile — carried the
      app's old banner while the home screens had the new one, so the look changed as soon as you went
@@ -9943,6 +9949,18 @@ async function clRemove(id, label){
      +"#nh .brk h2{color:#4a4256}"
      +"#nh .more{color:var(--nhc,#6c3483);background:#fcfbfd}"
      +"#nh .brk h2{font-size:13px;letter-spacing:.05em;text-transform:uppercase;font-weight:800;color:#5b2d8e;margin:0;padding:12px 14px 5px}"
+     /* n113: A BAND AT THE TOP OF EVERY BRACKET. The page read as one stream of text; a shaded header in the page's
+        own colour gives each section a place for the eye to land. Tint of the ink, so a blue group gets a blue band. */
+     +"#nh .brk > h2{background:#f3eef8;background:color-mix(in srgb,var(--nhc,#6c3483) 11%,#fff);color:var(--nhc,#5b2d8e);"
+     +"padding:10px 14px 9px;margin:0 0 6px;border-bottom:1px solid color-mix(in srgb,var(--nhc,#6c3483) 18%,#fff)}"
+     /* the jump strip: one row, never wraps, slides sideways if the screen is narrow, and stays under the band */
+     +"#nhJump{position:sticky;top:0;z-index:40;display:flex;gap:7px;overflow-x:auto;white-space:nowrap;scrollbar-width:none;"
+     +"background:rgba(255,255,255,.96);backdrop-filter:blur(6px);padding:9px 12px;border-bottom:1px solid #eee7f3;margin:0}"
+     +"#nhJump::-webkit-scrollbar{display:none}"
+     +"#nhJump button{flex:0 0 auto;font:inherit;font-size:12.5px;font-weight:800;padding:7px 14px;border-radius:99px;cursor:pointer;"
+     +"border:1.5px solid var(--nhc,#6c3483);background:#fff;color:var(--nhc,#6c3483)}"
+     +"#nhJump button:active{background:var(--nhc,#6c3483);color:#fff}"
+     +"#nh .brk{scroll-margin-top:62px}"
      +"#nh .rows{padding:2px 6px 4px}"
      +"#nh .row{display:flex;align-items:center;gap:11px;padding:9px 8px;width:100%;background:none;border:none;text-align:left;font:inherit;color:inherit;cursor:pointer}"
      +"#nh .row+.row{border-top:1px solid #efeaf5}"
@@ -10139,9 +10157,12 @@ async function clRemove(id, label){
       +body+'</div></div>';
   }
   function nhCharts(d,ink){
-    var ms=d.matches||[], all=nhMovers(ms);
-    var up=all.filter(function(x){ return x.move>0; })[0] || null;
-    var dn=all.filter(function(x){ return x.move<0; })[0] || null;
+    /* n111: THE FALL CHART CHOSE FROM THE WRONG LIST. Climber and faller were picked from the Movers bracket's
+       top three by size — so where the three biggest moves of the week were all climbs (Eswatini, with more
+       players), there was no faller left to chart, though plenty fell. Each now comes from everyone who moved. */
+    var ms=d.matches||[], all=nhMovers(ms,true);
+    var up=all.filter(function(x){ return x.move>0; }).sort(function(a,b){ return b.move-a.move; })[0] || null;
+    var dn=all.filter(function(x){ return x.move<0; }).sort(function(a,b){ return a.move-b.move; })[0] || null;
     var ppl=(NEW.data&&NEW.data.people)||[];
     return nhOneChart(up,ms,ink,"Biggest climb "+nhWhen(),ppl) + nhOneChart(dn,ms,ink,"Steepest fall "+nhWhen(),ppl);
   }
@@ -11849,6 +11870,36 @@ W.nhOpenPair=function(name){
       try{ var h=document.querySelector("#profileSearchScreen .header h1"); if(h && h.textContent!=="Group Members") h.textContent="Group Members"; }catch(e){}
     },400);
   })();
+  /* n113: JUMP, DON'T SWAP. One row of pills under the band — Form · Climb · Fall · Move · Recent · Card (a group) or
+     Form · Move · Recent · Tournaments (the door). Tapping one scrolls that bracket into view; nothing is hidden.
+     Only brackets actually on the page get a pill, so a quiet week never shows a pill that goes nowhere. */
+  var NH_JUMP=[["Form",/^\s*in form/i],["Climb",/^\s*biggest climb/i],["Fall",/^\s*steepest fall/i],["Move",/^\s*movers/i],
+               ["Recent",/^\s*recent matches/i],["Card",/^\s*card matches/i],["Tournaments",/^\s*recent tournament/i]];
+  W.nhJumpTo=function(k){
+    var el=document.getElementById("nhj_"+k); if(!el) return;
+    try{ el.scrollIntoView({behavior:"smooth",block:"start"}); }catch(e){ el.scrollIntoView(); }
+  };
+  function nhJumpStrip(){
+    try{
+      if(!W.NEWAPP) return;
+      var nh=document.getElementById("nh"); if(!nh || document.getElementById("nhJump")) return;
+      var go=""; try{ go=(new URLSearchParams(location.search).get("go")||"").toLowerCase(); }catch(e){}
+      if(go || !(W.PLAT.cid>0)) return;                       /* doors and group boards only */
+      var brks=[].slice.call(nh.querySelectorAll(".brk"));
+      if(!brks.length) return;
+      var found=[];
+      NH_JUMP.forEach(function(j){
+        var b=brks.filter(function(x){ var h=x.firstElementChild; var t=(h?h.textContent:x.textContent)||""; return j[1].test(t); })[0];
+        if(b){ b.id="nhj_"+j[0]; found.push(j[0]); }
+      });
+      if(found.length<2) return;                              /* a strip with one pill is noise */
+      var strip=document.createElement("div"); strip.id="nhJump"; strip.setAttribute("data-plat-keep","1");
+      strip.innerHTML=found.map(function(k){ return '<button onclick="window.nhJumpTo(\''+k+'\')">'+k+'</button>'; }).join("");
+      var band=nh.querySelector(".band");
+      if(band && band.nextSibling) nh.insertBefore(strip, band.nextSibling); else nh.insertBefore(strip, nh.firstChild);
+    }catch(e){}
+  }
+  setInterval(nhJumpStrip, 500);
   function nhBarMount(){
     /* n63: on a ledger the club id is 0 — the club is in W.PLAT.nat — so the bar never mounted there and the
        way home vanished on exactly the pages people get lost on. */
