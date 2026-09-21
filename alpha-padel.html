@@ -3631,7 +3631,7 @@ const CLUB_NAME = _club.name;  // shown in the logo as "OPR · <name>"
     link.setAttribute('href', href);
   }catch(e){ /* install stays on the static manifest — no functional impact */ }
 })();
-const OPR_VERSION = "OPR-DOUBLES v2026.09.03-56 · NAT fork n127 (no voice) (of PLAT p117)";  // MANUAL PAIR CREATION REMOVED FROM ADMIN: Create a pair, Bulk create pairs and Re-derive all pairs are gone (they only made match-less ghost pairs, and Re-derive rewrote every stored initial club-wide). Pairs are born automatically at match entry. Current pairs list untouched; the underlying JS is left in place unreferenced, so no other code path changes. Includes v47 (set-score fix + double-tap guard) and all prior.
+const OPR_VERSION = "OPR-DOUBLES v2026.09.03-56 · NAT fork n128 (no voice) (of PLAT p117)";  // MANUAL PAIR CREATION REMOVED FROM ADMIN: Create a pair, Bulk create pairs and Re-derive all pairs are gone (they only made match-less ghost pairs, and Re-derive rewrote every stored initial club-wide). Pairs are born automatically at match entry. Current pairs list untouched; the underlying JS is left in place unreferenced, so no other code path changes. Includes v47 (set-score fix + double-tap guard) and all prior.
 // Explanation shown above the individual ladder. Open on load so it's read; collapsible
 // (state kept for the session) and scrolls away. Mechanics only — no outcome framing, so
 // members aren't nudged away from playing stronger opponents. Every clause maps to a real
@@ -11600,6 +11600,58 @@ W.mePair=function(name){
       w.innerHTML=recBand(sc,"List all clubs", sc.base, "Records")+recPanel(sc,"Every region and its groups", body)+homeBar();
     });
   }
+  function doorHidden(){ try{ return JSON.parse(localStorage.getItem("nh_door_hide_"+(W.__doorC||W.PLAT.cid))||"[]").map(Number); }catch(e){ return []; } }
+  function doorHiddenSave(a){ try{ localStorage.setItem("nh_door_hide_"+(W.__doorC||W.PLAT.cid), JSON.stringify(a)); }catch(e){} }
+  function doorGroupCards(){
+    var ks=W.__doorKids||[], hid=doorHidden();
+    var on=ks.filter(function(g){ return hid.indexOf(Number(g.id))<0; });
+    if(!on.length) return '<div style="margin:10px 14px 0;font-size:12.5px;color:#7a6f8a">No groups shown \u2014 tap <b>Groups</b> to choose.</div>';
+    return on.map(function(g){ return W.__doorCard(g); }).join("");
+  }
+  function doorGroupsBand(ks){
+    ks=ks||[]; var hid=doorHidden(), shown=ks.filter(function(g){ return hid.indexOf(Number(g.id))<0; }).length;
+    return '<div class="brk" id="doorGroupsBrk" style="margin-top:12px">'
+      +'<h2 onclick="window.doorGroupsOpen()" style="display:flex;align-items:center;gap:8px;cursor:pointer">Groups'
+      +'<span id="doorGroupsCount" style="margin-left:auto;font-size:11.5px;letter-spacing:0;text-transform:none;font-weight:700;opacity:.85">showing '+shown+' of '+ks.length+'</span>'
+      +'<span id="doorGroupsCaret" style="font-size:12px">\u25be</span></h2>'
+      +'<div id="doorGroupsPick" style="display:none;padding:2px 12px 10px"></div></div>';
+  }
+  function doorGroupsPaint(){
+    var box=document.getElementById("doorGroupsPick"); if(!box) return;
+    var ks=W.__doorKids||[], hid=doorHidden();
+    box.innerHTML=ks.map(function(g){
+        var on=hid.indexOf(Number(g.id))<0, col=clubPal(g.id)[0];
+        return '<button data-plat-keep="1" onclick="window.doorGroupSet('+Number(g.id)+','+(on?0:1)+')" style="display:flex;width:100%;align-items:center;gap:10px;'
+          +'padding:10px 4px;border:none;border-bottom:1px solid #f0ecf6;background:#fff;font:inherit;text-align:left;cursor:pointer">'
+          +'<span style="width:11px;height:11px;border-radius:50%;background:'+col+';flex:0 0 11px"></span>'
+          +'<span style="flex:1;min-width:0;font-size:14px;font-weight:700;color:#241d33;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+esc(g.__own?nhGeneralName():g.name)+'</span>'
+          +'<span style="flex:0 0 44px;height:24px;border-radius:99px;position:relative;background:'+(on?col:"#d9d2e3")+'">'
+          +'<span style="position:absolute;top:3px;left:'+(on?"23px":"3px")+';width:18px;height:18px;border-radius:50%;background:#fff;box-shadow:0 1px 2px rgba(0,0,0,.25)"></span></span>'
+          +'</button>';
+      }).join("")
+      +'<div style="display:flex;gap:8px;margin-top:10px">'
+      +'<button data-plat-keep="1" onclick="window.doorGroupsAll(1)" style="flex:1;padding:8px;border-radius:99px;border:1.5px solid #6c3483;background:#fff;color:#6c3483;font:inherit;font-size:12.5px;font-weight:800;cursor:pointer">All on</button>'
+      +'<button data-plat-keep="1" onclick="window.doorGroupsAll(0)" style="flex:1;padding:8px;border-radius:99px;border:1.5px solid #6c3483;background:#fff;color:#6c3483;font:inherit;font-size:12.5px;font-weight:800;cursor:pointer">All off</button>'
+      +'</div>';
+  }
+  function doorGroupsRefresh(){
+    var ks=W.__doorKids||[], hid=doorHidden(), shown=ks.filter(function(g){ return hid.indexOf(Number(g.id))<0; }).length;
+    var c=document.getElementById("doorGroupsCount"); if(c) c.textContent="showing "+shown+" of "+ks.length;
+    var cards=document.getElementById("doorGroupCards"); if(cards) cards.innerHTML=doorGroupCards();
+    doorGroupsPaint();
+  }
+  W.doorGroupsOpen=function(){
+    var box=document.getElementById("doorGroupsPick"), car=document.getElementById("doorGroupsCaret"); if(!box) return;
+    var open=box.style.display==="none"; box.style.display=open?"block":"none"; if(car) car.textContent=open?"\u25b4":"\u25be";
+    if(open) doorGroupsPaint();
+  };
+  W.doorGroupSet=function(id,on){
+    var hid=doorHidden().filter(function(x){ return x!==Number(id); }); if(!on) hid.push(Number(id));
+    doorHiddenSave(hid); doorGroupsRefresh();
+  };
+  W.doorGroupsAll=function(on){
+    doorHiddenSave(on?[]:(W.__doorKids||[]).map(function(g){ return Number(g.id); })); doorGroupsRefresh();
+  };
   function newRecordsPage(){
     var sc=recScope(); var w=nhWrap(); if(!w) return;
     if(sc.view==="members")  return recMembers(sc,w);
@@ -12294,6 +12346,11 @@ W.nhOpenPair=function(name){
           +'<span style="display:block;font-size:12px;color:#5f5770;margin-top:2px">'+esc(sub)+'</span></span>'
           +'<span style="display:inline-grid;place-items:center;width:28px;height:28px;border-radius:50%;background:'+col+';color:#fff;font-weight:800">\u203a</span></button>';
       };
+      W.__doorKids=(kids.length?kids:[{id:C,name:nhGeneralName(),__own:true}]);
+      W.__doorCard=function(g){ return g.__own
+        ? card(nhGeneralName(), clubPal(C)[0], "The first group \u00b7 rename or add more in the ledger", PAGE+"?club="+C+"&board=1", C)
+        : card(g.name, clubPal(g.id)[0], "A group \u00b7 its own ladder and card", PAGE+"?club="+g.id, g.id); };
+      W.__doorC=C;
       var quiet=function(label,onclick){
         return '<button onclick="'+onclick+'" style="flex:1 1 0;min-width:88px;background:#fff;border:1px solid #cfc5e0;border-radius:12px;'
           +'padding:10px 6px;font:inherit;font-size:12px;font-weight:700;color:#241d33;cursor:pointer">'+esc(label)+'</button>';
@@ -12315,17 +12372,12 @@ W.nhOpenPair=function(name){
         + 'font:inherit;font-weight:800;font-size:16px;color:#1a1a1a;cursor:pointer">+ &nbsp;Enter a score</button>'
         + '<div id="doorWhere" style="display:none;padding:2px 12px 4px"></div>'
         /* the engine */
-        + heading("Where things happen \u00b7 tap to enter")
-        /* n65: THE CLUB'S OWN BOARD IS A BOARD. It was hardwired purple while every group wore its own
-           colour, so the place most clubs play most read as the app's furniture. It now takes the colour the
-           club chose, like any other board — purple is reserved for the CLUB'S RECORDS, below. */
-        /* n71: GROUPS ONLY. A region has groups and nothing else — there is no club board and no general
-           play. A region with no groups yet still has somewhere its matches live, so its own board shows as
-           the first group under the region's name until the ledger makes real ones; nothing already
-           recorded is orphaned. */
-        + (kids.length
-            ? kids.map(function(g){ return card(g.name, clubPal(g.id)[0], "A group \u00b7 its own ladder and card", PAGE+"?club="+g.id, g.id); }).join("")
-            : card(nhGeneralName(), clubPal(C)[0], "The first group \u00b7 rename or add more in the ledger", PAGE+"?club="+C+"&board=1", C))
+        /* n128: THE GROUPS BAND. Each phone chooses which groups' cards the door shows — all, one, or none — from a
+           dropdown of switches under this band; the records (and Recent matches, now directly beneath them) rise and
+           fall with however many cards are showing. New visitors see every group. The choice is personal to the phone
+           and region and changes nothing for anyone else. */
+        + doorGroupsBand(W.__doorKids)
+        + '<div id="doorGroupCards">'+doorGroupCards()+'</div>'
         /* two records, no toggle, each saying how wide it is */
         /* n118: THE RECORDS ARE A SECTION, NOT A LINE OF TEXT. They sit in a card under a shaded band like every
            other section on the door — the band the eye finds, and the pill "Records" lands on. */
@@ -12341,9 +12393,10 @@ W.nhOpenPair=function(name){
         + ledgerRow("Global Ledger", "Every region, every group, every member", "#2f2f2f",
                     "location.href='"+PAGE+"?club="+C+"&go=records&all=1'")
         + '</div></div>'
+        /* n128: Recent matches sits directly under the records */
+        + nhMatchesBrk(d,25,"club")
         + lastMatchRibbon(d)
-        /* the glimpses — Recent matches exactly as it is */
-        + '<div class="cols">'+nhFormBrk(d,"#6c3483","club") + nhMoversBrk(d,"#6c3483","club") + nhMatchesBrk(d,25,"club") + nhTourBrk(d)+'</div>'
+        + '<div class="cols">'+nhFormBrk(d,"#6c3483","club") + nhMoversBrk(d,"#6c3483","club") + nhTourBrk(d)+'</div>'
         /* everything else, small */
         + heading("Everything else")
         + '<div style="display:flex;gap:8px;margin:10px 12px 0;flex-wrap:wrap">'
