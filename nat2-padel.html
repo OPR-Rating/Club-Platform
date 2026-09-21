@@ -3626,7 +3626,7 @@ const CLUB_NAME = _club.name;  // shown in the logo as "OPR · <name>"
     link.setAttribute('href', href);
   }catch(e){ /* install stays on the static manifest — no functional impact */ }
 })();
-const OPR_VERSION = "OPR-DOUBLES v2026.09.03-56 · NAT fork n108 (no voice) (of PLAT p117)";  // MANUAL PAIR CREATION REMOVED FROM ADMIN: Create a pair, Bulk create pairs and Re-derive all pairs are gone (they only made match-less ghost pairs, and Re-derive rewrote every stored initial club-wide). Pairs are born automatically at match entry. Current pairs list untouched; the underlying JS is left in place unreferenced, so no other code path changes. Includes v47 (set-score fix + double-tap guard) and all prior.
+const OPR_VERSION = "OPR-DOUBLES v2026.09.03-56 · NAT fork n109 (no voice) (of PLAT p117)";  // MANUAL PAIR CREATION REMOVED FROM ADMIN: Create a pair, Bulk create pairs and Re-derive all pairs are gone (they only made match-less ghost pairs, and Re-derive rewrote every stored initial club-wide). Pairs are born automatically at match entry. Current pairs list untouched; the underlying JS is left in place unreferenced, so no other code path changes. Includes v47 (set-score fix + double-tap guard) and all prior.
 // Explanation shown above the individual ladder. Open on load so it's read; collapsible
 // (state kept for the session) and scrolls away. Mechanics only — no outcome framing, so
 // members aren't nudged away from playing stronger opponents. Every clause maps to a real
@@ -10152,13 +10152,29 @@ async function clRemove(id, label){
     el.style.display=open?"none":"block"; if(t) t.style.transform=open?"":"rotate(180deg)";
   };
   /* n85: plat's own expander — set scores split on COMMAS, written 6/3, and its exact fallback wording */
-  function nhSetPills(m,col){
+  /* n109: ON A PERSON'S OWN PAGE A SET IS A RESULT, NOT INFORMATION. plat colours each set chip green when that
+     person won it and red when they lost, written from their side (mine/theirs, flipped if they were team 2) —
+     copied here for the profile's matches. A board's or the door's list has no viewer, so it stays the board's
+     colour: those panels report, they do not take sides. */
+  function nhSetPills(m,col,viewer){
     var ss=String(m.set_scores||"").trim();
     var scores=ss?ss.split(",").map(function(x){ return x.trim(); }).filter(Boolean):[];
     if(!scores.length) return '<span style="color:#888;font-size:11px">Game scores not recorded for this match</span>';
+    var onT1=null;
+    if(viewer){
+      var t1=halves(m.t1p1).concat(halves(m.t1p2)), t2=halves(m.t2p1).concat(halves(m.t2p2));
+      if(t1.indexOf(viewer)>=0) onT1=true; else if(t2.indexOf(viewer)>=0) onT1=false;
+    }
     return scores.map(function(sc){
-      return '<span style="background:'+(col||"#6c3483")+';color:#fff;border-radius:4px;padding:3px 10px;margin:0 3px;font-size:13px;font-weight:700">'
-        + esc(String(sc).replace("-","/")) + '</span>';
+      var p=String(sc).split("-"), x=parseInt(p[0],10)||0, y=parseInt(p[1],10)||0;
+      var bg=col||"#6c3483", txt=String(sc).replace("-","/");
+      if(onT1!==null){
+        var mine=onT1?x:y, theirs=onT1?y:x;
+        bg=(mine>theirs)?"#1e8449":"#c0392b";
+        txt=mine+"/"+theirs;
+      }
+      return '<span style="background:'+bg+';color:#fff;border-radius:4px;padding:3px 10px;margin:0 3px;font-size:13px;font-weight:700">'
+        + esc(txt) + '</span>';
     }).join("");
   }
   /* n65: the app's own lime bar over a list that scrolls inside its own box */
@@ -10188,7 +10204,7 @@ async function clRemove(id, label){
     var b=m.display_t2 || (m.t2p2 ? ((m.t2p1||"")+" & "+m.t2p2) : (m.t2p1||""));
     return [a,b];
   }
-  function nhMatchRow(m,scope){
+  function nhMatchRow(m,scope,viewer){
     var sides=nhSides(m), a=sides[0], b=sides[1];
     var bd=(W.PLAT.clubs||[]).find(function(c){ return Number(c.id)===Number(m.club_id); });
     var col=(bd&&bd.colour)||"#6c3483";
@@ -10207,16 +10223,16 @@ async function clRemove(id, label){
       +'<div style="text-align:center;font-size:13.5px;font-weight:600;color:#241d33;margin-top:3px;line-height:1.4">'
       + esc(a)+' <span style="color:'+col+'">'+((m.t1_sets||0)+"-"+(m.t2_sets||0))+'</span> '+esc(b)+'</div>'
       +'<div id="nhs'+id+'" style="display:none;border-top:1px solid #efeaf5;margin-top:8px;padding-top:8px;text-align:center">'
-      + nhSetPills(m,col)
+      + nhSetPills(m,col,viewer)
       +'<div style="font-size:11px;color:#888;margin-top:6px">Sets: '+((m.t1_sets||0)+"-"+(m.t2_sets||0))
       +'  \u00b7  Games: '+((m.t1_games||0)+"-"+(m.t2_games||0))+'</div></div>'
       +'</div>';
   }
-  function nhMatchesBrk(d,n,scope){
+  function nhMatchesBrk(d,n,scope,viewer){
     var ms=(d.matches||[]).slice(0,n||25); if(!ms.length) return "";
     return '<div class="brk">'+nhLimeBar("Recent matches"+(NHEG?" \u00b7 example":""))
       +'<div style="max-height:'+(scope==="club"?600:360)+'px;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:4px 10px 8px">'
-      + ms.map(function(m){ return nhMatchRow(m,scope); }).join("")
+      + ms.map(function(m){ return nhMatchRow(m,scope,viewer); }).join("")
       +'</div></div>';
   }
   /* n84: ALL THE TOURNAMENTS, ROLLED UP. Four running at once filled the page; now one bracket lists them and
@@ -11151,7 +11167,8 @@ W.mePair=function(name){
                 +'<span class="nm"><b>'+esc(us)+'</b><span>v '+esc(them)+' \u00b7 '+esc(nhBoardName(m.club_id))+'</span></span>'
                 +'<span class="val"><b class="'+(myS>thS?"up":"dn")+'">'+myS+'\u2013'+thS+'</b>'
                 +'<span id="nht'+id+'" style="display:inline-block;font-size:15px;color:#7a6f8a;margin-left:6px">\u25bc</span></span></button>'
-                +'<div id="nhs'+id+'" style="display:none;padding:0 12px 10px 20px">'+nhSetPills(m)+'</div></div>'; }).join("")
+                /* n109: this is the member's own page — each set is green won, red lost, from their side */
+                +'<div id="nhs'+id+'" style="display:none;padding:0 12px 10px 20px">'+nhSetPills(m,col,me)+'</div></div>'; }).join("")
           +'</div></div>';
       }
       h+='</div>'
