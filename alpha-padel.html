@@ -3631,7 +3631,7 @@ const CLUB_NAME = _club.name;  // shown in the logo as "OPR · <name>"
     link.setAttribute('href', href);
   }catch(e){ /* install stays on the static manifest — no functional impact */ }
 })();
-const OPR_VERSION = "OPR-DOUBLES v2026.09.03-56 · NAT fork n123 (no voice) (of PLAT p117)";  // MANUAL PAIR CREATION REMOVED FROM ADMIN: Create a pair, Bulk create pairs and Re-derive all pairs are gone (they only made match-less ghost pairs, and Re-derive rewrote every stored initial club-wide). Pairs are born automatically at match entry. Current pairs list untouched; the underlying JS is left in place unreferenced, so no other code path changes. Includes v47 (set-score fix + double-tap guard) and all prior.
+const OPR_VERSION = "OPR-DOUBLES v2026.09.03-56 · NAT fork n125 (no voice) (of PLAT p117)";  // MANUAL PAIR CREATION REMOVED FROM ADMIN: Create a pair, Bulk create pairs and Re-derive all pairs are gone (they only made match-less ghost pairs, and Re-derive rewrote every stored initial club-wide). Pairs are born automatically at match entry. Current pairs list untouched; the underlying JS is left in place unreferenced, so no other code path changes. Includes v47 (set-score fix + double-tap guard) and all prior.
 // Explanation shown above the individual ladder. Open on load so it's read; collapsible
 // (state kept for the session) and scrolls away. Mechanics only — no outcome framing, so
 // members aren't nudged away from playing stronger opponents. Every clause maps to a real
@@ -10086,17 +10086,31 @@ async function clRemove(id, label){
           : "window.nhGo('profiles')")+'">See player profiles here \u2192</button></div>';
   }
   function nhFormBrk(d,ink,scope){
-    var hot=(d.pairs||[]).filter(function(p){ return (p.sets_played||0)>=3; })
-      .map(function(p){ return {name:p.name,club_id:p.club_id,pct:Math.round(100*(p.sets_won||0)/(p.sets_played||1)),move:Math.round((p.current_rating||0)-(p.initial_rating||0))}; })
-      .sort(function(a,b){ return b.pct-a.pct||b.move-a.move; }).slice(0,2);
+    /* n125: IN FORM IS THIS WEEK'S FORM. It ranked pairs by their all-time win rate and showed "since start", so a pair
+       with a long lead sat on top for months (Eswatini: the same pair, +202, week after week). It now takes the same
+       window as the movers and shows the pairs who climbed most in it, with the sets they won in it. A week where
+       no pair climbed shows no In form section at all. */
+    var ms=d.matches||[]; nhWindow(ms);
+    var acc={};
+    ms.forEach(function(m){
+      if(ago(m.match_date)>NHWIN) return;
+      var dl=(m.rating_delta!=null)?+m.rating_delta:0;
+      [[m.t1p1,dl,+m.t1_sets||0,+m.t2_sets||0],[m.t2p1,-dl,+m.t2_sets||0,+m.t1_sets||0]].forEach(function(x){
+        if(!x[0]) return; var a=acc[x[0]]=acc[x[0]]||{name:x[0],club_id:m.club_id,move:0,won:0,played:0};
+        a.move+=x[1]; a.won+=x[2]; a.played+=x[2]+x[3];
+      });
+    });
+    var hot=Object.keys(acc).map(function(k){ var a=acc[k]; a.move=Math.round(a.move); a.pct=a.played?Math.round(100*a.won/a.played):0; return a; })
+      .filter(function(a){ return a.move>0; })
+      .sort(function(a,b){ return b.move-a.move||b.pct-a.pct; }).slice(0,2);
     if(!hot.length) return "";
     return '<div class="brk"><h2 style="display:flex;align-items:center;gap:8px">In form '+nhTag()+'</h2><div class="rows">'
       + hot.map(function(p){
           var col=p.club_id?clubPal(p.club_id)[0]:ink;
           return '<div class="row">'
           + nhFace(halves(p.name).filter(function(x){ return (FACES||{})[x]; })[0] || p.name, col, 34)
-          +'<span class="nm"><b>'+esc(p.name)+'</b><span>'+p.pct+'% of sets won</span></span>'
-          +'<span class="val"><b class="'+(p.move>=0?"up":"dn")+'">'+(p.move>0?"+":"")+p.move+'</b><span>since start</span></span></div>'; }).join("")
+          +'<span class="nm"><b>'+esc(p.name)+'</b><span>'+p.won+' of '+p.played+' sets won '+nhWhen()+'</span></span>'
+          +'<span class="val"><b class="up">+'+p.move+'</b><span>'+nhWhen()+'</span></span></div>'; }).join("")
       +'</div><button class="more" onclick="'+(scope==="club"
         ? ("location.href='"+PAGE+"?club=0&pool="+W.PLAT.pool+"&nat="+(W.PLAT.parentId||W.PLAT.cid)+"&go=ladders&back="+encodeURIComponent("?club="+(W.PLAT.parentId||W.PLAT.cid))+"'")
         : "window.nhGo('ladders')")+'">Ratings and ladders \u2192</button></div>';
@@ -10268,7 +10282,10 @@ async function clRemove(id, label){
     var sides=nhSides(m), a=sides[0], b=sides[1];
     var bd=(W.PLAT.clubs||[]).find(function(c){ return Number(c.id)===Number(m.club_id); });
     var col=(bd&&bd.colour)||"#6c3483";
-    var id="m"+(m.id||Math.abs(Math.round(Math.random()*1e6)));
+    /* n125: a match can appear in two sections at once (Recent matches and Recent tournament matches). Both copies had
+       the same name, so the triangle in the tournament section opened the other copy. Each row is now unique. */
+    W.__nhRowN=(W.__nhRowN||0)+1;
+    var id="m"+W.__nhRowN+"_"+(m.id||0);
     var pillHTML=(scope!=="one"&&bd)?('<span style="display:inline-block;background:'+col+';color:#fff;border-radius:99px;'
       +'padding:2px 9px;font-size:10px;font-weight:800;margin-right:6px;vertical-align:middle">'+esc(bd.name)+'</span>'):'';
     return '<div style="border:1px solid #e9e4f0;border-radius:12px;padding:9px 11px;margin:6px 0;background:#fff">'
@@ -12029,7 +12046,23 @@ W.nhOpenPair=function(name){
       place(); window.addEventListener("resize", place);
     }catch(e){}
   }
-  setInterval(nhJumpStrip, 500);
+  /* n124: THE STRIP ARRIVES WITH THE PAGE, NOT AFTER IT. A timer looked for the page twice a second and slid the strip in
+     once it was there — so the door and every group drew, then jumped down by the strip's height about two seconds in.
+     A watcher on the page now adds the strip in the same step the page's content lands; the browser runs it before it
+     paints, so the first frame already has the strip and nothing below it moves. The timer stays as a slow fallback. */
+  (function(){
+    var watchNh=function(nh){
+      try{ new MutationObserver(function(){ nhJumpStrip(); }).observe(nh,{childList:true}); }catch(e){}
+      nhJumpStrip();
+    };
+    var nh0=document.getElementById("nh");
+    if(nh0) watchNh(nh0);
+    else try{
+      var mo=new MutationObserver(function(){ var n=document.getElementById("nh"); if(n){ mo.disconnect(); watchNh(n); } });
+      mo.observe(document.documentElement,{childList:true,subtree:true});
+    }catch(e){}
+  })();
+  setInterval(nhJumpStrip, 2000);
   function nhBarMount(){
     /* n63: on a ledger the club id is 0 — the club is in W.PLAT.nat — so the bar never mounted there and the
        way home vanished on exactly the pages people get lost on. */
@@ -12209,10 +12242,11 @@ W.nhOpenPair=function(name){
       w.innerHTML =
         '<div class="band opr"><div class="mark"><span class="logo">OPR</span>Open Padel Ratings</div>'
         + '<h1>'+esc(W.PLAT.name||"")+'</h1>'
-        + '<div class="sub">'+esc(W.PLAT.poolName||"")+'</div>'
-        + '<div class="pulse"><span class="live">'+wk+(wk===1?' match':' matches')+' '+nhWhen()+'</span>'
-        + '<span>'+((d.pairs||[]).length)+' pairs on record</span>'
-        + (((d.tours||[]).length>1)?('<span>'+d.tours.length+' tournaments running</span>'):(d.tour?('<span>'+esc(d.tour.name)+'</span>'):''))+'</div></div>'
+        /* n125: THE DOOR'S BANNER ON ONE LINE. The register's name, "pairs on record" and a long tournament line wrapped
+           the banner to a third of the screen. Now: the week's count and, if any are running, how many tournaments —
+           short words, never wrapping. */
+        + '<div class="pulse" style="flex-wrap:nowrap;overflow:hidden"><span class="live" style="white-space:nowrap">'+wk+' '+nhWhen()+'</span>'
+        + (((d.tours||[]).length)?('<span style="white-space:nowrap">'+d.tours.length+' tournament'+(d.tours.length===1?"":"s")+'</span>'):'')+'</div></div>'
         /* where am I */
         /* n114: the region's name was repeated here under the banner that already says it — removed */
         /* the one thing they came for */
