@@ -3631,7 +3631,7 @@ const CLUB_NAME = _club.name;  // shown in the logo as "OPR · <name>"
     link.setAttribute('href', href);
   }catch(e){ /* install stays on the static manifest — no functional impact */ }
 })();
-const OPR_VERSION = "OPR-DOUBLES v2026.09.03-56 · NAT fork n125 (no voice) (of PLAT p117)";  // MANUAL PAIR CREATION REMOVED FROM ADMIN: Create a pair, Bulk create pairs and Re-derive all pairs are gone (they only made match-less ghost pairs, and Re-derive rewrote every stored initial club-wide). Pairs are born automatically at match entry. Current pairs list untouched; the underlying JS is left in place unreferenced, so no other code path changes. Includes v47 (set-score fix + double-tap guard) and all prior.
+const OPR_VERSION = "OPR-DOUBLES v2026.09.03-56 · NAT fork n126 (no voice) (of PLAT p117)";  // MANUAL PAIR CREATION REMOVED FROM ADMIN: Create a pair, Bulk create pairs and Re-derive all pairs are gone (they only made match-less ghost pairs, and Re-derive rewrote every stored initial club-wide). Pairs are born automatically at match entry. Current pairs list untouched; the underlying JS is left in place unreferenced, so no other code path changes. Includes v47 (set-score fix + double-tap guard) and all prior.
 // Explanation shown above the individual ladder. Open on load so it's read; collapsible
 // (state kept for the session) and scrolls away. Mechanics only — no outcome framing, so
 // members aren't nudged away from playing stronger opponents. Every clause maps to a real
@@ -11624,9 +11624,15 @@ W.mePair=function(name){
       people.forEach(function(p){ if(p.current_rating==null && RT[p.full_name]!=null) p.current_rating=RT[p.full_name]; });
       var G={}; groups.forEach(function(g){ G[g.full_name]=g; });
       var COL={}; clubs.forEach(function(c){ COL[Number(c.id)]=c.colour||null; });
+      /* n126: SOMEONE WHO HAS NOT PLAYED BELONGS WHERE THEIR MEMBERSHIP IS — NOT TO EVERY REGION. The list kept anyone
+         without a group in every region's list, so a name added in the Global Ledger appeared under Upper Highway AND
+         North Coast. A person with no group now appears in a region only if they hold a membership on that region or
+         one of its groups (the per-board rows are one per membership). People added to the register alone appear in
+         the Global list only. */
+      var BELONG={}; perBoard.forEach(function(x){ if(sc.boards.indexOf(Number(x.club_id))>=0) BELONG[x.full_name]=1; });
       var mine=people.filter(function(p){
         if(sc.wide) return true;
-        var g=G[p.full_name]; if(!g||!g.club_id) return true;            /* still to play: belongs to the region */
+        var g=G[p.full_name]; if(!g||!g.club_id) return !!BELONG[p.full_name];   /* still to play: only where they are a member */
         return sc.boards.indexOf(Number(g.club_id))>=0;
       });
       var rows=mine.map(function(p){
