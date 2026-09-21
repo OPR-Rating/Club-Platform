@@ -3631,7 +3631,7 @@ const CLUB_NAME = _club.name;  // shown in the logo as "OPR · <name>"
     link.setAttribute('href', href);
   }catch(e){ /* install stays on the static manifest — no functional impact */ }
 })();
-const OPR_VERSION = "OPR-DOUBLES v2026.09.03-56 · NAT fork n120 (no voice) (of PLAT p117)";  // MANUAL PAIR CREATION REMOVED FROM ADMIN: Create a pair, Bulk create pairs and Re-derive all pairs are gone (they only made match-less ghost pairs, and Re-derive rewrote every stored initial club-wide). Pairs are born automatically at match entry. Current pairs list untouched; the underlying JS is left in place unreferenced, so no other code path changes. Includes v47 (set-score fix + double-tap guard) and all prior.
+const OPR_VERSION = "OPR-DOUBLES v2026.09.03-56 · NAT fork n121 (no voice) (of PLAT p117)";  // MANUAL PAIR CREATION REMOVED FROM ADMIN: Create a pair, Bulk create pairs and Re-derive all pairs are gone (they only made match-less ghost pairs, and Re-derive rewrote every stored initial club-wide). Pairs are born automatically at match entry. Current pairs list untouched; the underlying JS is left in place unreferenced, so no other code path changes. Includes v47 (set-score fix + double-tap guard) and all prior.
 // Explanation shown above the individual ladder. Open on load so it's read; collapsible
 // (state kept for the session) and scrolls away. Mechanics only — no outcome framing, so
 // members aren't nudged away from playing stronger opponents. Every clause maps to a real
@@ -10168,9 +10168,13 @@ async function clRemove(id, label){
        (Brian: +38, drawn 1300 → 1147) and the reverse (Kerry). It now uses only the window's matches — the same ones
        that make the "+38 this week" — drawn back from today's rating: the end is true, the shape is the week, and
        the first point is where the week began, labelled "from" because it is not a registration rating. */
-    nhWindow(ms);
-    var wk=ms.filter(function(m){ return ago(m.match_date)<=NHWIN; });
-    var pts=nhTrail(mv.name,wk);
+    /* n121: THE SHAPE COMES BACK. A week alone is a straight ramp; Andre wants the peaks and valleys. The line is the
+       player's LAST 12 rated matches on this board, rebased and drawn back from today's rating — so there is no
+       false cliff at the end (n107's fault was pinning a registration start to today's end, not the history). */
+    var NH_SPAN=12;
+    var full=nhTrail(mv.name,ms), st0=Math.max(0, full.length-NH_SPAN), base=st0>0?full[st0-1]:0;
+    var pts=full.slice(st0).map(function(v){ return v-base; });
+    var spanN=pts.length;
     var col=mv.club?clubPal(mv.club)[0]:ink, up=(mv.move>=0);
     var body;
     if(pts.length<1){ body='<div style="font-size:12px;color:#6f6780;padding:10px 4px">Not enough rated matches yet to draw a line.</div>'; }
@@ -10180,7 +10184,8 @@ async function clRemove(id, label){
       var cur=ind?Math.round(ind.current_rating||ind.seed_rating||0):null;
       /* n107: the seed on record — this page's own people carry it — so "started" is the player's seed */
       var series=nhAsRatings(pts,cur).map(function(v){ return Math.round(v); });
-      body=nhChart(series, col, cur?("now "+cur):null, series.length?series[0]:null, "from");
+      body=nhChart(series, col, cur?("now "+cur):null, series.length?series[0]:null, "from")
+        +'<div style="font-size:10.5px;color:#8a8196;text-align:right;margin-top:2px">last '+spanN+' match'+(spanN===1?"":"es")+' here</div>';
     }
     return '<div class="brk"><h2 style="display:flex;align-items:center;gap:8px">'+esc(title)+' '+nhTag()+'</h2>'
       +'<div style="padding:4px 14px 12px">'
