@@ -3631,7 +3631,7 @@ const CLUB_NAME = _club.name;  // shown in the logo as "OPR · <name>"
     link.setAttribute('href', href);
   }catch(e){ /* install stays on the static manifest — no functional impact */ }
 })();
-const OPR_VERSION = "OPR-DOUBLES v2026.09.03-56 · NAT fork n126 (no voice) (of PLAT p117)";  // MANUAL PAIR CREATION REMOVED FROM ADMIN: Create a pair, Bulk create pairs and Re-derive all pairs are gone (they only made match-less ghost pairs, and Re-derive rewrote every stored initial club-wide). Pairs are born automatically at match entry. Current pairs list untouched; the underlying JS is left in place unreferenced, so no other code path changes. Includes v47 (set-score fix + double-tap guard) and all prior.
+const OPR_VERSION = "OPR-DOUBLES v2026.09.03-56 · NAT fork n127 (no voice) (of PLAT p117)";  // MANUAL PAIR CREATION REMOVED FROM ADMIN: Create a pair, Bulk create pairs and Re-derive all pairs are gone (they only made match-less ghost pairs, and Re-derive rewrote every stored initial club-wide). Pairs are born automatically at match entry. Current pairs list untouched; the underlying JS is left in place unreferenced, so no other code path changes. Includes v47 (set-score fix + double-tap guard) and all prior.
 // Explanation shown above the individual ladder. Open on load so it's read; collapsible
 // (state kept for the session) and scrolls away. Mechanics only — no outcome framing, so
 // members aren't nudged away from playing stronger opponents. Every clause maps to a real
@@ -10034,6 +10034,29 @@ async function clRemove(id, label){
      +"@media(min-width:880px){"
      +"#nh{max-width:560px;padding-bottom:40px}"
      +"#nh .band{border-radius:0 0 20px 20px}"
+     +"}"
+     /* n127: A LAPTOP LAYOUT THAT LINES UP. n77 tried two free-flowing columns and pulled them: things scattered and
+        nothing lined up. This one is a fixed frame — the banner and pill strip across the top, a fixed-width left
+        column you GO from (enter a score, the groups, the records, everything else) and a right column you READ
+        (form, movers, charts, recent matches, tournaments), both starting at the same line. Phones are untouched. */
+     +"@media(min-width:1000px){"
+     +"#nh.nhLap{max-width:1180px}"
+     +"#nh.nhLap .nhLapRow{display:flex;gap:18px;align-items:flex-start;padding:0 14px}"
+     +"#nh.nhLap .nhLapL{flex:0 0 380px;min-width:0}"
+     +"#nh.nhLap .nhLapR{flex:1 1 auto;min-width:0}"
+     /* sections flow down two columns like a newspaper, so a short one never leaves a gap beside a tall one */
+     +"#nh.nhLap .nhLapR .cols{display:block;columns:2;column-gap:14px}"
+     +"#nh.nhLap .nhLapR .cols > .brk{margin:12px 0 0;break-inside:avoid;display:inline-block;width:100%}"
+     /* every item in the left column is the column's full width */
+     +"#nh.nhLap .nhLapL > *{margin-left:0!important;margin-right:0!important}"
+     +"#nh.nhLap .nhLapL > button, #nh.nhLap .nhLapL > a{width:100%!important;box-sizing:border-box}"
+     +"#nh.nhLap .nhLapL .tiles{margin-left:0;margin-right:0}"
+     +"#nhBar.nhLap{max-width:1180px!important}"
+     /* the action row wraps into tidy rows in the sidebar instead of scrolling out of sight */
+     +"#nh.nhLap .nhLapL .doit{flex-wrap:wrap;overflow:visible;padding:12px 0 2px}"
+     +"#nh.nhLap .nhLapL .doit > *{flex:1 1 calc(33% - 9px);min-width:0}"
+     /* records pages: one column, but a laptop's width */
+     +"#nh.nhLapWide{max-width:980px}"
      +"}";
     document.head.appendChild(st);
   }
@@ -12023,6 +12046,37 @@ W.nhOpenPair=function(name){
     };
     aim(true); setTimeout(function(){ aim(false); }, 650);
   };
+  function nhLaptop(){
+    try{
+      if(!W.NEWAPP || W.innerWidth<1000) return;
+      var nh=document.getElementById("nh"); if(!nh || nh.querySelector(".nhLapRow")) return;
+      var go=""; try{ go=(new URLSearchParams(location.search).get("go")||"").toLowerCase(); }catch(e){}
+      var isMe=(go==="me"), isPlace=(!go && W.PLAT.cid>0);
+      if(go==="records" || go==="pair"){ nh.classList.add("nhLapWide"); var b0=document.getElementById("nhBar"); if(b0) b0.classList.add("nhLap"); return; }
+      if(!isMe && !isPlace) return;
+      var cols=[].slice.call(nh.children).filter(function(x){ return x.classList&&x.classList.contains("cols"); })[0];
+      if(!cols) return;
+      /* the top: banner, pill strip; everything else splits left (go) and right (read) */
+      var top=[], left=[], kids=[].slice.call(nh.children);
+      kids.forEach(function(x){
+        if(x===cols) return;
+        if(x.classList && (x.classList.contains("band"))) { top.push(x); return; }
+        if(x.id==="nhJump"){ top.push(x); return; }
+        if(x.id==="nhBar" || (x.style && x.style.position==="fixed")) return;
+        left.push(x);
+      });
+      var row=document.createElement("div"); row.className="nhLapRow";
+      var L=document.createElement("div"); L.className="nhLapL";
+      var R=document.createElement("div"); R.className="nhLapR";
+      left.forEach(function(x){ L.appendChild(x); });
+      R.appendChild(cols);
+      row.appendChild(L); row.appendChild(R);
+      var after=top.length?top[top.length-1].nextSibling:nh.firstChild;
+      nh.insertBefore(row, after);
+      nh.classList.add("nhLap");
+      var bar=document.getElementById("nhBar"); if(bar) bar.classList.add("nhLap");
+    }catch(e){}
+  }
   function nhJumpStrip(){
     try{
       if(!W.NEWAPP) return;
@@ -12058,7 +12112,7 @@ W.nhOpenPair=function(name){
      paints, so the first frame already has the strip and nothing below it moves. The timer stays as a slow fallback. */
   (function(){
     var watchNh=function(nh){
-      try{ new MutationObserver(function(){ nhJumpStrip(); }).observe(nh,{childList:true}); }catch(e){}
+      try{ new MutationObserver(function(){ nhJumpStrip(); nhLaptop(); }).observe(nh,{childList:true}); }catch(e){}
       nhJumpStrip();
     };
     var nh0=document.getElementById("nh");
@@ -12068,7 +12122,7 @@ W.nhOpenPair=function(name){
       mo.observe(document.documentElement,{childList:true,subtree:true});
     }catch(e){}
   })();
-  setInterval(nhJumpStrip, 2000);
+  setInterval(function(){ nhJumpStrip(); nhLaptop(); }, 2000);
   function nhBarMount(){
     /* n63: on a ledger the club id is 0 — the club is in W.PLAT.nat — so the bar never mounted there and the
        way home vanished on exactly the pages people get lost on. */
