@@ -3631,7 +3631,7 @@ const CLUB_NAME = _club.name;  // shown in the logo as "OPR · <name>"
     link.setAttribute('href', href);
   }catch(e){ /* install stays on the static manifest — no functional impact */ }
 })();
-const OPR_VERSION = "OPR-DOUBLES v2026.09.03-56 · NAT fork n116 (no voice) (of PLAT p117)";  // MANUAL PAIR CREATION REMOVED FROM ADMIN: Create a pair, Bulk create pairs and Re-derive all pairs are gone (they only made match-less ghost pairs, and Re-derive rewrote every stored initial club-wide). Pairs are born automatically at match entry. Current pairs list untouched; the underlying JS is left in place unreferenced, so no other code path changes. Includes v47 (set-score fix + double-tap guard) and all prior.
+const OPR_VERSION = "OPR-DOUBLES v2026.09.03-56 · NAT fork n118 (no voice) (of PLAT p117)";  // MANUAL PAIR CREATION REMOVED FROM ADMIN: Create a pair, Bulk create pairs and Re-derive all pairs are gone (they only made match-less ghost pairs, and Re-derive rewrote every stored initial club-wide). Pairs are born automatically at match entry. Current pairs list untouched; the underlying JS is left in place unreferenced, so no other code path changes. Includes v47 (set-score fix + double-tap guard) and all prior.
 // Explanation shown above the individual ladder. Open on load so it's read; collapsible
 // (state kept for the session) and scrolls away. Mechanics only — no outcome framing, so
 // members aren't nudged away from playing stronger opponents. Every clause maps to a real
@@ -11455,7 +11455,11 @@ W.mePair=function(name){
       fetch(B+"plat_clubs?pool_id=eq."+P+"&select=id,name,colour,options&order=name.asc").then(J).catch(function(){ return []; }),
       fetch(B+"nat_club_parent?select=group_id,club_id").then(J).catch(function(){ return []; }),
       fetch(B+"plat_matches?pool_id=eq."+P+"&discipline=eq.padel&select=club_id,match_date&limit=20000").then(J).catch(function(){ return []; }),
-      fetch(B+"plat_memberships?select=club_id&limit=20000").then(J).catch(function(){ return []; })
+      /* n117: this register's memberships only, with the person, so a region counts each member once */
+      fetch(B+"plat_clubs?pool_id=eq."+P+"&select=id").then(J).catch(function(){ return []; }).then(function(cs){
+        var ids=(Array.isArray(cs)?cs:[]).map(function(c){ return c.id; }); if(!ids.length) return [];
+        return fetch(B+"plat_memberships?club_id=in.("+ids.join(",")+")&select=club_id,individual_id&limit=50000").then(J).catch(function(){ return []; });
+      })
     ]).then(function(r){
       var clubs=Array.isArray(r[0])?r[0]:[], par=Array.isArray(r[1])?r[1]:[], ms=Array.isArray(r[2])?r[2]:[], mem=Array.isArray(r[3])?r[3]:[];
       var ids={}; clubs.forEach(function(c){ ids[Number(c.id)]=c; });
@@ -11463,7 +11467,13 @@ W.mePair=function(name){
       var count={}, week={}, last={}; var now=Date.now();
       ms.forEach(function(m){ var k=Number(m.club_id); count[k]=(count[k]||0)+1;
         var t=Date.parse(m.match_date); if(!isNaN(t)){ if(now-t<7*86400000) week[k]=(week[k]||0)+1; if(!last[k]||t>last[k]) last[k]=t; } });
-      var members={}; mem.forEach(function(x){ var k=Number(x.club_id); if(ids[k]) members[k]=(members[k]||0)+1; });
+      /* n117: A REGION'S MEMBERS ARE EVERYONE WHO BELONGS TO IT OR TO ANY OF ITS GROUPS, counted once. It counted only
+         memberships on the region's own row — but playing files a membership on the GROUP — so a region whose people all
+         belong through its groups read "0 members" while its records listed them. */
+      var regionOf=function(id){ id=Number(id); return (parentOf[id]!=null)?parentOf[id]:id; };
+      var seenIn={}; mem.forEach(function(x){ var k=Number(x.club_id); if(!ids[k]) return; var r=regionOf(k);
+        (seenIn[r]=seenIn[r]||{})[x.individual_id]=1; });
+      var members={}; Object.keys(seenIn).forEach(function(r){ members[r]=Object.keys(seenIn[r]).length; });
       var regions=clubs.filter(function(c){ return parentOf[Number(c.id)]==null; });
       var groupsOf=function(rid){ return clubs.filter(function(c){ return parentOf[Number(c.id)]===Number(rid); }); };
       var colOf=function(c){ return (c.colour&&/^#[0-9a-fA-F]{6}$/.test(c.colour))?c.colour:clubPal(c.id)[0]; };
@@ -12178,7 +12188,9 @@ W.nhOpenPair=function(name){
             ? kids.map(function(g){ return card(g.name, clubPal(g.id)[0], "A group \u00b7 its own ladder and card", PAGE+"?club="+g.id, g.id); }).join("")
             : card(nhGeneralName(), clubPal(C)[0], "The first group \u00b7 rename or add more in the ledger", PAGE+"?club="+C+"&board=1", C))
         /* two records, no toggle, each saying how wide it is */
-        + heading("The records")
+        /* n118: THE RECORDS ARE A SECTION, NOT A LINE OF TEXT. They sit in a card under a shaded band like every
+           other section on the door — the band the eye finds, and the pill "Records" lands on. */
+        + '<div class="brk"><h2>The records</h2><div style="padding:2px 0 10px">'
         /* n70: the region's records open as three plain choices rather than one word that meant several
            things. "All registered clubs" below offers the same three at register scope. */
         /* n65: PURPLE IS THE CLUB ITSELF. Fixed, never chosen: wherever you see it you are looking at the
@@ -12189,6 +12201,7 @@ W.nhOpenPair=function(name){
                     "location.href='"+PAGE+"?club="+C+"&go=records'")
         + ledgerRow("Global Ledger", "Every region, every group, every member", "#2f2f2f",
                     "location.href='"+PAGE+"?club="+C+"&go=records&all=1'")
+        + '</div></div>'
         + lastMatchRibbon(d)
         /* the glimpses — Recent matches exactly as it is */
         + '<div class="cols">'+nhFormBrk(d,"#6c3483","club") + nhMoversBrk(d,"#6c3483","club") + nhMatchesBrk(d,25,"club") + nhTourBrk(d)+'</div>'
