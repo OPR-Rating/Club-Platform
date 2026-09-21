@@ -2002,7 +2002,7 @@ const CONTROL_PANEL_ID = '1W_3zmcIc8unk7e5flO19dRrN1XndQPutruKyMrZpOjY';
 // PIN_GIDS: gids for Men and Ladies DATA sheets (not wall sheets)
 // Andre: replace MEN_GID and LADIES_GID with actual sheet tab gids
 const PIN_GIDS = {mens:'0', ladies:'951466450'};
-const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbxbv6IZfY2D2NSlGVz68kMvEwfNxO8i69I64kvHh1XVXLAbzvQ9RGZoglGWZ5uhyCcm/exec';
+/* n123: unused Google Apps Script address removed at build time */
 const GIDS = {
   players:'961698676', matches:'980623229', submissions:'1534372635',
   mens:'552393349', ladies:'1092914270',
@@ -3631,7 +3631,7 @@ const CLUB_NAME = _club.name;  // shown in the logo as "OPR · <name>"
     link.setAttribute('href', href);
   }catch(e){ /* install stays on the static manifest — no functional impact */ }
 })();
-const OPR_VERSION = "OPR-DOUBLES v2026.09.03-56 · NAT fork n121 (no voice) (of PLAT p117)";  // MANUAL PAIR CREATION REMOVED FROM ADMIN: Create a pair, Bulk create pairs and Re-derive all pairs are gone (they only made match-less ghost pairs, and Re-derive rewrote every stored initial club-wide). Pairs are born automatically at match entry. Current pairs list untouched; the underlying JS is left in place unreferenced, so no other code path changes. Includes v47 (set-score fix + double-tap guard) and all prior.
+const OPR_VERSION = "OPR-DOUBLES v2026.09.03-56 · NAT fork n123 (no voice) (of PLAT p117)";  // MANUAL PAIR CREATION REMOVED FROM ADMIN: Create a pair, Bulk create pairs and Re-derive all pairs are gone (they only made match-less ghost pairs, and Re-derive rewrote every stored initial club-wide). Pairs are born automatically at match entry. Current pairs list untouched; the underlying JS is left in place unreferenced, so no other code path changes. Includes v47 (set-score fix + double-tap guard) and all prior.
 // Explanation shown above the individual ladder. Open on load so it's read; collapsible
 // (state kept for the session) and scrolls away. Mechanics only — no outcome framing, so
 // members aren't nudged away from playing stronger opponents. Every clause maps to a real
@@ -11528,13 +11528,48 @@ W.mePair=function(name){
       w.innerHTML=h+homeBar();
     });
   }
+  /* n122: LIST ALL CLUBS. The register's shape at a glance: each region in its colour with its groups beneath, and
+     nothing to tap — no links, no dropdowns. Totals at the top. Regions in name order, groups in name order. */
+  function recClubs(sc,w){
+    w.innerHTML=recBand(sc,"List all clubs", sc.base, "Records")+recPanel(sc,"Reading the register\u2026","")+homeBar();
+    var B=SBREST(), P=W.PLAT.pool;
+    Promise.all([
+      fetch(B+"plat_clubs?pool_id=eq."+P+"&select=id,name,colour&order=name.asc").then(J).catch(function(){ return []; }),
+      fetch(B+"nat_club_parent?select=group_id,club_id").then(J).catch(function(){ return []; })
+    ]).then(function(r){
+      var clubs=Array.isArray(r[0])?r[0]:[], par=Array.isArray(r[1])?r[1]:[];
+      var ids={}; clubs.forEach(function(c){ ids[Number(c.id)]=c; });
+      var parentOf={}; par.forEach(function(x){ if(ids[Number(x.group_id)]&&ids[Number(x.club_id)]) parentOf[Number(x.group_id)]=Number(x.club_id); });
+      var regions=clubs.filter(function(c){ return parentOf[Number(c.id)]==null; });
+      var colOf=function(c){ return (c.colour&&/^#[0-9a-fA-F]{6}$/.test(c.colour))?c.colour:clubPal(c.id)[0]; };
+      var nG=clubs.length-regions.length;
+      var body='<div style="padding:10px 14px 4px;font-size:12.5px;color:#5f5770">'+regions.length+' region'+(regions.length===1?"":"s")+' \u00b7 '+nG+' group'+(nG===1?"":"s")+'</div>'
+        + regions.map(function(rg){
+            var gs=clubs.filter(function(c){ return parentOf[Number(c.id)]===Number(rg.id); });
+            return '<div style="padding:10px 14px 12px;border-top:1px solid #f0ecf6">'
+              +'<div style="display:flex;align-items:center;gap:9px"><span style="width:12px;height:12px;border-radius:50%;background:'+colOf(rg)+';flex:0 0 12px"></span>'
+              +'<span style="font-size:15.5px;font-weight:800;color:#241d33">'+esc(rg.name)+'</span>'
+              +'<span style="margin-left:auto;font-size:11.5px;color:#8a8196">'+gs.length+' group'+(gs.length===1?"":"s")+'</span></div>'
+              +(gs.length
+                ? '<div style="margin:8px 0 0 21px;display:flex;flex-wrap:wrap;gap:6px">'
+                  + gs.map(function(g){ return '<span style="background:'+colOf(g)+';color:#fff;border-radius:99px;padding:3px 11px;font-size:12px;font-weight:800">'+esc(g.name)+'</span>'; }).join("")
+                  +'</div>'
+                : '<div style="margin:6px 0 0 21px;font-size:12px;color:#8a8196">No groups yet</div>')
+              +'</div>';
+          }).join("");
+      w.innerHTML=recBand(sc,"List all clubs", sc.base, "Records")+recPanel(sc,"Every region and its groups", body)+homeBar();
+    });
+  }
   function newRecordsPage(){
     var sc=recScope(); var w=nhWrap(); if(!w) return;
     if(sc.view==="members")  return recMembers(sc,w);
     if(sc.view==="profiles") return recProfiles(sc,w);
     if(sc.view==="ladders")  return recLadders(sc,w);
+    if(sc.view==="clubs" && sc.wide) return recClubs(sc,w);
     w.innerHTML = recBand(sc, sc.wide?"Every region, every group, every member \u2014 one rating each":"Members, profiles and the ladders",
                           PAGE+"?club="+sc.C, W.PLAT.name||"back")
+      /* n122: the register's shape — every region and its groups — on the Global records only */
+      + (sc.wide ? recPill(sc,"List all clubs", "Every region, and the groups within it", sc.base+"&view=clubs") : "")
       + recPill(sc,"List all members", sc.wide?"Everyone in the register, with their group":"Everyone here, with their group", sc.base+"&view=members")
       /* n86: PLAT'S TEAM PROFILE PAGE, in the region's scope — the same page a group shows, exactly. The one
          change: a name opens the member's single profile page, not plat's partnerships screen. */
