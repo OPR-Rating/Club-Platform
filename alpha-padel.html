@@ -3631,7 +3631,7 @@ const CLUB_NAME = _club.name;  // shown in the logo as "OPR · <name>"
     link.setAttribute('href', href);
   }catch(e){ /* install stays on the static manifest — no functional impact */ }
 })();
-const OPR_VERSION = "OPR-DOUBLES v2026.09.03-56 · NAT fork n114 (no voice) (of PLAT p117)";  // MANUAL PAIR CREATION REMOVED FROM ADMIN: Create a pair, Bulk create pairs and Re-derive all pairs are gone (they only made match-less ghost pairs, and Re-derive rewrote every stored initial club-wide). Pairs are born automatically at match entry. Current pairs list untouched; the underlying JS is left in place unreferenced, so no other code path changes. Includes v47 (set-score fix + double-tap guard) and all prior.
+const OPR_VERSION = "OPR-DOUBLES v2026.09.03-56 · NAT fork n116 (no voice) (of PLAT p117)";  // MANUAL PAIR CREATION REMOVED FROM ADMIN: Create a pair, Bulk create pairs and Re-derive all pairs are gone (they only made match-less ghost pairs, and Re-derive rewrote every stored initial club-wide). Pairs are born automatically at match entry. Current pairs list untouched; the underlying JS is left in place unreferenced, so no other code path changes. Includes v47 (set-score fix + double-tap guard) and all prior.
 // Explanation shown above the individual ladder. Open on load so it's read; collapsible
 // (state kept for the session) and scrolls away. Mechanics only — no outcome framing, so
 // members aren't nudged away from playing stronger opponents. Every clause maps to a real
@@ -9813,9 +9813,37 @@ async function clRemove(id, label){
       tour:null };
   }
   function nhTag(){ return NHEG?'<span style="margin-left:auto;font-size:10.5px;letter-spacing:.03em;text-transform:none;color:#8a6d3b;background:#fdf6e3;border:1px solid #f0e2c0;border-radius:99px;padding:2px 8px;font-weight:700">example until you play</span>':''; }
+  /* n115: SPEED. Every tap loads a whole page, and every page asked the database for the region's matches, pairs,
+     people and tournaments from scratch. They are now kept in the tab for 60 seconds, so moving door → group →
+     profile → back draws from memory. Anything that WRITES (a score, an edit, a delete) drops the copy at once,
+     so a score just entered is never hidden behind a stale page. */
+  var NH_TTL=60000;
+  function nhCacheKey(boards){ return "nh_cache_"+(W.PLAT.pool||0)+"_"+boards.slice().sort().join("-"); }
+  function nhCacheGet(k){ try{ var v=JSON.parse(sessionStorage.getItem(k)||"null"); if(v && (Date.now()-v.t)<NH_TTL) return v.d; }catch(e){} return null; }
+  function nhCachePut(k,d){ try{ sessionStorage.setItem(k, JSON.stringify({t:Date.now(),d:d})); }catch(e){} }
+  function nhCacheDrop(){ try{ Object.keys(sessionStorage).forEach(function(k){ if(k.indexOf("nh_cache_")===0) sessionStorage.removeItem(k); }); }catch(e){} }
+  W.nhCacheDrop=nhCacheDrop;
+  /* n116: A PAGE RESTORED FROM THE BROWSER'S MEMORY IS REDRAWN. The phone's back button can show a stored snapshot
+     of the previous page instead of loading it — the door as it was BEFORE the score was entered, which is exactly
+     how someone concludes "it didn't take" and enters it again. A restored page now reloads itself, and if anything
+     was written in between, it reloads from the database rather than the kept copy. */
+  W.addEventListener("pageshow", function(ev){
+    try{ if(ev && ev.persisted){ location.reload(); } }catch(e){}
+  });
+  /* any write through fetch clears the copy — covers score entry, edits, admin, deletes, whatever screen sends it */
+  (function(){
+    if(W.__nhWriteHook) return; W.__nhWriteHook=1;
+    var f0=W.fetch;
+    W.fetch=function(u,o){
+      try{ var m=String((o&&o.method)||"GET").toUpperCase(); if(m!=="GET" && m!=="HEAD") nhCacheDrop(); }catch(e){}
+      return f0.apply(this, arguments);
+    };
+  })();
   function nhFetch(){
     if(NEW.data) return Promise.resolve(NEW.data);
     var B=SBREST(), boards=(W.PLAT.myBoards&&W.PLAT.myBoards.length)?W.PLAT.myBoards:[W.PLAT.cid];
+    var CK=nhCacheKey(boards), hit=nhCacheGet(CK);
+    if(hit){ NEW.data=hit; return Promise.resolve(hit); }
     var inList="club_id=in.("+boards.join(",")+")";
     return Promise.all([
       fetch(B+"plat_matches?"+inList+"&discipline=eq.padel&select=id,club_id,match_date,match_type,event,t1p1,t1p2,t2p1,t2p2,t1_sets,t2_sets,t1_games,t2_games,set_scores,display_t1,display_t2,rating_delta&order=match_date.desc,id.desc&limit=120").then(J),
@@ -9826,6 +9854,7 @@ async function clRemove(id, label){
       var live=(r[3]||[]).filter(function(x){ return x.active&&!x.archived; });
       NEW.data={matches:r[0]||[],pairs:r[1]||[],people:r[2]||[],
                 tour:live[0]||null, tours:live};        /* n81: a club can be running several at once */
+      nhCachePut(CK, NEW.data);
       return NEW.data;
     }).catch(function(){ NEW.data={matches:[],pairs:[],people:[],tour:null}; return NEW.data; });
   }
@@ -10585,6 +10614,9 @@ async function clRemove(id, label){
   var FACES=null, FACESAT=0;
   function nhFaces(){
     if(FACES && (Date.now()-FACESAT)<60000) return Promise.resolve(FACES);
+    /* n115: the faces join the minute-long copy, so moving between pages does not fetch every photo list again */
+    var FK="nh_cache_faces_"+(W.PLAT.pool||0), fh=nhCacheGet(FK);
+    if(fh){ FACES=fh; FACESAT=Date.now(); return Promise.resolve(FACES); }
     return Promise.all([
       fetch(SBREST()+"nat_v_member_claim?pool_id=eq."+W.PLAT.pool+"&select=individual_id,photo").then(J).catch(function(){ return []; }),
       nhFetch()
@@ -10593,7 +10625,7 @@ async function clRemove(id, label){
       var byId={}; people.forEach(function(p){ if(p && p.id!=null) byId[Number(p.id)]=p.full_name; });
       var map={};
       claims.forEach(function(c){ var n=byId[Number(c.individual_id)]; if(n && c.photo) map[n]=c.photo; });
-      FACES=map; FACESAT=Date.now(); return map;
+      FACES=map; FACESAT=Date.now(); nhCachePut(FK,map); return map;
     }).catch(function(){ FACES={}; FACESAT=Date.now(); return FACES; });
   }
   /* a disc: the person's picture if they have claimed their name, their initials if not */
@@ -10667,10 +10699,13 @@ async function clRemove(id, label){
      once per page against the register's people; a stale claim is dropped and the door reads My page again. */
   function meVerify(){
     var n=meName(); if(!n) return Promise.resolve(false);
+    /* n115: checked once per name per visit, not on every page */
+    try{ if(sessionStorage.getItem("nh_me_ok_"+(W.PLAT.pool||0))===n) return Promise.resolve(true); }catch(e){}
     return fetch(SBREST()+"plat_padel_v_pool_individuals?pool_id=eq."+W.PLAT.pool+"&full_name=eq."+encodeURIComponent(n)+"&select=id&limit=1")
       .then(J).then(function(r){
         var ok=Array.isArray(r)&&r.length>0;
         if(!ok){ try{ localStorage.removeItem(meKey()); }catch(e){} }
+        else { try{ sessionStorage.setItem("nh_me_ok_"+(W.PLAT.pool||0), n); }catch(e){} }
         return ok;
       }).catch(function(){ return true; });   /* offline: keep it — never punish a bad connection */
   }
@@ -11873,8 +11908,13 @@ W.nhOpenPair=function(name){
   /* n113: JUMP, DON'T SWAP. One row of pills under the band — Form · Climb · Fall · Move · Recent · Card (a group) or
      Form · Move · Recent · Tournaments (the door). Tapping one scrolls that bracket into view; nothing is hidden.
      Only brackets actually on the page get a pill, so a quiet week never shows a pill that goes nowhere. */
-  var NH_JUMP=[["Form",/^\s*in form/i],["Climb",/^\s*biggest climb/i],["Fall",/^\s*steepest fall/i],["Move",/^\s*movers/i],
-               ["Recent",/^\s*recent matches/i],["Card",/^\s*card matches/i],["Tournaments",/^\s*recent tournament/i]];
+  /* n115: Andre's rule — a pill takes you somewhere you cannot already see. On a group, Form is at the top and Fall
+     sits under Climb, and tournaments follow Recent, so none of those earns a pill. Up returns to the top. */
+  /* Records is on the door because with several groups it sits well below the fold, and it matters */
+  var NH_JUMP_DOOR =[["Form & Move",/^\s*in form/i],["Recent",/^\s*recent matches/i],["Tournaments",/^\s*recent tournament/i],
+                     ["Records",/^\s*the records\s*$/i],["Up",null]];
+  var NH_JUMP_GROUP=[["Climb",/^\s*biggest climb/i],["Move",/^\s*movers/i],["Recent",/^\s*recent matches/i],["Card",/^\s*card matches/i],["Up",null]];
+  var NH_JUMP=NH_JUMP_GROUP;
   /* n114: AIM BELOW WHAT IS PINNED. The band is sticky and so is the strip, and the page scrolls inside #nh, not
      the window — so a plain scrollIntoView landed short by the band's height, mid-bracket. The target is the
      bracket's own top, less the band and the strip, in #nh's coordinates; one correction after the smooth scroll
@@ -11890,6 +11930,12 @@ W.nhOpenPair=function(name){
     return h+6;
   }
   W.nhJumpTo=function(k){
+    if(k==="__top"){
+      var s0=nhScroller();
+      try{ s0.scrollTo({top:0,behavior:"smooth"}); }catch(e){ s0.scrollTop=0; }
+      try{ window.scrollTo({top:0,behavior:"smooth"}); }catch(e){}
+      return;
+    }
     var el=document.getElementById("nhj_"+k); if(!el) return;
     var sc=nhScroller();
     var aim=function(smooth){
@@ -11907,14 +11953,20 @@ W.nhOpenPair=function(name){
       if(go || !(W.PLAT.cid>0)) return;                       /* doors and group boards only */
       var brks=[].slice.call(nh.querySelectorAll(".brk"));
       if(!brks.length) return;
+      /* the door's section titles ("The records") are plain lines, not brackets — they can be jumped to as well */
+      brks=brks.concat([].slice.call(nh.children).filter(function(x){ return x.tagName==="DIV" && !x.classList.contains("brk") && (x.textContent||"").trim().length<30; }));
+      /* n115: the door and a group each get their own set */
+      var set = W.PLAT.clubDoor ? NH_JUMP_DOOR : NH_JUMP_GROUP;
       var found=[];
-      NH_JUMP.forEach(function(j){
-        var b=brks.filter(function(x){ var h=x.firstElementChild; var t=(h?h.textContent:x.textContent)||""; return j[1].test(t); })[0];
-        if(b){ b.id="nhj_"+j[0]; found.push(j[0]); }
+      set.forEach(function(j, idx){
+        if(!j[1]){ found.push({k:j[0], id:"__top"}); return; }          /* Up: no bracket, back to the top */
+        var b=brks.filter(function(x){ var h=x.classList.contains("brk")?x.firstElementChild:x; var t=(h?h.textContent:x.textContent)||""; return j[1].test(t); })[0];
+        if(b){ b.id="nhj_"+idx; found.push({k:j[0], id:String(idx)}); }
       });
-      if(found.length<2) return;                              /* a strip with one pill is noise */
+      if(found.filter(function(f){ return f.id!=="__top"; }).length<1) return;   /* nothing to jump to */
       var strip=document.createElement("div"); strip.id="nhJump"; strip.setAttribute("data-plat-keep","1");
-      strip.innerHTML=found.map(function(k){ return '<button onclick="window.nhJumpTo(\''+k+'\')">'+k+'</button>'; }).join("");
+      strip.innerHTML=found.map(function(f){
+        return '<button onclick="window.nhJumpTo(\''+f.id+'\')">'+esc(f.k)+'</button>'; }).join("");
       var band=nh.querySelector(".band");
       if(band && band.nextSibling) nh.insertBefore(strip, band.nextSibling); else nh.insertBefore(strip, nh.firstChild);
       /* n114: pinned directly beneath the sticky band, never over it */
