@@ -3631,7 +3631,7 @@ const CLUB_NAME = _club.name;  // shown in the logo as "OPR · <name>"
     link.setAttribute('href', href);
   }catch(e){ /* install stays on the static manifest — no functional impact */ }
 })();
-const OPR_VERSION = "OPR-DOUBLES v2026.09.03-56 · NAT fork n118 (no voice) (of PLAT p117)";  // MANUAL PAIR CREATION REMOVED FROM ADMIN: Create a pair, Bulk create pairs and Re-derive all pairs are gone (they only made match-less ghost pairs, and Re-derive rewrote every stored initial club-wide). Pairs are born automatically at match entry. Current pairs list untouched; the underlying JS is left in place unreferenced, so no other code path changes. Includes v47 (set-score fix + double-tap guard) and all prior.
+const OPR_VERSION = "OPR-DOUBLES v2026.09.03-56 · NAT fork n120 (no voice) (of PLAT p117)";  // MANUAL PAIR CREATION REMOVED FROM ADMIN: Create a pair, Bulk create pairs and Re-derive all pairs are gone (they only made match-less ghost pairs, and Re-derive rewrote every stored initial club-wide). Pairs are born automatically at match entry. Current pairs list untouched; the underlying JS is left in place unreferenced, so no other code path changes. Includes v47 (set-score fix + double-tap guard) and all prior.
 // Explanation shown above the individual ladder. Open on load so it's read; collapsible
 // (state kept for the session) and scrolls away. Mechanics only — no outcome framing, so
 // members aren't nudged away from playing stronger opponents. Every clause maps to a real
@@ -10127,7 +10127,7 @@ async function clRemove(id, label){
      readable: where it started, where it ended, and the high and low it touched, with a dot on the last
      point. The series is turned into real RATINGS wherever the person's current rating is known, so the
      numbers on the chart are the numbers on their profile. */
-  function nhChart(vals,col,endLabel){
+  function nhChart(vals,col,endLabel,seedLabel,startWord){
     if(!vals || vals.length<2) return "";
     var lo=Math.min.apply(null,vals), hi=Math.max.apply(null,vals), sp=(hi-lo)||1;
     var W2=260, H=74, top=12, bot=58, step=W2/(vals.length-1);
@@ -10147,7 +10147,7 @@ async function clRemove(id, label){
       +'<text x="2" y="'+(+y(lo)+11)+'" font-size="9" fill="#8a8196">low '+Math.round(lo)+'</text>'
       +'</svg>'
       +'<div style="display:flex;justify-content:space-between;font-size:11.5px;color:#5f5770;margin-top:2px">'
-      +'<span>started '+Math.round(first)+'</span>'
+      +'<span>'+(startWord||"started")+' '+Math.round(seedLabel!=null?seedLabel:first)+'</span>'
       +'<span style="font-weight:800;color:'+col+'">'+esc(endLabel||("now "+Math.round(last)))+'</span></div>';
   }
   /* a cumulative run of deltas, expressed as the ratings they produced */
@@ -10163,19 +10163,24 @@ async function clRemove(id, label){
     var seedOf=null;
     (people||[]).forEach(function(p){ if(p && p.full_name===mv.name){ if(p.pool_seed!=null) seedOf=Math.round(p.pool_seed);
       else if(seedOf==null && p.seed_rating!=null) seedOf=Math.round(p.seed_rating); } });
-    var pts=nhTrail(mv.name,ms);
+    /* n119: A WEEKLY CHART DRAWS THE WEEK. n107 started this line at the registration rating and pinned its end to
+       today's, with a whole board's history in between — so a player who climbed this week could be drawn falling
+       (Brian: +38, drawn 1300 → 1147) and the reverse (Kerry). It now uses only the window's matches — the same ones
+       that make the "+38 this week" — drawn back from today's rating: the end is true, the shape is the week, and
+       the first point is where the week began, labelled "from" because it is not a registration rating. */
+    nhWindow(ms);
+    var wk=ms.filter(function(m){ return ago(m.match_date)<=NHWIN; });
+    var pts=nhTrail(mv.name,wk);
     var col=mv.club?clubPal(mv.club)[0]:ink, up=(mv.move>=0);
     var body;
-    if(pts.length<2){ body='<div style="font-size:12px;color:#6f6780;padding:10px 4px">Not enough rated matches yet to draw a line.</div>'; }
+    if(pts.length<1){ body='<div style="font-size:12px;color:#6f6780;padding:10px 4px">Not enough rated matches yet to draw a line.</div>'; }
     else {
       /* n68: shown as real ratings, with the numbers on it */
       var ind=(NEW.data&&NEW.data.people||[]).filter(function(x){ return x.full_name===mv.name; })[0];
       var cur=ind?Math.round(ind.current_rating||ind.seed_rating||0):null;
       /* n107: the seed on record — this page's own people carry it — so "started" is the player's seed */
-      var sd=(seedOf!=null)?seedOf:((ind&&ind.pool_seed!=null)?Math.round(ind.pool_seed):((ind&&ind.seed_rating!=null)?Math.round(ind.seed_rating):null));
-      var series=(sd!=null)?[sd].concat(pts.map(function(v){ return Math.round(sd+v); })):nhAsRatings(pts,cur);
-      if(cur!=null && series.length) series[series.length-1]=cur;
-      body=nhChart(series, col, cur?("now "+cur):null, sd);
+      var series=nhAsRatings(pts,cur).map(function(v){ return Math.round(v); });
+      body=nhChart(series, col, cur?("now "+cur):null, series.length?series[0]:null, "from");
     }
     return '<div class="brk"><h2 style="display:flex;align-items:center;gap:8px">'+esc(title)+' '+nhTag()+'</h2>'
       +'<div style="padding:4px 14px 12px">'
@@ -12252,11 +12257,11 @@ W.nhOpenPair=function(name){
         '<div class="band" style="background:linear-gradient(135deg,'+ink+','+deep+')">'
         + '<div class="mark"><span class="logo">OPR</span>'+esc(club?club.name:(W.PLAT.poolName||"Open Padel Ratings"))+'</div>'
         + '<h1>'+esc(W.PLAT.name||"")+'</h1>'
-        + '<div class="sub">'+(W.PLAT.parentId?"Its own board, ladder, tournaments and court cards":"Open to every member \u2014 matches outside the groups")+'</div>'
-        + '<div class="pulse">'+(club?('<a href="'+PAGE+'?club='+club.id+'" onclick="return window.nhBack(this.href)">\u2039 '+esc(club.name)+'</a>'):'')
-        + '<span class="live">'+wk+(wk===1?' match':' matches')+' '+nhWhen()+'</span>'
-        /* n58: no mover named in the band — it repeated the same person on every screen. A count instead. */
-        + '<span>'+(NHEG?0:(d.matches||[]).length)+' on record</span>'+'</div></div>'
+        /* n120: THE GROUP'S BANNER USES AS LITTLE ROOM AS IT CAN. The description line went (it told a member nothing new),
+           "on record" went (the tiles below carry the counts), the week's count is short, and the pills never wrap —
+           a long region name shortens with an ellipsis instead — so Enter a score stays in view. */
+        + '<div class="pulse" style="flex-wrap:nowrap;overflow:hidden">'+(club?('<a href="'+PAGE+'?club='+club.id+'" onclick="return window.nhBack(this.href)" style="min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">\u2039 '+esc(club.name)+'</a>'):'')
+        + '<span class="live" style="flex:0 0 auto;white-space:nowrap">'+wk+' '+nhWhen()+'</span>'+'</div></div>'
         /* n52: four tiles, as the place page had before — top pair and biggest move are the two people read */
         + '<div class="tiles">'
         + '<div class="tile"><div class="k">'+esc(nhWhen().replace("this week","This week"))+'</div><div class="v">'+wk+'</div><div class="n">'+(NHEG?"no matches yet":"matches here")+'</div></div>'
