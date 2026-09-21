@@ -3631,7 +3631,7 @@ const CLUB_NAME = _club.name;  // shown in the logo as "OPR · <name>"
     link.setAttribute('href', href);
   }catch(e){ /* install stays on the static manifest — no functional impact */ }
 })();
-const OPR_VERSION = "OPR-DOUBLES v2026.09.03-56 · NAT fork n113 (no voice) (of PLAT p117)";  // MANUAL PAIR CREATION REMOVED FROM ADMIN: Create a pair, Bulk create pairs and Re-derive all pairs are gone (they only made match-less ghost pairs, and Re-derive rewrote every stored initial club-wide). Pairs are born automatically at match entry. Current pairs list untouched; the underlying JS is left in place unreferenced, so no other code path changes. Includes v47 (set-score fix + double-tap guard) and all prior.
+const OPR_VERSION = "OPR-DOUBLES v2026.09.03-56 · NAT fork n114 (no voice) (of PLAT p117)";  // MANUAL PAIR CREATION REMOVED FROM ADMIN: Create a pair, Bulk create pairs and Re-derive all pairs are gone (they only made match-less ghost pairs, and Re-derive rewrote every stored initial club-wide). Pairs are born automatically at match entry. Current pairs list untouched; the underlying JS is left in place unreferenced, so no other code path changes. Includes v47 (set-score fix + double-tap guard) and all prior.
 // Explanation shown above the individual ladder. Open on load so it's read; collapsible
 // (state kept for the session) and scrolls away. Mechanics only — no outcome framing, so
 // members aren't nudged away from playing stronger opponents. Every clause maps to a real
@@ -9957,10 +9957,10 @@ async function clRemove(id, label){
      +"#nhJump{position:sticky;top:0;z-index:40;display:flex;gap:7px;overflow-x:auto;white-space:nowrap;scrollbar-width:none;"
      +"background:rgba(255,255,255,.96);backdrop-filter:blur(6px);padding:9px 12px;border-bottom:1px solid #eee7f3;margin:0}"
      +"#nhJump::-webkit-scrollbar{display:none}"
-     +"#nhJump button{flex:0 0 auto;font:inherit;font-size:12.5px;font-weight:800;padding:7px 14px;border-radius:99px;cursor:pointer;"
+     +"#nhJump button{flex:1 0 auto;text-align:center;font:inherit;font-size:12.5px;font-weight:800;padding:7px 12px;border-radius:99px;cursor:pointer;"
      +"border:1.5px solid var(--nhc,#6c3483);background:#fff;color:var(--nhc,#6c3483)}"
      +"#nhJump button:active{background:var(--nhc,#6c3483);color:#fff}"
-     +"#nh .brk{scroll-margin-top:62px}"
+     /* the jump itself is computed in nhJumpTo; the strip's top is set to sit exactly under the sticky band */
      +"#nh .rows{padding:2px 6px 4px}"
      +"#nh .row{display:flex;align-items:center;gap:11px;padding:9px 8px;width:100%;background:none;border:none;text-align:left;font:inherit;color:inherit;cursor:pointer}"
      +"#nh .row+.row{border-top:1px solid #efeaf5}"
@@ -11875,9 +11875,29 @@ W.nhOpenPair=function(name){
      Only brackets actually on the page get a pill, so a quiet week never shows a pill that goes nowhere. */
   var NH_JUMP=[["Form",/^\s*in form/i],["Climb",/^\s*biggest climb/i],["Fall",/^\s*steepest fall/i],["Move",/^\s*movers/i],
                ["Recent",/^\s*recent matches/i],["Card",/^\s*card matches/i],["Tournaments",/^\s*recent tournament/i]];
+  /* n114: AIM BELOW WHAT IS PINNED. The band is sticky and so is the strip, and the page scrolls inside #nh, not
+     the window — so a plain scrollIntoView landed short by the band's height, mid-bracket. The target is the
+     bracket's own top, less the band and the strip, in #nh's coordinates; one correction after the smooth scroll
+     settles, because faces and pills can still be arriving. */
+  function nhScroller(){
+    var nh=document.getElementById("nh"); var e=nh;
+    while(e && e!==document.body){ var st=getComputedStyle(e); if(/(auto|scroll)/.test(st.overflowY) && e.scrollHeight>e.clientHeight) return e; e=e.parentElement; }
+    return document.scrollingElement||document.documentElement;
+  }
+  function nhPinnedHeight(){
+    var h=0; var band=document.querySelector("#nh .band"); if(band && getComputedStyle(band).position==="sticky") h+=band.offsetHeight;
+    var strip=document.getElementById("nhJump"); if(strip) h+=strip.offsetHeight;
+    return h+6;
+  }
   W.nhJumpTo=function(k){
     var el=document.getElementById("nhj_"+k); if(!el) return;
-    try{ el.scrollIntoView({behavior:"smooth",block:"start"}); }catch(e){ el.scrollIntoView(); }
+    var sc=nhScroller();
+    var aim=function(smooth){
+      var top=el.getBoundingClientRect().top - (sc===document.scrollingElement||sc===document.documentElement ? 0 : sc.getBoundingClientRect().top);
+      var y=sc.scrollTop + top - nhPinnedHeight();
+      try{ sc.scrollTo({top:Math.max(0,y), behavior:smooth?"smooth":"auto"}); }catch(e){ sc.scrollTop=Math.max(0,y); }
+    };
+    aim(true); setTimeout(function(){ aim(false); }, 650);
   };
   function nhJumpStrip(){
     try{
@@ -11897,6 +11917,9 @@ W.nhOpenPair=function(name){
       strip.innerHTML=found.map(function(k){ return '<button onclick="window.nhJumpTo(\''+k+'\')">'+k+'</button>'; }).join("");
       var band=nh.querySelector(".band");
       if(band && band.nextSibling) nh.insertBefore(strip, band.nextSibling); else nh.insertBefore(strip, nh.firstChild);
+      /* n114: pinned directly beneath the sticky band, never over it */
+      var place=function(){ var bh=(band && getComputedStyle(band).position==="sticky") ? band.offsetHeight : 0; strip.style.top=bh+"px"; };
+      place(); window.addEventListener("resize", place);
     }catch(e){}
   }
   setInterval(nhJumpStrip, 500);
@@ -12084,9 +12107,9 @@ W.nhOpenPair=function(name){
         + '<span>'+((d.pairs||[]).length)+' pairs on record</span>'
         + (((d.tours||[]).length>1)?('<span>'+d.tours.length+' tournaments running</span>'):(d.tour?('<span>'+esc(d.tour.name)+'</span>'):''))+'</div></div>'
         /* where am I */
-        + '<div style="margin:10px 14px 0;font-size:12px;color:#7a6f8a"><span style="font-weight:800;color:#241d33">'+esc(W.PLAT.name||"")+'</span></div>'
+        /* n114: the region's name was repeated here under the banner that already says it — removed */
         /* the one thing they came for */
-        + '<button onclick="window.doorPick(\'score\')" style="display:block;width:calc(100% - 24px);margin:12px 12px 0;'
+        + '<button onclick="window.doorPick(\'score\')" style="display:block;width:calc(100% - 24px);margin:16px 12px 4px;'
         + 'background:linear-gradient(135deg,#d4f425,#b8d400);border:none;border-radius:16px;padding:16px;text-align:center;'
         + 'font:inherit;font-weight:800;font-size:16px;color:#1a1a1a;cursor:pointer">+ &nbsp;Enter a score</button>'
         + '<div id="doorWhere" style="display:none;padding:2px 12px 4px"></div>'
