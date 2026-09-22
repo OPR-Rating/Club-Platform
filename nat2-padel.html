@@ -3665,7 +3665,7 @@ const CLUB_NAME = _club.name;  // shown in the logo as "OPR · <name>"
     link.setAttribute('href', href);
   }catch(e){ /* install stays on the static manifest — no functional impact */ }
 })();
-const OPR_VERSION = "OPR-DOUBLES v2026.09.03-56 · NAT fork n136 (no voice) (of PLAT p117)";  // MANUAL PAIR CREATION REMOVED FROM ADMIN: Create a pair, Bulk create pairs and Re-derive all pairs are gone (they only made match-less ghost pairs, and Re-derive rewrote every stored initial club-wide). Pairs are born automatically at match entry. Current pairs list untouched; the underlying JS is left in place unreferenced, so no other code path changes. Includes v47 (set-score fix + double-tap guard) and all prior.
+const OPR_VERSION = "OPR-DOUBLES v2026.09.03-56 · NAT fork n137 (no voice) (of PLAT p117)";  // MANUAL PAIR CREATION REMOVED FROM ADMIN: Create a pair, Bulk create pairs and Re-derive all pairs are gone (they only made match-less ghost pairs, and Re-derive rewrote every stored initial club-wide). Pairs are born automatically at match entry. Current pairs list untouched; the underlying JS is left in place unreferenced, so no other code path changes. Includes v47 (set-score fix + double-tap guard) and all prior.
 // Explanation shown above the individual ladder. Open on load so it's read; collapsible
 // (state kept for the session) and scrolls away. Mechanics only — no outcome framing, so
 // members aren't nudged away from playing stronger opponents. Every clause maps to a real
@@ -10605,7 +10605,7 @@ async function clRemove(id, label){
        as general play, the ledger tacked on at the end. There is no club and no general play now: there is
        the REGION'S LEDGER, which makes groups and members, and the GROUPS, each with its own room. */
     var body='<div class="brk"><h2>Region Ledger \u00b7 '+esc(club.name)+'</h2><div class="rows">'
-      + pill(esc(club.name)+" \u2014 Region Ledger", "members, groups, colours, codes, backups", "#6c3483",
+      + pill(esc(club.name)+" \u2014 Region Ledger", "members, groups, colours, codes, backups", regCol(C),
              "location.href='"+PAGE+"?club=0&pool="+W.PLAT.pool+"&nat="+C+"&go=admin&from="+C+"'")
       +'</div></div>';
     body+='<div class="brk"><h2>Groups</h2><div class="rows">'
@@ -10700,8 +10700,8 @@ async function clRemove(id, label){
        that led here. The REGISTER's ledger, which spans every club, stays charcoal. Two widths, two colours,
        and you can tell at a glance which one you are standing on. */
     var isClubLedger = !!W.PLAT.nat;
-    var lcol = isClubLedger ? "#6c3483" : "#2f2f2f";
-    nhCSS(); nhOneWayIn(); nhInk(lcol); nhHeaderSkin(lcol, isClubLedger?"#1d0a41":"#141414");
+    var lcol = isClubLedger ? regCol(W.PLAT.nat) : "#2f2f2f", ldeep = isClubLedger ? regDeep(lcol) : "#141414";
+    nhCSS(); nhOneWayIn(); nhInk(lcol); nhHeaderSkin(lcol, ldeep);
     try{ nhBarMount(); }catch(e){}   /* n63: the way home was missing from every ledger page */
     var host=document.getElementById("homeScreen"); if(!host) return;
     var isClub=!!W.PLAT.nat, name=isClub?(W.PLAT.natName||"Club"):(W.PLAT.poolName||"All Registered Clubs");
@@ -10721,7 +10721,7 @@ async function clRemove(id, label){
       /* the first-frame mask is "#homeScreen > *:not(#nh)", which outranks a plain "#homeScreen > *".
          The ledger keeps its own page, so everything in it is revealed with a rule that outranks the mask. */
       sv.textContent="html body #homeScreen{visibility:visible!important}html body #homeScreen > *{visibility:visible!important}"
-        +".nhband{color:#fff;padding:15px 16px 17px;border-radius:0;background:linear-gradient(135deg,"+lcol+","+(isClubLedger?"#1d0a41":"#141414")+");width:100%;margin:0 0 8px;box-sizing:border-box}"
+        +".nhband{color:#fff;padding:15px 16px 17px;border-radius:0;background:linear-gradient(135deg,"+lcol+","+ldeep+");width:100%;margin:0 0 8px;box-sizing:border-box}"
         +"@media(min-width:880px){.nhband{border-radius:0 0 18px 18px}}"
         +".nhband .mark{display:inline-flex;align-items:center;gap:9px;font-size:11px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;opacity:.95}"
         +".nhband .mark .logo{font-size:17px;letter-spacing:.06em;text-transform:none;background:rgba(255,255,255,.14);border:1px solid rgba(255,255,255,.34);border-radius:9px;padding:2px 9px}"
@@ -10806,6 +10806,16 @@ async function clRemove(id, label){
     }).catch(function(){ FACES={}; FACESAT=Date.now(); return FACES; });
   }
   /* a disc: the person's picture if they have claimed their name, their initials if not */
+  /* n137: A REGION WEARS ITS OWN COLOUR. Picked in its ledger like any group's; OPR purple until someone
+     does. While it is OPR purple, everything looks exactly as before — the door keeps OPR's own banner. */
+  function regCol(id){
+    var r=(id!=null)?id:(W.PLAT.parentId||W.PLAT.nat||W.PLAT.cid);
+    var c=(W.PLAT.clubs||[]).filter(function(x){ return Number(x.id)===Number(r); })[0];
+    var col=c&&c.colour; return /^#[0-9a-fA-F]{6}$/.test(col||"")?col:"#6c3483";
+  }
+  function regDeep(col){ return String(col).toLowerCase()==="#6c3483" ? "#1d0a41" : nhDeep(col,.58); }
+  function regOwn(col){ return String(col).toLowerCase()!=="#6c3483"; }
+  function regBandStyle(col){ return regOwn(col)?' style="background:linear-gradient(105deg,'+regDeep(col)+','+col+' 58%,'+nhDeep(col,.2)+')"':''; }
   function avRing(col){ return 'background:#fff;color:'+col+';border:2px solid '+col+';'; }
   function nhFace(name,col,size){
     var px=size||30;
@@ -11431,7 +11441,7 @@ W.mePair=function(name){
     W.__mePeople=(all.people||[]).map(function(p){ return p.full_name; })
       .filter(function(v,i,a){ return v && a.indexOf(v)===i; }).sort();
     W.__mePeopleFull=all.people||[];
-    return '<div class="band opr"><div class="mark"><span class="logo">OPR</span>Open Padel Ratings</div>'
+    return '<div class="band opr"'+regBandStyle(regCol())+'><div class="mark"><span class="logo">OPR</span>Open Padel Ratings</div>'
       +'<h1>Which one is you?</h1><div class="sub">'+esc(club.name)+' \u00b7 tap your name once and this becomes your page</div>'
       +'<div class="pulse"><a href="'+PAGE+'?club='+club.id+'" onclick="return window.nhBack(this.href)">\u2039 '+esc(club.name)+'</a></div></div>'
       +'<div class="brk"><h2>Find your name</h2><div style="padding:0 12px 12px">'
@@ -11593,7 +11603,7 @@ W.mePair=function(name){
     var wide=(q.get("all")==="1");
     var C=(W.PLAT.parentId||W.PLAT.cid||0);
     return { wide:wide, C:C, view:(q.get("view")||"").toLowerCase(),
-             col:wide?"#2f2f2f":"#6c3483", deep:wide?"#141414":"#1d0a41",
+             col:wide?"#2f2f2f":regCol(), deep:wide?"#141414":regDeep(regCol()),
              title:wide?"Global Ledger":(W.PLAT.name||"The region"),
              boards:(W.PLAT.myBoards&&W.PLAT.myBoards.length)?W.PLAT.myBoards:[C],
              base:PAGE+"?club="+C+"&go=records"+(wide?"&all=1":"") };
@@ -11697,8 +11707,8 @@ W.mePair=function(name){
           +'</div>'
           +'<div style="border-top:1px solid #f0ecf6;margin-top:8px;padding-top:6px">'
           + link("Door", PAGE+"?club="+rg.id, rc, true)
-          + link("Records", PAGE+"?club="+rg.id+"&go=records", "#6c3483", false)
-          + link("Region Ledger admin", PAGE+"?club=0&pool="+P+"&nat="+rg.id+"&go=admin&from="+rg.id, "#6c3483", false)
+          + link("Records", PAGE+"?club="+rg.id+"&go=records", regCol(rg.id), false)
+          + link("Region Ledger admin", PAGE+"?club=0&pool="+P+"&nat="+rg.id+"&go=admin&from="+rg.id, regCol(rg.id), false)
           +'</div></div>';
       });
       h+='</div>';
@@ -12067,7 +12077,7 @@ W.nhOpenPair=function(name){
     var box=document.getElementById("nhRecordsBox"); if(!box) return;
     if(box.dataset.open===String(C)){ box.style.display="none"; box.dataset.open=""; return; }
     var wide=(Number(C)===0);
-    var col=wide?"#2f2f2f":"#6c3483";
+    var col=wide?"#2f2f2f":regCol(C);
     var scope=wide?("?club=0&pool="+W.PLAT.pool):("?club=0&pool="+W.PLAT.pool+"&nat="+C);
     var pill=function(label,sub,go){
       return '<button data-plat-keep="1" onclick="'+go+'" style="display:flex;width:100%;align-items:center;gap:10px;text-align:left;'
@@ -12128,7 +12138,7 @@ W.nhOpenPair=function(name){
   };
   W.nhMemberList=function(C){
     var box=document.getElementById("nhRecordsBox"); if(!box) return;
-    var wide=(Number(C)===0), col=wide?"#2f2f2f":"#6c3483";
+    var wide=(Number(C)===0), col=wide?"#2f2f2f":regCol(C);
     box.innerHTML='<div style="padding:14px 4px;font-size:13px;color:#5f5770">Reading the register\u2026</div>';
     var B=SBREST();
     Promise.all([
@@ -12434,7 +12444,8 @@ W.nhOpenPair=function(name){
   /* the club's FRONT DOOR — the club's introduction, in OPR's own colours */
   function newClubDoor(){
     var w=nhWrap(); if(!w) return;
-    nhCSS(); nhOneWayIn(); nhInk("#6c3483"); nhHeaderSkin("#3a1d6e","#1d0a41");
+    var RC=regCol(W.PLAT.cid);
+    nhCSS(); nhOneWayIn(); nhInk(RC); nhHeaderSkin(regOwn(RC)?RC:"#3a1d6e", regDeep(RC));
     var C=W.PLAT.cid, kids=kidsOf(C).sort(function(a,b){ return String(a.name).localeCompare(String(b.name)); });
     /* n90: the faces come with the figures, so a door draws once with everything it needs */
     Promise.all([nhFetch(),nhFaces(),meVerify()]).then(function(rr){
@@ -12534,7 +12545,7 @@ W.nhOpenPair=function(name){
       };
 
       w.innerHTML =
-        '<div class="band opr"><div class="mark"><span class="logo">OPR</span>Open Padel Ratings</div>'
+        '<div class="band opr"'+regBandStyle(RC)+'><div class="mark"><span class="logo">OPR</span>Open Padel Ratings</div>'
         + '<h1>'+esc(W.PLAT.name||"")+'</h1>'
         /* n125: THE DOOR'S BANNER ON ONE LINE. The register's name, "pairs on record" and a long tournament line wrapped
            the banner to a third of the screen. Now: the week's count and, if any are running, how many tournaments —
@@ -12575,7 +12586,7 @@ W.nhOpenPair=function(name){
         /* n128: Recent matches sits directly under the records */
         + nhMatchesBrk(d,25,"club")
         + lastMatchRibbon(d)
-        + '<div class="cols">'+nhFormBrk(d,"#6c3483","club") + nhMoversBrk(d,"#6c3483","club") + nhTourBrk(d)+'</div>'
+        + '<div class="cols">'+nhFormBrk(d,RC,"club") + nhMoversBrk(d,RC,"club") + nhTourBrk(d)+'</div>'
         /* everything else, small */
         + heading("Everything else")
         + '<div style="display:flex;gap:8px;margin:10px 12px 0;flex-wrap:wrap">'
@@ -12686,7 +12697,7 @@ W.nhOpenPair=function(name){
        remnants after everything around it went purple. A region's ledger is purple; only the register's is
        charcoal. */
     var isRegion = !!(W.NEWAPP && W.PLAT.nat);
-    var LEDGER = isRegion ? ["#6c3483","#1d0a41"] : LEDGER_BASE;
+    var LEDGER = isRegion ? [regCol(), regDeep(regCol())] : LEDGER_BASE;
     var st=document.createElement("style"); st.id="platLedgerTheme";
     st.textContent=".hero,.screen .header{background:linear-gradient(135deg,"+LEDGER[0]+","+LEDGER[1]+") !important;background-image:linear-gradient(135deg,"+LEDGER[0]+","+LEDGER[1]+") !important}"
       +".ladder-table th,#tournamentSheetContent th{background:"+LEDGER[1]+" !important}"
