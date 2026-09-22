@@ -901,6 +901,28 @@
     /* n90: ON THE WAY TO ADMIN, THE PAGE IS BLANK UNTIL THE ROOM IS UP. This runs before the first paint,
        which is the only place a hold like this works — the later one in the glue arrived after the ledger's
        landing page had already shown for a few frames. Released when the admin room is on screen, or at 5s. */
+    /* n131: NO DOOR ON THE WAY TO A SCREEN. A group page asked to open a screen (?go=entry, card, profiles, tsheet,
+       ladders, ladder, player, tournaments) drew the group's door first and then switched — a visible bounce. The
+       page now stays blank until a screen other than the home one is showing (or 5s, so a failure never leaves it
+       blank). New-app pages (me, records, pair) draw in the page itself and are not held. */
+    (function(){
+      try{
+        var g=(new URLSearchParams(location.search).get("go")||"").toLowerCase();
+        var SCREENS={entry:1,card:1,profiles:1,tsheet:1,ladders:1,ladder:1,player:1,tournaments:1};
+        if(!W.NEWAPP || CID<=0 || !SCREENS[g]) return;
+        var hs=document.createElement("style"); hs.id="nhHoldS";
+        hs.textContent="html body #homeScreen,html body #nh,html body #nhJump{display:none!important}"
+          +(g==="tsheet"?"html body #tournamentSheetScreen{visibility:hidden!important}":"");
+        (document.head||document.documentElement).appendChild(hs);
+        var t0=Date.now(), tk=setInterval(function(){
+          var a=document.querySelector(".screen.active");
+          var ready=(a && a.id && a.id!=="homeScreen");
+          /* a tournament sheet waits for its draw too, so it appears once instead of "Loading…" then the draw */
+          if(ready && g==="tsheet"){ var tb=document.getElementById("tournamentSheetContent"); ready=!!(tb && tb.children.length && !tb.querySelector(".loading")); }
+          if(ready || Date.now()-t0>5000){ var x=document.getElementById("nhHoldS"); if(x) x.remove(); clearInterval(tk); }
+        },40);
+      }catch(e){}
+    })();
     /* n94: the same hold on the way to the LADDERS. Records → Ratings and ladders travels through the ledger
        route, whose landing page ("Current Ratings and Ladders · Overall Profile · Recent Matches") drew first
        and flashed before the tables appeared. Held blank until the ladders screen is on screen. */
@@ -3643,7 +3665,7 @@ const CLUB_NAME = _club.name;  // shown in the logo as "OPR · <name>"
     link.setAttribute('href', href);
   }catch(e){ /* install stays on the static manifest — no functional impact */ }
 })();
-const OPR_VERSION = "OPR-DOUBLES v2026.09.03-56 · NAT fork n130 (no voice) (of PLAT p117)";  // MANUAL PAIR CREATION REMOVED FROM ADMIN: Create a pair, Bulk create pairs and Re-derive all pairs are gone (they only made match-less ghost pairs, and Re-derive rewrote every stored initial club-wide). Pairs are born automatically at match entry. Current pairs list untouched; the underlying JS is left in place unreferenced, so no other code path changes. Includes v47 (set-score fix + double-tap guard) and all prior.
+const OPR_VERSION = "OPR-DOUBLES v2026.09.03-56 · NAT fork n131 (no voice) (of PLAT p117)";  // MANUAL PAIR CREATION REMOVED FROM ADMIN: Create a pair, Bulk create pairs and Re-derive all pairs are gone (they only made match-less ghost pairs, and Re-derive rewrote every stored initial club-wide). Pairs are born automatically at match entry. Current pairs list untouched; the underlying JS is left in place unreferenced, so no other code path changes. Includes v47 (set-score fix + double-tap guard) and all prior.
 // Explanation shown above the individual ladder. Open on load so it's read; collapsible
 // (state kept for the session) and scrolls away. Mechanics only — no outcome framing, so
 // members aren't nudged away from playing stronger opponents. Every clause maps to a real
@@ -9656,7 +9678,9 @@ async function clRemove(id, label){
         Array.prototype.forEach.call(list.querySelectorAll("li.player-item"),function(li){
           var n=li.querySelector(".player-name"); if(n && wait[n.textContent.trim()]) li.style.display="none";
         });
-      });
+        list.style.visibility="visible";
+      }).catch(function(){ list.style.visibility="visible"; });
+      setTimeout(function(){ list.style.visibility="visible"; }, 4000);   /* never leave it hidden */
       return;
     }
     if(!document.getElementById("playerList")) return;
@@ -9702,7 +9726,11 @@ async function clRemove(id, label){
   /* redraw the note whenever that list is redrawn */
   (function(){
     var r1=W.renderIndivList, r2=W.renderPlayerList;
-    if(typeof r1==="function") W.renderIndivList=function(){ var out=r1.apply(this,arguments); setTimeout(waitingNote,0); return out; };
+    /* n131: in the new app the member table is held out of sight until the non-players are filtered, so it appears once
+       instead of appearing and then shrinking */
+    if(typeof r1==="function") W.renderIndivList=function(){ var out=r1.apply(this,arguments);
+      if(W.NEWAPP){ var l=document.getElementById("playerList"); if(l) l.style.visibility="hidden"; }
+      setTimeout(waitingNote,0); return out; };
     if(typeof r2==="function") W.renderPlayerList=function(){ var out=r2.apply(this,arguments); setTimeout(waitingNote,0); return out; };
   })();
 
@@ -9777,22 +9805,9 @@ async function clRemove(id, label){
         }
         if(go==="ladders" && typeof showScreen==="function"){
           showScreen("laddersScreen");
-          /* n94: PLAT'S BACK ARROW GOES WHERE WE CAME FROM. On the ladders screen it called showScreen('homeScreen'),
-             which on the ledger route is the landing page — the one place nobody should land. If Records sent
-             us here (?back=), the arrow returns to Records; the home bar still offers the door. */
-          try{
-            var bq=new URLSearchParams(location.search).get("back")||"";
-            if(bq && W.NEWAPP){
-              var wire=setInterval(function(){
-                var sc=document.getElementById("laddersScreen"); if(!sc) return;
-                var arrows=sc.querySelectorAll('[onclick*="goHome"],[onclick*="showScreen(\'homeScreen\')"],[onclick*="showScreen(\"homeScreen\")"],.back-btn');
-                if(!arrows.length) return;
-                Array.prototype.forEach.call(arrows,function(a){ a.setAttribute("onclick","location.href="+JSON.stringify(PAGE+bq).replace(/"/g,"'")); });
-                clearInterval(wire);
-              },150);
-              setTimeout(function(){ clearInterval(wire); },8000);
-            }
-          }catch(e){}
+          /* n131: the per-route arrow wiring from n94 is gone — its search pattern was invalid, so it threw an error every
+             150ms for 8 seconds each time the ladders opened, and the global back-arrow hook (n103) already re-points
+             every arrow on the page to ?back=. */
           return true;
         }
         if(go==="ladder" && typeof loadLadder==="function"){
@@ -9800,6 +9815,12 @@ async function clRemove(id, label){
           loadLadder(t,title); return true; }
         if(go==="profiles" && typeof showProfileSearch==="function"){ showProfileSearch(); return true; }
         if(go==="player" && who && typeof loadProfile==="function"){ loadProfile(who,""); return true; }
+        /* n131: ONE TOURNAMENT'S SHEET, directly — its draw and standings, in the member's own category. My tournaments
+           links here; back returns to the page that sent us. */
+        if(go==="tsheet" && typeof loadTournamentSheet==="function"){
+          var tq=new URLSearchParams(location.search), tn=tq.get("tn")||"", dv=tq.get("div")||null;
+          if(tn){ try{ TOURNAMENT_EVENT=tn; }catch(e){} loadTournamentSheet(tn, dv); return true; }
+        }
         if(go==="tournaments" && typeof loadActiveTournaments==="function"){ loadActiveTournaments(); return true; }
         if(go==="tournaments" && typeof showScreen==="function"){ if(typeof loadActiveTournaments==="function"){ try{ loadActiveTournaments(); }catch(e){} } showScreen("tournamentScreen"); return true; }
         if(go==="entry"){ var b=document.querySelector("#homeScreen .btn-enter"); if(b){ b.click(); return true; } }
@@ -9931,6 +9952,9 @@ async function clRemove(id, label){
       +"box-shadow:0 2px 10px rgba(20,10,40,.14);padding:12px 14px !important}"
       +".screen .header h1{font-size:19px !important;font-weight:800 !important;letter-spacing:.1px}"
       +".screen .header .back-btn{background:rgba(255,255,255,.16) !important;border:1px solid rgba(255,255,255,.3) !important;border-radius:99px !important;width:36px;height:36px}"
+      /* n131: a screen header is born at the height its group badge needs, so the badge arriving a moment later does not
+         nudge the page down (it measured 64px without the badge, 68px with) */
+      +".screen .header{min-height:68px;box-sizing:border-box}"
       +".screen .header .platWhere{background:rgba(255,255,255,.18) !important;border:1px solid rgba(255,255,255,.34) !important;border-radius:99px !important;font-weight:800}";
     /* n74: the parent's own hero panel is skinned too. It carries a near-black gradient of its own, so a
        club ledger's inner pages — profiles, ladders — kept reading charcoal however the rest was coloured,
@@ -10454,7 +10478,7 @@ async function clRemove(id, label){
       box.innerHTML='<div style="font-size:12.5px;color:#5f5770;margin:2px 2px 8px">My tournaments</div>'
         + ents.map(function(e){
             var c=clubPal(e.club_id)[0], partner=(e.p1===me?e.p2:e.p1)||"", g=(W.PLAT.clubs||[]).filter(function(x){ return Number(x.id)===Number(e.club_id); })[0]||{};
-            return '<a href="'+PAGE+'?club='+e.club_id+'&go=tournaments&back='+back+'" style="display:block;text-decoration:none;background:#fff;border:1.5px solid '+c+';border-radius:12px;padding:10px 13px;margin-bottom:8px">'
+            return '<a href="'+PAGE+'?club='+e.club_id+'&go=tsheet&tn='+encodeURIComponent(e.tournament)+(e.category?'&div='+encodeURIComponent(e.category):'')+'&back='+back+'" style="display:block;text-decoration:none;background:#fff;border:1.5px solid '+c+';border-radius:12px;padding:10px 13px;margin-bottom:8px">'
               +'<div style="display:flex;align-items:center;gap:8px"><b style="flex:1;color:#241d33;font-size:14px">'+esc(e.tournament)+'</b>'
               +'<span style="font-size:11px;font-weight:800;padding:2px 8px;border-radius:99px;'+(e.running?'background:#d4f425;color:#2a3000':'background:#eee;color:#666')+'">'+(e.running?"running":"finished")+'</span></div>'
               +'<div style="font-size:12px;color:#5f5770;margin-top:3px"><span style="color:'+c+';font-weight:800">'+esc(g.name||"")+'</span>'
