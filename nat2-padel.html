@@ -3665,7 +3665,7 @@ const CLUB_NAME = _club.name;  // shown in the logo as "OPR · <name>"
     link.setAttribute('href', href);
   }catch(e){ /* install stays on the static manifest — no functional impact */ }
 })();
-const OPR_VERSION = "OPR-DOUBLES v2026.09.03-56 · NAT fork n133 (no voice) (of PLAT p117)";  // MANUAL PAIR CREATION REMOVED FROM ADMIN: Create a pair, Bulk create pairs and Re-derive all pairs are gone (they only made match-less ghost pairs, and Re-derive rewrote every stored initial club-wide). Pairs are born automatically at match entry. Current pairs list untouched; the underlying JS is left in place unreferenced, so no other code path changes. Includes v47 (set-score fix + double-tap guard) and all prior.
+const OPR_VERSION = "OPR-DOUBLES v2026.09.03-56 · NAT fork n134 (no voice) (of PLAT p117)";  // MANUAL PAIR CREATION REMOVED FROM ADMIN: Create a pair, Bulk create pairs and Re-derive all pairs are gone (they only made match-less ghost pairs, and Re-derive rewrote every stored initial club-wide). Pairs are born automatically at match entry. Current pairs list untouched; the underlying JS is left in place unreferenced, so no other code path changes. Includes v47 (set-score fix + double-tap guard) and all prior.
 // Explanation shown above the individual ladder. Open on load so it's read; collapsible
 // (state kept for the session) and scrolls away. Mechanics only — no outcome framing, so
 // members aren't nudged away from playing stronger opponents. Every clause maps to a real
@@ -10032,7 +10032,7 @@ async function clRemove(id, label){
      /* n113: A BAND AT THE TOP OF EVERY BRACKET. The page read as one stream of text; a shaded header in the page's
         own colour gives each section a place for the eye to land. Tint of the ink, so a blue group gets a blue band. */
      /* n132: a band that rolls up (Groups, The records) is ALL shade when closed — no white strip under the heading */
-     +"#nh #doorGroupsBrk > h2,#nh #doorRecords > h2{margin:0!important;border-bottom:none!important}"
+     +"#nh #doorGroupsBrk > h2,#nh #doorRecords > h2,#nh #mePartners > h2{margin:0!important;border-bottom:none!important}"
      +"#nh .brk > h2{background:#f3eef8;background:color-mix(in srgb,var(--nhc,#6c3483) 11%,#fff);color:var(--nhc,#5b2d8e);"
      +"padding:10px 14px 9px;margin:0 0 6px;border-bottom:1px solid color-mix(in srgb,var(--nhc,#6c3483) 18%,#fff)}"
      /* the jump strip: one row, never wraps, slides sideways if the screen is narrow, and stays under the band */
@@ -11352,7 +11352,10 @@ W.mePair=function(name){
         var order=Object.keys(byGroup).sort(function(a,b){
           if(myGroup && Number(a)===Number(myGroup)) return -1; if(myGroup && Number(b)===Number(myGroup)) return 1;
           return byGroup[b].length-byGroup[a].length; });
-        h+='<div class="brk"><h2>'+(viewing?"Partnerships":"My partnerships")+' \u00b7 '+st.partners.length+'</h2>';
+        /* n134: the partnerships roll up — tap the heading to open them (a member may have fifty) */
+        h+='<div class="brk" id="mePartners"><h2 onclick="window.mePartToggle()" style="display:flex;align-items:center;gap:8px;cursor:pointer">'
+          +(viewing?"Partnerships":"My partnerships")+' \u00b7 '+st.partners.length
+          +'<span id="mePartCaret" style="margin-left:auto;font-size:12px">\u25be</span></h2><div id="mePartBody" style="display:none">';
         order.forEach(function(gid){
           var gc=clubPal(gid)[0];
           h+='<div style="display:flex;align-items:center;gap:8px;padding:10px 14px 4px">'
@@ -11379,7 +11382,7 @@ W.mePair=function(name){
             }).join("")
           +'</div>';
         });
-        h+='<div style="padding:8px 14px 12px;font-size:12px;color:#5f5770">Tap a partnership for every match you have played together, with the set scores.</div></div>';
+        h+='<div style="padding:8px 14px 12px;font-size:12px;color:#5f5770">Tap a partnership for every match you have played together, with the set scores.</div></div></div>';
       }
 
       if(!st.matches.length){
@@ -11739,6 +11742,10 @@ W.mePair=function(name){
       dedupe(sel); try{ new MutationObserver(function(){ dedupe(sel); }).observe(sel,{childList:true}); }catch(e){} }, 700);
     setTimeout(function(){ clearInterval(t); }, 60000);
   })();
+  W.mePartToggle=function(){
+    var b=document.getElementById("mePartBody"), c=document.getElementById("mePartCaret"); if(!b) return;
+    var open=b.style.display==="none"; b.style.display=open?"block":"none"; if(c) c.textContent=open?"\u25b4":"\u25be";
+  };
   W.doorRecordsToggle=function(){
     var b=document.getElementById("doorRecBody"), c=document.getElementById("doorRecCaret"); if(!b) return;
     var open=b.style.display==="none"; b.style.display=open?"block":"none"; if(c) c.textContent=open?"\u25b4":"\u25be";
