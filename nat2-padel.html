@@ -3665,7 +3665,7 @@ const CLUB_NAME = _club.name;  // shown in the logo as "OPR · <name>"
     link.setAttribute('href', href);
   }catch(e){ /* install stays on the static manifest — no functional impact */ }
 })();
-const OPR_VERSION = "OPR-DOUBLES v2026.09.03-56 · NAT fork n143 (no voice) (of PLAT p117)";  // MANUAL PAIR CREATION REMOVED FROM ADMIN: Create a pair, Bulk create pairs and Re-derive all pairs are gone (they only made match-less ghost pairs, and Re-derive rewrote every stored initial club-wide). Pairs are born automatically at match entry. Current pairs list untouched; the underlying JS is left in place unreferenced, so no other code path changes. Includes v47 (set-score fix + double-tap guard) and all prior.
+const OPR_VERSION = "OPR-DOUBLES v2026.09.03-56 · NAT fork n144 (no voice) (of PLAT p117)";  // MANUAL PAIR CREATION REMOVED FROM ADMIN: Create a pair, Bulk create pairs and Re-derive all pairs are gone (they only made match-less ghost pairs, and Re-derive rewrote every stored initial club-wide). Pairs are born automatically at match entry. Current pairs list untouched; the underlying JS is left in place unreferenced, so no other code path changes. Includes v47 (set-score fix + double-tap guard) and all prior.
 // Explanation shown above the individual ladder. Open on load so it's read; collapsible
 // (state kept for the session) and scrolls away. Mechanics only — no outcome framing, so
 // members aren't nudged away from playing stronger opponents. Every clause maps to a real
@@ -10410,6 +10410,13 @@ async function clRemove(id, label){
   }
   /* n84: ALL THE TOURNAMENTS, ROLLED UP. Four running at once filled the page; now one bracket lists them and
      each opens on a tap. */
+  /* n144: the door's tournament list opens the tournament itself */
+  W.nhOpenTour=function(k){
+    var t=(W.__nhTours||[])[k]; if(!t) return W.nhGo("tournaments");
+    var club=t.club_id||W.PLAT.cid;
+    location.href=PAGE+"?club="+club+"&go=tsheet&tn="+encodeURIComponent(t.name)+(t.division?"&div="+encodeURIComponent(t.division):"")
+      +"&back="+encodeURIComponent(location.search||"");
+  };
   W.nhTourOpen=function(k){
     var el=document.getElementById("nhtour"+k), t=document.getElementById("nhtourT"+k);
     if(!el) return; var open=(el.style.display!=="none");
@@ -10417,6 +10424,7 @@ async function clRemove(id, label){
   };
   function nhTourBrk(d){
     var list=(d.tours&&d.tours.length)?d.tours:(d.tour?[d.tour]:[]);
+    W.__nhTours=list;   /* n144: so a row's button can open that tournament */
     if(!list.length) return "";
     return '<div class="brk">'+nhLimeBar("Recent tournament matches")
       +'<div style="padding:6px 10px 10px">'
@@ -10432,7 +10440,8 @@ async function clRemove(id, label){
             +'<div id="nhtour'+k+'" style="display:none;padding:2px 0 6px">'
             + (ms.length ? ms.map(function(m){ return nhMatchRow(m,"one"); }).join("")
                          : '<div style="padding:8px 4px;font-size:12.5px;color:#5f5770">Under way \u2014 no results entered yet.</div>')
-            +'<button class="more" onclick="window.nhGo(\'tournaments\')">Open the tournament \u2192</button></div>';
+            /* n144: opens THAT tournament's own sheet, not the general tournaments page */
+            +'<button class="more" onclick="window.nhOpenTour('+k+')">Open '+esc(t.name)+' \u2192</button></div>';
         }).join("")
       +'</div></div>';
   }
@@ -11790,6 +11799,21 @@ W.mePair=function(name){
     var t=setInterval(function(){ var sel=document.getElementById("matchEvent"); if(!sel) return; clearInterval(t);
       dedupe(sel); try{ new MutationObserver(function(){ dedupe(sel); }).observe(sel,{childList:true}); }catch(e){} }, 700);
     setTimeout(function(){ clearInterval(t); }, 60000);
+  })();
+  /* n144: THE ENTRY SCREEN NAMES ITS TOURNAMENT. "Enter Tournament" told you nothing when a group runs several;
+     the heading now reads the tournament you are entering. */
+  (function(){
+    var f=W.showEnterTournament;
+    if(typeof f!=="function"){ setTimeout(arguments.callee,400); return; }
+    W.showEnterTournament=function(preselect){
+      var out=f.apply(this,arguments);
+      try{
+        var nm=preselect||W.TOURNAMENT_EVENT||"";
+        var h=document.querySelector("#enterTournamentScreen .header h1");
+        if(h) h.textContent = nm ? String(nm) : "Enter Tournament";
+      }catch(e){}
+      return out;
+    };
   })();
   W.mePartToggle=function(){
     var b=document.getElementById("mePartBody"), c=document.getElementById("mePartCaret"); if(!b) return;
