@@ -3665,7 +3665,7 @@ const CLUB_NAME = _club.name;  // shown in the logo as "OPR · <name>"
     link.setAttribute('href', href);
   }catch(e){ /* install stays on the static manifest — no functional impact */ }
 })();
-const OPR_VERSION = "OPR-DOUBLES v2026.09.03-56 · NAT fork n141 (no voice) (of PLAT p117)";  // MANUAL PAIR CREATION REMOVED FROM ADMIN: Create a pair, Bulk create pairs and Re-derive all pairs are gone (they only made match-less ghost pairs, and Re-derive rewrote every stored initial club-wide). Pairs are born automatically at match entry. Current pairs list untouched; the underlying JS is left in place unreferenced, so no other code path changes. Includes v47 (set-score fix + double-tap guard) and all prior.
+const OPR_VERSION = "OPR-DOUBLES v2026.09.03-56 · NAT fork n142 (no voice) (of PLAT p117)";  // MANUAL PAIR CREATION REMOVED FROM ADMIN: Create a pair, Bulk create pairs and Re-derive all pairs are gone (they only made match-less ghost pairs, and Re-derive rewrote every stored initial club-wide). Pairs are born automatically at match entry. Current pairs list untouched; the underlying JS is left in place unreferenced, so no other code path changes. Includes v47 (set-score fix + double-tap guard) and all prior.
 // Explanation shown above the individual ladder. Open on load so it's read; collapsible
 // (state kept for the session) and scrolls away. Mechanics only — no outcome framing, so
 // members aren't nudged away from playing stronger opponents. Every clause maps to a real
@@ -9962,6 +9962,10 @@ async function clRemove(id, label){
       /* n131: a screen header is born at the height its group badge needs, so the badge arriving a moment later does not
          nudge the page down (it measured 64px without the badge, 68px with) */
       +".screen .header{min-height:68px;box-sizing:border-box}"
+      /* n142: the same design on the original app's screen headers */
+      +".screen .header{position:relative;overflow:hidden;isolation:isolate}"
+      +".screen .header::before{content:'';position:absolute;inset:0;background:url('./header_bg2.png') center top/cover;mix-blend-mode:luminosity;pointer-events:none;z-index:0}"
+      +".screen .header > *{position:relative;z-index:1}"
       +".screen .header .platWhere{background:rgba(255,255,255,.18) !important;border:1px solid rgba(255,255,255,.34) !important;border-radius:99px !important;font-weight:800}";
     /* n74: the parent's own hero panel is skinned too. It carries a near-black gradient of its own, so a
        club ledger's inner pages — profiles, ladders — kept reading charcoal however the rest was coloured,
@@ -10017,6 +10021,12 @@ async function clRemove(id, label){
 
      +"#homeScreen{overflow:hidden}"
      +"#nh .band{color:#fff;padding:15px 16px 18px;position:sticky;top:0;z-index:20;overflow:hidden;border-radius:0 0 18px 18px}"
+     /* n142: YOUR HEADER'S DESIGN ON EVERY HEADER. The picture is laid over each page's own colour and blended by
+        luminosity — the arc, glow and streaks carry the page's colour (a group's, a region's, the register's
+        charcoal). The door's OPR header (.opr) already carries the picture itself. */
+     +"#nh .band:not(.opr)::before,.nhband::before{content:'';position:absolute;inset:0;background:url('./header_bg2.png') center top/cover;mix-blend-mode:luminosity;pointer-events:none;border-radius:inherit}"
+     +"#nh .band:not(.opr) > *,.nhband > *{position:relative;z-index:1}"
+     +".nhband{position:relative;overflow:hidden}"
      +"#nh .band.opr{background:url('./header_bg2.png') center top/cover,linear-gradient(105deg,#1d0a41,#5b17ac 52%,#047fdd)}"
      +"#nh .mark{display:inline-flex;align-items:center;gap:9px;font-size:11px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;opacity:.95}"
      +"#nh .mark .logo{font-size:17px;letter-spacing:.06em;text-transform:none;background:rgba(255,255,255,.14);border:1px solid rgba(255,255,255,.34);border-radius:9px;padding:2px 9px}"
