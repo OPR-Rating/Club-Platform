@@ -3665,7 +3665,7 @@ const CLUB_NAME = _club.name;  // shown in the logo as "OPR · <name>"
     link.setAttribute('href', href);
   }catch(e){ /* install stays on the static manifest — no functional impact */ }
 })();
-const OPR_VERSION = "OPR-DOUBLES v2026.09.03-56 · NAT fork n131 (no voice) (of PLAT p117)";  // MANUAL PAIR CREATION REMOVED FROM ADMIN: Create a pair, Bulk create pairs and Re-derive all pairs are gone (they only made match-less ghost pairs, and Re-derive rewrote every stored initial club-wide). Pairs are born automatically at match entry. Current pairs list untouched; the underlying JS is left in place unreferenced, so no other code path changes. Includes v47 (set-score fix + double-tap guard) and all prior.
+const OPR_VERSION = "OPR-DOUBLES v2026.09.03-56 · NAT fork n132 (no voice) (of PLAT p117)";  // MANUAL PAIR CREATION REMOVED FROM ADMIN: Create a pair, Bulk create pairs and Re-derive all pairs are gone (they only made match-less ghost pairs, and Re-derive rewrote every stored initial club-wide). Pairs are born automatically at match entry. Current pairs list untouched; the underlying JS is left in place unreferenced, so no other code path changes. Includes v47 (set-score fix + double-tap guard) and all prior.
 // Explanation shown above the individual ladder. Open on load so it's read; collapsible
 // (state kept for the session) and scrolls away. Mechanics only — no outcome framing, so
 // members aren't nudged away from playing stronger opponents. Every clause maps to a real
@@ -10031,6 +10031,8 @@ async function clRemove(id, label){
      +"#nh .brk h2{font-size:13px;letter-spacing:.05em;text-transform:uppercase;font-weight:800;color:#5b2d8e;margin:0;padding:12px 14px 5px}"
      /* n113: A BAND AT THE TOP OF EVERY BRACKET. The page read as one stream of text; a shaded header in the page's
         own colour gives each section a place for the eye to land. Tint of the ink, so a blue group gets a blue band. */
+     /* n132: a band that rolls up (Groups, The records) is ALL shade when closed — no white strip under the heading */
+     +"#nh #doorGroupsBrk > h2,#nh #doorRecords > h2{margin:0!important;border-bottom:none!important}"
      +"#nh .brk > h2{background:#f3eef8;background:color-mix(in srgb,var(--nhc,#6c3483) 11%,#fff);color:var(--nhc,#5b2d8e);"
      +"padding:10px 14px 9px;margin:0 0 6px;border-bottom:1px solid color-mix(in srgb,var(--nhc,#6c3483) 18%,#fff)}"
      /* the jump strip: one row, never wraps, slides sideways if the screen is narrow, and stays under the band */
@@ -11743,8 +11745,24 @@ W.mePair=function(name){
   };
   function doorHidden(){ try{ return JSON.parse(localStorage.getItem("nh_door_hide_"+(W.__doorC||W.PLAT.cid))||"[]").map(Number); }catch(e){ return []; } }
   function doorHiddenSave(a){ try{ localStorage.setItem("nh_door_hide_"+(W.__doorC||W.PLAT.cid), JSON.stringify(a)); }catch(e){} }
+  /* n132: each phone can order its groups — ▲▼ in the dropdown; remembered like the switches. Groups not yet ordered
+     keep their usual place after the ordered ones. */
+  function doorOrderKey(){ return "nh_door_order_"+(W.__doorC||W.PLAT.cid); }
+  function doorOrder(){ try{ return JSON.parse(localStorage.getItem(doorOrderKey())||"[]").map(Number); }catch(e){ return []; } }
+  function doorSorted(ks){
+    var ord=doorOrder(), pos=function(id){ var i=ord.indexOf(Number(id)); return i<0?1e6:i; };
+    return ks.slice().map(function(g,i){ return {g:g,i:i}; })
+      .sort(function(a,b){ return (pos(a.g.id)-pos(b.g.id)) || (a.i-b.i); }).map(function(x){ return x.g; });
+  }
+  W.doorGroupMove=function(id,dir){
+    var ks=doorSorted(W.__doorKids||[]).map(function(g){ return Number(g.id); });
+    var i=ks.indexOf(Number(id)), j=i+dir; if(i<0||j<0||j>=ks.length) return;
+    var t=ks[i]; ks[i]=ks[j]; ks[j]=t;
+    try{ localStorage.setItem(doorOrderKey(), JSON.stringify(ks)); }catch(e){}
+    doorGroupsRefresh();
+  };
   function doorGroupCards(){
-    var ks=W.__doorKids||[], hid=doorHidden();
+    var ks=doorSorted(W.__doorKids||[]), hid=doorHidden();
     var on=ks.filter(function(g){ return hid.indexOf(Number(g.id))<0; });
     if(!on.length) return '<div style="margin:10px 14px 0;font-size:12.5px;color:#7a6f8a">No groups shown \u2014 tap <b>Groups</b> to choose.</div>';
     return on.map(function(g){ return W.__doorCard(g); }).join("");
@@ -11759,16 +11777,20 @@ W.mePair=function(name){
   }
   function doorGroupsPaint(){
     var box=document.getElementById("doorGroupsPick"); if(!box) return;
-    var ks=W.__doorKids||[], hid=doorHidden();
-    box.innerHTML=ks.map(function(g){
+    var ks=doorSorted(W.__doorKids||[]), hid=doorHidden();
+    var arrow=function(id,dir,on){ return '<button data-plat-keep="1" onclick="event.stopPropagation();window.doorGroupMove('+Number(id)+','+dir+')" '
+      +(on?'':'disabled ')+'aria-label="'+(dir<0?"Move up":"Move down")+'" style="width:28px;height:28px;border-radius:50%;border:1.5px solid #d9d2e3;background:#fff;'
+      +'color:'+(on?"#6c3483":"#d9d2e3")+';font:inherit;font-size:12px;font-weight:900;cursor:'+(on?"pointer":"default")+';padding:0">'+(dir<0?"\u25b2":"\u25bc")+'</button>'; };
+    box.innerHTML=ks.map(function(g,idx){
         var on=hid.indexOf(Number(g.id))<0, col=clubPal(g.id)[0];
-        return '<button data-plat-keep="1" onclick="window.doorGroupSet('+Number(g.id)+','+(on?0:1)+')" style="display:flex;width:100%;align-items:center;gap:10px;'
-          +'padding:10px 4px;border:none;border-bottom:1px solid #f0ecf6;background:#fff;font:inherit;text-align:left;cursor:pointer">'
+        return '<div style="display:flex;width:100%;align-items:center;gap:8px;padding:9px 2px;border-bottom:1px solid #f0ecf6">'
           +'<span style="width:11px;height:11px;border-radius:50%;background:'+col+';flex:0 0 11px"></span>'
           +'<span style="flex:1;min-width:0;font-size:14px;font-weight:700;color:#241d33;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+esc(g.__own?nhGeneralName():g.name)+'</span>'
-          +'<span style="flex:0 0 44px;height:24px;border-radius:99px;position:relative;background:'+(on?col:"#d9d2e3")+'">'
-          +'<span style="position:absolute;top:3px;left:'+(on?"23px":"3px")+';width:18px;height:18px;border-radius:50%;background:#fff;box-shadow:0 1px 2px rgba(0,0,0,.25)"></span></span>'
-          +'</button>';
+          + arrow(g.id,-1,idx>0) + arrow(g.id,1,idx<ks.length-1)
+          +'<button data-plat-keep="1" onclick="window.doorGroupSet('+Number(g.id)+','+(on?0:1)+')" aria-label="'+(on?"Hide":"Show")+'" '
+          +'style="flex:0 0 44px;height:24px;border:none;border-radius:99px;position:relative;cursor:pointer;padding:0;background:'+(on?col:"#d9d2e3")+'">'
+          +'<span style="position:absolute;top:3px;left:'+(on?"23px":"3px")+';width:18px;height:18px;border-radius:50%;background:#fff;box-shadow:0 1px 2px rgba(0,0,0,.25)"></span></button>'
+          +'</div>';
       }).join("")
       +'<div style="display:flex;gap:8px;margin-top:10px">'
       +'<button data-plat-keep="1" onclick="window.doorGroupsAll(1)" style="flex:1;padding:8px;border-radius:99px;border:1.5px solid #6c3483;background:#fff;color:#6c3483;font:inherit;font-size:12.5px;font-weight:800;cursor:pointer">All on</button>'
@@ -12467,8 +12489,8 @@ W.nhOpenPair=function(name){
           +'border:2px solid '+col+';border-radius:16px;padding:13px 14px;margin:10px 12px 0;font:inherit;cursor:pointer">'
           +'<div style="display:flex;align-items:center;gap:10px">'
           + nhFace(name,col,36)
-          +'<span style="flex:1;min-width:0;display:block;background:'+col+';color:#fff;font-weight:800;font-size:14px;'
-          +'border-radius:99px;padding:7px 13px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+esc(name)+'</span>'
+          +'<span style="flex:1;min-width:0;display:flex;align-items:center;gap:8px;background:'+col+';color:#fff;font-weight:800;font-size:14px;'
+          +'border-radius:99px;padding:5px 5px 5px 13px"><span style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+esc(name)+'</span><span aria-hidden="true" style="flex:0 0 24px;height:24px;border-radius:50%;background:#fff;color:'+col+';display:grid;place-items:center;font-size:17px;font-weight:900;line-height:1">\u203a</span></span>'
           +'<span style="flex:0 0 auto;text-align:right;line-height:1.15">'
           +'<span style="display:block;font-size:18px;font-weight:800;color:'+col+'">'+ms.length+'</span>'
           +'<span style="display:block;font-size:10px;color:#8a8196">matches</span></span></div>'
@@ -12981,6 +13003,11 @@ W.nhOpenPair=function(name){
     return parts;
   }
   function regRender(){
+    /* n132: the room's heading says which ledger it is — a region's, or the register's — not just "Register" */
+    try{
+      var h1=document.querySelector("#platRegScreen .header h1");
+      if(h1){ h1.textContent = W.PLAT.nat ? ("Ledger \u00b7 "+(W.PLAT.natName||"")) : (String(W.PLAT.poolName||"Register").replace(/\s*register\s*$/i,"")+" \u00b7 Global Ledger"); }
+    }catch(e){}
     var b=document.getElementById("platRegBody"); if(!b) return;
     var q=(REG.q||"").toLowerCase();
     var rows=REG.players.filter(function(p){ return !q || p.full_name.toLowerCase().indexOf(q)>=0; });
