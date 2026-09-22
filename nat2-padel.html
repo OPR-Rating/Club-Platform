@@ -3665,7 +3665,7 @@ const CLUB_NAME = _club.name;  // shown in the logo as "OPR · <name>"
     link.setAttribute('href', href);
   }catch(e){ /* install stays on the static manifest — no functional impact */ }
 })();
-const OPR_VERSION = "OPR-DOUBLES v2026.09.03-56 · NAT fork n137 (no voice) (of PLAT p117)";  // MANUAL PAIR CREATION REMOVED FROM ADMIN: Create a pair, Bulk create pairs and Re-derive all pairs are gone (they only made match-less ghost pairs, and Re-derive rewrote every stored initial club-wide). Pairs are born automatically at match entry. Current pairs list untouched; the underlying JS is left in place unreferenced, so no other code path changes. Includes v47 (set-score fix + double-tap guard) and all prior.
+const OPR_VERSION = "OPR-DOUBLES v2026.09.03-56 · NAT fork n138 (no voice) (of PLAT p117)";  // MANUAL PAIR CREATION REMOVED FROM ADMIN: Create a pair, Bulk create pairs and Re-derive all pairs are gone (they only made match-less ghost pairs, and Re-derive rewrote every stored initial club-wide). Pairs are born automatically at match entry. Current pairs list untouched; the underlying JS is left in place unreferenced, so no other code path changes. Includes v47 (set-score fix + double-tap guard) and all prior.
 // Explanation shown above the individual ladder. Open on load so it's read; collapsible
 // (state kept for the session) and scrolls away. Mechanics only — no outcome framing, so
 // members aren't nudged away from playing stronger opponents. Every clause maps to a real
@@ -9392,6 +9392,13 @@ async function clRemove(id, label){
      cannot go pastel — but these have far more life than the old museum range. */
   /* n104: twenty-four, not twelve — the bright set AND the original set, so a region can balance its groups.
      OPR's own purple leads, then the brights, then the deeper originals. All hold white text on a pill. */
+  /* n138: OPR PURPLE, NAMED. It is the first swatch, but on the Global Ledger the charcoal repaint used to disguise
+     it as black, so it was never seen. Now it also has its own labelled button above the palette, in both pickers. */
+  function oprPurpleChoice(onclick){
+    return '<button data-plat-keep="1" onclick="'+onclick+'" style="display:inline-flex;align-items:center;gap:8px;margin:0 0 8px;'
+      +'padding:6px 12px 6px 6px;border-radius:99px;border:1.5px solid #6c3483;background:#fff;color:#6c3483;font:inherit;font-size:12.5px;font-weight:800;cursor:pointer">'
+      +'<span data-plat-keep="1" style="width:20px;height:20px;border-radius:50%;background:#6c3483;display:inline-block"></span>OPR purple \u00b7 the default</button>';
+  }
   var SWATCH=["#6c3483","#7c3aed","#2563eb","#0ea5e9","#0891b2","#059669","#16a34a","#65a30d","#d97706","#ea580c","#dc2626","#db2777",
               "#283593","#1565c0","#00838f","#00695c","#2e7d32","#4e802b","#827717","#ae611c","#c62828","#ad1457","#455a64","#475569"];
   function clubPill(c,small){ var p=clubPal(c.id); c=(natMode()&&isClubWithKids(c.id))?{id:c.id,name:"General play"}:c;   /* n3 */ return '<span style="display:inline-block;background:'+p[0]+';color:#fff;border-radius:99px;padding:'+(small?'1px 7px':'2px 9px')+';font-size:'+(small?'9.5px':'11px')+';font-weight:700;margin:2px 3px 0 0;white-space:nowrap;vertical-align:middle">'+esc(c.name)+'</span>'; }
@@ -13157,7 +13164,7 @@ W.nhOpenPair=function(name){
           +(REG.clubs||[]).filter(function(c){ return !c.parent_id; }).map(function(c){ return '<option value="'+c.id+'">A group inside '+esc(c.name)+'</option>'; }).join("")+'</select>') 
       +'<div style="font-size:12px;color:#666;margin:4px 0 6px">'+((REG.role==="club")?"A group runs its own board, ladder and tournaments, and shares the club\'s players and their one rating.":"A <b>club</b> gets its own door, colour, code, ledger and groups, and shares this register\'s one player base. A <b>group</b> belongs to a club and runs its own ladder and tournaments.")+'</div>' 
       +'<div style="display:flex;gap:8px;flex-wrap:wrap"><input id="platNewName" placeholder="Group name" style="flex:2;min-width:150px;padding:10px 12px;border:1.5px solid #ddd;border-radius:10px"><input id="platNewPin" inputmode="numeric" placeholder="Its code" style="flex:1;min-width:100px;padding:10px 12px;border:1.5px solid #ddd;border-radius:10px"></div>'
-      +'<div style="margin-top:8px;font-size:12px;color:#666">Colour</div><div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:4px">'
+      +'<div style="margin-top:8px;font-size:12px;color:#666">Colour</div>'+oprPurpleChoice("window.platPickNew('#6c3483')")+'<div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:4px">'
       +SWATCH.map(function(s,i){ return '<button data-plat-keep="1" onclick="window.platPickNew(\''+s+'\')" id="platNewSw'+i+'" style="width:26px;height:26px;border-radius:50%;background:'+s+';border:2px solid '+(i===0?'#333':'transparent')+';cursor:pointer"></button>'; }).join('')
       /* n15: a club must be reachable by the other clubs in the register — name, mobile, email, taken at the
          moment it is onboarded. Groups are reached through their club, so they have no contact of their own. */
@@ -13233,7 +13240,8 @@ W.nhOpenPair=function(name){
     var box=document.getElementById("platTd"+id) || document.getElementById("platSwatch"); if(!box) return;
     Array.prototype.forEach.call(document.querySelectorAll('[id^="platTd"]'),function(el){ if(el!==box) el.innerHTML=""; });
     try{ setTimeout(function(){ box.scrollIntoView({behavior:"smooth",block:"nearest"}); },50); }catch(e){}
-    box.innerHTML='<div style="padding:8px 0;font-size:12px;color:#666">Colour for '+esc((REG.clubs.find(function(c){return c.id===id;})||{}).name)+'</div><div style="display:flex;flex-wrap:wrap;gap:6px">'
+    box.innerHTML='<div style="padding:8px 0;font-size:12px;color:#666">Colour for '+esc((REG.clubs.find(function(c){return c.id===id;})||{}).name)+'</div>'
+      +oprPurpleChoice("window.platSetColour("+id+",'#6c3483')")+'<div style="display:flex;flex-wrap:wrap;gap:6px">'
       +SWATCH.map(function(s){ return '<button data-plat-keep="1" onclick="window.platSetColour('+id+',\''+s+'\')" style="width:26px;height:26px;border-radius:50%;background:'+s+';border:2px solid transparent;cursor:pointer"></button>'; }).join('')+'</div>';
   };
   W.platSetColour=function(id,col){
