@@ -3665,7 +3665,7 @@ const CLUB_NAME = _club.name;  // shown in the logo as "OPR · <name>"
     link.setAttribute('href', href);
   }catch(e){ /* install stays on the static manifest — no functional impact */ }
 })();
-const OPR_VERSION = "OPR-DOUBLES v2026.09.03-56 · NAT fork n138 (no voice) (of PLAT p117)";  // MANUAL PAIR CREATION REMOVED FROM ADMIN: Create a pair, Bulk create pairs and Re-derive all pairs are gone (they only made match-less ghost pairs, and Re-derive rewrote every stored initial club-wide). Pairs are born automatically at match entry. Current pairs list untouched; the underlying JS is left in place unreferenced, so no other code path changes. Includes v47 (set-score fix + double-tap guard) and all prior.
+const OPR_VERSION = "OPR-DOUBLES v2026.09.03-56 · NAT fork n141 (no voice) (of PLAT p117)";  // MANUAL PAIR CREATION REMOVED FROM ADMIN: Create a pair, Bulk create pairs and Re-derive all pairs are gone (they only made match-less ghost pairs, and Re-derive rewrote every stored initial club-wide). Pairs are born automatically at match entry. Current pairs list untouched; the underlying JS is left in place unreferenced, so no other code path changes. Includes v47 (set-score fix + double-tap guard) and all prior.
 // Explanation shown above the individual ladder. Open on load so it's read; collapsible
 // (state kept for the session) and scrolls away. Mechanics only — no outcome framing, so
 // members aren't nudged away from playing stronger opponents. Every clause maps to a real
@@ -10040,6 +10040,8 @@ async function clRemove(id, label){
         own colour gives each section a place for the eye to land. Tint of the ink, so a blue group gets a blue band. */
      /* n132: a band that rolls up (Groups, The records) is ALL shade when closed — no white strip under the heading */
      +"#nh .nhRoll > h2{margin:0!important;border-bottom:none!important}"
+     +".nhExp{width:26px;height:26px;border-radius:50%;background:#fff;border:1.5px solid;box-sizing:border-box;display:inline-grid;place-items:center;flex:0 0 26px;transition:transform .18s ease}"
+     +".nhExp.open{transform:rotate(180deg)}"
      +"#nh .brk > h2{background:#f3eef8;background:color-mix(in srgb,var(--nhc,#6c3483) 11%,#fff);color:var(--nhc,#5b2d8e);"
      +"padding:10px 14px 9px;margin:0 0 6px;border-bottom:1px solid color-mix(in srgb,var(--nhc,#6c3483) 18%,#fff)}"
      /* the jump strip: one row, never wraps, slides sideways if the screen is narrow, and stays under the band */
@@ -10822,7 +10824,23 @@ async function clRemove(id, label){
   }
   function regDeep(col){ return String(col).toLowerCase()==="#6c3483" ? "#1d0a41" : nhDeep(col,.58); }
   function regOwn(col){ return String(col).toLowerCase()!=="#6c3483"; }
-  function regBandStyle(col){ return regOwn(col)?' style="background:linear-gradient(105deg,'+regDeep(col)+','+col+' 58%,'+nhDeep(col,.2)+')"':''; }
+  /* n140: THE HEADER KEEPS ITS DESIGN IN ANY COLOUR. The picture supplies the light and shade — the arc, the glow,
+     the streaks — and the region's colour supplies the hue (luminosity blend over a sweep in the colour). OPR purple
+     keeps the original header exactly. */
+  function regTint(h,f){ try{ var n=parseInt(String(h).slice(1),16),r=(n>>16)&255,g=(n>>8)&255,b=n&255;
+    return "#"+((1<<24)+((r+(255-r)*f|0)<<16)+((g+(255-g)*f|0)<<8)+(b+(255-b)*f|0)).toString(16).slice(1); }catch(e){ return h; } }
+  function regBandStyle(col){
+    if(!regOwn(col)) return '';
+    return ' style="background:url(\'./header_bg2.png\') center top/cover,linear-gradient(105deg,'+nhDeep(col,.62)+','+col+' 52%,'+regTint(col,.35)+');'
+      +'background-blend-mode:luminosity,normal"';
+  }
+  /* n141: THE EXPAND ARROW. The same circle-and-chevron as a group's pill, pointing down — the little ▾ was too faint
+     to say "tap to open". It turns to point up while the section is open. */
+  function nhExp(id,col,extra){
+    var c=col||"var(--nhc,#6c3483)";
+    return '<span id="'+id+'" class="nhExp" data-plat-keep="1" style="color:'+c+';border-color:'+c+';'+(extra||'')+'">'
+      +'<svg width="12" height="12" viewBox="0 0 12 12" style="display:block"><path d="M2.5 4.4 6 7.9 9.5 4.4" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg></span>';
+  }
   function avRing(col){ return 'background:#fff;color:'+col+';border:2px solid '+col+';'; }
   function nhFace(name,col,size){
     var px=size||30;
@@ -11375,7 +11393,7 @@ W.mePair=function(name){
         /* n134: the partnerships roll up — tap the heading to open them (a member may have fifty) */
         h+='<div class="brk nhRoll" id="mePartners"><h2 onclick="window.mePartToggle()" style="display:flex;align-items:center;gap:8px;cursor:pointer">'
           +(viewing?"Partnerships":"My partnerships")+' \u00b7 '+st.partners.length
-          +'<span id="mePartCaret" style="margin-left:auto;font-size:12px">\u25be</span></h2><div id="mePartBody" style="display:none">';
+          +nhExp("mePartCaret",null,"margin-left:auto")+'</h2><div id="mePartBody" style="display:none">';
         order.forEach(function(gid){
           var gc=clubPal(gid)[0];
           h+='<div style="display:flex;align-items:center;gap:8px;padding:10px 14px 4px">'
@@ -11523,7 +11541,7 @@ W.mePair=function(name){
   W.nhWhoPlayed=function(){
     var el=document.getElementById("nhWho"), t=document.getElementById("nhWhoT");
     if(!el) return; var open=(el.style.display!=="none");
-    el.style.display=open?"none":"block"; if(t) t.style.transform=open?"":"rotate(180deg)";
+    el.style.display=open?"none":"block"; if(t) t.classList.toggle("open",!open);
   };
   /* the last match, with the four discs — and, on a tap, who they actually are */
   function lastMatchRibbon(d){
@@ -11547,7 +11565,7 @@ W.mePair=function(name){
       +'<div style="font-size:11.5px;color:#5f5770;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'
       +(bd?('<span style="color:'+col+';font-weight:700">'+esc(bd.name)+'</span> \u00b7 '):'')+esc(when)+'</div></div>'
       +'<button onclick="window.nhWhoPlayed()" style="background:none;border:none;cursor:pointer;color:'+col+';font-size:15px;padding:0 0 0 4px">'
-      +'<span id="nhWhoT" style="display:inline-block;transition:transform .15s">\u25be</span></button>'
+      +nhExp("nhWhoT",col)+'</button>'
       +'</div>'
       +'<div id="nhWho" style="display:none;margin:0 12px 12px;padding:10px 12px;background:#faf8fc;border:1px solid #efeaf5;border-radius:12px">'
       +'<div style="font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:#8a8196;font-weight:800;margin-bottom:6px">Who played</div>'
@@ -11764,11 +11782,11 @@ W.mePair=function(name){
   })();
   W.mePartToggle=function(){
     var b=document.getElementById("mePartBody"), c=document.getElementById("mePartCaret"); if(!b) return;
-    var open=b.style.display==="none"; b.style.display=open?"block":"none"; if(c) c.textContent=open?"\u25b4":"\u25be";
+    var open=b.style.display==="none"; b.style.display=open?"block":"none"; if(c) c.classList.toggle("open",open);
   };
   W.doorRecordsToggle=function(){
     var b=document.getElementById("doorRecBody"), c=document.getElementById("doorRecCaret"); if(!b) return;
-    var open=b.style.display==="none"; b.style.display=open?"block":"none"; if(c) c.textContent=open?"\u25b4":"\u25be";
+    var open=b.style.display==="none"; b.style.display=open?"block":"none"; if(c) c.classList.toggle("open",open);
   };
   function doorHidden(){ try{ return JSON.parse(localStorage.getItem("nh_door_hide_"+(W.__doorC||W.PLAT.cid))||"[]").map(Number); }catch(e){ return []; } }
   function doorHiddenSave(a){ try{ localStorage.setItem("nh_door_hide_"+(W.__doorC||W.PLAT.cid), JSON.stringify(a)); }catch(e){} }
@@ -11799,7 +11817,7 @@ W.mePair=function(name){
     return '<div class="brk nhRoll" id="doorGroupsBrk" style="margin-top:12px">'
       +'<h2 onclick="window.doorGroupsOpen()" style="display:flex;align-items:center;gap:8px;cursor:pointer">Groups'
       +'<span id="doorGroupsCount" style="margin-left:auto;font-size:11.5px;letter-spacing:0;text-transform:none;font-weight:700;opacity:.85">showing '+shown+' of '+ks.length+'</span>'
-      +'<span id="doorGroupsCaret" style="font-size:12px">\u25be</span></h2>'
+      +nhExp("doorGroupsCaret")+'</h2>'
       +'<div id="doorGroupsPick" style="display:none;padding:2px 12px 10px"></div></div>';
   }
   function doorGroupsPaint(){
@@ -11832,7 +11850,7 @@ W.mePair=function(name){
   }
   W.doorGroupsOpen=function(){
     var box=document.getElementById("doorGroupsPick"), car=document.getElementById("doorGroupsCaret"); if(!box) return;
-    var open=box.style.display==="none"; box.style.display=open?"block":"none"; if(car) car.textContent=open?"\u25b4":"\u25be";
+    var open=box.style.display==="none"; box.style.display=open?"block":"none"; if(car) car.classList.toggle("open",open);
     if(open) doorGroupsPaint();
   };
   W.doorGroupSet=function(id,on){
@@ -12578,7 +12596,7 @@ W.nhOpenPair=function(name){
            other section on the door — the band the eye finds, and the pill "Records" lands on. */
         /* n129: the records roll open when tapped, and stay rolled up otherwise — the door stays short */
         + '<div class="brk nhRoll" id="doorRecords"><h2 onclick="window.doorRecordsToggle()" style="display:flex;align-items:center;cursor:pointer">The records'
-        + '<span id="doorRecCaret" style="margin-left:auto;font-size:12px">\u25be</span></h2><div id="doorRecBody" style="display:none;padding:2px 0 10px">'
+        + nhExp("doorRecCaret",null,"margin-left:auto")+'</h2><div id="doorRecBody" style="display:none;padding:2px 0 10px">'
         /* n70: the region's records open as three plain choices rather than one word that meant several
            things. "All registered clubs" below offers the same three at register scope. */
         /* n65: PURPLE IS THE CLUB ITSELF. Fixed, never chosen: wherever you see it you are looking at the
@@ -12945,7 +12963,7 @@ W.nhOpenPair=function(name){
         box.dataset.platCol="1";
         tintTiles(card, p[0]);
         try{ card.querySelectorAll('div[style*="color:#5b3a6e"],div[style*="color:#6c3483"]').forEach(function(h){
-          if(h.dataset.platHead==="1"||h.children.length) return; h.dataset.platHead="1"; h.style.color=darken(p[0],0.2); }); }catch(e){}
+          if(h.dataset.platHead==="1"||h.children.length||(h.closest&&h.closest("#nh"))) return; h.dataset.platHead="1"; h.style.color=darken(p[0],0.2); }); }catch(e){}
         // p70: the pale tiles and the snapshot bar under the card were still OPR's purple wash, so a teal
         // card sat on a purple page. They take a faint wash of the SAME colour, and their figures take it too.
         try{
@@ -13944,12 +13962,13 @@ W.nhOpenPair=function(name){
       +".profile-card,.indiv-card{background:linear-gradient(135deg,"+col+","+deep+") !important}";
     if(!st.parentNode) document.head.appendChild(st);
     var paint=function(){
-      var box=card.querySelector('div[style*="linear-gradient"]');
+      /* n140: the parent's profile card only — never a new-app header, which it used to find first and flatten */
+      var box=Array.prototype.filter.call(card.querySelectorAll('div[style*="linear-gradient"]'),function(d){ return !(d.closest&&d.closest("#nh")); })[0];
       if(box && box.dataset.platBoard!=="1"){ box.style.background="linear-gradient(135deg,"+col+","+deep+")"; box.dataset.platBoard="1"; }
       tintTiles(card, col);
       // the section headings on the card ("Partnerships") are inline-styled in the parent's purple
       try{ card.querySelectorAll('div[style*="color:#5b3a6e"],div[style*="color:#6c3483"]').forEach(function(h){
-        if(h.dataset.platHead==="1"||h.children.length) return; h.dataset.platHead="1"; h.style.color=darken(col,0.2); }); }catch(e){}
+        if(h.dataset.platHead==="1"||h.children.length||(h.closest&&h.closest("#nh"))) return; h.dataset.platHead="1"; h.style.color=darken(col,0.2); }); }catch(e){}
     };
     platSchedule(paint); platRun();
   }
@@ -13973,6 +13992,7 @@ W.nhOpenPair=function(name){
       var rgb=(function(h){ var n=parseInt(h.slice(1),16); return ((n>>16)&255)+","+((n>>8)&255)+","+(n&255); })(col);
       var deep=darken(col,0.25);
       root.querySelectorAll('div[style*="border-radius:10px"]').forEach(function(t){
+        if(t.closest && t.closest("#nh")) return;   /* n140: the new app's tiles are drawn in their own colours */
         var st=t.getAttribute("style")||"";
         if(!/background:#/.test(st) || t.dataset.platTile==="1") return;
         t.dataset.platTile="1";
@@ -14027,6 +14047,11 @@ W.nhOpenPair=function(name){
       var el=els[i];
       
       if(el.dataset.platKeep==="1" || (el.closest && el.closest('[data-plat-keep="1"]'))) continue;   // platform-drawn: leave it
+      /* n139: NEVER INSIDE THE NEW APP'S OWN PAGES. Everything in #nh is drawn in its intended colour — a region's,
+         a group's. The repaint swaps OPR purple for the page's board colour, so on a region's door a group that had
+         CHOSEN OPR purple was turned into the region's colour: the old coupling. It still repaints the parent's
+         own screens, which draw in OPR purple by default and need it. */
+      if(el.closest && el.closest("#nh")) continue;
       var st=el.getAttribute("style")||"", out=st, hit=false;
       PARENT_INK.grad.forEach(function(pair){
         var re=new RegExp("linear-gradient\\(135deg,\\s*"+pair[0]+"\\s*,\\s*"+pair[1]+"\\s*\\)","ig");
