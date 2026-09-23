@@ -3681,7 +3681,7 @@ const CLUB_NAME = _club.name;  // shown in the logo as "OPR · <name>"
     link.setAttribute('href', href);
   }catch(e){ /* install stays on the static manifest — no functional impact */ }
 })();
-const OPR_VERSION = "OPR-DOUBLES v2026.09.03-56 · NAT fork n158 (no voice) (of PLAT p117)";  // MANUAL PAIR CREATION REMOVED FROM ADMIN: Create a pair, Bulk create pairs and Re-derive all pairs are gone (they only made match-less ghost pairs, and Re-derive rewrote every stored initial club-wide). Pairs are born automatically at match entry. Current pairs list untouched; the underlying JS is left in place unreferenced, so no other code path changes. Includes v47 (set-score fix + double-tap guard) and all prior.
+const OPR_VERSION = "OPR-DOUBLES v2026.09.03-56 · NAT fork n159 (no voice) (of PLAT p117)";  // MANUAL PAIR CREATION REMOVED FROM ADMIN: Create a pair, Bulk create pairs and Re-derive all pairs are gone (they only made match-less ghost pairs, and Re-derive rewrote every stored initial club-wide). Pairs are born automatically at match entry. Current pairs list untouched; the underlying JS is left in place unreferenced, so no other code path changes. Includes v47 (set-score fix + double-tap guard) and all prior.
 // Explanation shown above the individual ladder. Open on load so it's read; collapsible
 // (state kept for the session) and scrolls away. Mechanics only — no outcome framing, so
 // members aren't nudged away from playing stronger opponents. Every clause maps to a real
@@ -10451,10 +10451,12 @@ async function clRemove(id, label){
       +'</div>';
   }
   /* n150: fewer matches, and the week's count moved here from the banner — this is where people look for it. */
-  function nhMatchesBrk(d,n,scope,viewer){
+  /* n159: `bar:false` leaves the heading off — on a pair's own page the list is every match that pairing has
+     played, not "recent matches", and the page already says whose matches these are. */
+  function nhMatchesBrk(d,n,scope,viewer,bar){
     var all=(d.matches||[]); var ms=all.slice(0,n||12); if(!ms.length) return "";
     var wk=all.filter(function(m){ return ago(m.match_date)<7; }).length;
-    return '<div class="brk">'+nhLimeBar("Recent matches"+(wk?(" \u00b7 "+wk+" this week"):"")+(NHEG?" \u00b7 example":""))
+    return '<div class="brk">'+((bar===false)?"":nhLimeBar("Recent matches"+(wk?(" \u00b7 "+wk+" this week"):"")+(NHEG?" \u00b7 example":"")))
       +'<div style="max-height:'+(scope==="club"?430:360)+'px;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:4px 10px 8px">'
       + ms.map(function(m){ return nhMatchRow(m,scope,viewer); }).join("")
       +'</div>'
@@ -11377,7 +11379,7 @@ W.mePair=function(name){
         /* n158: the sets read from THIS PAIR's side — green won, red lost — as they do on a member's own page.
            Without a viewer the pills fell back to plain purple, so a partnership's matches said nothing about
            who won which set. Either member gives the same side, so the first name is enough. */
-        ? nhMatchesBrk({matches:ms},500,"board",names[0])
+        ? nhMatchesBrk({matches:ms},500,"board",names[0],false)
         : '<div class="brk">'+nhLimeBar("Matches")+meEmpty("This pair has not played yet.")+'</div>';
       w.innerHTML=h+homeBar();
     });
