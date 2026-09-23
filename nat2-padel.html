@@ -3681,7 +3681,7 @@ const CLUB_NAME = _club.name;  // shown in the logo as "OPR · <name>"
     link.setAttribute('href', href);
   }catch(e){ /* install stays on the static manifest — no functional impact */ }
 })();
-const OPR_VERSION = "OPR-DOUBLES v2026.09.03-56 · NAT fork n163 (no voice) (of PLAT p117)";  // MANUAL PAIR CREATION REMOVED FROM ADMIN: Create a pair, Bulk create pairs and Re-derive all pairs are gone (they only made match-less ghost pairs, and Re-derive rewrote every stored initial club-wide). Pairs are born automatically at match entry. Current pairs list untouched; the underlying JS is left in place unreferenced, so no other code path changes. Includes v47 (set-score fix + double-tap guard) and all prior.
+const OPR_VERSION = "OPR-DOUBLES v2026.09.03-56 · NAT fork n164 (no voice) (of PLAT p117)";  // MANUAL PAIR CREATION REMOVED FROM ADMIN: Create a pair, Bulk create pairs and Re-derive all pairs are gone (they only made match-less ghost pairs, and Re-derive rewrote every stored initial club-wide). Pairs are born automatically at match entry. Current pairs list untouched; the underlying JS is left in place unreferenced, so no other code path changes. Includes v47 (set-score fix + double-tap guard) and all prior.
 // Explanation shown above the individual ladder. Open on load so it's read; collapsible
 // (state kept for the session) and scrolls away. Mechanics only — no outcome framing, so
 // members aren't nudged away from playing stronger opponents. Every clause maps to a real
@@ -10927,6 +10927,15 @@ async function clRemove(id, label){
      keeps the original header exactly. */
   function regTint(h,f){ try{ var n=parseInt(String(h).slice(1),16),r=(n>>16)&255,g=(n>>8)&255,b=n&255;
     return "#"+((1<<24)+((r+(255-r)*f|0)<<16)+((g+(255-g)*f|0)<<8)+(b+(255-b)*f|0)).toString(16).slice(1); }catch(e){ return h; } }
+  /* n164: a group card's banner. Very light colours are darkened here (and here only) so white text holds;
+     the group keeps the colour it chose everywhere else. */
+  function nhLum(h){ try{ var n=parseInt(String(h).slice(1),16); return (0.2126*((n>>16)&255)+0.7152*((n>>8)&255)+0.0722*(n&255))/255; }catch(e){ return .4; } }
+  function cardBase(col){ var l=nhLum(col); return (l>0.62) ? nhDeep(col, Math.min(.55, (l-0.45))) : col; }
+  function cardEdge(col){ return cardBase(col); }
+  function cardSkin(col){
+    var b=cardBase(col);
+    return "url('./header_bg2.png') center top/cover,linear-gradient(105deg,"+nhDeep(b,.55)+","+b+" 55%,"+regTint(b,.75)+")";
+  }
   function regBandStyle(col){
     if(!regOwn(col)) return '';
     return ' style="background:url(\'./header_bg2.png\') center top/cover,linear-gradient(105deg,'+nhDeep(col,.62)+','+col+' 52%,'+regTint(col,.35)+');'
@@ -12777,16 +12786,22 @@ W.nhOpenPair=function(name){
           /* n63: an even border in the board's own colour — a thickened left edge alone looked unbalanced.
              The disc, the pill and the count share one line; the caption sits under, indented to the pill. */
           /* n154: an 8% wash of the group's own colour — the card reads as that group's, and it costs no height */
-          +'border:2px solid '+col+';background:'+regTint(col,.92)+';border-radius:16px;padding:15px 14px;margin:10px 12px 0;font:inherit;cursor:pointer">'
+          /* n164: THE CARD IS A LITTLE BANNER. The header picture supplies the arc and the streaks, the group's
+             colour supplies the hue, and everything on it reads white. A very light colour is darkened for the
+             card's background only, so white text stays readable whatever a club picks. */
+          +'border:2px solid '+cardEdge(col)+';background:'+cardSkin(col)+';background-blend-mode:luminosity,normal;'
+          +'border-radius:16px;padding:15px 14px;margin:10px 12px 0;font:inherit;cursor:pointer;color:#fff">'
           +'<div style="display:flex;align-items:center;gap:10px">'
-          + nhFace(name,col,34)   /* n152: on the ladder — face 34 */
-          +'<span style="flex:1;min-width:0;display:flex;align-items:center;gap:8px;background:'+col+';color:#fff;font-weight:800;font-size:14px;'
+          /* the disc is outlined on the banner — a club badge can take its place later */
+          +'<span style="width:34px;height:34px;flex:0 0 34px;border-radius:50%;background:rgba(255,255,255,.18);border:2px solid rgba(255,255,255,.6);color:#fff;'
+          +'display:grid;place-items:center;font-weight:800;font-size:12px;box-sizing:border-box">'+esc(inits(name))+'</span>' 
+          +'<span style="flex:1;min-width:0;display:flex;align-items:center;gap:8px;background:rgba(255,255,255,.18);border:1.5px solid rgba(255,255,255,.5);box-sizing:border-box;color:#fff;font-weight:800;font-size:14px;'
           +'border-radius:99px;height:34px;box-sizing:border-box;padding:0 5px 0 13px"><span style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+esc(name)+'</span><span aria-hidden="true" style="flex:0 0 24px;height:24px;border-radius:50%;background:#fff;color:'+col+';display:grid;place-items:center;line-height:0"><svg width="12" height="12" viewBox="0 0 12 12" style="display:block"><path d="M4.85 2.25 8.35 5.75 4.85 9.25" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg></span></span>'
           +'<span style="flex:0 0 auto;text-align:right;line-height:1.15">'
-          +'<span style="display:block;font-size:18px;font-weight:800;color:'+col+'">'+ms.length+'</span>'
-          +'<span style="display:block;font-size:10px;color:#8a8196">matches</span></span></div>'
+          +'<span style="display:block;font-size:18px;font-weight:800;color:#fff">'+ms.length+'</span>'
+          +'<span style="display:block;font-size:10px;color:rgba(255,255,255,.8)">matches</span></span></div>'
           /* n154: one line in the rail — the card is 84% of the screen there, so the indent and the longer wording wrapped it */
-          +'<div style="font-size:13px;color:#5f5770;margin:10px 0 0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+esc(sub)+'</div>' 
+          +'<div style="font-size:13px;color:rgba(255,255,255,.92);margin:10px 0 0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+esc(sub)+'</div>' 
           /* n150: no "N today" pill and no last-here block — the same match reads in Recent matches below and
              inside the group itself, and the card stays short enough for the rail */
           +'</button>';
@@ -13551,7 +13566,19 @@ W.nhOpenPair=function(name){
       if(!r||!r.ok){ m.style.color="#c00"; m.textContent=(r&&r.error)||"Failed."; return; }
       var c=(W.PLAT.clubs||[]).find(function(x){return x.id===id;}); if(c) c.colour=col;
       var c2=(REG.clubs||[]).find(function(x){return x.id===id;}); if(c2) c2.colour=col;
-      m.style.color="#2e7d32"; m.textContent="Colour saved."; regRender();
+      m.style.color="#2e7d32"; m.textContent="Colour saved.";
+      /* n164: paint THIS ROW rather than rebuilding the whole ledger. Redrawing every row at the moment the
+         phone's colour dialog was closing left the page blank — the input the dialog belonged to was destroyed
+         under it. The dot and the picker are the only things that change. */
+      try{
+        var box=document.getElementById("platTd"+id);
+        if(box){
+          var row=box.parentElement;
+          var dot=row&&row.querySelector('span[style*="border-radius:50%"]');
+          if(dot) dot.style.background=col;
+          box.innerHTML="";
+        }
+      }catch(e){}
     });
   };
   /* p21: the teardown ladder — matches, then members, then the club. Each step counted and confirmed. */
