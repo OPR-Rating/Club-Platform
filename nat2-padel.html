@@ -3681,7 +3681,7 @@ const CLUB_NAME = _club.name;  // shown in the logo as "OPR · <name>"
     link.setAttribute('href', href);
   }catch(e){ /* install stays on the static manifest — no functional impact */ }
 })();
-const OPR_VERSION = "OPR-DOUBLES v2026.09.03-56 · NAT fork n159 (no voice) (of PLAT p117)";  // MANUAL PAIR CREATION REMOVED FROM ADMIN: Create a pair, Bulk create pairs and Re-derive all pairs are gone (they only made match-less ghost pairs, and Re-derive rewrote every stored initial club-wide). Pairs are born automatically at match entry. Current pairs list untouched; the underlying JS is left in place unreferenced, so no other code path changes. Includes v47 (set-score fix + double-tap guard) and all prior.
+const OPR_VERSION = "OPR-DOUBLES v2026.09.03-56 · NAT fork n162 (no voice) (of PLAT p117)";  // MANUAL PAIR CREATION REMOVED FROM ADMIN: Create a pair, Bulk create pairs and Re-derive all pairs are gone (they only made match-less ghost pairs, and Re-derive rewrote every stored initial club-wide). Pairs are born automatically at match entry. Current pairs list untouched; the underlying JS is left in place unreferenced, so no other code path changes. Includes v47 (set-score fix + double-tap guard) and all prior.
 // Explanation shown above the individual ladder. Open on load so it's read; collapsible
 // (state kept for the session) and scrolls away. Mechanics only — no outcome framing, so
 // members aren't nudged away from playing stronger opponents. Every clause maps to a real
@@ -9410,6 +9410,17 @@ async function clRemove(id, label){
      OPR's own purple leads, then the brights, then the deeper originals. All hold white text on a pill. */
   /* n138: OPR PURPLE, NAMED. It is the first swatch, but on the Global Ledger the charcoal repaint used to disguise
      it as black, so it was never seen. Now it also has its own labelled button above the palette, in both pickers. */
+  /* n161: THE WHOLE SPECTRUM. 24 swatches runs out once a register has a dozen groups, so both pickers also
+     offer the phone's own colour wheel — any colour, kept exactly as chosen. */
+  function anyColourChoice(cb,cur){
+    var id="nhAny"+Math.round(Math.random()*1e6);
+    return '<label data-plat-keep="1" for="'+id+'" style="display:inline-flex;align-items:center;gap:8px;margin:0 0 8px 8px;'
+      +'padding:6px 12px 6px 6px;border-radius:99px;border:1.5px solid #6c3483;background:#fff;color:#6c3483;font-size:12.5px;font-weight:800;cursor:pointer">'
+      +'<span data-plat-keep="1" style="width:20px;height:20px;border-radius:50%;display:inline-block;'
+      +'background:conic-gradient(#dc2626,#d97706,#65a30d,#059669,#0891b2,#2563eb,#7c3aed,#db2777,#dc2626)"></span>Any colour\u2026'
+      +'<input id="'+id+'" type="color" value="'+(cur||"#6c3483")+'" data-plat-keep="1" '
+      +'oninput="'+cb+'(this.value)" style="width:0;height:0;opacity:0;position:absolute;pointer-events:none"></label>';
+  }
   function oprPurpleChoice(onclick){
     return '<button data-plat-keep="1" onclick="'+onclick+'" style="display:inline-flex;align-items:center;gap:8px;margin:0 0 8px;'
       +'padding:6px 12px 6px 6px;border-radius:99px;border:1.5px solid #6c3483;background:#fff;color:#6c3483;font:inherit;font-size:12.5px;font-weight:800;cursor:pointer">'
@@ -11043,10 +11054,11 @@ async function clRemove(id, label){
     try{ localStorage.removeItem(meKey()); localStorage.removeItem(mePinKey()); }catch(e){}
     newMePage();
   };
-W.mePair=function(name){
+W.mePair=function(name,col){
     /* n88: the fresh pair page, back to this profile */
     var C=(W.PLAT.parentId||W.PLAT.cid||W.PLAT.nat||0);
-    location.href=PAGE+"?club="+C+"&go=pair&pair="+encodeURIComponent(name)+"&back="+encodeURIComponent(location.search||"");
+    location.href=PAGE+"?club="+C+"&go=pair&pair="+encodeURIComponent(name)+(col?("&col="+encodeURIComponent(col)):"")
+      +"&back="+encodeURIComponent(location.search||"");
   };
   function halves(v){ return String(v||"").split(" & ").map(function(x){ return x.trim(); }).filter(Boolean); }
 
@@ -11325,8 +11337,13 @@ W.mePair=function(name){
     var pair=q.get("pair")||"", back=q.get("back")||"";
     var C=(W.PLAT.parentId||W.PLAT.cid||W.PLAT.nat||0);
     var w=nhWrap(); if(!w) return;
-    nhCSS(); nhOneWayIn(); nhInk("#6c3483"); nhHeaderSkin("#6c3483","#1d0a41");
-    w.innerHTML='<div class="band" style="background:linear-gradient(135deg,#6c3483,#1d0a41)">'+nhMark("Pair")+'<h1>'+esc(pair)+'</h1></div>'
+    /* n162: open in the colour we were handed. Without it the page painted OPR purple, then repainted in the
+       pair's colour a moment later — a visible flash on the way in from a member's partnerships. */
+    var hint=null; try{ hint=new URLSearchParams(location.search).get("col"); }catch(e){}
+    if(!/^#[0-9a-fA-F]{6}$/.test(hint||"")) hint=null;
+    var first=hint||"#6c3483";
+    nhCSS(); nhOneWayIn(); nhInk(first); nhHeaderSkin(first, nhDeep(first));
+    w.innerHTML='<div class="band" style="background:linear-gradient(135deg,'+first+','+nhDeep(first)+')">'+nhMark("Pair")+'<h1>'+esc(pair)+'</h1></div>'
       +'<div style="padding:16px 14px;font-size:13px;color:#5f5770">Reading the record\u2026</div>'+homeBar();
     var B=SBREST(), P=W.PLAT.pool, like="*"+encodeURIComponent(pair)+"*";
     Promise.all([
@@ -11453,7 +11470,8 @@ W.mePair=function(name){
         + (function(){ var bq=""; try{ bq=new URLSearchParams(location.search).get("back")||""; }catch(e){}
              return '<div class="pulse"><a href="'+(bq?(PAGE+bq):(PAGE+'?club='+C))+'" onclick="return window.nhBack(this.href)">\u2039 '+esc(bq?"back":club.name)+'</a>'; })()
         + '<span>'+(st.move>0?"+":"")+Math.round(st.move)+' '+nhWhen()+'</span>'
-        + Object.keys(st.boards).map(function(id){ return '<span>'+esc(nhBoardName(id))+' \u00b7 '+st.boards[id]+'</span>'; }).join("")
+        /* n161: the groups a member plays in are NOT listed here. Somebody in six groups wrapped the header onto
+           a second and third line; the same counts are in "Move by group" further down the page. */
         + '</div></div>'
         ;
       /* n85: the five figures sit right under the header; the action row comes after them */
@@ -11520,7 +11538,8 @@ W.mePair=function(name){
           h+='<div style="padding:4px 12px 4px">'
           + byGroup[gid].map(function(x){
               var cat=catOf(x), mvCol=(x.move>=0)?"#1e8449":"#c0392b";
-              return '<div onclick="window.mePair(\''+String(x.name).replace(/'/g,"\\\\'")+'\')" style="cursor:pointer;background:#fff;border:1px solid rgba(108,52,131,.16);'
+              /* n162: the colour goes with the tap, so the pair page opens in it instead of flashing purple first */
+              return '<div onclick="window.mePair(\''+String(x.name).replace(/'/g,"\\\\'")+'\',\''+gc+'\')" style="cursor:pointer;background:#fff;border:1px solid rgba(108,52,131,.16);'
                 +'border-radius:12px;padding:12px 14px;margin-bottom:10px;box-shadow:0 1px 3px rgba(0,0,0,.05)">'
                 +'<div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">'
                 +'<span style="font-weight:700;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+esc(x.name)+'</span>'
@@ -13336,7 +13355,7 @@ W.nhOpenPair=function(name){
        the buttons sitting on top of it. The name and its caption now have the line to themselves and the
        buttons wrap beneath, so a fifth button would not break it either. */
     /* n149: the region's own row — its name and its colour, nothing to play on */
-    function regionRow(c){
+    function regionRow(c,withDelete){
       var p=clubPal(c.id);
       var btn=function(label,onclick){ return '<button class="menu-btn" style="min-height:32px;padding:5px 11px;font-size:12px" onclick="'+onclick+'">'+esc(label)+'</button>'; };
       return '<div style="padding:10px 0;border-bottom:1px solid #eee">'
@@ -13348,6 +13367,7 @@ W.nhOpenPair=function(name){
         +'<div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:8px;padding-left:24px">'
         + btn("Rename","window.platRenameBoard("+c.id+")")
         + btn("Colour","window.platClubColour("+c.id+")")
+        + (withDelete?btn("Delete\u2026","window.platClubTeardown("+c.id+")"):"")
         +'</div>'
         +'<div id="platTd'+c.id+'"></div></div>';
     }
@@ -13398,7 +13418,9 @@ W.nhOpenPair=function(name){
     } else {
       h+='<div style="margin-top:10px;font-weight:700;font-size:13px;color:#444">Clubs and groups</div>';
       (REG.clubs||[]).filter(function(c){ return !c.parent_id; }).forEach(function(c){
-        h+=boardRow(c, "The club \u00b7 its own board is its General play");
+        /* n160: in the register's room a region is a region here too — its name and colour, and Delete, which
+           belongs in the Global Ledger. Its own board is not a place to play, so it is not offered. */
+        h+=regionRow(c,true);
         (REG.clubs||[]).filter(function(g){ return Number(g.parent_id)===Number(c.id); }).forEach(function(g){
           h+='<div style="padding-left:18px;border-left:2px solid #eee">'+boardRow(g, "Group inside "+c.name)+'</div>';
         });
@@ -13436,7 +13458,9 @@ W.nhOpenPair=function(name){
           +(REG.clubs||[]).filter(function(c){ return !c.parent_id; }).map(function(c){ return '<option value="'+c.id+'">A group inside '+esc(c.name)+'</option>'; }).join("")+'</select>') 
       +'<div style="font-size:12px;color:#666;margin:4px 0 6px">'+((REG.role==="club")?"A group runs its own board, ladder and tournaments, and shares the club\'s players and their one rating.":"A <b>club</b> gets its own door, colour, code, ledger and groups, and shares this register\'s one player base. A <b>group</b> belongs to a club and runs its own ladder and tournaments.")+'</div>' 
       +'<div style="display:flex;gap:8px;flex-wrap:wrap"><input id="platNewName" placeholder="Group name" style="flex:2;min-width:150px;padding:10px 12px;border:1.5px solid #ddd;border-radius:10px"><input id="platNewPin" inputmode="numeric" placeholder="Its code" style="flex:1;min-width:100px;padding:10px 12px;border:1.5px solid #ddd;border-radius:10px"></div>'
-      +'<div style="margin-top:8px;font-size:12px;color:#666">Colour</div>'+oprPurpleChoice("window.platPickNew('#6c3483')")+'<div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:4px">'
+      +'<div style="margin-top:8px;font-size:12px;color:#666">Colour</div>'+oprPurpleChoice("window.platPickNew('#6c3483')")
+      +anyColourChoice("window.platPickNew")
+      +'<div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:4px">'
       +SWATCH.map(function(s,i){ return '<button data-plat-keep="1" onclick="window.platPickNew(\''+s+'\')" id="platNewSw'+i+'" style="width:26px;height:26px;border-radius:50%;background:'+s+';border:2px solid '+(i===0?'#333':'transparent')+';cursor:pointer"></button>'; }).join('')
       /* n15: a club must be reachable by the other clubs in the register — name, mobile, email, taken at the
          moment it is onboarded. Groups are reached through their club, so they have no contact of their own. */
@@ -13513,7 +13537,9 @@ W.nhOpenPair=function(name){
     Array.prototype.forEach.call(document.querySelectorAll('[id^="platTd"]'),function(el){ if(el!==box) el.innerHTML=""; });
     try{ setTimeout(function(){ box.scrollIntoView({behavior:"smooth",block:"nearest"}); },50); }catch(e){}
     box.innerHTML='<div style="padding:8px 0;font-size:12px;color:#666">Colour for '+esc((REG.clubs.find(function(c){return c.id===id;})||{}).name)+'</div>'
-      +oprPurpleChoice("window.platSetColour("+id+",'#6c3483')")+'<div style="display:flex;flex-wrap:wrap;gap:6px">'
+      +oprPurpleChoice("window.platSetColour("+id+",'#6c3483')")
+      +anyColourChoice("(function(v){ window.platSetColour("+id+",v); })", (REG.clubs.find(function(c){return c.id===id;})||{}).colour)
+      +'<div style="display:flex;flex-wrap:wrap;gap:6px">'
       +SWATCH.map(function(s){ return '<button data-plat-keep="1" onclick="window.platSetColour('+id+',\''+s+'\')" style="width:26px;height:26px;border-radius:50%;background:'+s+';border:2px solid transparent;cursor:pointer"></button>'; }).join('')+'</div>';
   };
   W.platSetColour=function(id,col){
