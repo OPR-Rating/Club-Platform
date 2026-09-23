@@ -3665,7 +3665,7 @@ const CLUB_NAME = _club.name;  // shown in the logo as "OPR · <name>"
     link.setAttribute('href', href);
   }catch(e){ /* install stays on the static manifest — no functional impact */ }
 })();
-const OPR_VERSION = "OPR-DOUBLES v2026.09.03-56 · NAT fork n144 (no voice) (of PLAT p117)";  // MANUAL PAIR CREATION REMOVED FROM ADMIN: Create a pair, Bulk create pairs and Re-derive all pairs are gone (they only made match-less ghost pairs, and Re-derive rewrote every stored initial club-wide). Pairs are born automatically at match entry. Current pairs list untouched; the underlying JS is left in place unreferenced, so no other code path changes. Includes v47 (set-score fix + double-tap guard) and all prior.
+const OPR_VERSION = "OPR-DOUBLES v2026.09.03-56 · NAT fork n146 (no voice) (of PLAT p117)";  // MANUAL PAIR CREATION REMOVED FROM ADMIN: Create a pair, Bulk create pairs and Re-derive all pairs are gone (they only made match-less ghost pairs, and Re-derive rewrote every stored initial club-wide). Pairs are born automatically at match entry. Current pairs list untouched; the underlying JS is left in place unreferenced, so no other code path changes. Includes v47 (set-score fix + double-tap guard) and all prior.
 // Explanation shown above the individual ladder. Open on load so it's read; collapsible
 // (state kept for the session) and scrolls away. Mechanics only — no outcome framing, so
 // members aren't nudged away from playing stronger opponents. Every clause maps to a real
@@ -9962,6 +9962,9 @@ async function clRemove(id, label){
       +".screen .header .back-btn{background:rgba(255,255,255,.16) !important;border:1px solid rgba(255,255,255,.3) !important;border-radius:99px !important;width:36px;height:36px}"
       /* n131: a screen header is born at the height its group badge needs, so the badge arriving a moment later does not
          nudge the page down (it measured 64px without the badge, 68px with) */
+      /* n146: every screen clears the bottom bar — it floats over the page at 53px and the screens left only 34px,
+         so the end of a long tournament page (a knockout draw, the entry set-up) sat behind it and could not be read */
+      +".screen .screen-content{padding-bottom:calc(78px + env(safe-area-inset-bottom)) !important}"
       +".screen .header{min-height:68px;box-sizing:border-box}"
       /* n142: the same design on the original app's screen headers */
       +".screen .header{position:relative;overflow:hidden;isolation:isolate}"
@@ -11815,6 +11818,29 @@ W.mePair=function(name){
       return out;
     };
   })();
+  /* n146: THE FIXTURES NOTE. "Tap a fixture to enter or edit its score (admin)." was a grey line nobody read, so
+     members kept trying to enter their scores on the draw. It is now an amber pill saying where scores go. */
+  (function(){
+    var OLD="Tap a fixture to enter or edit its score (admin).";
+    var pill='<div data-plat-keep="1" style="display:flex;align-items:center;gap:9px;margin-top:10px;background:#fff7ed;'
+      +'border:1.5px solid #f59e0b;border-radius:12px;padding:10px 13px;font-size:13px;line-height:1.45;color:#7c2d12">'
+      +'<span data-plat-keep="1" style="flex:0 0 auto;background:#f59e0b;color:#fff;font-weight:800;font-size:11px;letter-spacing:.06em;'
+      +'border-radius:99px;padding:3px 10px">ADMINS ONLY</span>'
+      +'<span>Tapping a fixture here <b>edits</b> a score. <b>All scores are entered on the club page</b>, with <b>Enter a score</b>.</span></div>';
+    function fix(){
+      try{
+        document.querySelectorAll("p.sub").forEach(function(p){
+          if((p.textContent||"").trim()===OLD){ var d=document.createElement("div"); d.innerHTML=pill; p.replaceWith(d.firstChild); }
+        });
+      }catch(e){}
+    }
+    var t=setInterval(function(){
+      var scr=document.getElementById("tournamentSheetScreen"); if(!scr) return;
+      clearInterval(t); fix();
+      try{ new MutationObserver(fix).observe(scr,{childList:true,subtree:true}); }catch(e){}
+    },500);
+    setTimeout(function(){ clearInterval(t); }, 120000);
+  })();
   W.mePartToggle=function(){
     var b=document.getElementById("mePartBody"), c=document.getElementById("mePartCaret"); if(!b) return;
     var open=b.style.display==="none"; b.style.display=open?"block":"none"; if(c) c.classList.toggle("open",open);
@@ -13174,8 +13200,14 @@ W.nhOpenPair=function(name){
     if(REG.role==="club"){
       var own=(REG.clubs||[]).filter(function(c){ return Number(c.id)===Number(REG.clubId); })[0];
       myGroups=(REG.clubs||[]).filter(function(c){ return Number(c.parent_id)===Number(REG.clubId); });
-      h+='<div style="margin-top:10px;font-weight:700;font-size:13px;color:#444">The club</div>';
-      if(own) h+=boardRow(own, "General play \u00b7 the club\'s own board, for matches outside the groups");
+      /* n145: ONCE THERE ARE GROUPS, THE REGION'S OWN BOARD IS NOT OFFERED. The door already hides it — members
+         only ever see the groups — so offering it here let an admin build tournaments and matches on a board
+         nobody could reach. While a region has no groups yet it stays, because that is where the club plays
+         until the first group is made. */
+      if(!myGroups.length){
+        h+='<div style="margin-top:10px;font-weight:700;font-size:13px;color:#444">The club</div>';
+        if(own) h+=boardRow(own, "General play \u00b7 the club\'s own board, until the first group is made");
+      }
     } else {
       h+='<div style="margin-top:10px;font-weight:700;font-size:13px;color:#444">Clubs and groups</div>';
       (REG.clubs||[]).filter(function(c){ return !c.parent_id; }).forEach(function(c){
@@ -13237,7 +13269,7 @@ W.nhOpenPair=function(name){
          is taken because you asked — before a busy evening, or a change you are unsure of. */
       +'<div style="font-size:12px;color:#666;margin:10px 0 6px">'
       +((REG.role==="club")
-        ? 'Take a copy of '+esc(REG.clubName||"this club")+' now \u2014 its General play board and each of its groups, with their members, pairs and matches.'
+        ? 'Take a copy of '+esc(REG.clubName||"this club")+' now \u2014 every group, with their members, pairs and matches.'
         : 'Take a copy of the whole register now \u2014 every club and group, with their members, pairs and matches.')
       +'</div>'
       +'<button class="menu-btn" style="width:100%" onclick="window.platBackupNow()">'
