@@ -3681,7 +3681,7 @@ const CLUB_NAME = _club.name;  // shown in the logo as "OPR · <name>"
     link.setAttribute('href', href);
   }catch(e){ /* install stays on the static manifest — no functional impact */ }
 })();
-const OPR_VERSION = "OPR-DOUBLES v2026.09.03-56 · NAT fork n150 (no voice) (of PLAT p117)";  // MANUAL PAIR CREATION REMOVED FROM ADMIN: Create a pair, Bulk create pairs and Re-derive all pairs are gone (they only made match-less ghost pairs, and Re-derive rewrote every stored initial club-wide). Pairs are born automatically at match entry. Current pairs list untouched; the underlying JS is left in place unreferenced, so no other code path changes. Includes v47 (set-score fix + double-tap guard) and all prior.
+const OPR_VERSION = "OPR-DOUBLES v2026.09.03-56 · NAT fork n151 (no voice) (of PLAT p117)";  // MANUAL PAIR CREATION REMOVED FROM ADMIN: Create a pair, Bulk create pairs and Re-derive all pairs are gone (they only made match-less ghost pairs, and Re-derive rewrote every stored initial club-wide). Pairs are born automatically at match entry. Current pairs list untouched; the underlying JS is left in place unreferenced, so no other code path changes. Includes v47 (set-score fix + double-tap guard) and all prior.
 // Explanation shown above the individual ladder. Open on load so it's read; collapsible
 // (state kept for the session) and scrolls away. Mechanics only — no outcome framing, so
 // members aren't nudged away from playing stronger opponents. Every clause maps to a real
@@ -10076,7 +10076,9 @@ async function clRemove(id, label){
      /* n132: a band that rolls up (Groups, The records) is ALL shade when closed — no white strip under the heading */
      +"#nh .nhRoll > h2{margin:0!important;border-bottom:none!important}"
      /* n150: the groups run sideways like a rail — one card at a time, no scrollbar, dots for where you are */
-     +"#doorGroupCards{display:flex;gap:10px;overflow-x:auto;padding:12px;scroll-snap-type:x mandatory;scrollbar-width:none;-ms-overflow-style:none}"
+     /* n151: scroll-padding keeps the FIRST card exactly where it sits when there is only one — without it the
+        snap pulled the rail 12px left the moment a second group appeared, and the first card jumped. */
+     +"#doorGroupCards{display:flex;gap:10px;overflow-x:auto;padding:12px;scroll-padding-left:12px;scroll-padding-right:12px;scroll-snap-type:x mandatory;scrollbar-width:none;-ms-overflow-style:none}"
      +"#doorGroupCards::-webkit-scrollbar{display:none}"
      +"#doorGroupCards > *{flex:0 0 84%;scroll-snap-align:start;margin:0!important;width:auto!important}"
      +"#doorGroupCards.one{display:block}"
@@ -11589,7 +11591,7 @@ W.mePair=function(name){
       var pid=pp?Number(pp.id||pp.individual_id||0):0;
       if(pid && taken[pid]) return false;
       return !v || n.toLowerCase().indexOf(v)>=0;
-    }).slice(0,40);
+    });   /* n151: every name — the list stopped at 40, so a register of 146 ran out at F */
     hits.innerHTML=names.map(function(n){
       var p=(W.__mePeopleFull||[]).filter(function(x){ return x.full_name===n; })[0];
       var pid=p?Number(p.id||p.individual_id||0):0;
@@ -11696,7 +11698,9 @@ W.mePair=function(name){
     box.innerHTML='<div style="font-size:12.5px;color:#5f5770;margin:0 2px 2px">Where did you play?</div>'
       /* n97: the way back from the score sheet is the door that opened it */
       + (kids.length ? "" : '<div style="padding:10px 2px;font-size:13px;color:#7c2d12">No groups yet \u2014 create one in <b>Club admin</b> first. Scores are entered in a group.</div>')
-      + kids.map(function(g){ return pill(g.name, clubPal(g.id)[0], PAGE+"?club="+g.id+"&go=entry&back="+encodeURIComponent("?club="+C)); }).join("")
+      /* n151: in the order the member keeps their groups on the door, the ones they have switched on first —
+         the list reads the same as the rail they came from */
+      + doorPickOrder(kids).map(function(g){ return pill(g.name, clubPal(g.id)[0], PAGE+"?club="+g.id+"&go=entry&back="+encodeURIComponent("?club="+C)); }).join("")
       + '<button onclick="document.getElementById(\'nhBarWhere\').remove()" style="display:block;width:100%;margin-top:10px;'
       + 'background:none;border:none;font:inherit;font-size:12.5px;color:#8a8196;cursor:pointer">Not now</button>';
     document.body.appendChild(box);
@@ -12006,6 +12010,17 @@ W.mePair=function(name){
       +'</div>';
   }
   /* n150: the rail's dots — which card you are on, and none when there is only one */
+  /* n151: the member's own order for a list of groups — their arrangement first, then any they have hidden */
+  function doorPickOrder(list){
+    try{
+      var ord=doorOrder(), hid=doorHidden();
+      var pos=function(id){ var i=ord.indexOf(Number(id)); return i<0?1e6:i; };
+      return (list||[]).slice().map(function(g,i){ return {g:g,i:i}; }).sort(function(a,b){
+        var ha=hid.indexOf(Number(a.g.id))>=0?1:0, hb=hid.indexOf(Number(b.g.id))>=0?1:0;
+        return (ha-hb) || (pos(a.g.id)-pos(b.g.id)) || (a.i-b.i);
+      }).map(function(x){ return x.g; });
+    }catch(e){ return list||[]; }
+  }
   function doorRailDots(){
     var rail=document.getElementById("doorGroupCards"); if(!rail) return;
     var cards=Array.prototype.filter.call(rail.children,function(c){ return c.tagName==="BUTTON"; });
@@ -12629,7 +12644,7 @@ W.nhOpenPair=function(name){
     var box=document.getElementById("doorWhere"); if(!box) return;
     if(box.dataset.open===what){ box.style.display="none"; box.dataset.open=""; return; }
     box.dataset.open=what; box.style.display="block";
-    var C=W.PLAT.cid, kids=kidsOf(C).sort(function(a,b){ return String(a.name).localeCompare(String(b.name)); });
+    var C=W.PLAT.cid, kids=doorPickOrder(kidsOf(C).sort(function(a,b){ return String(a.name).localeCompare(String(b.name)); }));   /* n151: the member's own order, switched-on first — the same as the rail */
     var ask={score:"Where did you play?",ladders:"Whose ratings and ladders?",profiles:"Whose members?",card:"Which board\u2019s court card?"}[what];
     /* n97: the way back from a score sheet is the door that opened it */
     var go=function(id){ return PAGE+"?club="+id+(id===C?"&board=1":"")+"&go="+(what==="score"?"entry":what)+"&back="+encodeURIComponent("?club="+C); };
