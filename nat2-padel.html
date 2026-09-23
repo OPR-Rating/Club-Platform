@@ -869,6 +869,22 @@
     // p51: the DOOR and the LEDGER both arrive without ?club=, so "CID===0" was dressing the door in the
     // ledger's charcoal and stripping OPR's banner off it. The ledger is the one with a pool but no club
     // AND not the landing page.
+    /* n147: BOARDROOM VIEW. Opened through boardroom.html (?view=wide), this tab lays the app out for a big screen.
+       It is remembered for the tab only, so every page stays wide while you present, and no ordinary link is
+       affected — a member opening the normal address on a laptop sees exactly what they see today.
+       ?view=phone turns it off again. */
+    try{
+      var vw=(new URLSearchParams(location.search).get("view")||"").toLowerCase();
+      if(vw==="wide") sessionStorage.setItem("nh_wide","1");
+      if(vw==="phone") sessionStorage.removeItem("nh_wide");
+      if(sessionStorage.getItem("nh_wide")==="1"){
+        var ws=document.createElement("style"); ws.id="nhWideMark";
+        ws.textContent="#nh{--nh-wide:1}";
+        (document.head||document.documentElement).appendChild(ws);
+        W.NH_WIDE=true;
+        document.documentElement.classList.add("nhWideDoc");
+      }
+    }catch(e){}
     var isLedger = (CID===0 && !LANDING);
     /* n129: OPEN ON MY PAGE. If this phone's member switched it on, the FIRST page of a visit that lands on the club's
        door goes to their page instead. Only the first: a flag for this visit means "Club home" and every later trip
@@ -3665,7 +3681,7 @@ const CLUB_NAME = _club.name;  // shown in the logo as "OPR · <name>"
     link.setAttribute('href', href);
   }catch(e){ /* install stays on the static manifest — no functional impact */ }
 })();
-const OPR_VERSION = "OPR-DOUBLES v2026.09.03-56 · NAT fork n146 (no voice) (of PLAT p117)";  // MANUAL PAIR CREATION REMOVED FROM ADMIN: Create a pair, Bulk create pairs and Re-derive all pairs are gone (they only made match-less ghost pairs, and Re-derive rewrote every stored initial club-wide). Pairs are born automatically at match entry. Current pairs list untouched; the underlying JS is left in place unreferenced, so no other code path changes. Includes v47 (set-score fix + double-tap guard) and all prior.
+const OPR_VERSION = "OPR-DOUBLES v2026.09.03-56 · NAT fork n148 (no voice) (of PLAT p117)";  // MANUAL PAIR CREATION REMOVED FROM ADMIN: Create a pair, Bulk create pairs and Re-derive all pairs are gone (they only made match-less ghost pairs, and Re-derive rewrote every stored initial club-wide). Pairs are born automatically at match entry. Current pairs list untouched; the underlying JS is left in place unreferenced, so no other code path changes. Includes v47 (set-score fix + double-tap guard) and all prior.
 // Explanation shown above the individual ladder. Open on load so it's read; collapsible
 // (state kept for the session) and scrolls away. Mechanics only — no outcome framing, so
 // members aren't nudged away from playing stronger opponents. Every clause maps to a real
@@ -10107,14 +10123,28 @@ async function clRemove(id, label){
         across a wide screen and nothing lined up with the bar at the foot. The page keeps its own width and
         sits in the middle, exactly as it does on a phone — one layout to look after, and it reads the same
         wherever it is opened. */
-     +"@media(min-width:880px){"
+     +"@media(min-width:880px) and (max-width:1099px){"
      +"#nh{max-width:560px;padding-bottom:40px}"
      +"#nh .band{border-radius:0 0 20px 20px}"
      +"}"
-     /* n127: A LAPTOP LAYOUT THAT LINES UP. n77 tried two free-flowing columns and pulled them: things scattered and
-        nothing lined up. This one is a fixed frame — the banner and pill strip across the top, a fixed-width left
-        column you GO from (enter a score, the groups, the records, everything else) and a right column you READ
-        (form, movers, charts, recent matches, tournaments), both starting at the same line. Phones are untouched. */
+     /* n147: THE BOARDROOM LAYOUT. Same pages, same design — laid out for a big screen: the header and pill strip
+        across a comfortable page width, the group cards side by side, and the glimpses in two columns. It applies
+        only in a tab opened through boardroom.html (html.nhWideDoc), so ordinary links are untouched. */
+     +"@media(min-width:1000px){"
+     +"html.nhWideDoc #nh{max-width:1060px}"
+     +"html.nhWideDoc #nh .band{border-radius:0 0 22px 22px;padding:26px 30px 30px}"
+     +"html.nhWideDoc #nh .band h1{font-size:30px}"
+     +"html.nhWideDoc #nhJump{justify-content:center;flex-wrap:wrap;overflow:visible;padding-left:14px;padding-right:14px}"
+     +"html.nhWideDoc #nhJump button{flex:0 0 auto;font-size:13.5px;padding:8px 16px}"
+     /* cards share the row when there are several, and a lone card fills it */
+     +"html.nhWideDoc #doorGroupCards{display:grid;grid-template-columns:repeat(auto-fit,minmax(460px,1fr));gap:14px;padding:0 12px}"
+     +"html.nhWideDoc #doorGroupCards > *{margin-left:0!important;margin-right:0!important;margin-top:12px}"
+     +"html.nhWideDoc #nh .cols{display:block;columns:2;column-gap:16px}"
+     +"html.nhWideDoc #nh .cols > .brk{margin:12px 0 0;break-inside:avoid;display:inline-block;width:100%}"
+     +"html.nhWideDoc #nh .tiles{gap:14px}"
+     /* the bar at the foot lines up with the page */
+     +"html.nhWideDoc #nhBar{max-width:1060px;left:50%;transform:translateX(-50%);border-radius:18px 18px 0 0}"
+     +"}"
      +"@media(min-width:1000px){"
      +"#nh.nhLap{max-width:1180px}"
      +"#nh.nhLap .nhLapRow{display:flex;gap:18px;align-items:flex-start;padding:0 14px}"
@@ -11838,6 +11868,30 @@ W.mePair=function(name){
       var scr=document.getElementById("tournamentSheetScreen"); if(!scr) return;
       clearInterval(t); fix();
       try{ new MutationObserver(fix).observe(scr,{childList:true,subtree:true}); }catch(e){}
+    },500);
+    setTimeout(function(){ clearInterval(t); }, 120000);
+  })();
+  /* n148: NO KEYBOARD UNTIL YOU ASK FOR ONE. The name picker put the cursor straight in its search box, so the
+     phone's keyboard covered half the list and names from D onwards could not be seen without closing it again.
+     The box now opens as read-only — a phone shows no keyboard for one — and the first tap on it makes it
+     typable and focuses it. Every time the picker opens, it goes back to read-only. */
+  (function(){
+    function arm(inp){
+      if(!inp || inp.dataset.nhKb==="1") return;
+      inp.dataset.nhKb="1"; inp.readOnly=true; inp.setAttribute("placeholder", inp.getAttribute("placeholder")||"Tap to search");
+      var open=function(){ if(inp.readOnly){ inp.readOnly=false; try{ inp.focus(); }catch(e){} } };
+      inp.addEventListener("pointerdown", open); inp.addEventListener("click", open); inp.addEventListener("touchstart", open, {passive:true});
+    }
+    function shut(inp){ if(inp){ inp.readOnly=true; try{ inp.blur(); }catch(e){} } }
+    var t=setInterval(function(){
+      var modal=document.getElementById("playerModal"), inp=document.getElementById("playerModalSearch");
+      if(!modal || !inp) return;
+      clearInterval(t); arm(inp); shut(inp);
+      try{
+        new MutationObserver(function(){
+          if(modal.style.display && modal.style.display!=="none"){ arm(inp); shut(inp); }
+        }).observe(modal,{attributes:true,attributeFilter:["style"]});
+      }catch(e){}
     },500);
     setTimeout(function(){ clearInterval(t); }, 120000);
   })();

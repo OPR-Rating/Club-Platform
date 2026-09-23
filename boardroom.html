@@ -1,0 +1,16 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>OPR · Boardroom view</title>
+<script>
+  /* Opens the app laid out for a big screen. Anything after the "?" is passed on, so
+     boardroom.html?club=30 opens that region wide; with nothing, it opens the master page. */
+  (function(){
+    var q=location.search, base=(q&&q.length>1)?q:"?pool=16";
+    location.replace("nat2-padel.html"+base+"&view=wide"+(location.hash||""));
+  })();
+</script>
+<noscript><meta http-equiv="refresh" content="0; url=nat2-padel.html?pool=16&view=wide"></noscript>
+</head><body style="font-family:system-ui,sans-serif;padding:24px;color:#333">
+<p>Opening OPR for the big screen&hellip; <a href="nat2-padel.html?pool=16&view=wide">tap here if it doesn't open</a>.</p>
+</body></html>
