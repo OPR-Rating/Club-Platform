@@ -3681,7 +3681,7 @@ const CLUB_NAME = _club.name;  // shown in the logo as "OPR · <name>"
     link.setAttribute('href', href);
   }catch(e){ /* install stays on the static manifest — no functional impact */ }
 })();
-const OPR_VERSION = "OPR-DOUBLES v2026.09.03-56 · NAT fork n152 (no voice) (of PLAT p117)";  // MANUAL PAIR CREATION REMOVED FROM ADMIN: Create a pair, Bulk create pairs and Re-derive all pairs are gone (they only made match-less ghost pairs, and Re-derive rewrote every stored initial club-wide). Pairs are born automatically at match entry. Current pairs list untouched; the underlying JS is left in place unreferenced, so no other code path changes. Includes v47 (set-score fix + double-tap guard) and all prior.
+const OPR_VERSION = "OPR-DOUBLES v2026.09.03-56 · NAT fork n154 (no voice) (of PLAT p117)";  // MANUAL PAIR CREATION REMOVED FROM ADMIN: Create a pair, Bulk create pairs and Re-derive all pairs are gone (they only made match-less ghost pairs, and Re-derive rewrote every stored initial club-wide). Pairs are born automatically at match entry. Current pairs list untouched; the underlying JS is left in place unreferenced, so no other code path changes. Includes v47 (set-score fix + double-tap guard) and all prior.
 // Explanation shown above the individual ladder. Open on load so it's read; collapsible
 // (state kept for the session) and scrolls away. Mechanics only — no outcome framing, so
 // members aren't nudged away from playing stronger opponents. Every clause maps to a real
@@ -9974,7 +9974,7 @@ async function clRemove(id, label){
      Nothing about those screens' contents is touched. */
   function nhHeaderSkin(ink,deep){
     var st=document.getElementById("nhHdr")||document.createElement("style"); st.id="nhHdr";
-    st.textContent=".screen .header{background:linear-gradient(135deg,"+ink+","+deep+") !important;border-radius:0 0 16px 16px;"
+    st.textContent=".screen .header{background:linear-gradient(135deg,"+ink+","+deep+") !important;border-radius:0;"
       +"box-shadow:0 2px 10px rgba(20,10,40,.14);padding:12px 14px !important}"
       +".screen .header h1{font-size:19px !important;font-weight:800 !important;letter-spacing:.1px}"
       +".screen .header .back-btn{background:rgba(255,255,255,.16) !important;border:1px solid rgba(255,255,255,.3) !important;border-radius:99px !important;width:36px;height:36px}"
@@ -10042,7 +10042,7 @@ async function clRemove(id, label){
       "#nh{max-width:520px;margin:0 auto;padding:0 0 40px;font-family:inherit;flex:1 1 auto;overflow-y:auto;-webkit-overflow-scrolling:touch;width:100%}"
 
      +"#homeScreen{overflow:hidden}"
-     +"#nh .band{color:#fff;padding:15px 16px 18px;position:sticky;top:0;z-index:20;overflow:hidden;border-radius:0 0 18px 18px}"
+     +"#nh .band{color:#fff;padding:15px 16px 18px;position:sticky;top:0;z-index:20;overflow:hidden;border-radius:0}"   /* n154: square bottom edge */
      /* n142: YOUR HEADER'S DESIGN ON EVERY HEADER. The picture is laid over each page's own colour and blended by
         luminosity — the arc, glow and streaks carry the page's colour (a group's, a region's, the register's
         charcoal). The door's OPR header (.opr) already carries the picture itself. */
@@ -10141,14 +10141,14 @@ async function clRemove(id, label){
         wherever it is opened. */
      +"@media(min-width:880px) and (max-width:1099px){"
      +"#nh{max-width:560px;padding-bottom:40px}"
-     +"#nh .band{border-radius:0 0 20px 20px}"
+     +"#nh .band{border-radius:0}"
      +"}"
      /* n147: THE BOARDROOM LAYOUT. Same pages, same design — laid out for a big screen: the header and pill strip
         across a comfortable page width, the group cards side by side, and the glimpses in two columns. It applies
         only in a tab opened through boardroom.html (html.nhWideDoc), so ordinary links are untouched. */
      +"@media(min-width:1000px){"
      +"html.nhWideDoc #nh{max-width:1060px}"
-     +"html.nhWideDoc #nh .band{border-radius:0 0 22px 22px;padding:26px 30px 30px}"
+     +"html.nhWideDoc #nh .band{border-radius:0;padding:26px 30px 30px}"
      +"html.nhWideDoc #nh .band h1{font-size:30px}"
      +"html.nhWideDoc #nhJump{justify-content:center;flex-wrap:wrap;overflow:visible;padding-left:14px;padding-right:14px}"
      +"html.nhWideDoc #nhJump button{flex:0 0 auto;font-size:13.5px;padding:8px 16px}"
@@ -10516,14 +10516,23 @@ async function clRemove(id, label){
     nhWindow(d.matches||[]);
     var ms=(d.matches||[]).filter(function(m){ return ago(m.match_date)<=NHWIN && /court|card|session/i.test(String(m.event||"")); });
     var head='<div class="brk"><h2 style="display:flex;align-items:center;gap:8px">Card matches \u00b7 '+nhWhen()+' '+nhTag()+'</h2>';
-    if(!ms.length) return head+'<div style="padding:8px 14px 14px;font-size:12.5px;color:#5f5770;line-height:1.5">'
-      +'Nothing off a court card this week. Matches entered from a card show here, so an evening\u2019s play reads in one place.</div></div>';
+    /* n153: THE CARD BRACKET LEADS SOMEWHERE. Empty, it was a sentence and nothing else — the Card pill jumped to
+       dead space. Now it offers the thing itself: make tonight's card, or open the one that is running. */
+    var cardHref=PAGE+"?club="+W.PLAT.cid+"&go=card&back="+encodeURIComponent(location.search||"");
+    var cardBtn=function(label){
+      return '<div style="padding:0 14px 14px"><a href="'+cardHref+'" style="display:block;text-align:center;text-decoration:none;'
+        +'background:linear-gradient(135deg,#d4f425,#b8d400);color:#1a1a1a;border-radius:14px;padding:12px;font-weight:800;font-size:14px">'+esc(label)+'</a></div>';
+    };
+    if(!ms.length) return head+'<div style="padding:8px 14px 12px;font-size:12.5px;color:#5f5770;line-height:1.5">'
+      +'Nothing off a court card this week. A card sets up the evening\u2019s courts, balances the fours, and takes the scores as you play.</div>'
+      + cardBtn("+  Make tonight\u2019s court card") + '</div>';
     return head+'<div class="rows">'
       + ms.slice(0,6).map(function(m){
           var a=[m.t1p1,m.t1p2].filter(Boolean).join(" & "), b=[m.t2p1,m.t2p2].filter(Boolean).join(" & ");
           return '<div class="row"><span class="nm"><b>'+esc(a)+'</b><span>'+esc(b)+'</span></span>'
             +'<span class="val"><b>'+((m.t1_sets==null)?"":(m.t1_sets+"\u2013"+m.t2_sets))+'</b><span>'+esc(m.event||"card")+'</span></span></div>'; }).join("")
-      +'</div></div>';
+      +'</div>'
+      + cardBtn("Open the court card") + '</div>';
   }
   /* n65: a running tournament shows ITS matches — the ones entered against that event — so opening the
      bracket answers "what has just happened in it" without going to the sheet. */
@@ -10804,7 +10813,7 @@ async function clRemove(id, label){
          The ledger keeps its own page, so everything in it is revealed with a rule that outranks the mask. */
       sv.textContent="html body #homeScreen{visibility:visible!important}html body #homeScreen > *{visibility:visible!important}"
         +".nhband{color:#fff;padding:15px 16px 17px;border-radius:0;background:linear-gradient(135deg,"+lcol+","+ldeep+");width:100%;margin:0 0 8px;box-sizing:border-box}"
-        +"@media(min-width:880px){.nhband{border-radius:0 0 18px 18px}}"
+        +"@media(min-width:880px){.nhband{border-radius:0}}"
         +".nhband .mark{display:inline-flex;align-items:center;gap:9px;font-size:11px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;opacity:.95}"
         +".nhband .mark .logo{font-size:17px;letter-spacing:.06em;text-transform:none;background:rgba(255,255,255,.14);border:1px solid rgba(255,255,255,.34);border-radius:9px;padding:2px 9px}"
         +".nhband h1{font-size:25px;line-height:1.1;margin:9px 0 3px;font-weight:800}"
@@ -12726,7 +12735,8 @@ W.nhOpenPair=function(name){
         return '<button onclick="location.href=\''+href+'\'" style="display:block;width:calc(100% - 24px);text-align:left;background:#fff;'
           /* n63: an even border in the board's own colour — a thickened left edge alone looked unbalanced.
              The disc, the pill and the count share one line; the caption sits under, indented to the pill. */
-          +'border:2px solid '+col+';border-radius:16px;padding:13px 14px;margin:10px 12px 0;font:inherit;cursor:pointer">'
+          /* n154: an 8% wash of the group's own colour — the card reads as that group's, and it costs no height */
+          +'border:2px solid '+col+';background:'+regTint(col,.92)+';border-radius:16px;padding:13px 14px;margin:10px 12px 0;font:inherit;cursor:pointer">'
           +'<div style="display:flex;align-items:center;gap:10px">'
           + nhFace(name,col,34)   /* n152: on the ladder — face 34 */
           +'<span style="flex:1;min-width:0;display:flex;align-items:center;gap:8px;background:'+col+';color:#fff;font-weight:800;font-size:14px;'
@@ -12734,7 +12744,8 @@ W.nhOpenPair=function(name){
           +'<span style="flex:0 0 auto;text-align:right;line-height:1.15">'
           +'<span style="display:block;font-size:18px;font-weight:800;color:'+col+'">'+ms.length+'</span>'
           +'<span style="display:block;font-size:10px;color:#8a8196">matches</span></span></div>'
-          +'<div style="font-size:13px;color:#5f5770;margin:10px 0 0 44px">'+esc(sub)+'</div>' 
+          /* n154: one line in the rail — the card is 84% of the screen there, so the indent and the longer wording wrapped it */
+          +'<div style="font-size:13px;color:#5f5770;margin:10px 0 0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+esc(sub)+'</div>' 
           /* n150: no "N today" pill and no last-here block — the same match reads in Recent matches below and
              inside the group itself, and the card stays short enough for the rail */
           +'</button>';
@@ -12752,7 +12763,7 @@ W.nhOpenPair=function(name){
       };
       /* n149: with no groups there is nothing to play on — the door asks for a group instead of offering the region */
       W.__doorKids=kids;
-      W.__doorCard=function(g){ return card(g.name, clubPal(g.id)[0], "A group \u00b7 its own ladder and card \u00b7 tap to enter", PAGE+"?club="+g.id, g.id); };
+      W.__doorCard=function(g){ return card(g.name, clubPal(g.id)[0], "Its own ladder and card \u00b7 tap to enter", PAGE+"?club="+g.id, g.id); };
       W.__doorC=C;
       var quiet=function(label,onclick){
         return '<button onclick="'+onclick+'" style="flex:1 1 0;min-width:88px;background:#fff;border:1px solid #cfc5e0;border-radius:12px;'
