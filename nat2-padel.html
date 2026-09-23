@@ -3681,7 +3681,7 @@ const CLUB_NAME = _club.name;  // shown in the logo as "OPR · <name>"
     link.setAttribute('href', href);
   }catch(e){ /* install stays on the static manifest — no functional impact */ }
 })();
-const OPR_VERSION = "OPR-DOUBLES v2026.09.03-56 · NAT fork n164 (no voice) (of PLAT p117)";  // MANUAL PAIR CREATION REMOVED FROM ADMIN: Create a pair, Bulk create pairs and Re-derive all pairs are gone (they only made match-less ghost pairs, and Re-derive rewrote every stored initial club-wide). Pairs are born automatically at match entry. Current pairs list untouched; the underlying JS is left in place unreferenced, so no other code path changes. Includes v47 (set-score fix + double-tap guard) and all prior.
+const OPR_VERSION = "OPR-DOUBLES v2026.09.03-56 · NAT fork n165 (no voice) (of PLAT p117)";  // MANUAL PAIR CREATION REMOVED FROM ADMIN: Create a pair, Bulk create pairs and Re-derive all pairs are gone (they only made match-less ghost pairs, and Re-derive rewrote every stored initial club-wide). Pairs are born automatically at match entry. Current pairs list untouched; the underlying JS is left in place unreferenced, so no other code path changes. Includes v47 (set-score fix + double-tap guard) and all prior.
 // Explanation shown above the individual ladder. Open on load so it's read; collapsible
 // (state kept for the session) and scrolls away. Mechanics only — no outcome framing, so
 // members aren't nudged away from playing stronger opponents. Every clause maps to a real
@@ -9410,19 +9410,39 @@ async function clRemove(id, label){
      OPR's own purple leads, then the brights, then the deeper originals. All hold white text on a pill. */
   /* n138: OPR PURPLE, NAMED. It is the first swatch, but on the Global Ledger the charcoal repaint used to disguise
      it as black, so it was never seen. Now it also has its own labelled button above the palette, in both pickers. */
-  /* n161: THE WHOLE SPECTRUM. 24 swatches runs out once a register has a dozen groups, so both pickers also
-     offer the phone's own colour wheel — any colour, kept exactly as chosen. */
-  function anyColourChoice(cb,cur){
-    var id="nhAny"+Math.round(Math.random()*1e6);
-    return '<label data-plat-keep="1" for="'+id+'" style="display:inline-flex;align-items:center;gap:8px;margin:0 0 8px 8px;'
-      +'padding:6px 12px 6px 6px;border-radius:99px;border:1.5px solid #6c3483;background:#fff;color:#6c3483;font-size:12.5px;font-weight:800;cursor:pointer">'
-      +'<span data-plat-keep="1" style="width:20px;height:20px;border-radius:50%;display:inline-block;'
-      +'background:conic-gradient(#dc2626,#d97706,#65a30d,#059669,#0891b2,#2563eb,#7c3aed,#db2777,#dc2626)"></span>Any colour\u2026'
-      +'<input id="'+id+'" type="color" value="'+(cur||"#6c3483")+'" data-plat-keep="1" '
-      /* n163: ONCE, WHEN THE COLOUR IS CHOSEN. On `oninput` the wheel fired on every drag — each one saved to the
-         server and redrew the whole ledger, so the page sat white and looked frozen. `onchange` fires once, when the
-         picker is closed. */
-      +'onchange="'+cb+'(this.value)" style="width:0;height:0;opacity:0;position:absolute;pointer-events:none"></label>';
+  /* n161/n165: THE WHOLE SPECTRUM. 24 swatches runs out once a register has a dozen groups, so both pickers offer
+     "More colours" as well — drawn in the page, never the device's own colour dialog. */
+  /* n165: THE SPECTRUM, IN THE PAGE. The device's own colour dialog takes the app away and the ledger came back
+     blank on Android. This is a grid of hues and shades drawn here, so a tap is just a tap — exactly like the
+     swatches — and there are 72 colours instead of 24. */
+  function nhSpectrum(cb,id){
+    var hues=[0,18,36,54,86,120,150,168,195,215,245,275,300,330];
+    var lums=[[.78,.42],[.62,.55],[.45,.72]];   /* darker → lighter, each a readable card colour */
+    var cells="";
+    for(var r=0;r<lums.length;r++){
+      for(var h=0;h<hues.length;h++){
+        var c=nhHsl(hues[h], lums[r][1], lums[r][0]);
+        cells+='<button data-plat-keep="1" onclick="'+cb+'(\''+c+'\')" title="'+c+'" style="width:22px;height:22px;border-radius:6px;border:1px solid rgba(0,0,0,.12);background:'+c+';cursor:pointer;padding:0"></button>';
+      }
+    }
+    var greys="";
+    ["#111827","#374151","#6b7280","#9ca3af","#0f766e","#7c2d12","#4c1d95","#831843"].forEach(function(c){
+      greys+='<button data-plat-keep="1" onclick="'+cb+'(\''+c+'\')" title="'+c+'" style="width:22px;height:22px;border-radius:6px;border:1px solid rgba(0,0,0,.12);background:'+c+';cursor:pointer;padding:0"></button>';
+    });
+    return '<div id="nhSpec'+id+'" style="display:none;margin:2px 0 8px">'
+      +'<div style="display:grid;grid-template-columns:repeat(14,22px);gap:4px">'+cells+'</div>'
+      +'<div style="display:grid;grid-template-columns:repeat(14,22px);gap:4px;margin-top:4px">'+greys+'</div></div>';
+  }
+  function nhHsl(h,s,l){
+    /* hsl → hex, so every cell is a plain colour the rest of the app can use */
+    var a=s*Math.min(l,1-l), f=function(n){ var k=(n+h/30)%12, c=l-a*Math.max(-1,Math.min(Math.min(k-3,9-k),1));
+      return Math.round(255*c).toString(16).padStart(2,"0"); };
+    return "#"+f(0)+f(8)+f(4);
+  }
+  function moreColoursButton(id){
+    return '<button data-plat-keep="1" onclick="var b=document.getElementById(\'nhSpec'+id+'\'); if(b) b.style.display=(b.style.display===\'none\'?\'block\':\'none\');" '
+      +'style="display:inline-flex;align-items:center;gap:8px;margin:0 0 8px 8px;padding:6px 12px;border-radius:99px;border:1.5px solid #6c3483;background:#fff;color:#6c3483;font:inherit;font-size:12.5px;font-weight:800;cursor:pointer">'
+      +'<span data-plat-keep="1" style="width:18px;height:18px;border-radius:50%;display:inline-block;background:conic-gradient(#dc2626,#d97706,#65a30d,#059669,#0891b2,#2563eb,#7c3aed,#db2777,#dc2626)"></span>More colours</button>';
   }
   function oprPurpleChoice(onclick){
     return '<button data-plat-keep="1" onclick="'+onclick+'" style="display:inline-flex;align-items:center;gap:8px;margin:0 0 8px;'
@@ -13477,7 +13497,7 @@ W.nhOpenPair=function(name){
       +'<div style="font-size:12px;color:#666;margin:4px 0 6px">'+((REG.role==="club")?"A group runs its own board, ladder and tournaments, and shares the club\'s players and their one rating.":"A <b>club</b> gets its own door, colour, code, ledger and groups, and shares this register\'s one player base. A <b>group</b> belongs to a club and runs its own ladder and tournaments.")+'</div>' 
       +'<div style="display:flex;gap:8px;flex-wrap:wrap"><input id="platNewName" placeholder="Group name" style="flex:2;min-width:150px;padding:10px 12px;border:1.5px solid #ddd;border-radius:10px"><input id="platNewPin" inputmode="numeric" placeholder="Its code" style="flex:1;min-width:100px;padding:10px 12px;border:1.5px solid #ddd;border-radius:10px"></div>'
       +'<div style="margin-top:8px;font-size:12px;color:#666">Colour</div>'+oprPurpleChoice("window.platPickNew('#6c3483')")
-      +anyColourChoice("window.platPickNew")
+      +moreColoursButton("New")+nhSpectrum("window.platPickNew","New")
       +'<div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:4px">'
       +SWATCH.map(function(s,i){ return '<button data-plat-keep="1" onclick="window.platPickNew(\''+s+'\')" id="platNewSw'+i+'" style="width:26px;height:26px;border-radius:50%;background:'+s+';border:2px solid '+(i===0?'#333':'transparent')+';cursor:pointer"></button>'; }).join('')
       /* n15: a club must be reachable by the other clubs in the register — name, mobile, email, taken at the
@@ -13556,7 +13576,7 @@ W.nhOpenPair=function(name){
     try{ setTimeout(function(){ box.scrollIntoView({behavior:"smooth",block:"nearest"}); },50); }catch(e){}
     box.innerHTML='<div style="padding:8px 0;font-size:12px;color:#666">Colour for '+esc((REG.clubs.find(function(c){return c.id===id;})||{}).name)+'</div>'
       +oprPurpleChoice("window.platSetColour("+id+",'#6c3483')")
-      +anyColourChoice("(function(v){ window.platSetColour("+id+",v); })", (REG.clubs.find(function(c){return c.id===id;})||{}).colour)
+      +moreColoursButton(id)+nhSpectrum("(function(v){ window.platSetColour("+id+",v); })", id)
       +'<div style="display:flex;flex-wrap:wrap;gap:6px">'
       +SWATCH.map(function(s){ return '<button data-plat-keep="1" onclick="window.platSetColour('+id+',\''+s+'\')" style="width:26px;height:26px;border-radius:50%;background:'+s+';border:2px solid transparent;cursor:pointer"></button>'; }).join('')+'</div>';
   };
