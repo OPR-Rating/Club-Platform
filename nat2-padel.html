@@ -3681,7 +3681,7 @@ const CLUB_NAME = _club.name;  // shown in the logo as "OPR · <name>"
     link.setAttribute('href', href);
   }catch(e){ /* install stays on the static manifest — no functional impact */ }
 })();
-const OPR_VERSION = "OPR-DOUBLES v2026.09.03-56 · NAT fork n154 (no voice) (of PLAT p117)";  // MANUAL PAIR CREATION REMOVED FROM ADMIN: Create a pair, Bulk create pairs and Re-derive all pairs are gone (they only made match-less ghost pairs, and Re-derive rewrote every stored initial club-wide). Pairs are born automatically at match entry. Current pairs list untouched; the underlying JS is left in place unreferenced, so no other code path changes. Includes v47 (set-score fix + double-tap guard) and all prior.
+const OPR_VERSION = "OPR-DOUBLES v2026.09.03-56 · NAT fork n155 (no voice) (of PLAT p117)";  // MANUAL PAIR CREATION REMOVED FROM ADMIN: Create a pair, Bulk create pairs and Re-derive all pairs are gone (they only made match-less ghost pairs, and Re-derive rewrote every stored initial club-wide). Pairs are born automatically at match entry. Current pairs list untouched; the underlying JS is left in place unreferenced, so no other code path changes. Includes v47 (set-score fix + double-tap guard) and all prior.
 // Explanation shown above the individual ladder. Open on load so it's read; collapsible
 // (state kept for the session) and scrolls away. Mechanics only — no outcome framing, so
 // members aren't nudged away from playing stronger opponents. Every clause maps to a real
@@ -10713,7 +10713,7 @@ async function clRemove(id, label){
              "location.href='"+PAGE+"?club=0&pool="+W.PLAT.pool+"&go=admin&from="+C+"'")
       +'</div></div>';
     w.innerHTML='<div class="band" style="background:linear-gradient(135deg,#3a1d6e,#1d0a41)">'
-      +'<div class="mark"><span class="logo">OPR</span>Admin control</div>'
+      +''+nhMark("Admin control")+''
       +'<h1>'+esc(club.name)+'</h1>'
       +'<div class="sub">Every room this region has, and the code each one takes</div>'
       +'<div class="pulse"><a href="'+PAGE+'?club='+C+'" onclick="return window.nhBack(this.href)">\u2039 '+esc(club.name)+'</a></div></div>'
@@ -10839,7 +10839,7 @@ async function clRemove(id, label){
         if(/current ratings and ladders/i.test(b.textContent||"") && !/all clubs/i.test(b.textContent||""))
           b.textContent="Current Ratings and Ladders \u2014 All Clubs";
       }); },400); }
-    band.innerHTML='<div class="mark"><span class="logo">OPR</span>'+(isClubLedger?"Region Ledger":"Global Ledger")+'</div>'
+    band.innerHTML=''+nhMark(isClubLedger?"Region Ledger":"Global Ledger")+''
       +'<h1>'+esc(name)+'</h1>'
       +'<div class="sub">'+(isClub?"Every match at the club \u2014 general play and every group":"Every match at every registered club \u2014 one rating each")+'</div>'
       +'<div class="pulse">'+back
@@ -11324,7 +11324,7 @@ W.mePair=function(name){
     var C=(W.PLAT.parentId||W.PLAT.cid||W.PLAT.nat||0);
     var w=nhWrap(); if(!w) return;
     nhCSS(); nhOneWayIn(); nhInk("#6c3483"); nhHeaderSkin("#6c3483","#1d0a41");
-    w.innerHTML='<div class="band" style="background:linear-gradient(135deg,#6c3483,#1d0a41)"><div class="mark"><span class="logo">OPR</span>Pair</div><h1>'+esc(pair)+'</h1></div>'
+    w.innerHTML='<div class="band" style="background:linear-gradient(135deg,#6c3483,#1d0a41)">'+nhMark("Pair")+'<h1>'+esc(pair)+'</h1></div>'
       +'<div style="padding:16px 14px;font-size:13px;color:#5f5770">Reading the record\u2026</div>'+homeBar();
     var B=SBREST(), P=W.PLAT.pool, like="*"+encodeURIComponent(pair)+"*";
     Promise.all([
@@ -11353,7 +11353,7 @@ W.mePair=function(name){
       var names=halves(pair);
       var backHref=back?(PAGE+back):(PAGE+"?club="+C);
       var h='<div class="band" style="background:linear-gradient(135deg,'+col+','+deep+')">'
-        +'<div class="mark"><span class="logo">OPR</span>Pair \u00b7 '+esc(nhBoardName(gid)||"")+'</div>'
+        +''+nhMark("Pair \u00b7 "+(nhBoardName(gid)||""))+''
         +'<div style="display:flex;align-items:center;gap:10px;margin-top:6px">'
         +'<span style="display:flex">'+names.map(function(n,i){ return '<span style="display:inline-block;border:2px solid #fff;border-radius:50%;margin-left:'+(i?"-9px":"0")+'">'+nhFace(n,col,36)+'</span>'; }).join("")+'</span>'
         +'<h1 style="margin:0;font-size:20px">'+esc(pair)+'</h1></div>'
@@ -11429,7 +11429,7 @@ W.mePair=function(name){
       var gd=st.gdn?(st.gd/st.gdn):0;
 
       var h='<div class="band" style="background:linear-gradient(135deg,'+col+','+deep+')">'
-        + '<div class="mark"><span class="logo">OPR</span>'+esc(club.name)+'</div>'
+        + ''+nhMark(club.name)+''
         + '<div style="display:flex;align-items:center;gap:13px;margin-top:11px">'
         + '<span class="av" onclick="window.mePhotoPick()" title="Tap to set your picture" style="width:56px;height:56px;flex:0 0 56px;border-radius:18px;font-size:19px;'
         + 'background:'+(myPhoto?("#fff url("+myPhoto+") center/cover no-repeat"):"rgba(255,255,255,.18)")+';border:2px solid rgba(255,255,255,.5);cursor:pointer;overflow:hidden">'
@@ -11754,7 +11754,7 @@ W.mePair=function(name){
     W.PLAT.colour="#6c3483";
     nhCSS(); nhOneWayIn(); nhInk(sc.col); nhHeaderSkin(sc.col, sc.deep);
     return '<div class="band" style="background:linear-gradient(135deg,'+sc.col+','+sc.deep+')">'
-      +'<div class="mark"><span class="logo">OPR</span>'+esc(sc.wide?"The register":"Records")+'</div>'
+      +''+nhMark(sc.wide?"The register":"Records")+''
       +'<h1>'+esc(sc.title)+'</h1>'
       +'<div class="sub">'+esc(sub)+'</div>'
       +'<div class="pulse"><a href="'+backHref+'" onclick="return window.nhBack(this.href)">\u2039 '+esc(backLabel)+'</a></div></div>';
@@ -11782,7 +11782,7 @@ W.mePair=function(name){
     /* the master is a desk page — it may use a laptop's width, unlike the phone-width pages */
     (function(){ var st=document.createElement("style"); st.textContent="#nh,#homeScreen,#nhBar,.screen,.screen-content,#nh>*{max-width:1180px!important}"; document.head.appendChild(st); })();
     var P=W.PLAT.pool, B=SBREST();
-    w.innerHTML='<div class="band" style="background:linear-gradient(135deg,#2f2f2f,#141414)"><div class="mark"><span class="logo">OPR</span>Master</div>'
+    w.innerHTML='<div class="band" style="background:linear-gradient(135deg,#2f2f2f,#141414)">'+nhMark("Master")+''
       +'<h1>'+esc(W.PLAT.poolName||"The register")+'</h1><div class="sub">Reading the register\u2026</div></div>'+homeBar();
     Promise.all([
       fetch(B+"plat_clubs?pool_id=eq."+P+"&select=id,name,colour,options&order=name.asc").then(J).catch(function(){ return []; }),
@@ -11815,7 +11815,7 @@ W.mePair=function(name){
         return '<a href="'+href+'" data-plat-keep="1" style="display:inline-block;text-decoration:none;font-size:12px;font-weight:800;padding:7px 12px;border-radius:99px;'
           +(dark?('background:'+col+';color:#fff;'):('background:#fff;color:'+col+';border:1.5px solid '+col+';'))+'margin:4px 6px 0 0">'+esc(label)+'</a>'; };
       var totalM=ms.length, totalR=regions.length, totalG=clubs.length-regions.length;
-      var h='<div class="band" style="background:linear-gradient(135deg,#2f2f2f,#141414)"><div class="mark"><span class="logo">OPR</span>Master</div>'
+      var h='<div class="band" style="background:linear-gradient(135deg,#2f2f2f,#141414)">'+nhMark("Master")+''
         +'<h1>'+esc(W.PLAT.poolName||"The register")+'</h1>'
         +'<div class="sub">'+totalR+' region'+(totalR===1?"":"s")+' \u00b7 '+totalG+' group'+(totalG===1?"":"s")+' \u00b7 '+totalM+' matches on record</div>'
         +'<div class="pulse">'
@@ -12736,7 +12736,7 @@ W.nhOpenPair=function(name){
           /* n63: an even border in the board's own colour — a thickened left edge alone looked unbalanced.
              The disc, the pill and the count share one line; the caption sits under, indented to the pill. */
           /* n154: an 8% wash of the group's own colour — the card reads as that group's, and it costs no height */
-          +'border:2px solid '+col+';background:'+regTint(col,.92)+';border-radius:16px;padding:13px 14px;margin:10px 12px 0;font:inherit;cursor:pointer">'
+          +'border:2px solid '+col+';background:'+regTint(col,.92)+';border-radius:16px;padding:15px 14px;margin:10px 12px 0;font:inherit;cursor:pointer">'
           +'<div style="display:flex;align-items:center;gap:10px">'
           + nhFace(name,col,34)   /* n152: on the ladder — face 34 */
           +'<span style="flex:1;min-width:0;display:flex;align-items:center;gap:8px;background:'+col+';color:#fff;font-weight:800;font-size:14px;'
@@ -12861,7 +12861,7 @@ W.nhOpenPair=function(name){
       var people={}; (NHEG?[]:mine).forEach(function(m){ [m.t1p1,m.t1p2,m.t2p1,m.t2p2].forEach(function(v){ if(v) String(v).split(" & ").forEach(function(x){ people[x.trim()]=1; }); }); });
       w.innerHTML =
         '<div class="band" style="background:linear-gradient(135deg,'+ink+','+deep+')">'
-        + '<div class="mark"><span class="logo">OPR</span>'+esc(club?club.name:(W.PLAT.poolName||"Open Padel Ratings"))+'</div>'
+        + ''+nhMark(club?club.name:(W.PLAT.poolName||"Open Padel Ratings"))+''
         + '<h1>'+esc(W.PLAT.name||"")+'</h1>'
         /* n120: THE GROUP'S BANNER USES AS LITTLE ROOM AS IT CAN. The description line went (it told a member nothing new),
            "on record" went (the tiles below carry the counts), the week's count is short, and the pills never wrap —
