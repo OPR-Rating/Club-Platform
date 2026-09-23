@@ -3681,7 +3681,7 @@ const CLUB_NAME = _club.name;  // shown in the logo as "OPR · <name>"
     link.setAttribute('href', href);
   }catch(e){ /* install stays on the static manifest — no functional impact */ }
 })();
-const OPR_VERSION = "OPR-DOUBLES v2026.09.03-56 · NAT fork n156 (no voice) (of PLAT p117)";  // MANUAL PAIR CREATION REMOVED FROM ADMIN: Create a pair, Bulk create pairs and Re-derive all pairs are gone (they only made match-less ghost pairs, and Re-derive rewrote every stored initial club-wide). Pairs are born automatically at match entry. Current pairs list untouched; the underlying JS is left in place unreferenced, so no other code path changes. Includes v47 (set-score fix + double-tap guard) and all prior.
+const OPR_VERSION = "OPR-DOUBLES v2026.09.03-56 · NAT fork n158 (no voice) (of PLAT p117)";  // MANUAL PAIR CREATION REMOVED FROM ADMIN: Create a pair, Bulk create pairs and Re-derive all pairs are gone (they only made match-less ghost pairs, and Re-derive rewrote every stored initial club-wide). Pairs are born automatically at match entry. Current pairs list untouched; the underlying JS is left in place unreferenced, so no other code path changes. Includes v47 (set-score fix + double-tap guard) and all prior.
 // Explanation shown above the individual ladder. Open on load so it's read; collapsible
 // (state kept for the session) and scrolls away. Mechanics only — no outcome framing, so
 // members aren't nudged away from playing stronger opponents. Every clause maps to a real
@@ -5626,7 +5626,7 @@ async function _submitMatchInner(){
     // two names; a doubles match has four. Comparing raw 4-slot arrays made every
     // singles match look alike (the null slots collapsed to empty strings), so the
     // duplicate warning fired on every submission.
-    const nameKey = arr => arr.map(x=>(x||'').trim()).filter(x=>x!=='').sort().join('|');
+    const nameKey = arr => { const side = (a,b) => [a,b].reduce((out,x)=>out.concat(String(x||'').split(' & ')),[]).map(x=>x.trim()).filter(x=>x!=='').sort().join('+'); return [side(arr[0],arr[1]), side(arr[2],arr[3])].sort().join(' vs '); };
     const mine = nameKey([entryData.t1p1,entryData.t1p2,entryData.t2p1,entryData.t2p2]);
     const recent = await sbGet(`matches?select=match_date,t1p1,t1p2,t2p1,t2p2,submitted_by,event,match_type&club_id=eq.${CLUB_ID}&order=id.desc&limit=30`) || [];
     const dup = recent.find(m=>{
@@ -11374,7 +11374,10 @@ W.mePair=function(name){
         +'</div></div>';
       /* every match, plat's rows */
       h+= ms.length
-        ? nhMatchesBrk({matches:ms},500,"board")
+        /* n158: the sets read from THIS PAIR's side — green won, red lost — as they do on a member's own page.
+           Without a viewer the pills fell back to plain purple, so a partnership's matches said nothing about
+           who won which set. Either member gives the same side, so the first name is enough. */
+        ? nhMatchesBrk({matches:ms},500,"board",names[0])
         : '<div class="brk">'+nhLimeBar("Matches")+meEmpty("This pair has not played yet.")+'</div>';
       w.innerHTML=h+homeBar();
     });
