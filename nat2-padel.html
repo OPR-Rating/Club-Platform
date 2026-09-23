@@ -3681,7 +3681,7 @@ const CLUB_NAME = _club.name;  // shown in the logo as "OPR · <name>"
     link.setAttribute('href', href);
   }catch(e){ /* install stays on the static manifest — no functional impact */ }
 })();
-const OPR_VERSION = "OPR-DOUBLES v2026.09.03-56 · NAT fork n162 (no voice) (of PLAT p117)";  // MANUAL PAIR CREATION REMOVED FROM ADMIN: Create a pair, Bulk create pairs and Re-derive all pairs are gone (they only made match-less ghost pairs, and Re-derive rewrote every stored initial club-wide). Pairs are born automatically at match entry. Current pairs list untouched; the underlying JS is left in place unreferenced, so no other code path changes. Includes v47 (set-score fix + double-tap guard) and all prior.
+const OPR_VERSION = "OPR-DOUBLES v2026.09.03-56 · NAT fork n163 (no voice) (of PLAT p117)";  // MANUAL PAIR CREATION REMOVED FROM ADMIN: Create a pair, Bulk create pairs and Re-derive all pairs are gone (they only made match-less ghost pairs, and Re-derive rewrote every stored initial club-wide). Pairs are born automatically at match entry. Current pairs list untouched; the underlying JS is left in place unreferenced, so no other code path changes. Includes v47 (set-score fix + double-tap guard) and all prior.
 // Explanation shown above the individual ladder. Open on load so it's read; collapsible
 // (state kept for the session) and scrolls away. Mechanics only — no outcome framing, so
 // members aren't nudged away from playing stronger opponents. Every clause maps to a real
@@ -9419,7 +9419,10 @@ async function clRemove(id, label){
       +'<span data-plat-keep="1" style="width:20px;height:20px;border-radius:50%;display:inline-block;'
       +'background:conic-gradient(#dc2626,#d97706,#65a30d,#059669,#0891b2,#2563eb,#7c3aed,#db2777,#dc2626)"></span>Any colour\u2026'
       +'<input id="'+id+'" type="color" value="'+(cur||"#6c3483")+'" data-plat-keep="1" '
-      +'oninput="'+cb+'(this.value)" style="width:0;height:0;opacity:0;position:absolute;pointer-events:none"></label>';
+      /* n163: ONCE, WHEN THE COLOUR IS CHOSEN. On `oninput` the wheel fired on every drag — each one saved to the
+         server and redrew the whole ledger, so the page sat white and looked frozen. `onchange` fires once, when the
+         picker is closed. */
+      +'onchange="'+cb+'(this.value)" style="width:0;height:0;opacity:0;position:absolute;pointer-events:none"></label>';
   }
   function oprPurpleChoice(onclick){
     return '<button data-plat-keep="1" onclick="'+onclick+'" style="display:inline-flex;align-items:center;gap:8px;margin:0 0 8px;'
