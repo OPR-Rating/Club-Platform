@@ -3681,7 +3681,7 @@ const CLUB_NAME = _club.name;  // shown in the logo as "OPR · <name>"
     link.setAttribute('href', href);
   }catch(e){ /* install stays on the static manifest — no functional impact */ }
 })();
-const OPR_VERSION = "OPR-DOUBLES v2026.09.03-56 · NAT fork n168 (no voice) (of PLAT p117)";  // MANUAL PAIR CREATION REMOVED FROM ADMIN: Create a pair, Bulk create pairs and Re-derive all pairs are gone (they only made match-less ghost pairs, and Re-derive rewrote every stored initial club-wide). Pairs are born automatically at match entry. Current pairs list untouched; the underlying JS is left in place unreferenced, so no other code path changes. Includes v47 (set-score fix + double-tap guard) and all prior.
+const OPR_VERSION = "OPR-DOUBLES v2026.09.03-56 · NAT fork n169 (no voice) (of PLAT p117)";  // MANUAL PAIR CREATION REMOVED FROM ADMIN: Create a pair, Bulk create pairs and Re-derive all pairs are gone (they only made match-less ghost pairs, and Re-derive rewrote every stored initial club-wide). Pairs are born automatically at match entry. Current pairs list untouched; the underlying JS is left in place unreferenced, so no other code path changes. Includes v47 (set-score fix + double-tap guard) and all prior.
 // Explanation shown above the individual ladder. Open on load so it's read; collapsible
 // (state kept for the session) and scrolls away. Mechanics only — no outcome framing, so
 // members aren't nudged away from playing stronger opponents. Every clause maps to a real
@@ -10125,11 +10125,13 @@ async function clRemove(id, label){
      +"#nh .brk > h2{background:#f3eef8;background:color-mix(in srgb,var(--nhc,#6c3483) 11%,#fff);color:var(--nhc,#5b2d8e);"
      +"padding:10px 14px 9px;margin:0 0 6px;border-bottom:1px solid color-mix(in srgb,var(--nhc,#6c3483) 18%,#fff)}"
      /* the jump strip: one row, never wraps, slides sideways if the screen is narrow, and stays under the band */
-     /* n168: four pills, two rows, all the same size — they read as one set rather than a scrolling row */
-     +"#nhJump{position:sticky;top:0;z-index:40;display:grid;grid-template-columns:1fr 1fr;gap:8px;scrollbar-width:none;"
+     /* n168/n169: on the door, four pills in two rows, all the same size; a group keeps its five on one line */
+     +"#nhJump{position:sticky;top:0;z-index:40;display:flex;gap:7px;overflow-x:auto;white-space:nowrap;scrollbar-width:none;"
      +"background:rgba(255,255,255,.96);backdrop-filter:blur(6px);padding:9px 12px;border-bottom:1px solid #eee7f3;margin:0}"
      +"#nhJump::-webkit-scrollbar{display:none}"
-     +"#nhJump button{width:100%;text-align:center;font:inherit;font-size:12.5px;font-weight:800;padding:7px 12px;border-radius:99px;cursor:pointer;"
+     +"#nhJump.two{display:grid;grid-template-columns:1fr 1fr;gap:8px;overflow:visible}"
+     +"#nhJump.two button{width:100%;flex:none}"
+     +"#nhJump button{flex:1 0 auto;text-align:center;font:inherit;font-size:12.5px;font-weight:800;padding:7px 12px;border-radius:99px;cursor:pointer;"
      +"border:1.5px solid var(--nhc,#6c3483);background:#fff;color:var(--nhc,#6c3483)}"
      +"#nhJump button:active{background:var(--nhc,#6c3483);color:#fff}"
      /* the jump itself is computed in nhJumpTo; the strip's top is set to sit exactly under the sticky band */
@@ -10512,26 +10514,40 @@ async function clRemove(id, label){
     if(!el) return; var open=(el.style.display!=="none");
     el.style.display=open?"none":"block"; if(t) t.style.transform=open?"":"rotate(180deg)";
   };
+  /* n169: THE TOURNAMENTS BLOCK, REBUILT. A region can have several running at once, in different groups, so each
+     row names ITS GROUP first and the tournament under it. Opening a row shows the tournament's own heading, then
+     its matches — five deep, the rest on a scroll — and the way into its sheet. */
   function nhTourBrk(d){
     var list=(d.tours&&d.tours.length)?d.tours:(d.tour?[d.tour]:[]);
     W.__nhTours=list;   /* n144: so a row's button can open that tournament */
     if(!list.length) return "";
-    return '<div class="brk">'+nhLimeBar("Recent tournament matches")
+    return '<div class="brk">'+nhLimeBar("Tournaments"+(list.length>1?(" \u00b7 "+list.length+" running"):""))
       +'<div style="padding:6px 10px 10px">'
       + list.map(function(t,k){
           var nm=String(t.name||"").toLowerCase();
-          var ms=(d.matches||[]).filter(function(m){ return String(m.event||"").toLowerCase()===nm; }).slice(0,12);
-          return '<button onclick="window.nhTourOpen('+k+')" style="display:flex;width:100%;align-items:center;gap:9px;'
-            +'background:#fff;border:1px solid #e6e0ee;border-radius:99px;padding:10px 14px;margin-top:6px;font:inherit;'
-            +'font-weight:800;font-size:13.5px;color:#241d33;cursor:pointer;text-align:left">'
-            +'<span style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+esc(t.name)+'</span>'
-            +'<span style="font-size:11.5px;color:#8a8196;font-weight:700">'+ms.length+'</span>'
+          var ms=(d.matches||[]).filter(function(m){ return String(m.event||"").toLowerCase()===nm; });
+          var gid=t.club_id||W.PLAT.cid, gcol=clubPal(gid)[0], gname=nhBoardName(gid)||"";
+          return '<button onclick="window.nhTourOpen('+k+')" style="display:flex;width:100%;align-items:center;gap:10px;'
+            +'background:#fff;border:1px solid #e6e0ee;border-radius:14px;padding:10px 12px;margin-top:6px;font:inherit;'
+            +'cursor:pointer;text-align:left">'
+            +'<span style="flex:1;min-width:0">'
+            +  '<span data-plat-keep="1" style="display:inline-block;background:'+gcol+';color:#fff;border-radius:99px;'
+            +  'padding:2px 9px;font-size:10.5px;font-weight:800;letter-spacing:.04em">GROUP \u00b7 '+esc(gname)+'</span>'
+            +  '<span style="display:block;font-weight:800;font-size:14px;color:#241d33;margin-top:4px;overflow:hidden;'
+            +  'text-overflow:ellipsis;white-space:nowrap">'+esc(t.name)+'</span></span>'
+            +'<span style="text-align:right;line-height:1.2"><span style="display:block;font-size:15px;font-weight:800;color:'+gcol+'">'+ms.length+'</span>'
+            +'<span style="font-size:10px;color:#8a8196">matches</span></span>'
             +'<span id="nhtourT'+k+'" style="display:inline-block;color:var(--nhc,#6c3483);transition:transform .15s">\u25bc</span></button>'
             +'<div id="nhtour'+k+'" style="display:none;padding:2px 0 6px">'
-            + (ms.length ? ms.map(function(m){ return nhMatchRow(m,"one"); }).join("")
-                         : '<div style="padding:8px 4px;font-size:12.5px;color:#5f5770">Under way \u2014 no results entered yet.</div>')
+            +  '<div style="padding:8px 12px 4px;font-weight:800;font-size:13.5px;color:'+gcol+'">'+esc(t.name)+'</div>'
+            + (ms.length
+                ? '<div style="max-height:310px;overflow-y:auto;-webkit-overflow-scrolling:touch">'
+                  + ms.map(function(m){ return nhMatchRow(m,"one"); }).join("")
+                  + '</div>'
+                  + (ms.length>5 ? '<div style="padding:6px 12px 0;text-align:center;font-size:11.5px;color:#8a8196">5 of '+ms.length+' \u00b7 scroll for more</div>' : "")
+                : '<div style="padding:8px 14px;font-size:12.5px;color:#5f5770">Under way \u2014 no results entered yet.</div>')
             /* n144: opens THAT tournament's own sheet, not the general tournaments page */
-            +'<button class="more" onclick="window.nhOpenTour('+k+')">Open '+esc(t.name)+' \u2192</button></div>';
+            +'<button class="more" onclick="window.nhOpenTour('+k+')">Open the draw and standings \u2192</button></div>';
         }).join("")
       +'</div></div>';
   }
@@ -10955,7 +10971,9 @@ async function clRemove(id, label){
   function cardEdge(col){ return cardBase(col); }
   function cardSkin(col){
     var b=cardBase(col);
-    return "url('./header_bg2.png') center top/cover,linear-gradient(105deg,"+nhDeep(b,.55)+","+b+" 55%,"+regTint(b,.75)+")";
+    /* n169: the far end no longer washes out to near-white — the picture's brightest corner was blending to a pale
+       strip down the right of the card. Deep, the colour, then a shade of it. */
+    return "url('./header_bg2.png') center top/cover,linear-gradient(105deg,"+nhDeep(b,.62)+","+b+" 58%,"+nhDeep(b,.18)+")";
   }
   function regBandStyle(col){
     if(!regOwn(col)) return '';
@@ -11766,7 +11784,7 @@ W.mePair=function(name,col){
       + (kids.length ? "" : '<div style="padding:10px 2px;font-size:13px;color:#7c2d12">No groups yet \u2014 create one in <b>Club admin</b> first. Scores are entered in a group.</div>')
       /* n151: in the order the member keeps their groups on the door, the ones they have switched on first —
          the list reads the same as the rail they came from */
-      + doorPickOrder(kids).map(function(g){ return pill(g.name, clubPal(g.id)[0], PAGE+"?club="+g.id+"&go=entry&back="+encodeURIComponent("?club="+C)); }).join("")
+      + doorPickOrder(kids).map(function(g){ return pill("GROUP \u00b7 "+g.name, clubPal(g.id)[0], PAGE+"?club="+g.id+"&go=entry&back="+encodeURIComponent("?club="+C)); }).join("")
       + '<button onclick="document.getElementById(\'nhBarWhere\').remove()" style="display:block;width:100%;margin-top:10px;'
       + 'background:none;border:none;font:inherit;font-size:12.5px;color:#8a8196;cursor:pointer">Not now</button>';
     document.body.appendChild(box);
@@ -12546,10 +12564,34 @@ W.nhOpenPair=function(name){
         var arrows=document.querySelectorAll('.screen .back-btn, .screen [onclick*="goHome"]');
         Array.prototype.forEach.call(arrows,function(a){
           if(a.dataset.nhBack) return;
+          /* n169: only arrows that would land on plat's retired home are redirected. One that already goes to
+             another screen — a ladder table back to the ladders menu — keeps its own way back. */
+          var orig=a.getAttribute("onclick")||"";
+          if(/showScreen\(/.test(orig)){ a.dataset.nhBack="1"; return; }
           a.dataset.nhBack="1"; a.setAttribute("onclick","location.href='"+href.replace(/'/g,"%27")+"'");
         });
       }catch(e){}
     },250);
+  })();
+  /* n169: THE LADDERS PAGE SAYS WHOSE THEY ARE. "Overall ratings and ladder standings" told you nothing about
+     scope; now it reads GROUP, REGION or ALL CLUBS with the name, and the long explainer block below it goes. */
+  (function(){
+    if(!W.NEWAPP) return;
+    var scopeLine=function(){
+      var isGlobal=(Number(W.PLAT.cid)===0 && !W.PLAT.nat);
+      if(isGlobal) return "ALL CLUBS \u00b7 Ratings and ladder standings";
+      if(W.PLAT.nat) return "REGION \u00b7 "+(nhBoardName(W.PLAT.nat)||"")+" \u2014 Ratings and ladder standings";
+      var isGroup=(W.PLAT.parentId && W.PLAT.cid && Number(W.PLAT.parentId)!==Number(W.PLAT.cid));
+      return (isGroup?"GROUP \u00b7 ":"")+(W.PLAT.name||"")+" \u2014 Ratings and ladder standings";
+    };
+    setInterval(function(){
+      try{
+        var sc=document.getElementById("laddersScreen"); if(!sc) return;
+        var boxes=sc.querySelectorAll(".screen-content > div");
+        if(boxes[0] && boxes[0].dataset.nhScope!=="1"){ boxes[0].dataset.nhScope="1"; boxes[0].textContent=scopeLine(); }
+        if(boxes[1] && boxes[1].dataset.nhGone!=="1" && !boxes[1].className){ boxes[1].dataset.nhGone="1"; boxes[1].style.display="none"; }
+      }catch(e){}
+    },400);
   })();
   /* n97: the group's member page is called what it is */
   (function(){
@@ -12567,7 +12609,7 @@ W.nhOpenPair=function(name){
   /* n167: no "Recent" — the matches are the first thing under the groups. "Records" opens the records on their
      own page rather than scrolling to the band. */
   var NH_JUMP_DOOR =[["Form & Move",/^\s*in form/i],["Ratings & Ladders",null,"records"],
-                     ["Tournaments",/^\s*recent tournament/i],["Up",null]];
+                     ["Tournaments",/^\s*tournaments/i],["Up",null]];   /* n169: the bar is now "Tournaments · N running" */
   var NH_JUMP_GROUP=[["Climb",/^\s*biggest climb/i],["Move",/^\s*movers/i],["Recent",/^\s*recent matches/i],["Card",/^\s*card matches/i],["Up",null]];
   var NH_JUMP=NH_JUMP_GROUP;
   /* n114: AIM BELOW WHAT IS PINNED. The band is sticky and so is the strip, and the page scrolls inside #nh, not
@@ -12657,12 +12699,19 @@ W.nhOpenPair=function(name){
       });
       if(found.filter(function(f){ return f.id!=="__top"; }).length<1) return;   /* nothing to jump to */
       var strip=document.createElement("div"); strip.id="nhJump"; strip.setAttribute("data-plat-keep","1");
+      if(W.PLAT.clubDoor) strip.className="two";   /* n169: the door's four sit two by two */
       strip.innerHTML=found.map(function(f){
         return '<button onclick="window.nhJumpTo(\''+f.id+'\')">'+esc(f.k)+'</button>'; }).join("");
+      /* n169: on the door the strip sits UNDER the groups — Enter a score and the groups come first, because that
+         is what people open the app for; on a group page it stays directly under the banner. */
       var band=nh.querySelector(".band");
-      if(band && band.nextSibling) nh.insertBefore(strip, band.nextSibling); else nh.insertBefore(strip, nh.firstChild);
+      var after=W.PLAT.clubDoor ? (document.getElementById("doorGroupCards")||document.getElementById("doorDots")) : null;
+      if(after && after.parentNode===nh){ nh.insertBefore(strip, after.nextSibling); }
+      else if(band && band.nextSibling){ nh.insertBefore(strip, band.nextSibling); }
+      else nh.insertBefore(strip, nh.firstChild);
       /* n114: pinned directly beneath the sticky band, never over it */
-      var place=function(){ var bh=(band && getComputedStyle(band).position==="sticky") ? band.offsetHeight : 0; strip.style.top=bh+"px"; };
+      var place=function(){ var bh=(band && getComputedStyle(band).position==="sticky") ? band.offsetHeight : 0;
+        strip.style.top=bh+"px"; if(W.PLAT.clubDoor) strip.style.position="static"; };
       place(); window.addEventListener("resize", place);
     }catch(e){}
   }
@@ -12756,7 +12805,7 @@ W.nhOpenPair=function(name){
     };
     var h='<div style="font-size:12.5px;color:#5f5770;margin:2px 2px 2px">'+esc(ask)+'</div>'
       + (kidsOf(C).length ? "" : pill(nhGeneralName(),clubPal(C)[0],go(C)))   /* n71: groups only, unless there are none yet */
-      + kids.map(function(g){ return pill(g.name, clubPal(g.id)[0], go(g.id)); }).join("");
+      + kids.map(function(g){ return pill("GROUP \u00b7 "+g.name, clubPal(g.id)[0], go(g.id)); }).join("");   /* n169 */
     if(what==="ladders"||what==="profiles"){
       h+= pill("Everyone at "+W.PLAT.name+" \u00b7 the ledger","#2f2f2f",PAGE+"?club=0&pool="+W.PLAT.pool+"&nat="+C+"&go="+what);
     }
@@ -12832,8 +12881,12 @@ W.nhOpenPair=function(name){
           /* n164: THE CARD IS A LITTLE BANNER. The header picture supplies the arc and the streaks, the group's
              colour supplies the hue, and everything on it reads white. A very light colour is darkened for the
              card's background only, so white text stays readable whatever a club picks. */
-          +'border:2px solid '+cardEdge(col)+';background:'+cardSkin(col)+';background-blend-mode:luminosity,normal;'
-          +'background-origin:border-box;background-clip:padding-box;overflow:hidden;'
+          /* n169: the colour sits UNDER the picture, so no sliver of the page can show through at an edge */
+          /* n169: the shorthand first, then the colour under it — the other way round the shorthand wipes it */
+          /* n169: soft-light, not luminosity — the picture's brightest corner was blowing out to pure white down the
+             right of the card. Soft-light keeps the texture and keeps the group's colour. */
+          +'border:2px solid '+cardEdge(col)+';background:'+cardSkin(col)+';background-color:'+cardBase(col)+';background-blend-mode:soft-light,normal;'
+          +'background-origin:border-box;background-clip:border-box;background-repeat:no-repeat;overflow:hidden;'
           +'border-radius:16px;padding:19px 16px;margin:10px 12px 0;font:inherit;cursor:pointer;color:#fff">'
           +'<div style="display:flex;align-items:center;gap:10px">'
           /* the disc is outlined on the banner — a club badge can take its place later */
@@ -12948,8 +13001,9 @@ W.nhOpenPair=function(name){
       var people={}; (NHEG?[]:mine).forEach(function(m){ [m.t1p1,m.t1p2,m.t2p1,m.t2p2].forEach(function(v){ if(v) String(v).split(" & ").forEach(function(x){ people[x.trim()]=1; }); }); });
       w.innerHTML =
         '<div class="band" style="background:linear-gradient(135deg,'+ink+','+deep+')">'
-        + ''+nhMark(club?club.name:(W.PLAT.poolName||"Open Padel Ratings"))+''
-        + '<h1>'+esc(W.PLAT.name||"")+'</h1>'
+        + nhMark((club?club.name:(W.PLAT.poolName||"Open Padel Ratings")))
+        /* n169: GROUP, then its name — the region, its groups and the register each say what they are */
+        + '<h1><span style="display:block;font-size:11px;font-weight:800;letter-spacing:.14em;opacity:.8">GROUP</span>'+esc(W.PLAT.name||"")+'</h1>'
         /* n120: THE GROUP'S BANNER USES AS LITTLE ROOM AS IT CAN. The description line went (it told a member nothing new),
            "on record" went (the tiles below carry the counts), the week's count is short, and the pills never wrap —
            a long region name shortens with an ellipsis instead — so Enter a score stays in view. */
