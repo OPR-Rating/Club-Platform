@@ -3681,7 +3681,7 @@ const CLUB_NAME = _club.name;  // shown in the logo as "OPR · <name>"
     link.setAttribute('href', href);
   }catch(e){ /* install stays on the static manifest — no functional impact */ }
 })();
-const OPR_VERSION = "OPR-DOUBLES v2026.09.03-56 · NAT fork n169 (no voice) (of PLAT p117)";  // MANUAL PAIR CREATION REMOVED FROM ADMIN: Create a pair, Bulk create pairs and Re-derive all pairs are gone (they only made match-less ghost pairs, and Re-derive rewrote every stored initial club-wide). Pairs are born automatically at match entry. Current pairs list untouched; the underlying JS is left in place unreferenced, so no other code path changes. Includes v47 (set-score fix + double-tap guard) and all prior.
+const OPR_VERSION = "OPR-DOUBLES v2026.09.03-56 · NAT fork n170 (no voice) (of PLAT p117)";  // MANUAL PAIR CREATION REMOVED FROM ADMIN: Create a pair, Bulk create pairs and Re-derive all pairs are gone (they only made match-less ghost pairs, and Re-derive rewrote every stored initial club-wide). Pairs are born automatically at match entry. Current pairs list untouched; the underlying JS is left in place unreferenced, so no other code path changes. Includes v47 (set-score fix + double-tap guard) and all prior.
 // Explanation shown above the individual ladder. Open on load so it's read; collapsible
 // (state kept for the session) and scrolls away. Mechanics only — no outcome framing, so
 // members aren't nudged away from playing stronger opponents. Every clause maps to a real
@@ -10073,7 +10073,9 @@ async function clRemove(id, label){
          to overflow, so on a phone the page sat fixed with everything below the fold unreachable. */
       /* n58: the band stays put while the page moves under it — on a phone the whole page scrolled away and
          you could not see which club or group you were in. */
-      "#nh{max-width:520px;margin:0 auto;padding:0 0 40px;font-family:inherit;flex:1 1 auto;overflow-y:auto;-webkit-overflow-scrolling:touch;width:100%}"
+      /* n170: room at the foot so the LAST section can still scroll up under the banner when a pill jumps to it —
+        without it a jump to Tournaments stopped halfway, simply because the page had run out of scroll. */
+     "#nh{max-width:520px;margin:0 auto;padding:0 0 64vh;font-family:inherit;flex:1 1 auto;overflow-y:auto;-webkit-overflow-scrolling:touch;width:100%}"
 
      +"#homeScreen{overflow:hidden}"
      +"#nh .band{color:#fff;padding:15px 16px 18px;position:sticky;top:0;z-index:20;overflow:hidden;border-radius:0}"   /* n154: square bottom edge */
@@ -10973,7 +10975,9 @@ async function clRemove(id, label){
     var b=cardBase(col);
     /* n169: the far end no longer washes out to near-white — the picture's brightest corner was blending to a pale
        strip down the right of the card. Deep, the colour, then a shade of it. */
-    return "url('./header_bg2.png') center top/cover,linear-gradient(105deg,"+nhDeep(b,.62)+","+b+" 58%,"+nhDeep(b,.18)+")";
+    /* n170: the picture is taken from its left-hand side and scaled well past the card, so the card carries the
+       sweep of the arc and none of the bright corner that showed as a pale patch on the right. */
+    return "url('./header_bg2.png') left center/220% auto,linear-gradient(105deg,"+nhDeep(b,.62)+","+b+" 58%,"+nhDeep(b,.18)+")";
   }
   function regBandStyle(col){
     if(!regOwn(col)) return '';
@@ -11304,7 +11308,8 @@ W.mePair=function(name,col){
             +'<span class="val"><b class="'+(v>=0?"up":"dn")+'">'+fmt(v)+'</b><span>move</span></span></div>';
         }).join("")
       +'</div>'
-      +'<button class="more" onclick="document.getElementById(\'meMatches\')&&document.getElementById(\'meMatches\').scrollIntoView({behavior:\'smooth\',block:\'start\'})">See all my matches \u2193</button></div>';
+      /* n170: "See all my matches" removed — My partnerships now sits directly under Move by group, and the
+         matches themselves are further down the page anyway. */
     return h;
   }
   function meEmpty(msg){
@@ -11453,6 +11458,7 @@ W.mePair=function(name,col){
     });
   }
   function newMePage(){
+    var partHtml="";   /* n170: built further down, shown under Move by group */
     var w=nhWrap(); if(!w) return;
     nhCSS(); nhOneWayIn();
     var C=(W.PLAT.parentId||W.PLAT.cid);
@@ -11537,6 +11543,8 @@ W.mePair=function(name,col){
       var fromRecords=(function(){ try{ return /go(%3D|=)records/.test(new URLSearchParams(location.search).get("back")||""); }catch(e){ return false; } })();
       h+= meChartBlock(me,st,all)
         + meMoveBy(st)
+        /* n170: My partnerships lands here, directly under Move by group */
+        + "<!--PARTNERS-->"
         + (fromRecords ? "" : nhActions(col,deep,"me"))
         +'<div class="cols">';
 
@@ -11573,12 +11581,12 @@ W.mePair=function(name,col){
           if(myGroup && Number(a)===Number(myGroup)) return -1; if(myGroup && Number(b)===Number(myGroup)) return 1;
           return byGroup[b].length-byGroup[a].length; });
         /* n134: the partnerships roll up — tap the heading to open them (a member may have fifty) */
-        h+='<div class="brk nhRoll" id="mePartners"><h2 onclick="window.mePartToggle()" style="display:flex;align-items:center;gap:8px;cursor:pointer">'
+        partHtml+='<div class="brk nhRoll" id="mePartners"><h2 onclick="window.mePartToggle()" style="display:flex;align-items:center;gap:8px;cursor:pointer">'
           +(viewing?"Partnerships":"My partnerships")+' \u00b7 '+st.partners.length
           +nhExp("mePartCaret",null,"margin-left:auto")+'</h2><div id="mePartBody" style="display:none">';
         order.forEach(function(gid){
           var gc=clubPal(gid)[0];
-          h+='<div style="display:flex;align-items:center;gap:8px;padding:10px 14px 4px">'
+          partHtml+='<div style="display:flex;align-items:center;gap:8px;padding:10px 14px 4px">'
             +'<span style="width:10px;height:10px;border-radius:50%;background:'+gc+'"></span>'
             +'<span style="font-size:11.5px;letter-spacing:.06em;text-transform:uppercase;font-weight:800;color:'+gc+'">Partnerships in '+esc(nhBoardName(gid)||"another region")+'</span>'
             +'<span style="font-size:11px;color:#8a8196">\u00b7 '+byGroup[gid].length+'</span></div>';
@@ -11586,7 +11594,7 @@ W.mePair=function(name,col){
              the right (Men's blue, Ladies pink, Mixed green — plat's own colours), then Rating · Matches · Move
              on one line. The same card the group's member page shows; the grouping by group stays. */
           var catOf=function(x){ var g=String(x.gender||"").toUpperCase(); return g==="M"?["Men\u2019s","#e3edff","#2148a0"]:(g==="F"||g==="L")?["Ladies","#ffe6f0","#a02166"]:["Mixed","#e9f7e5","#2a7d1f"]; };
-          h+='<div style="padding:4px 12px 4px">'
+          partHtml+='<div style="padding:4px 12px 4px">'
           + byGroup[gid].map(function(x){
               var cat=catOf(x), mvCol=(x.move>=0)?"#1e8449":"#c0392b";
               /* n162: the colour goes with the tap, so the pair page opens in it instead of flashing purple first */
@@ -11603,7 +11611,7 @@ W.mePair=function(name,col){
             }).join("")
           +'</div>';
         });
-        h+='<div style="padding:8px 14px 12px;font-size:12px;color:#5f5770">Tap a partnership for every match you have played together, with the set scores.</div></div></div>';
+        partHtml+='<div style="padding:8px 14px 12px;font-size:12px;color:#5f5770">Tap a partnership for every match you have played together, with the set scores.</div></div></div>';
       }
 
       if(!st.matches.length){
@@ -11641,7 +11649,18 @@ W.mePair=function(name,col){
         +'<button data-plat-keep="1" id="meHomeSw" onclick="window.meHomeToggle()" style="flex:0 0 46px;height:26px;border:none;border-radius:99px;position:relative;cursor:pointer;background:'+(meHomeOn()?col:"#d9d2e3")+'">'
         +'<span style="position:absolute;top:4px;left:'+(meHomeOn()?"24px":"4px")+';width:18px;height:18px;border-radius:50%;background:#fff;box-shadow:0 1px 2px rgba(0,0,0,.25)"></span></button></div>'
         +'<div style="margin:12px 12px 0"><button class="more" style="border:1px solid #ddd;border-radius:99px;background:#fff;color:#7a6f8a" onclick="window.meForget()">This isn\u2019t me \u2014 use a different name</button></div>';
+      h=h.replace("<!--PARTNERS-->", partHtml);   /* n170: partnerships land under Move by group */
       w.innerHTML=h;
+      /* n170: My partnerships sits directly under Move by group. The block is built lower down with the rest of the
+         partnership data, so it is lifted into place once the page is drawn. */
+      var liftPartners=function(){
+        try{
+          var mp=document.getElementById("mePartners");
+          var mv=[].slice.call(w.querySelectorAll(".brk")).filter(function(b){ return /^\s*move by group/i.test((b.firstElementChild&&b.firstElementChild.textContent)||""); })[0];
+          if(mp && mv && mv.parentNode && mp.previousElementSibling!==mv) mv.parentNode.insertBefore(mp, mv.nextSibling);
+        }catch(e){}
+      };
+      liftPartners(); setTimeout(liftPartners,0); setTimeout(liftPartners,300);
     });
   }
 
@@ -12084,7 +12103,9 @@ W.mePair=function(name,col){
   function doorGroupsBand(ks){
     ks=ks||[]; var hid=doorHidden(), shown=ks.filter(function(g){ return hid.indexOf(Number(g.id))<0; }).length;
     return '<div class="brk nhRoll" id="doorGroupsBrk" style="margin-top:12px">'
-      +'<h2 onclick="window.doorGroupsOpen()" style="display:flex;align-items:center;gap:8px;cursor:pointer">Groups'
+      /* n170: whose groups these are, said on the band itself */
+      +'<h2 onclick="window.doorGroupsOpen()" style="display:flex;align-items:center;gap:8px;cursor:pointer">'
+      +'<span style="min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">Groups in '+esc(W.PLAT.name||"this region")+'</span>'
       +'<span id="doorGroupsCount" style="margin-left:auto;font-size:11.5px;letter-spacing:0;text-transform:none;font-weight:700;opacity:.85">showing '+shown+' of '+ks.length+'</span>'
       +nhExp("doorGroupsCaret")+'</h2>'
       +'<div id="doorGroupsPick" style="display:none;padding:2px 12px 10px"></div></div>';
@@ -12623,7 +12644,10 @@ W.nhOpenPair=function(name){
   }
   function nhPinnedHeight(){
     var h=0; var band=document.querySelector("#nh .band"); if(band && getComputedStyle(band).position==="sticky") h+=band.offsetHeight;
-    var strip=document.getElementById("nhJump"); if(strip) h+=strip.offsetHeight;
+    /* n170: only what is actually pinned counts. On the door the strip scrolls away with the page, and counting it
+       left a jump sitting half a section too low. */
+    var strip=document.getElementById("nhJump");
+    if(strip && getComputedStyle(strip).position==="sticky") h+=strip.offsetHeight;
     return h+6;
   }
   W.nhJumpTo=function(k){
