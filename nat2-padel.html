@@ -3681,7 +3681,7 @@ const CLUB_NAME = _club.name;  // shown in the logo as "OPR · <name>"
     link.setAttribute('href', href);
   }catch(e){ /* install stays on the static manifest — no functional impact */ }
 })();
-const OPR_VERSION = "OPR-DOUBLES v2026.09.03-56 · NAT fork n172 (no voice) (of PLAT p117)";  // MANUAL PAIR CREATION REMOVED FROM ADMIN: Create a pair, Bulk create pairs and Re-derive all pairs are gone (they only made match-less ghost pairs, and Re-derive rewrote every stored initial club-wide). Pairs are born automatically at match entry. Current pairs list untouched; the underlying JS is left in place unreferenced, so no other code path changes. Includes v47 (set-score fix + double-tap guard) and all prior.
+const OPR_VERSION = "OPR-DOUBLES v2026.09.03-56 · NAT fork n173 (no voice) (of PLAT p117)";  // MANUAL PAIR CREATION REMOVED FROM ADMIN: Create a pair, Bulk create pairs and Re-derive all pairs are gone (they only made match-less ghost pairs, and Re-derive rewrote every stored initial club-wide). Pairs are born automatically at match entry. Current pairs list untouched; the underlying JS is left in place unreferenced, so no other code path changes. Includes v47 (set-score fix + double-tap guard) and all prior.
 // Explanation shown above the individual ladder. Open on load so it's read; collapsible
 // (state kept for the session) and scrolls away. Mechanics only — no outcome framing, so
 // members aren't nudged away from playing stronger opponents. Every clause maps to a real
@@ -12927,10 +12927,11 @@ W.nhOpenPair=function(name){
              colour supplies the hue, and everything on it reads white. A very light colour is darkened for the
              card's background only, so white text stays readable whatever a club picks. */
           /* n169: the colour sits UNDER the picture, so no sliver of the page can show through at an edge */
-          /* n169: the shorthand first, then the colour under it — the other way round the shorthand wipes it */
+          /* n173: no flat colour under the picture — it was there to hide a white edge that came from the picture
+             file itself (a 12px white margin, now cropped out), and it flattened the group's colour. */
           /* n169: soft-light, not luminosity — the picture's brightest corner was blowing out to pure white down the
              right of the card. Soft-light keeps the texture and keeps the group's colour. */
-          +'border:2px solid '+cardEdge(col)+';background:'+cardSkin(col)+';background-color:'+cardBase(col)+';background-blend-mode:soft-light,normal;'
+          +'border:2px solid '+cardEdge(col)+';background:'+cardSkin(col)+';background-blend-mode:soft-light,normal;'
           +'background-origin:border-box;background-clip:border-box;background-repeat:no-repeat;overflow:hidden;'
           +'border-radius:16px;padding:19px 16px;margin:10px 12px 0;font:inherit;cursor:pointer;color:#fff">'
           +'<div style="display:flex;align-items:center;gap:10px">'
