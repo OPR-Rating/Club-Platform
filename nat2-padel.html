@@ -3681,7 +3681,7 @@ const CLUB_NAME = _club.name;  // shown in the logo as "OPR · <name>"
     link.setAttribute('href', href);
   }catch(e){ /* install stays on the static manifest — no functional impact */ }
 })();
-const OPR_VERSION = "OPR-DOUBLES v2026.09.03-56 · NAT fork n171 (no voice) (of PLAT p117)";  // MANUAL PAIR CREATION REMOVED FROM ADMIN: Create a pair, Bulk create pairs and Re-derive all pairs are gone (they only made match-less ghost pairs, and Re-derive rewrote every stored initial club-wide). Pairs are born automatically at match entry. Current pairs list untouched; the underlying JS is left in place unreferenced, so no other code path changes. Includes v47 (set-score fix + double-tap guard) and all prior.
+const OPR_VERSION = "OPR-DOUBLES v2026.09.03-56 · NAT fork n172 (no voice) (of PLAT p117)";  // MANUAL PAIR CREATION REMOVED FROM ADMIN: Create a pair, Bulk create pairs and Re-derive all pairs are gone (they only made match-less ghost pairs, and Re-derive rewrote every stored initial club-wide). Pairs are born automatically at match entry. Current pairs list untouched; the underlying JS is left in place unreferenced, so no other code path changes. Includes v47 (set-score fix + double-tap guard) and all prior.
 // Explanation shown above the individual ladder. Open on load so it's read; collapsible
 // (state kept for the session) and scrolls away. Mechanics only — no outcome framing, so
 // members aren't nudged away from playing stronger opponents. Every clause maps to a real
@@ -10542,14 +10542,15 @@ async function clRemove(id, label){
             +'<span id="nhtourT'+k+'" style="display:inline-block;color:var(--nhc,#6c3483);transition:transform .15s">\u25bc</span></button>'
             +'<div id="nhtour'+k+'" style="display:none;padding:2px 0 6px">'
             +  '<div style="padding:8px 12px 4px;font-weight:800;font-size:13.5px;color:'+gcol+'">'+esc(t.name)+'</div>'
+            /* n172: the draw and standings sit ABOVE the matches — you should not scroll a season to reach them */
+            +  '<button class="more" style="margin:0 12px 8px" onclick="window.nhOpenTour('+k+')">Open the draw and standings \u2192</button>'
             + (ms.length
-                ? '<div style="max-height:310px;overflow-y:auto;-webkit-overflow-scrolling:touch">'
+                ? '<div style="max-height:186px;overflow-y:auto;-webkit-overflow-scrolling:touch">'
                   + ms.map(function(m){ return nhMatchRow(m,"one"); }).join("")
                   + '</div>'
-                  + (ms.length>5 ? '<div style="padding:6px 12px 0;text-align:center;font-size:11.5px;color:#8a8196">5 of '+ms.length+' \u00b7 scroll for more</div>' : "")
+                  + (ms.length>3 ? '<div style="padding:6px 12px 0;text-align:center;font-size:11.5px;color:#8a8196">3 of '+ms.length+' \u00b7 scroll for more</div>' : "")
                 : '<div style="padding:8px 14px;font-size:12.5px;color:#5f5770">Under way \u2014 no results entered yet.</div>')
-            /* n144: opens THAT tournament's own sheet, not the general tournaments page */
-            +'<button class="more" onclick="window.nhOpenTour('+k+')">Open the draw and standings \u2192</button></div>';
+            +'</div>';
         }).join("")
       +'</div></div>';
   }
@@ -10991,7 +10992,9 @@ async function clRemove(id, label){
        strip down the right of the card. Deep, the colour, then a shade of it. */
     /* n171: THE HEADER PICTURE ACROSS THE CARD, as it was — center top/cover, the same crop the banners use, so the
        card reads as a small banner in the group's colour. */
-    return "url('./header_bg2.png') center top/cover,linear-gradient(105deg,"+nhDeep(b,.62)+","+b+" 58%,"+nhDeep(b,.18)+")";
+    /* n172: the WHOLE picture fits the card (100% 100%), not a crop of its middle — the card is short and wide, so
+       "cover" cut the arc and left the picture's bright end as a band down the right. */
+    return "url('./header_bg2.png') center/100% 100%,linear-gradient(105deg,"+nhDeep(b,.62)+","+b+" 58%,"+nhDeep(b,.18)+")";
   }
   function regBandStyle(col){
     if(!regOwn(col)) return '';
@@ -12980,7 +12983,7 @@ W.nhOpenPair=function(name){
         /* n114: the region's name was repeated here under the banner that already says it — removed */
         /* the one thing they came for */
         + '<button onclick="window.doorPick(\'score\')" style="display:block;width:calc(100% - 24px);margin:16px 12px 4px;'
-        + 'background:linear-gradient(135deg,#d4f425,#b8d400);border:none;border-radius:16px;padding:16px;text-align:center;'
+        + 'background:linear-gradient(180deg,#e4ff5c 0%,#d4f425 46%,#bce400 100%);box-shadow:inset 0 1px 0 rgba(255,255,255,.55),0 1px 3px rgba(26,16,48,.12);border:none;border-radius:16px;padding:16px;text-align:center;'
         + 'font:inherit;font-weight:800;font-size:16px;color:#1a1a1a;cursor:pointer">+ &nbsp;Enter a score</button>'
         + '<div id="doorWhere" style="display:none;padding:2px 12px 4px"></div>'
         /* the engine */
