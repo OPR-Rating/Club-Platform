@@ -45,9 +45,10 @@
   .wrap{max-width:720px;margin:0 auto;padding:0 22px;}
 
   /* ---------- HERO ---------- */
-  header.hero{position:relative;overflow:hidden;color:#fff;text-align:center;
+  header.hero{position:relative;overflow:hidden;color:#fff;text-align:center;border-radius:0;
     padding:46px 0 42px;
-    background:linear-gradient(160deg,#0D0A1F 0%,#1A1535 45%,#3A1D8F 85%,#5B2BD6 125%);}
+    background:url('header_bg2.png') center top/cover,linear-gradient(105deg,#1d0a41,#5b17ac 52%,#047fdd);
+    background-blend-mode:luminosity,normal;}
   header.hero::after{content:"";position:absolute;left:0;right:0;bottom:0;height:3px;
     background:linear-gradient(90deg,var(--violet),var(--azure),var(--cyan),var(--ball));}
   .hero-logo{display:inline-flex;align-items:center;gap:9px;margin-bottom:14px;
@@ -160,6 +161,15 @@
     .install{flex-wrap:wrap;}
     .install .cta{width:100%;padding:11px;}
   }
+
+  /* the app's mark, exactly */
+  .oprmark{display:flex;align-items:center;justify-content:center;gap:7px;margin-bottom:14px}
+  .oprmark .pill{height:26px;display:inline-flex;align-items:center;padding:0 9px;border-radius:9px;background:rgba(255,255,255,.14);border:1px solid rgba(255,255,255,.34)}
+  .oprmark .pill.balls{gap:4px}
+  .oprmark .pill.word{font-weight:800;font-size:16px;letter-spacing:.05em}
+  .oprmark .ball{width:10px;height:10px;border-radius:50%;display:block;position:relative;background:radial-gradient(circle at 35% 30%,#ecff7a,#bce400 60%,#84a800);box-shadow:0 0 5px rgba(198,255,64,.5)}
+  .oprmark .ball::after{content:"";position:absolute;inset:0;border-radius:50%;background:linear-gradient(115deg,transparent 44%,rgba(255,255,255,.5) 46%,transparent 49%)}
+  .oprmark .marksub{font-size:10px;font-weight:700;letter-spacing:.12em;opacity:.9}
 </style>
 </head>
 <style>
@@ -192,7 +202,11 @@
 <body>
 <header class="hero">
   <div class="wrap">
-    <div class="hero-logo"><span class="balls"><i></i><i></i><i></i></span><span class="word">O P R</span></div>
+    <div class="oprmark">
+      <span class="pill balls"><i class="ball"></i><i class="ball"></i></span>
+      <span class="pill balls"><i class="ball"></i><i class="ball"></i></span>
+      <span class="pill word">OPR</span><span class="marksub">OPEN PADEL RATINGS</span>
+    </div>
     <div class="eyebrow">Getting around the app</div>
     <h1>Everything in one place, and easy to find.</h1>
   </div>

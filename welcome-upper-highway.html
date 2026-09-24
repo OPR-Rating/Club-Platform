@@ -1,320 +1,196 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<!doctype html>
+<html lang="en"><head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>Welcome to OPR — Upper Highway Area</title>
-
-<!-- ============================================================
-     PER-REGION EDIT POINTS (only these change per region):
-       1. <title>            -> "Welcome to OPR — <CLUB>"
-       2. og:title / og:url  -> club name + this file's URL
-       3. .manifest data      -> name / short_name / start_url (= the APP file, so install gives the app icon)
-       4. HERO .club          -> Upper Highway Area; upper-highway is the region's club id (e.g. 30); upper-highway is nat2-padel
-       5. Link hrefs          -> tourtest.html (app) + laptop.html?club=<ID>
-       6. footer [CLUB NAME]
-     Icons (icon-192.png / icon-512.png / header_bg2.png) already live on GitHub.
-     ============================================================ -->
-
-<!-- WhatsApp / social link preview (Open Graph) -->
-<meta property="og:type" content="website">
-<meta property="og:site_name" content="OPR — Open Player Rating">
-<meta property="og:title" content="Upper Highway Area on OPR — your groups, your rating, your page">
-<meta property="og:description" content="Your rating, your form, the ladders and tournaments — the whole storybook of your padel life at the club. Tap to open and add it to your phone.">
-<meta property="og:image" content="https://opr-rating.github.io/opr-demo/icon-512.png">
+<meta name="theme-color" content="#1d0a41">
+<meta property="og:title" content="Welcome to OPR — Upper Highway Area">
+<meta property="og:description" content="Your groups, your rating, one page that is yours.">
 <meta property="og:url" content="https://opr-rating.github.io/Club-Platform/welcome-upper-highway.html">
-<meta name="twitter:card" content="summary_large_image">
-<meta name="theme-color" content="#5B2BD6">
-
-<!-- Installable: front door -> installing drops the APP on the home screen -->
-<link rel="manifest" href='data:application/manifest+json,{"name":"OPR · Upper Highway Area","short_name":"OPR Upper Highway","start_url":"./upper-highway.html","scope":"./","display":"standalone","background_color":"%235B2BD6","theme_color":"%235B2BD6","icons":[{"src":"./icon-192.png","sizes":"192x192","type":"image/png"},{"src":"./icon-512.png","sizes":"512x512","type":"image/png"}]}'>
-<link rel="apple-touch-icon" href="./icon-192.png">
-<link rel="icon" href="./icon-192.png">
-
+<link rel="icon" href="icon-192.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;800&family=Fraunces:opsz,wght@9..144,500;9..144,600&display=swap" rel="stylesheet">
 <style>
-  :root{
-    --ink:#0D0A1F;--ink-soft:#1A1535;--violet:#5B2BD6;--violet-bright:#7B4DFF;
-    --azure:#1A9FFF;--cyan:#39D0FF;--paper:#F7F6FB;--paper-dim:#E9E6F4;
-    --muted:#6B6585;--body:#2A2540;--line:#E1DCEF;--ball:#BCE400;
-  }
-  *{box-sizing:border-box;margin:0;padding:0;}
-  html{scroll-behavior:smooth;}
-  body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;
-    background:var(--paper);color:var(--body);line-height:1.6;padding-bottom:46px;
-    -webkit-font-smoothing:antialiased;}
-  .wrap{max-width:720px;margin:0 auto;padding:0 22px;}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Inter',system-ui,-apple-system,'Segoe UI',sans-serif;color:#241d33;background:#f7f5fb;line-height:1.6;-webkit-font-smoothing:antialiased}
+.wrap{max-width:720px;margin:0 auto;padding:0 20px}
+a{color:inherit;text-decoration:none}
 
-  /* ---------- HERO ---------- */
-  header.hero{position:relative;overflow:hidden;color:#fff;text-align:center;
-    padding:46px 0 42px;
-    background:linear-gradient(160deg,#0D0A1F 0%,#1A1535 45%,#3A1D8F 85%,#5B2BD6 125%);}
-  header.hero::after{content:"";position:absolute;left:0;right:0;bottom:0;height:3px;
-    background:linear-gradient(90deg,var(--violet),var(--azure),var(--cyan),var(--ball));}
-  .hero-logo{display:inline-flex;align-items:center;gap:9px;margin-bottom:14px;
-    opacity:0;animation:rise .6s ease .05s forwards;}
-  .hero-logo .balls{display:flex;gap:5px;}
-  .hero-logo .balls i{width:9px;height:9px;border-radius:50%;display:block;
-    background:var(--ball);box-shadow:0 0 10px rgba(188,228,0,.6);}
-  .hero-logo .balls i:nth-child(2){background:var(--cyan);box-shadow:0 0 10px rgba(57,208,255,.6);}
-  .hero-logo .balls i:nth-child(3){background:var(--azure);box-shadow:0 0 10px rgba(26,159,255,.6);}
-  .hero-logo .word{font-size:15px;font-weight:800;letter-spacing:5px;color:#fff;}
-  .eyebrow{font-size:12px;font-weight:800;letter-spacing:3px;text-transform:uppercase;
-    color:var(--cyan);margin-bottom:10px;opacity:0;animation:rise .6s ease .12s forwards;}
-  header.hero h1{font-size:33px;font-weight:800;letter-spacing:0.2px;line-height:1.15;
-    opacity:0;animation:rise .6s ease .2s forwards;}
-  header.hero .club{display:inline-block;margin-top:14px;font-size:15px;font-weight:700;
-    letter-spacing:1px;text-transform:uppercase;color:#fff;
-    background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.22);
-    padding:6px 16px;border-radius:999px;backdrop-filter:blur(4px);
-    opacity:0;animation:rise .6s ease .28s forwards;}
-  @keyframes rise{from{opacity:0;transform:translateY(10px);}to{opacity:1;transform:translateY(0);}}
+/* the hero, exactly as the app draws it */
+.hero{color:#fff;padding:26px 0 30px;border-radius:0;
+  background:url('header_bg2.png') center top/cover,linear-gradient(105deg,#1d0a41,#5b17ac 52%,#047fdd);
+  background-blend-mode:luminosity,normal}
+.mark{display:flex;align-items:center;gap:7px;margin-bottom:16px}
+.pill{height:26px;display:inline-flex;align-items:center;padding:0 9px;border-radius:9px;
+  background:rgba(255,255,255,.14);border:1px solid rgba(255,255,255,.34)}
+.pill.balls{gap:4px}
+.pill.word{font-weight:800;font-size:16px;letter-spacing:.05em}
+.ball{width:10px;height:10px;border-radius:50%;display:block;position:relative;
+  background:radial-gradient(circle at 35% 30%,#ecff7a,#bce400 60%,#84a800);box-shadow:0 0 5px rgba(198,255,64,.5)}
+.ball::after{content:"";position:absolute;inset:0;border-radius:50%;
+  background:linear-gradient(115deg,transparent 44%,rgba(255,255,255,.5) 46%,transparent 49%)}
+.marksub{font-size:10px;font-weight:700;letter-spacing:.12em;opacity:.9}
+.eyebrow{font-size:11px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;opacity:.8}
+.hero h1{font-family:'Fraunces',Georgia,serif;font-weight:600;font-size:30px;line-height:1.15;letter-spacing:-.01em;margin:8px 0 10px}
+.hero .club{display:inline-block;background:rgba(255,255,255,.16);border:1.5px solid rgba(255,255,255,.45);
+  border-radius:99px;padding:6px 14px;font-weight:800;font-size:14px}
 
-  /* ---------- INTRO CARD ---------- */
-  .welcome-intro{background:#fff;border:1px solid var(--line);border-radius:16px;
-    padding:22px 24px;margin-top:-24px;position:relative;z-index:2;
-    box-shadow:0 10px 34px rgba(13,10,31,0.10);}
-  .welcome-intro p{font-size:15px;margin-bottom:9px;}
-  .welcome-intro p:last-child{margin-bottom:0;}
-  .welcome-intro b{color:var(--ink);}
-  .storyline{display:block;margin-top:4px;font-style:italic;color:var(--violet);font-weight:600;}
+section{padding:26px 0 4px}
+h2{font-family:'Fraunces',Georgia,serif;font-weight:600;font-size:20px;color:#5b2bd6;margin-bottom:4px}
+.lead{font-size:15.5px;color:#4b4459;margin:10px 0 16px}
+.kicker{font-size:11px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:#8a8196;margin-bottom:10px}
 
-  /* ---------- INSTALL BANNER (the app-like hook) ---------- */
-  .install{margin-top:22px;border-radius:16px;padding:18px 20px;color:#fff;
-    background:linear-gradient(135deg,var(--violet),var(--azure));
-    box-shadow:0 8px 26px rgba(91,43,214,.28);
-    display:flex;align-items:center;gap:16px;}
-  .install .glyph{flex-shrink:0;width:46px;height:46px;border-radius:12px;
-    background:rgba(255,255,255,.16);border:1px solid rgba(255,255,255,.3);
-    display:flex;align-items:center;justify-content:center;font-size:24px;}
-  .install .txt{flex:1;min-width:0;}
-  .install .txt b{display:block;font-size:15px;font-weight:800;letter-spacing:.2px;}
-  .install .txt span{display:block;font-size:12.5px;color:rgba(255,255,255,.85);margin-top:2px;}
-  .install .cta{flex-shrink:0;background:#fff;color:var(--violet);font-weight:800;
-    font-size:13px;border:none;border-radius:999px;padding:9px 16px;cursor:pointer;
-    box-shadow:0 3px 10px rgba(0,0,0,.14);transition:transform .12s ease;}
-  .install .cta:active{transform:scale(.96);}
+.row{display:flex;align-items:center;gap:13px;background:#fff;border:1px solid #e6e0ee;border-radius:14px;
+  padding:14px 15px;margin-bottom:10px;box-shadow:0 1px 3px rgba(26,16,48,.05)}
+.row .ic{width:40px;height:40px;flex:0 0 40px;border-radius:12px;display:grid;place-items:center;font-size:19px;
+  background:#f1ebf6}
+.row .m{flex:1;min-width:0}
+.row .t{display:block;font-weight:800;font-size:15px}
+.row .s{display:block;font-size:12.5px;color:#6b6585}
+.row .go{font-weight:800;color:#5b2bd6;font-size:13.5px;white-space:nowrap}
+.row.first{border:2px solid #5b2bd6;background:linear-gradient(180deg,#faf7ff,#fff)}
+.row.first .ic{background:#ede4fb}
 
-  /* ---------- SECTIONS ---------- */
-  section{margin-top:30px;}
-  h2{font-size:13px;font-weight:800;text-transform:uppercase;letter-spacing:1.4px;
-    color:var(--violet);margin-bottom:12px;padding-bottom:8px;
-    border-bottom:2px solid var(--paper-dim);}
-
-  /* ---------- LINK CARDS ---------- */
-  .linkbox{background:#fff;border:1px solid var(--line);border-radius:14px;
-    overflow:hidden;box-shadow:0 2px 12px rgba(13,10,31,0.05);}
-  .linkrow{display:flex;align-items:center;gap:14px;padding:15px 18px;
-    border-bottom:1px solid var(--paper-dim);text-decoration:none;color:inherit;
-    transition:background .14s ease;}
-  .linkrow:last-child{border-bottom:none;}
-  .linkrow:hover{background:var(--paper);}
-  .linkrow:active{background:var(--paper-dim);}
-  .linkrow .ic{flex-shrink:0;width:42px;height:42px;border-radius:11px;
-    background:linear-gradient(135deg,var(--violet),var(--azure));color:#fff;
-    font-size:19px;display:flex;align-items:center;justify-content:center;
-    box-shadow:0 3px 9px rgba(91,43,214,.22);}
-  .linkrow .ic.dark{background:linear-gradient(135deg,#1A1535,#3A1D8F);
-    box-shadow:0 3px 9px rgba(26,21,53,.25);}
-  .linkrow .ic.go-app{background:linear-gradient(135deg,var(--violet-bright),var(--cyan));}
-  .linkrow .m{flex:1;min-width:0;}
-  .linkrow .m .t{display:block;font-weight:700;font-size:15px;color:var(--ink);}
-  .linkrow .m .s{display:block;font-size:12.5px;color:var(--muted);margin-top:1px;}
-  .linkrow .go{flex-shrink:0;color:var(--violet);font-weight:800;font-size:13px;}
-  .linkrow.primary{background:linear-gradient(135deg,rgba(91,43,214,.05),rgba(26,159,255,.05));}
-  .linkrow.primary .m .t{color:var(--violet);}
-
-  /* ---------- TIP / EXPANDERS ---------- */
-  details.card{background:#fff;border:1px solid var(--line);border-radius:14px;
-    margin-bottom:12px;overflow:hidden;box-shadow:0 2px 12px rgba(13,10,31,0.05);}
-  details.card summary{list-style:none;cursor:pointer;padding:15px 18px;
-    display:flex;align-items:center;gap:12px;font-weight:700;font-size:14.5px;color:var(--ink);}
-  details.card summary::-webkit-details-marker{display:none;}
-  details.card summary .chev{margin-left:auto;color:var(--violet);font-weight:800;
-    transition:transform .2s ease;}
-  details.card[open] summary .chev{transform:rotate(90deg);}
-  details.card summary .badge{flex-shrink:0;width:34px;height:34px;border-radius:9px;
-    background:linear-gradient(135deg,var(--violet),var(--azure));color:#fff;
-    display:flex;align-items:center;justify-content:center;font-size:16px;}
-  details.card .inner{padding:0 18px 16px 18px;font-size:13.5px;color:var(--body);}
-  details.card .inner b{color:var(--ink);}
-  .os{margin:10px 0;padding:11px 14px;background:var(--paper);border-radius:9px;
-    border-left:3px solid var(--cyan);font-size:13px;}
-  .os b{color:var(--violet);}
-
-  .doline{display:flex;gap:10px;align-items:flex-start;margin-bottom:9px;}
-  .doline:last-child{margin-bottom:0;}
-  .doline .dot{flex-shrink:0;width:20px;height:20px;border-radius:50%;margin-top:2px;
-    background:linear-gradient(135deg,var(--violet),var(--azure));color:#fff;
-    font-size:11px;font-weight:800;display:flex;align-items:center;justify-content:center;}
-
-  footer{text-align:center;color:var(--muted);font-size:12.5px;margin-top:36px;
-    padding-top:18px;border-top:2px solid var(--paper-dim);}
-  footer b{color:var(--violet);}
-  footer .balls{display:inline-flex;gap:4px;vertical-align:middle;margin-right:6px;}
-  footer .balls i{width:7px;height:7px;border-radius:50%;display:block;background:var(--ball);}
-  footer .balls i:nth-child(2){background:var(--cyan);}
-  footer .balls i:nth-child(3){background:var(--azure);}
-
-  @media(max-width:560px){
-    header.hero h1{font-size:27px;}
-    .install{flex-wrap:wrap;}
-    .install .cta{width:100%;padding:11px;}
-  }
+details{background:#fff;border:1px solid #e6e0ee;border-radius:14px;margin-bottom:10px;overflow:hidden}
+summary{cursor:pointer;list-style:none;display:flex;align-items:center;gap:12px;padding:14px 15px;font-weight:800;font-size:15px}
+summary::-webkit-details-marker{display:none}
+summary .ic{width:34px;height:34px;flex:0 0 34px;border-radius:10px;background:#f1ebf6;display:grid;place-items:center;font-size:16px}
+summary .arr{margin-left:auto;color:#a99ec0;font-weight:900}
+details[open] summary .arr{transform:rotate(90deg)}
+.body{padding:0 15px 15px;font-size:14.5px;color:#4b4459}
+.body p{margin-bottom:10px}
+.body b{color:#241d33}
+.doline{display:flex;gap:10px;margin-bottom:9px}
+.dot{flex:0 0 14px;line-height:1.45}
+.steps{counter-reset:s;margin-top:4px}
+.step{display:flex;gap:11px;margin-bottom:9px}
+.step .n{flex:0 0 24px;height:24px;border-radius:50%;background:#5b2bd6;color:#fff;font-size:12px;font-weight:800;display:grid;place-items:center}
+.note{background:#f4f0fa;border-left:4px solid #5b2bd6;border-radius:8px;padding:11px 13px;font-size:14px;margin:12px 0}
+footer{margin-top:30px;padding:26px 0 34px;background:#241d33;color:rgba(255,255,255,.55);font-size:12.5px;text-align:center}
+footer b{color:#fff;letter-spacing:.1em}
+@media(max-width:520px){.hero h1{font-size:25px}.wrap{padding:0 16px}}
 </style>
 </head>
 <body>
+
 <header class="hero">
   <div class="wrap">
-    <div class="hero-logo"><span class="balls"><i></i><i></i><i></i></span><span class="word">O P R</span></div>
+    <div class="mark">
+      <span class="pill balls"><i class="ball"></i><i class="ball"></i></span>
+      <span class="pill balls"><i class="ball"></i><i class="ball"></i></span>
+      <span class="pill word">OPR</span>
+      <span class="marksub">OPEN PADEL RATINGS</span>
+    </div>
     <div class="eyebrow">Welcome to your region</div>
     <h1>Your groups, your rating, one page that is yours.</h1>
     <div class="club">Upper Highway Area</div>
   </div>
 </header>
 
-<div class="wrap">
-  <div class="welcome-intro">
-    <p><b>Welcome to OPR at Upper Highway Area.</b> Everything you play here lives in one place: the groups you play in,
-    every match you enter, a rating that follows you between groups, and a profile page that is yours alone.</p>
-    <span class="storyline">Play in a group. Enter the score. Watch your page tell the story.</span>
-    <p style="margin-top:9px;">You do not need to sign up. If you are a member of Upper Highway Area, you are already on the register — your name is
-    waiting for you.</p>
-  </div>
+<section><div class="wrap">
+  <p class="lead">Everything you play at Upper Highway Area lives in one place: the groups you play in, every match you enter,
+  a rating that follows you from group to group, and a page of your own. <b>You do not need to sign up.</b>
+  If you are a member here, your name is already on the register, waiting for you.</p>
 
-  <!-- INSTALL HOOK -->
-  <div class="install">
-    <span class="glyph">📲</span>
-    <span class="txt"><b>Add Upper Highway Area to your phone</b><span>Installs like an app, with its own icon — one tap to your door.</span></span>
-    <button class="cta" onclick="document.getElementById('installhow').open=true;document.getElementById('installhow').scrollIntoView({behavior:'smooth'});">How</button>
-  </div>
+  <div class="kicker">Start here</div>
 
-  <!-- THE DOOR -->
-  <section>
-    <h2>Start at the door</h2>
-    <div class="linkbox">
-      <a class="linkrow primary" href="https://opr-rating.github.io/Club-Platform/upper-highway.html" target="_blank" rel="noopener">
-        <span class="ic go-app">🚪</span>
-        <span class="m"><span class="t">Open Upper Highway Area</span><span class="s">Your front door — enter a score, open your group, see the records. Add this one to your phone.</span></span>
-        <span class="go">Open ›</span>
-      </a>
+  <a class="row first" href="https://opr-rating.github.io/Club-Platform/upper-highway.html">
+    <span class="ic">&#128682;</span>
+    <span class="m"><span class="t">Open Upper Highway Area</span><span class="s">Your front door — enter a score, open your group, see the records</span></span>
+    <span class="go">Open &rsaquo;</span>
+  </a>
+
+  <a class="row" href="https://opr-rating.github.io/Club-Platform/how-to-use.html">
+    <span class="ic">&#129517;</span>
+    <span class="m"><span class="t">How to use the app</span><span class="s">A short guide to finding your way around</span></span>
+    <span class="go">Open &rsaquo;</span>
+  </a>
+
+  <a class="row" href="https://opr-rating.github.io/opr-demo/opr-explained.html">
+    <span class="ic">&#128290;</span>
+    <span class="m"><span class="t">How the rating works</span><span class="s">How a match moves your rating, in plain words</span></span>
+    <span class="go">Open &rsaquo;</span>
+  </a>
+
+  <a class="row" href="https://opr-rating.github.io/opr-demo/add-to-phone.html">
+    <span class="ic">&#128241;</span>
+    <span class="m"><span class="t">Put it on your phone</span><span class="s">It installs like an app, with its own icon — one tap to your door</span></span>
+    <span class="go">Open &rsaquo;</span>
+  </a>
+</div></section>
+
+<section><div class="wrap">
+  <h2>How it fits together</h2>
+  <p class="lead">Four short answers. Open the ones you want.</p>
+
+  <details><summary><span class="ic">&#129517;</span>Follow the colour<span class="arr">&rsaquo;</span></summary>
+    <div class="body">
+      <div class="doline"><span class="dot">&#9679;</span><div><b>Each group has its own colour</b>, chosen by that group.
+      Wherever you see it — a card, a pill, a heading, a chart — you are looking at that group.</div></div>
+      <div class="doline"><span class="dot">&#9679;</span><div><b>The region has its own colour too</b> (OPR purple unless your
+      committee picks another). It marks the records of everyone at Upper Highway Area, across every group.</div></div>
+      <div class="doline"><span class="dot">&#9679;</span><div><b>Charcoal is the whole register</b> — every club and region together,
+      one rating each.</div></div>
+      <p>That is all the wayfinding you need: a group's colour means that group, the region's colour means the region,
+      charcoal means everyone.</p>
+    </div></details>
+
+  <details><summary><span class="ic">&#127960;&#65039;</span>Groups are where you play<span class="arr">&rsaquo;</span></summary>
+    <div class="body">
+      <p>Upper Highway Area is made of <b>groups</b> — a regular evening, a section of the club, a ladies' morning. Each group has its
+      own board: its ladder, its court card, its tournaments and its own recent matches.</p>
+      <p>On the door the groups sit side by side; <b>swipe across</b> to see them and tap one to go in.
+      <b>Enter a score</b> asks which group you played in, then takes the score. You can enter a score for any group you play in.</p>
+    </div></details>
+
+  <details><summary><span class="ic">&#128100;</span>Your page, and your rating<span class="arr">&rsaquo;</span></summary>
+    <div class="body">
+      <p>There is <b>one page per member</b>, and it is the same page wherever it is opened from — a records list, a
+      partnership, a ladder. It shows your rating, your level, where you stand, <b>Move by group</b>, every partnership
+      you have had, and every match with its sets.</p>
+      <p><b>Claim it:</b> from the door tap <b>My page</b>, find your name, choose a 4-digit PIN. Then add a photo — it
+      appears beside your name across the app, and only you can change it.</p>
+      <p>You have <b>one rating</b> wherever you play. It moves after every match by how the result compared with what the
+      ratings expected: beat a stronger pair and it moves more; lose to one and it costs little.</p>
+    </div></details>
+
+  <details><summary><span class="ic">&#128214;</span>The records<span class="arr">&rsaquo;</span></summary>
+    <div class="body">
+      <p><b>The records</b> on the door opens three lists: <b>List all members</b> (name, group, rating),
+      <b>Member profiles</b> (tap a name), and <b>Ratings and ladders</b> (pair ratings, the ladders, form).</p>
+      <p>You can read them for Upper Highway Area, or for the whole register, where every club and region sits together.
+      Back always returns you to the page you came from.</p>
+    </div></details>
+</div></section>
+
+<section><div class="wrap">
+  <h2>Your first night, in five taps</h2>
+  <div class="note">
+    <div class="steps">
+      <div class="step"><span class="n">1</span><div>Open the door and tap <b>Enter a score</b>.</div></div>
+      <div class="step"><span class="n">2</span><div>Choose the group you played in.</div></div>
+      <div class="step"><span class="n">3</span><div>Pick the four names — tap the search bar and start typing.</div></div>
+      <div class="step"><span class="n">4</span><div>Enter the sets, say who you are, submit.</div></div>
+      <div class="step"><span class="n">5</span><div>Tap <b>My page</b>: your rating has moved and your first partnership is there.</div></div>
     </div>
-  </section>
+  </div>
+</div></section>
 
-  <!-- HOW IT IS BUILT -->
-  <section>
-    <h2>How it fits together</h2>
-    <details class="card" open>
-      <summary><span class="badge">🧭</span> Follow the colour <span class="chev">›</span></summary>
-      <div class="inner">
-        <div class="doline"><span class="dot" style="background:#1565c0">●</span><div><b>A group has its own colour.</b> Kloof Padel Ballies is blue, Sun Fun is teal. Wherever you see a group's colour — a card, a pill, a heading — you are looking at that group.</div></div>
-        <div class="doline"><span class="dot" style="background:#6c3483">●</span><div><b>Purple is the region.</b> The records of everyone at Upper Highway Area, across every group.</div></div>
-        <div class="doline"><span class="dot" style="background:#2f2f2f">●</span><div><b>Charcoal is every registered club.</b> The whole register, one rating each.</div></div>
-        <p style="margin-top:10px;">That is all the wayfinding you need. If the page is blue you are in Ballies; purple, the region; charcoal, everyone.</p>
-      </div>
-    </details>
+<section><div class="wrap">
+  <div class="kicker">Also</div>
+  <a class="row" href="https://opr-rating.github.io/Club-Platform/boardroom.html?club=30">
+    <span class="ic">&#128187;</span>
+    <span class="m"><span class="t">Open on a laptop</span><span class="s">The same app, laid out for a big screen</span></span>
+    <span class="go">Open &rsaquo;</span>
+  </a>
+  <a class="row" href="https://opr-rating.github.io/opr-demo/index.html">
+    <span class="ic">&#127760;</span>
+    <span class="m"><span class="t">The OPR website</span><span class="s">opr-online.com — what OPR is and where it runs</span></span>
+    <span class="go">Open &rsaquo;</span>
+  </a>
+</div></section>
 
-    <details class="card">
-      <summary><span class="badge">🏘️</span> Groups are where you play <span class="chev">›</span></summary>
-      <div class="inner">
-        <p><b>Upper Highway Area</b> is made of groups — a regular evening, a section of the club, a ladies' morning. Each group has its own board:
-        its ladder, its court card, its tournaments, its recent matches.</p>
-        <p style="margin-top:8px;">Tap a group's card on the door to open it. <b>Enter a score</b> asks which group you played in, then takes the score.
-        You can enter a score for any group you have played in.</p>
-      </div>
-    </details>
+<footer><div class="wrap"><b>OPR</b> &middot; Open Padel Ratings &middot; Upper Highway Area &middot; &copy; 2026 Andre Farrell</div></footer>
 
-    <details class="card">
-      <summary><span class="badge">🎽</span> Your pill, and how you get one <span class="chev">›</span></summary>
-      <div class="inner">
-        <p>Every member carries a small coloured <b>pill</b> — the group they belong to. You get yours the first time you play in a group,
-        and it stays with that group even if you play elsewhere too. If you were registered by the ledger and have not played yet, your
-        pill reads <b>still to play</b>, and your page fills in with your first match.</p>
-      </div>
-    </details>
-
-    <details class="card">
-      <summary><span class="badge">📖</span> The records <span class="chev">›</span></summary>
-      <div class="inner">
-        <p>On the door, <b>The records</b> has two rows. <b>Upper Highway Area</b> (purple) — every member here, every profile, the region's ladders.
-        <b>All registered clubs</b> (charcoal) — the same three across the whole register.</p>
-        <p style="margin-top:8px;">Each opens on its own page: <b>List all members</b> (name · group · rating), <b>Member profiles</b> (tap a name),
-        <b>Ratings and ladders</b> (pair ratings, Universal, the Club Ladder, Form). Back always returns to the page you came from.</p>
-      </div>
-    </details>
-
-    <details class="card">
-      <summary><span class="badge">👤</span> Your page <span class="chev">›</span></summary>
-      <div class="inner">
-        <p>There is <b>one profile page per member</b>, and it is the same page wherever it is opened from — a records list, a partnership,
-        a ladder. It wears your group's colour and shows your rating, level and rank; your figures; a chart of how you play;
-        <b>Move by group</b> — where your rating moved and where it did not; every partnership you have ever had, grouped by group and
-        region; and every match, with set scores under the arrow.</p>
-        <p style="margin-top:8px;"><b>Claim it.</b> From the door, tap <b>My page</b>, find your name, choose a 4-digit PIN. Then add a photo — it
-        appears beside your name across the app. Only you can change it. Your name leaves the claim list once it is yours.</p>
-      </div>
-    </details>
-
-    <details class="card">
-      <summary><span class="badge">🔢</span> The rating <span class="chev">›</span></summary>
-      <div class="inner">
-        <p>You have <b>one rating</b>, wherever you play in Upper Highway Area. It moves after every match, by how the result compared with what the
-        ratings expected: beating a stronger pair moves you more than beating a weaker one. Level is your rating divided by 200.
-        Pairs have their own rating too, which is what the ladders rank.</p>
-        <p style="margin-top:8px;">Your rating is shared across every region in the register, so it means the same wherever you play.</p>
-      </div>
-    </details>
-  </section>
-
-  <!-- ADD TO PHONE -->
-  <section>
-    <h2>Add the app to your phone</h2>
-    <details class="card" id="installhow">
-      <summary><span class="badge">📲</span> Show me how to install it <span class="chev">›</span></summary>
-      <div class="inner">
-        <div class="os"><b>On iPhone (Safari):</b> open the door → tap the Share icon <span style="font-size:15px;">⬆️</span> → <b>“Add to Home Screen”</b>.</div>
-        <div class="os"><b>On Android (Chrome):</b> open the door → tap the <b>⋮</b> menu → <b>“Add to Home screen”</b> (or “Install app”).</div>
-        It then works like an app, with its own OPR icon — one tap and you are at Upper Highway Area's door.
-      </div>
-    </details>
-  </section>
-
-  <!-- FIRST NIGHT -->
-  <section>
-    <h2>Your first night, in five taps</h2>
-    <details class="card" open>
-      <summary><span class="badge">🎾</span> Play, then enter the score <span class="chev">›</span></summary>
-      <div class="inner">
-        <div class="doline"><span class="dot">1</span><div>Open the door and tap <b>Enter a score</b>.</div></div>
-        <div class="doline"><span class="dot">2</span><div>Choose the group you played in.</div></div>
-        <div class="doline"><span class="dot">3</span><div>Pick the four names — start typing and your group's people appear; anyone in the register is a few letters away.</div></div>
-        <div class="doline"><span class="dot">4</span><div>Enter the sets. Say who you are. Submit.</div></div>
-        <div class="doline"><span class="dot">5</span><div>Tap <b>My page</b>. Your rating has moved, your first partnership is there, and your pill is on.</div></div>
-      </div>
-    </details>
-  </section>
-
-  <!-- MORE -->
-  <section>
-    <h2>More</h2>
-    <div class="linkbox">
-      <a class="linkrow" href="https://opr-rating.github.io/opr-demo/opr-initial-ratings.html" target="_blank" rel="noopener">
-        <span class="ic dark">📖</span><span class="m"><span class="t">How OPR rates a match</span><span class="s">The rating, form and ladders — explained</span></span><span class="go">Open ›</span>
-      </a>
-      <a class="linkrow" href="https://opr-rating.github.io/Club-Platform/boardroom.html?club=30" target="_blank" rel="noopener">
-        <span class="ic">&#128187;</span><span class="m"><span class="t">Open on a laptop</span><span class="s">The same app, laid out for a big screen</span></span><span class="go">Open &rsaquo;</span>
-      </a>
-      <a class="linkrow" href="https://opr-rating.github.io/Club-Platform/how-to-use.html" target="_blank" rel="noopener">
-        <span class="ic">&#129517;</span><span class="m"><span class="t">How to use the app</span><span class="s">A short guide to finding your way around</span></span><span class="go">Open &rsaquo;</span>
-      </a>
-      <a class="linkrow" href="https://www.opr-online.com" target="_blank" rel="noopener">
-        <span class="ic dark">🌐</span><span class="m"><span class="t">OPR Website</span><span class="s">opr-online.com</span></span><span class="go">Open ›</span>
-      </a>
-    </div>
-  </section>
-
-  <footer>
-    <span class="balls"><i></i><i></i><i></i></span><b>OPR</b> · Open Player Rating · Upper Highway Area · © 2026 Andre Farrell
-  </footer>
-</div>
-</body>
-</html>
+</body></html>
