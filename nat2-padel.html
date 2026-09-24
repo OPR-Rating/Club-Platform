@@ -3681,7 +3681,7 @@ const CLUB_NAME = _club.name;  // shown in the logo as "OPR · <name>"
     link.setAttribute('href', href);
   }catch(e){ /* install stays on the static manifest — no functional impact */ }
 })();
-const OPR_VERSION = "OPR-DOUBLES v2026.09.03-56 · NAT fork n170 (no voice) (of PLAT p117)";  // MANUAL PAIR CREATION REMOVED FROM ADMIN: Create a pair, Bulk create pairs and Re-derive all pairs are gone (they only made match-less ghost pairs, and Re-derive rewrote every stored initial club-wide). Pairs are born automatically at match entry. Current pairs list untouched; the underlying JS is left in place unreferenced, so no other code path changes. Includes v47 (set-score fix + double-tap guard) and all prior.
+const OPR_VERSION = "OPR-DOUBLES v2026.09.03-56 · NAT fork n171 (no voice) (of PLAT p117)";  // MANUAL PAIR CREATION REMOVED FROM ADMIN: Create a pair, Bulk create pairs and Re-derive all pairs are gone (they only made match-less ghost pairs, and Re-derive rewrote every stored initial club-wide). Pairs are born automatically at match entry. Current pairs list untouched; the underlying JS is left in place unreferenced, so no other code path changes. Includes v47 (set-score fix + double-tap guard) and all prior.
 // Explanation shown above the individual ladder. Open on load so it's read; collapsible
 // (state kept for the session) and scrolls away. Mechanics only — no outcome framing, so
 // members aren't nudged away from playing stronger opponents. Every clause maps to a real
@@ -10636,6 +10636,20 @@ async function clRemove(id, label){
   };
   W.meAct=function(what){
     if(what==="tournaments") return W.meTournaments();
+    /* n171: MEMBER PROFILES, not a group's member list — the region's profiles open straight away, with no
+       "which group?" step, and a name there opens that member's profile page. */
+    if(what==="profiles"){
+      var R=W.PLAT.parentId||W.PLAT.cid;
+      location.href=PAGE+"?club="+R+"&go=records&view=profiles&back="+encodeURIComponent(location.search||"");
+      return;
+    }
+    /* n171: MEMBER PROFILES, NOT A GROUP'S LIST. From a member's own page the person you want may be in any group,
+       so this opens the region's Member profiles — tap a name, see that member's profile. No group to choose first. */
+    if(what==="profiles"){
+      var R=(W.PLAT.parentId||W.PLAT.cid);
+      location.href=PAGE+"?club="+R+"&go=records&view=profiles&back="+encodeURIComponent(location.search||"");
+      return;
+    }
     var region=W.PLAT.parentId||W.PLAT.cid;
     var gs=kidsOf(region).slice(); if(!gs.length) gs=[{id:region,name:W.PLAT.name||""}];
     var mine=Number(W.__meGroup||0);
@@ -10662,7 +10676,7 @@ async function clRemove(id, label){
       return '<div class="doit">'
         + mb("entry","primary","background:linear-gradient(135deg,"+ink+","+deep+")",I.score,"Enter a score")
         + mb("ladders","","",I.lad,"Ratings &amp; ladders")
-        + mb("profiles","","",I.per,"Group members")
+        + mb("profiles","","",I.per,"Member profiles")   /* n171 */
         + mb("card","","",I.card,"Court card")
         + mb("tournaments","","",I.cup,"Tournaments")
         + '</div><div id="meWhere" style="display:none;padding:10px 12px 0"></div>';
@@ -10975,9 +10989,9 @@ async function clRemove(id, label){
     var b=cardBase(col);
     /* n169: the far end no longer washes out to near-white — the picture's brightest corner was blending to a pale
        strip down the right of the card. Deep, the colour, then a shade of it. */
-    /* n170: the picture is taken from its left-hand side and scaled well past the card, so the card carries the
-       sweep of the arc and none of the bright corner that showed as a pale patch on the right. */
-    return "url('./header_bg2.png') left center/220% auto,linear-gradient(105deg,"+nhDeep(b,.62)+","+b+" 58%,"+nhDeep(b,.18)+")";
+    /* n171: THE HEADER PICTURE ACROSS THE CARD, as it was — center top/cover, the same crop the banners use, so the
+       card reads as a small banner in the group's colour. */
+    return "url('./header_bg2.png') center top/cover,linear-gradient(105deg,"+nhDeep(b,.62)+","+b+" 58%,"+nhDeep(b,.18)+")";
   }
   function regBandStyle(col){
     if(!regOwn(col)) return '';
@@ -11308,8 +11322,9 @@ W.mePair=function(name,col){
             +'<span class="val"><b class="'+(v>=0?"up":"dn")+'">'+fmt(v)+'</b><span>move</span></span></div>';
         }).join("")
       +'</div>'
-      /* n170: "See all my matches" removed — My partnerships now sits directly under Move by group, and the
-         matches themselves are further down the page anyway. */
+      /* n170: "See all my matches" removed. n171: its line also carried the tag that CLOSED this block — without it
+         everything below nested inside Move by group and overlapped. */
+      +'</div>';
     return h;
   }
   function meEmpty(msg){
@@ -11458,7 +11473,6 @@ W.mePair=function(name,col){
     });
   }
   function newMePage(){
-    var partHtml="";   /* n170: built further down, shown under Move by group */
     var w=nhWrap(); if(!w) return;
     nhCSS(); nhOneWayIn();
     var C=(W.PLAT.parentId||W.PLAT.cid);
@@ -11543,9 +11557,9 @@ W.mePair=function(name,col){
       var fromRecords=(function(){ try{ return /go(%3D|=)records/.test(new URLSearchParams(location.search).get("back")||""); }catch(e){ return false; } })();
       h+= meChartBlock(me,st,all)
         + meMoveBy(st)
-        /* n170: My partnerships lands here, directly under Move by group */
-        + "<!--PARTNERS-->"
-        + (fromRecords ? "" : nhActions(col,deep,"me"))
+        /* n171: My partnerships is moved here in the DOM once the page is drawn (see liftPartners) */
+        /* n171: the action row belongs to the OWNER's page. A member profile — anyone else's — is for reading. */
+        + ((fromRecords||viewing) ? "" : nhActions(col,deep,"me"))
         +'<div class="cols">';
 
       /* n82: ONE MATCH IS STILL A LINE. The chart needed two points and a single rated match gave one, so a
@@ -11581,12 +11595,12 @@ W.mePair=function(name,col){
           if(myGroup && Number(a)===Number(myGroup)) return -1; if(myGroup && Number(b)===Number(myGroup)) return 1;
           return byGroup[b].length-byGroup[a].length; });
         /* n134: the partnerships roll up — tap the heading to open them (a member may have fifty) */
-        partHtml+='<div class="brk nhRoll" id="mePartners"><h2 onclick="window.mePartToggle()" style="display:flex;align-items:center;gap:8px;cursor:pointer">'
+        h+='<div class="brk nhRoll" id="mePartners"><h2 onclick="window.mePartToggle()" style="display:flex;align-items:center;gap:8px;cursor:pointer">'
           +(viewing?"Partnerships":"My partnerships")+' \u00b7 '+st.partners.length
           +nhExp("mePartCaret",null,"margin-left:auto")+'</h2><div id="mePartBody" style="display:none">';
         order.forEach(function(gid){
           var gc=clubPal(gid)[0];
-          partHtml+='<div style="display:flex;align-items:center;gap:8px;padding:10px 14px 4px">'
+          h+='<div style="display:flex;align-items:center;gap:8px;padding:10px 14px 4px">'
             +'<span style="width:10px;height:10px;border-radius:50%;background:'+gc+'"></span>'
             +'<span style="font-size:11.5px;letter-spacing:.06em;text-transform:uppercase;font-weight:800;color:'+gc+'">Partnerships in '+esc(nhBoardName(gid)||"another region")+'</span>'
             +'<span style="font-size:11px;color:#8a8196">\u00b7 '+byGroup[gid].length+'</span></div>';
@@ -11594,7 +11608,7 @@ W.mePair=function(name,col){
              the right (Men's blue, Ladies pink, Mixed green — plat's own colours), then Rating · Matches · Move
              on one line. The same card the group's member page shows; the grouping by group stays. */
           var catOf=function(x){ var g=String(x.gender||"").toUpperCase(); return g==="M"?["Men\u2019s","#e3edff","#2148a0"]:(g==="F"||g==="L")?["Ladies","#ffe6f0","#a02166"]:["Mixed","#e9f7e5","#2a7d1f"]; };
-          partHtml+='<div style="padding:4px 12px 4px">'
+          h+='<div style="padding:4px 12px 4px">'
           + byGroup[gid].map(function(x){
               var cat=catOf(x), mvCol=(x.move>=0)?"#1e8449":"#c0392b";
               /* n162: the colour goes with the tap, so the pair page opens in it instead of flashing purple first */
@@ -11611,7 +11625,7 @@ W.mePair=function(name,col){
             }).join("")
           +'</div>';
         });
-        partHtml+='<div style="padding:8px 14px 12px;font-size:12px;color:#5f5770">Tap a partnership for every match you have played together, with the set scores.</div></div></div>';
+        h+='<div style="padding:8px 14px 12px;font-size:12px;color:#5f5770">Tap a partnership for every match you have played together, with the set scores.</div></div></div>';
       }
 
       if(!st.matches.length){
@@ -11636,11 +11650,15 @@ W.mePair=function(name,col){
                 +'<div id="nhs'+id+'" style="display:none;padding:0 12px 10px 20px">'+nhSetPills(m,col,me)+'</div></div>'; }).join("")
           +'</div></div>';
       }
-      h+='</div>'
-        +(viewing?'':'<div style="margin:14px 12px 0;display:flex;gap:9px;flex-wrap:wrap">'
+      h+='</div>';
+      /* n171: EVERYTHING BELOW BELONGS TO THE OWNER. A member profile ends with the matches — no picture buttons,
+         no "Open OPR on my page", no "this isn't me". */
+      if(!viewing){
+      h+=('<div style="margin:14px 12px 0;display:flex;gap:9px;flex-wrap:wrap">'
         +'<button class="more" style="flex:1 1 150px;border:1px solid '+col+';border-radius:99px;background:#fff" onclick="window.mePhotoPick()">'+(myPhoto?"Change my picture":"Add my picture")+'</button>'
         +(myPhoto?('<button class="more" style="flex:1 1 120px;border:1px solid #ddd;border-radius:99px;background:#fff;color:#7a6f8a" onclick="window.mePhotoClear()">Remove it</button>'):'')
-        +'</div>')   /* n78: the picture is the owner's to change, not a visitor's */
+        +'</div>'   /* n78: the picture is the owner's to change, not a visitor's */
+        /* n171: the picture note belongs to the owner too */
         +'<div style="font-size:11.5px;color:#5f5770;margin:8px 14px 0;line-height:1.5">Your picture is seen by everyone in the register. '
         +'Only your PIN can change it \u2014 and you will not be asked for the PIN again on this phone.</div>'
         /* n129: a member can have the app open on their own page instead of the door */
@@ -11648,8 +11666,8 @@ W.mePair=function(name,col){
         +'<span style="flex:1;font-size:13.5px;font-weight:700;color:#241d33">Open OPR on my page<span style="display:block;font-size:11.5px;font-weight:400;color:#7a6f8a">When you open the app, land here instead of the club door.</span></span>'
         +'<button data-plat-keep="1" id="meHomeSw" onclick="window.meHomeToggle()" style="flex:0 0 46px;height:26px;border:none;border-radius:99px;position:relative;cursor:pointer;background:'+(meHomeOn()?col:"#d9d2e3")+'">'
         +'<span style="position:absolute;top:4px;left:'+(meHomeOn()?"24px":"4px")+';width:18px;height:18px;border-radius:50%;background:#fff;box-shadow:0 1px 2px rgba(0,0,0,.25)"></span></button></div>'
-        +'<div style="margin:12px 12px 0"><button class="more" style="border:1px solid #ddd;border-radius:99px;background:#fff;color:#7a6f8a" onclick="window.meForget()">This isn\u2019t me \u2014 use a different name</button></div>';
-      h=h.replace("<!--PARTNERS-->", partHtml);   /* n170: partnerships land under Move by group */
+        +'<div style="margin:12px 12px 0"><button class="more" style="border:1px solid #ddd;border-radius:99px;background:#fff;color:#7a6f8a" onclick="window.meForget()">This isn\u2019t me \u2014 use a different name</button></div>');
+      }
       w.innerHTML=h;
       /* n170: My partnerships sits directly under Move by group. The block is built lower down with the rest of the
          partnership data, so it is lifted into place once the page is drawn. */
