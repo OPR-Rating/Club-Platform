@@ -3681,7 +3681,7 @@ const CLUB_NAME = _club.name;  // shown in the logo as "OPR · <name>"
     link.setAttribute('href', href);
   }catch(e){ /* install stays on the static manifest — no functional impact */ }
 })();
-const OPR_VERSION = "OPR-DOUBLES v2026.09.03-56 · NAT fork n167 (no voice) (of PLAT p117)";  // MANUAL PAIR CREATION REMOVED FROM ADMIN: Create a pair, Bulk create pairs and Re-derive all pairs are gone (they only made match-less ghost pairs, and Re-derive rewrote every stored initial club-wide). Pairs are born automatically at match entry. Current pairs list untouched; the underlying JS is left in place unreferenced, so no other code path changes. Includes v47 (set-score fix + double-tap guard) and all prior.
+const OPR_VERSION = "OPR-DOUBLES v2026.09.03-56 · NAT fork n168 (no voice) (of PLAT p117)";  // MANUAL PAIR CREATION REMOVED FROM ADMIN: Create a pair, Bulk create pairs and Re-derive all pairs are gone (they only made match-less ghost pairs, and Re-derive rewrote every stored initial club-wide). Pairs are born automatically at match entry. Current pairs list untouched; the underlying JS is left in place unreferenced, so no other code path changes. Includes v47 (set-score fix + double-tap guard) and all prior.
 // Explanation shown above the individual ladder. Open on load so it's read; collapsible
 // (state kept for the session) and scrolls away. Mechanics only — no outcome framing, so
 // members aren't nudged away from playing stronger opponents. Every clause maps to a real
@@ -10125,10 +10125,11 @@ async function clRemove(id, label){
      +"#nh .brk > h2{background:#f3eef8;background:color-mix(in srgb,var(--nhc,#6c3483) 11%,#fff);color:var(--nhc,#5b2d8e);"
      +"padding:10px 14px 9px;margin:0 0 6px;border-bottom:1px solid color-mix(in srgb,var(--nhc,#6c3483) 18%,#fff)}"
      /* the jump strip: one row, never wraps, slides sideways if the screen is narrow, and stays under the band */
-     +"#nhJump{position:sticky;top:0;z-index:40;display:flex;gap:7px;overflow-x:auto;white-space:nowrap;scrollbar-width:none;"
+     /* n168: four pills, two rows, all the same size — they read as one set rather than a scrolling row */
+     +"#nhJump{position:sticky;top:0;z-index:40;display:grid;grid-template-columns:1fr 1fr;gap:8px;scrollbar-width:none;"
      +"background:rgba(255,255,255,.96);backdrop-filter:blur(6px);padding:9px 12px;border-bottom:1px solid #eee7f3;margin:0}"
      +"#nhJump::-webkit-scrollbar{display:none}"
-     +"#nhJump button{flex:1 0 auto;text-align:center;font:inherit;font-size:12.5px;font-weight:800;padding:7px 12px;border-radius:99px;cursor:pointer;"
+     +"#nhJump button{width:100%;text-align:center;font:inherit;font-size:12.5px;font-weight:800;padding:7px 12px;border-radius:99px;cursor:pointer;"
      +"border:1.5px solid var(--nhc,#6c3483);background:#fff;color:var(--nhc,#6c3483)}"
      +"#nhJump button:active{background:var(--nhc,#6c3483);color:#fff}"
      /* the jump itself is computed in nhJumpTo; the strip's top is set to sit exactly under the sticky band */
@@ -12026,6 +12027,10 @@ W.mePair=function(name,col){
     var b=document.getElementById("mePartBody"), c=document.getElementById("mePartCaret"); if(!b) return;
     var open=b.style.display==="none"; b.style.display=open?"block":"none"; if(c) c.classList.toggle("open",open);
   };
+  W.recGlobalToggle=function(){
+    var b=document.getElementById("recGlobalBody"), c=document.getElementById("recGlobalCaret"); if(!b) return;
+    var open=b.style.display==="none"; b.style.display=open?"block":"none"; if(c) c.classList.toggle("open",open);
+  };
   W.doorRecordsToggle=function(){
     var b=document.getElementById("doorRecBody"), c=document.getElementById("doorRecCaret"); if(!b) return;
     var open=b.style.display==="none"; b.style.display=open?"block":"none"; if(c) c.classList.toggle("open",open);
@@ -12154,9 +12159,23 @@ W.mePair=function(name,col){
          (or the register's), skinned to match, with back returning to the records sheet. */
       + recPill(sc,"Ratings and ladders", sc.wide?"Every club \u2014 pair ratings, Universal, Club Ladder, Form":"Pair ratings, Universal, Club Ladder, Form",
                 PAGE+(sc.wide?("?club=0&pool="+W.PLAT.pool):("?club=0&pool="+W.PLAT.pool+"&nat="+sc.C))+"&go=ladders&back="+encodeURIComponent(sc.base.replace(PAGE,"")))
-      /* n79: the Global Ledger's admin room, reachable from any door through this page — the master's code,
-         or the register's. It was a link only one person knew. */
-      /* n97: all admin lives in Club admin; the Global Ledger room moved there */
+      /* n168: THE GLOBAL LEDGER SITS HERE, FOLDED. The region's three are open in front of you; the register's
+         same three are one tap below, so both scopes live on one page instead of two doors. */
+      + (sc.wide ? "" : (function(){
+          var wb=PAGE+"?club="+sc.C+"&go=records&all=1";
+          var scW={wide:true, C:sc.C, view:"", col:"#2f2f2f", deep:"#141414", title:"Global Ledger", boards:sc.boards, base:wb};
+          return '<div class="brk nhRoll" id="recGlobal" style="margin-top:14px">'
+            +'<h2 onclick="window.recGlobalToggle()" style="display:flex;align-items:center;cursor:pointer;gap:8px">Global Ledger'
+            + nhExp("recGlobalCaret","#2f2f2f","margin-left:auto")+'</h2>'
+            +'<div id="recGlobalBody" style="display:none;padding:2px 0 10px">'
+            +'<div style="padding:0 14px 8px;font-size:12.5px;color:#6b6585">Every region, every group, every member \u2014 one rating each.</div>'
+            + recPill(scW,"List all clubs", "Every region, and the groups within it", wb+"&view=clubs")
+            + recPill(scW,"List all members", "Everyone in the register, with their group", wb+"&view=members")
+            + recPill(scW,"Member profiles", "Anyone who has played \u2014 tap a name for their profile", wb+"&view=profiles")
+            + recPill(scW,"Ratings and ladders", "Every club \u2014 pair ratings, Universal, Club Ladder, Form",
+                      PAGE+"?club=0&pool="+W.PLAT.pool+"&go=ladders&back="+encodeURIComponent(wb.replace(PAGE,"")))
+            +'</div></div>';
+        })())
       + homeBar();
   }
   /* ---- members: name · group pill · rating ------------------------------------------------------------ */
@@ -12547,8 +12566,8 @@ W.nhOpenPair=function(name){
   /* Records is on the door because with several groups it sits well below the fold, and it matters */
   /* n167: no "Recent" — the matches are the first thing under the groups. "Records" opens the records on their
      own page rather than scrolling to the band. */
-  var NH_JUMP_DOOR =[["Form & Move",/^\s*in form/i],["Tournaments",/^\s*recent tournament/i],
-                     ["Records",null,"records"],["Up",null]];
+  var NH_JUMP_DOOR =[["Form & Move",/^\s*in form/i],["Ratings & Ladders",null,"records"],
+                     ["Tournaments",/^\s*recent tournament/i],["Up",null]];
   var NH_JUMP_GROUP=[["Climb",/^\s*biggest climb/i],["Move",/^\s*movers/i],["Recent",/^\s*recent matches/i],["Card",/^\s*card matches/i],["Up",null]];
   var NH_JUMP=NH_JUMP_GROUP;
   /* n114: AIM BELOW WHAT IS PINNED. The band is sticky and so is the strip, and the page scrolls inside #nh, not
@@ -12814,6 +12833,7 @@ W.nhOpenPair=function(name){
              colour supplies the hue, and everything on it reads white. A very light colour is darkened for the
              card's background only, so white text stays readable whatever a club picks. */
           +'border:2px solid '+cardEdge(col)+';background:'+cardSkin(col)+';background-blend-mode:luminosity,normal;'
+          +'background-origin:border-box;background-clip:padding-box;overflow:hidden;'
           +'border-radius:16px;padding:19px 16px;margin:10px 12px 0;font:inherit;cursor:pointer;color:#fff">'
           +'<div style="display:flex;align-items:center;gap:10px">'
           /* the disc is outlined on the banner — a club badge can take its place later */
@@ -12843,7 +12863,7 @@ W.nhOpenPair=function(name){
       };
       /* n149: with no groups there is nothing to play on — the door asks for a group instead of offering the region */
       W.__doorKids=kids;
-      W.__doorCard=function(g){ return card(g.name, clubPal(g.id)[0], "Its own ladder and card \u00b7 tap to enter", PAGE+"?club="+g.id, g.id); };
+      W.__doorCard=function(g){ return card(g.name, clubPal(g.id)[0], "Enter here for all group details and stats", PAGE+"?club="+g.id, g.id); };
       W.__doorC=C;
       var quiet=function(label,onclick){
         return '<button onclick="'+onclick+'" style="flex:1 1 0;min-width:88px;background:#fff;border:1px solid #cfc5e0;border-radius:12px;'
@@ -12879,23 +12899,8 @@ W.nhOpenPair=function(name){
            score, their own page and who played whom; the records are a place you go to afterwards. The strip under
            the header carries a "Records" pill again, so it is one tap from the top. */
         + nhMatchesBrk(d,12,"club")
-        /* two records, no toggle, each saying how wide it is */
-        /* n118: THE RECORDS ARE A SECTION, NOT A LINE OF TEXT. They sit in a card under a shaded band like every
-           other section on the door — the band the eye finds, and the pill "Records" lands on. */
-        /* n129: the records roll open when tapped, and stay rolled up otherwise — the door stays short */
-        + '<div class="brk nhRoll" id="doorRecords"><h2 onclick="window.doorRecordsToggle()" style="display:flex;align-items:center;cursor:pointer">The records'
-        + nhExp("doorRecCaret",null,"margin-left:auto")+'</h2><div id="doorRecBody" style="display:none;padding:2px 0 10px">'
-        /* n70: the region's records open as three plain choices rather than one word that meant several
-           things. "All registered clubs" below offers the same three at register scope. */
-        /* n65: PURPLE IS THE CLUB ITSELF. Fixed, never chosen: wherever you see it you are looking at the
-           club's whole record. Boards wear their own colours; the register's ledger stays charcoal. */
-        /* n75: the records open their OWN page. Unfolding them here spilled tables down the front door; a
-           record is a place you go to, with its own band and its own way back. */
-        + ledgerRow(W.PLAT.name, "Members, profiles and the ladders \u2014 everyone here", "#6c3483",
-                    "location.href='"+PAGE+"?club="+C+"&go=records'")
-        + ledgerRow("Global Ledger", "Every region, every group, every member", "#2f2f2f",
-                    "location.href='"+PAGE+"?club="+C+"&go=records&all=1'")
-        + '</div></div>'
+        /* n168: no records band on the door — "Ratings & Ladders" in the strip opens the records page, where the
+           region's three lists sit open and the Global Ledger folds out beneath them. */
         + lastMatchRibbon(d)
         + '<div class="cols">'+nhFormBrk(d,RC,"club") + nhMoversBrk(d,RC,"club") + nhTourBrk(d)+'</div>'
         /* everything else, small */
