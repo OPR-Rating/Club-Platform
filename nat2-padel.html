@@ -3681,7 +3681,7 @@ const CLUB_NAME = _club.name;  // shown in the logo as "OPR · <name>"
     link.setAttribute('href', href);
   }catch(e){ /* install stays on the static manifest — no functional impact */ }
 })();
-const OPR_VERSION = "OPR-DOUBLES v2026.09.03-56 · NAT fork n176 (no voice) (of PLAT p117)";  // MANUAL PAIR CREATION REMOVED FROM ADMIN: Create a pair, Bulk create pairs and Re-derive all pairs are gone (they only made match-less ghost pairs, and Re-derive rewrote every stored initial club-wide). Pairs are born automatically at match entry. Current pairs list untouched; the underlying JS is left in place unreferenced, so no other code path changes. Includes v47 (set-score fix + double-tap guard) and all prior.
+const OPR_VERSION = "OPR-DOUBLES v2026.09.03-56 · NAT fork n177 (no voice) (of PLAT p117)";  // MANUAL PAIR CREATION REMOVED FROM ADMIN: Create a pair, Bulk create pairs and Re-derive all pairs are gone (they only made match-less ghost pairs, and Re-derive rewrote every stored initial club-wide). Pairs are born automatically at match entry. Current pairs list untouched; the underlying JS is left in place unreferenced, so no other code path changes. Includes v47 (set-score fix + double-tap guard) and all prior.
 // Explanation shown above the individual ladder. Open on load so it's read; collapsible
 // (state kept for the session) and scrolls away. Mechanics only — no outcome framing, so
 // members aren't nudged away from playing stronger opponents. Every clause maps to a real
@@ -10020,7 +10020,7 @@ async function clRemove(id, label){
       +".screen .header{min-height:68px;box-sizing:border-box}"
       /* n142: the same design on the original app's screen headers */
       +".screen .header{position:relative;overflow:hidden;isolation:isolate}"
-      +".screen .header::before{content:'';position:absolute;inset:0;background:url('./header_bg2.png') center top/cover;mix-blend-mode:soft-light;pointer-events:none;z-index:0}"
+      +".screen .header::before{content:'';position:absolute;inset:0;background:url('./header_bg2.png') center top/cover;mix-blend-mode:luminosity;pointer-events:none;z-index:0}"
       +".screen .header > *{position:relative;z-index:1}"
       +".screen .header .platWhere{background:rgba(255,255,255,.18) !important;border:1px solid rgba(255,255,255,.34) !important;border-radius:99px !important;font-weight:800}";
     /* n74: the parent's own hero panel is skinned too. It carries a near-black gradient of its own, so a
@@ -10082,10 +10082,10 @@ async function clRemove(id, label){
      /* n142: YOUR HEADER'S DESIGN ON EVERY HEADER. The picture is laid over each page's own colour and blended by
         luminosity — the arc, glow and streaks carry the page's colour (a group's, a region's, the register's
         charcoal). The door's OPR header (.opr) already carries the picture itself. */
-     /* n176: SOFT-LIGHT EVERYWHERE. The card and the banners were blended differently, so one group looked like two
-        colours. Soft-light is the richer of the two — the picture's own light mixes with the colour — and it is now
-        used by every banner, every screen header and the group cards alike. */
-     +"#nh .band:not(.opr)::before,.nhband::before{content:'';position:absolute;inset:0;background:url('./header_bg2.png') center top/cover;mix-blend-mode:soft-light;pointer-events:none;border-radius:inherit}"
+     /* n177: LUMINOSITY EVERYWHERE. One blend for every banner, every screen header and every group card, so a group
+        reads the same wherever it appears. Luminosity takes only the picture's light and shade and keeps the club's
+        own colour — soft-light mixed the picture's blue into it, so a grey group came out purple-teal. */
+     +"#nh .band:not(.opr)::before,.nhband::before{content:'';position:absolute;inset:0;background:url('./header_bg2.png') center top/cover;mix-blend-mode:luminosity;pointer-events:none;border-radius:inherit}"
      +"#nh .band:not(.opr) > *,.nhband > *{position:relative;z-index:1}"
      +".nhband{position:relative;overflow:hidden}"
      +"#nh .band.opr{background:url('./header_bg2.png') center top/cover,linear-gradient(105deg,#1d0a41,#5b17ac 52%,#047fdd)}"
@@ -11003,7 +11003,7 @@ async function clRemove(id, label){
   function regBandStyle(col){
     if(!regOwn(col)) return '';
     return ' style="background:url(\'./header_bg2.png\') center top/cover,linear-gradient(105deg,'+nhDeep(col,.62)+','+col+' 52%,'+regTint(col,.35)+');'
-      +'background-blend-mode:soft-light,normal"';
+      +'background-blend-mode:luminosity,normal"';
   }
   /* n141: THE EXPAND ARROW. The same circle-and-chevron as a group's pill, pointing down — the little ▾ was too faint
      to say "tap to open". It turns to point up while the section is open. */
@@ -12957,7 +12957,7 @@ W.nhOpenPair=function(name){
              file itself (a 12px white margin, now cropped out), and it flattened the group's colour. */
           /* n169: soft-light, not luminosity — the picture's brightest corner was blowing out to pure white down the
              right of the card. Soft-light keeps the texture and keeps the group's colour. */
-          +'border:2px solid '+cardEdge(col)+';background:'+cardSkin(col)+';background-blend-mode:soft-light,normal;'
+          +'border:2px solid '+cardEdge(col)+';background:'+cardSkin(col)+';background-blend-mode:luminosity,normal;'
           +'background-origin:border-box;background-clip:border-box;background-repeat:no-repeat;overflow:hidden;'
           +'border-radius:16px;padding:19px 16px;margin:10px 12px 0;font:inherit;cursor:pointer;color:#fff">'
           +'<div style="display:flex;align-items:center;gap:10px">'
