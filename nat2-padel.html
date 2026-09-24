@@ -3681,7 +3681,7 @@ const CLUB_NAME = _club.name;  // shown in the logo as "OPR · <name>"
     link.setAttribute('href', href);
   }catch(e){ /* install stays on the static manifest — no functional impact */ }
 })();
-const OPR_VERSION = "OPR-DOUBLES v2026.09.03-56 · NAT fork n165 (no voice) (of PLAT p117)";  // MANUAL PAIR CREATION REMOVED FROM ADMIN: Create a pair, Bulk create pairs and Re-derive all pairs are gone (they only made match-less ghost pairs, and Re-derive rewrote every stored initial club-wide). Pairs are born automatically at match entry. Current pairs list untouched; the underlying JS is left in place unreferenced, so no other code path changes. Includes v47 (set-score fix + double-tap guard) and all prior.
+const OPR_VERSION = "OPR-DOUBLES v2026.09.03-56 · NAT fork n166 (no voice) (of PLAT p117)";  // MANUAL PAIR CREATION REMOVED FROM ADMIN: Create a pair, Bulk create pairs and Re-derive all pairs are gone (they only made match-less ghost pairs, and Re-derive rewrote every stored initial club-wide). Pairs are born automatically at match entry. Current pairs list untouched; the underlying JS is left in place unreferenced, so no other code path changes. Includes v47 (set-score fix + double-tap guard) and all prior.
 // Explanation shown above the individual ladder. Open on load so it's read; collapsible
 // (state kept for the session) and scrolls away. Mechanics only — no outcome framing, so
 // members aren't nudged away from playing stronger opponents. Every clause maps to a real
@@ -12546,7 +12546,7 @@ W.nhOpenPair=function(name){
      sits under Climb, and tournaments follow Recent, so none of those earns a pill. Up returns to the top. */
   /* Records is on the door because with several groups it sits well below the fold, and it matters */
   var NH_JUMP_DOOR =[["Form & Move",/^\s*in form/i],["Recent",/^\s*recent matches/i],["Tournaments",/^\s*recent tournament/i],
-                     /* n150: Records removed from the strip — the band is in front of you */,["Up",null]];
+                     ["Records",/^\s*the records/i],   /* n166: back in the strip — the band now sits below Recent matches */,["Up",null]];
   var NH_JUMP_GROUP=[["Climb",/^\s*biggest climb/i],["Move",/^\s*movers/i],["Recent",/^\s*recent matches/i],["Card",/^\s*card matches/i],["Up",null]];
   var NH_JUMP=NH_JUMP_GROUP;
   /* n114: AIM BELOW WHAT IS PINNED. The band is sticky and so is the strip, and the page scrolls inside #nh, not
@@ -12810,13 +12810,13 @@ W.nhOpenPair=function(name){
              colour supplies the hue, and everything on it reads white. A very light colour is darkened for the
              card's background only, so white text stays readable whatever a club picks. */
           +'border:2px solid '+cardEdge(col)+';background:'+cardSkin(col)+';background-blend-mode:luminosity,normal;'
-          +'border-radius:16px;padding:15px 14px;margin:10px 12px 0;font:inherit;cursor:pointer;color:#fff">'
+          +'border-radius:16px;padding:19px 16px;margin:10px 12px 0;font:inherit;cursor:pointer;color:#fff">'
           +'<div style="display:flex;align-items:center;gap:10px">'
           /* the disc is outlined on the banner — a club badge can take its place later */
           +'<span style="width:34px;height:34px;flex:0 0 34px;border-radius:50%;background:rgba(255,255,255,.18);border:2px solid rgba(255,255,255,.6);color:#fff;'
           +'display:grid;place-items:center;font-weight:800;font-size:12px;box-sizing:border-box">'+esc(inits(name))+'</span>' 
           +'<span style="flex:1;min-width:0;display:flex;align-items:center;gap:8px;background:rgba(255,255,255,.18);border:1.5px solid rgba(255,255,255,.5);box-sizing:border-box;color:#fff;font-weight:800;font-size:14px;'
-          +'border-radius:99px;height:34px;box-sizing:border-box;padding:0 5px 0 13px"><span style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+esc(name)+'</span><span aria-hidden="true" style="flex:0 0 24px;height:24px;border-radius:50%;background:#fff;color:'+col+';display:grid;place-items:center;line-height:0"><svg width="12" height="12" viewBox="0 0 12 12" style="display:block"><path d="M4.85 2.25 8.35 5.75 4.85 9.25" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg></span></span>'
+          +'border-radius:99px;height:38px;box-sizing:border-box;padding:0 5px 0 14px"><span style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+esc(name)+'</span><span aria-hidden="true" style="flex:0 0 24px;height:24px;border-radius:50%;background:#fff;color:'+col+';display:grid;place-items:center;line-height:0"><svg width="12" height="12" viewBox="0 0 12 12" style="display:block"><path d="M4.85 2.25 8.35 5.75 4.85 9.25" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg></span></span>'
           +'<span style="flex:0 0 auto;text-align:right;line-height:1.15">'
           +'<span style="display:block;font-size:18px;font-weight:800;color:#fff">'+ms.length+'</span>'
           +'<span style="display:block;font-size:10px;color:rgba(255,255,255,.8)">matches</span></span></div>'
@@ -12871,6 +12871,10 @@ W.nhOpenPair=function(name){
            and region and changes nothing for anyone else. */
         + doorGroupsBand(W.__doorKids)
         + '<div id="doorGroupCards">'+doorGroupCards()+'</div>'
+        /* n166: RECENT MATCHES COMES FIRST, THE RECORDS SIT UNDER THEM. The three things people come for are the
+           score, their own page and who played whom; the records are a place you go to afterwards. The strip under
+           the header carries a "Records" pill again, so it is one tap from the top. */
+        + nhMatchesBrk(d,12,"club")
         /* two records, no toggle, each saying how wide it is */
         /* n118: THE RECORDS ARE A SECTION, NOT A LINE OF TEXT. They sit in a card under a shaded band like every
            other section on the door — the band the eye finds, and the pill "Records" lands on. */
@@ -12888,8 +12892,6 @@ W.nhOpenPair=function(name){
         + ledgerRow("Global Ledger", "Every region, every group, every member", "#2f2f2f",
                     "location.href='"+PAGE+"?club="+C+"&go=records&all=1'")
         + '</div></div>'
-        /* n128: Recent matches sits directly under the records */
-        + nhMatchesBrk(d,12,"club")
         + lastMatchRibbon(d)
         + '<div class="cols">'+nhFormBrk(d,RC,"club") + nhMoversBrk(d,RC,"club") + nhTourBrk(d)+'</div>'
         /* everything else, small */
