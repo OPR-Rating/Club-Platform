@@ -3681,7 +3681,7 @@ const CLUB_NAME = _club.name;  // shown in the logo as "OPR · <name>"
     link.setAttribute('href', href);
   }catch(e){ /* install stays on the static manifest — no functional impact */ }
 })();
-const OPR_VERSION = "OPR-DOUBLES v2026.09.03-56 · NAT fork n173 (no voice) (of PLAT p117)";  // MANUAL PAIR CREATION REMOVED FROM ADMIN: Create a pair, Bulk create pairs and Re-derive all pairs are gone (they only made match-less ghost pairs, and Re-derive rewrote every stored initial club-wide). Pairs are born automatically at match entry. Current pairs list untouched; the underlying JS is left in place unreferenced, so no other code path changes. Includes v47 (set-score fix + double-tap guard) and all prior.
+const OPR_VERSION = "OPR-DOUBLES v2026.09.03-56 · NAT fork n174 (no voice) (of PLAT p117)";  // MANUAL PAIR CREATION REMOVED FROM ADMIN: Create a pair, Bulk create pairs and Re-derive all pairs are gone (they only made match-less ghost pairs, and Re-derive rewrote every stored initial club-wide). Pairs are born automatically at match entry. Current pairs list untouched; the underlying JS is left in place unreferenced, so no other code path changes. Includes v47 (set-score fix + double-tap guard) and all prior.
 // Explanation shown above the individual ladder. Open on load so it's read; collapsible
 // (state kept for the session) and scrolls away. Mechanics only — no outcome framing, so
 // members aren't nudged away from playing stronger opponents. Every clause maps to a real
@@ -10075,7 +10075,7 @@ async function clRemove(id, label){
          you could not see which club or group you were in. */
       /* n170: room at the foot so the LAST section can still scroll up under the banner when a pill jumps to it —
         without it a jump to Tournaments stopped halfway, simply because the page had run out of scroll. */
-     "#nh{max-width:520px;margin:0 auto;padding:0 0 64vh;font-family:inherit;flex:1 1 auto;overflow-y:auto;-webkit-overflow-scrolling:touch;width:100%}"
+     "#nh{max-width:520px;margin:0 auto;padding:0 0 40px;font-family:inherit;flex:1 1 auto;overflow-y:auto;-webkit-overflow-scrolling:touch;width:100%}"
 
      +"#homeScreen{overflow:hidden}"
      +"#nh .band{color:#fff;padding:15px 16px 18px;position:sticky;top:0;z-index:20;overflow:hidden;border-radius:0}"   /* n154: square bottom edge */
@@ -11015,7 +11015,9 @@ async function clRemove(id, label){
   function nhMePill(){
     var me=meName(), photo=null;
     try{ photo=me?localStorage.getItem("nh_photo_"+(W.PLAT.parentId||W.PLAT.cid)+"_"+me):null; }catch(e){}
-    var href=PAGE+"?club="+(W.PLAT.parentId||W.PLAT.cid)+"&go=me"+(me?("&who="+encodeURIComponent(me)):"");
+    /* n174: MY page, not my profile. Adding &who= put the page into viewing mode, which is the read-only member
+       profile — the same trap the bottom bar avoids by leaving it off. */
+    var href=PAGE+"?club="+(W.PLAT.parentId||W.PLAT.cid)+"&go=me";
     var face = photo
       ? '<span style="width:30px;height:30px;border-radius:50%;flex:0 0 30px;background:#fff url('+photo+') center/cover no-repeat"></span>'
       : (me ? '<span style="width:30px;height:30px;border-radius:50%;flex:0 0 30px;border:2px solid #d4f425;color:#d4f425;display:grid;place-items:center;font-size:11px;font-weight:800;box-sizing:border-box">'+esc(inits(me))+'</span>' : '');
@@ -11532,14 +11534,8 @@ W.mePair=function(name,col){
         + (myPhoto?"":esc(inits(me)))+'</span>' 
         + '<span><h1 style="margin:0 0 2px">'+esc(me)+'</h1>'
         + '<span class="sub">'+(homeId?("plays mostly at "+esc(nhBoardName(homeId))):"no matches yet")+'</span></span></div>'
-        + '<div style="display:flex;align-items:center;gap:10px;margin-top:12px">'
-        + '<span style="font-size:38px;font-weight:800;letter-spacing:-1px;line-height:1">'+(rating||"\u2014")+'</span>'
-        /* n85: level and rank each in a bordered chip — one shape, two facts, easy to scan */
-        + (lvl?('<span style="display:inline-flex;flex-direction:column;align-items:center;border:1.5px solid rgba(255,255,255,.55);border-radius:12px;padding:5px 12px;line-height:1.1">'
-              +'<b style="font-size:15px">'+lvl.toFixed(1)+'</b><span style="font-size:9.5px;letter-spacing:.08em;text-transform:uppercase;opacity:.85">level</span></span>'):'')
-        + (rk?('<span style="display:inline-flex;flex-direction:column;align-items:center;border:1.5px solid rgba(255,255,255,.55);border-radius:12px;padding:5px 12px;line-height:1.1">'
-              +'<b style="font-size:15px">'+rk.rank+'<span style="font-weight:600;opacity:.8;font-size:11px"> / '+rk.of+'</span></b><span style="font-size:9.5px;letter-spacing:.08em;text-transform:uppercase;opacity:.85">rank</span></span>'):'')
-        + '</div>'
+        /* n174: THE FIGURES LEAVE THE BANNER. The header was taking a third of the screen; rating, level and rank
+           now sit in a pill directly under it, as part of the page. */
         /* n78: opened from the records, the way back is the page that sent us; your own page goes home */
         + (function(){ var bq=""; try{ bq=new URLSearchParams(location.search).get("back")||""; }catch(e){}
              return '<div class="pulse"><a href="'+(bq?(PAGE+bq):(PAGE+'?club='+C))+'" onclick="return window.nhBack(this.href)">\u2039 '+esc(bq?"back":club.name)+'</a>'; })()
@@ -11549,6 +11545,17 @@ W.mePair=function(name,col){
         + '</div></div>'
         ;
       /* n85: the five figures sit right under the header; the action row comes after them */
+      /* n174: rating · level · rank, the first thing on the page */
+      h+= '<div class="brk" style="margin-top:12px;display:flex;align-items:center;gap:12px;padding:12px 14px">'
+        + '<span style="font-size:11px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;color:#8a8196">Rating</span>'
+        + '<span style="font-size:30px;font-weight:800;letter-spacing:-.5px;line-height:1;color:'+col+'">'+(rating||"\u2014")+'</span>'
+        + '<span style="margin-left:auto;display:flex;gap:8px">'
+        + (lvl?('<span style="display:inline-flex;flex-direction:column;align-items:center;border:1.5px solid '+col+';border-radius:12px;padding:4px 11px;color:'+col+'">'
+               +'<b style="font-size:15px">'+lvl.toFixed(1)+'</b><span style="font-size:9.5px;letter-spacing:.08em;text-transform:uppercase;opacity:.85">level</span></span>'):'')
+        + (rk?('<span style="display:inline-flex;flex-direction:column;align-items:center;border:1.5px solid '+col+';border-radius:12px;padding:4px 11px;color:'+col+'">'
+               +'<b style="font-size:15px">'+rk.rank+'<span style="font-weight:600;opacity:.8;font-size:11px"> / '+rk.of+'</span></b>'
+               +'<span style="font-size:9.5px;letter-spacing:.08em;text-transform:uppercase;opacity:.85">rank</span></span>'):'')
+        + '</span></div>'
       h+='<div class="five">'
         + [[st.matches.length,"Matches"],[st.matches.filter(function(m){ return ago(m.match_date)<=56; }).length,"Last 8 weeks"],
            [st.setsW+"/"+(st.setsW+st.setsL),"Sets won"],[pct+"%","Win %"],[(gd>0?"+":"")+gd.toFixed(2),"Game diff/set"]]
@@ -12681,6 +12688,17 @@ W.nhOpenPair=function(name){
     }
     var el=document.getElementById("nhj_"+k); if(!el) return;
     var sc=nhScroller();
+    /* n174: a jump to the LAST section used to stop halfway simply because the page had run out of scroll. Rather
+       than carry a screenful of empty space at the foot for ever, the room is added only when a jump needs it. */
+    try{
+      var nh=document.getElementById("nh");
+      if(nh){
+        var need=(el.getBoundingClientRect().top - (sc===document.scrollingElement||sc===document.documentElement ? 0 : sc.getBoundingClientRect().top))
+                 + sc.scrollTop - nhPinnedHeight();
+        var most=sc.scrollHeight - sc.clientHeight;
+        if(need>most) nh.style.paddingBottom=Math.ceil(need-most+24)+"px";
+      }
+    }catch(e){}
     var aim=function(smooth){
       var top=el.getBoundingClientRect().top - (sc===document.scrollingElement||sc===document.documentElement ? 0 : sc.getBoundingClientRect().top);
       var y=sc.scrollTop + top - nhPinnedHeight();
@@ -12744,7 +12762,11 @@ W.nhOpenPair=function(name){
       });
       if(found.filter(function(f){ return f.id!=="__top"; }).length<1) return;   /* nothing to jump to */
       var strip=document.createElement("div"); strip.id="nhJump"; strip.setAttribute("data-plat-keep","1");
-      if(W.PLAT.clubDoor) strip.className="two";   /* n169: the door's four sit two by two */
+      /* n174: the door's pills share the width — three on one row, four two by two, so none is left beside a gap */
+      if(W.PLAT.clubDoor){
+        strip.className="two";
+        strip.style.gridTemplateColumns="repeat("+((found.length>=4)?2:Math.max(1,found.length))+",1fr)";
+      }
       strip.innerHTML=found.map(function(f){
         return '<button onclick="window.nhJumpTo(\''+f.id+'\')">'+esc(f.k)+'</button>'; }).join("");
       /* n169: on the door the strip sits UNDER the groups — Enter a score and the groups come first, because that
