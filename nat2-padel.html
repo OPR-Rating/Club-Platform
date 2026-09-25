@@ -3681,7 +3681,7 @@ const CLUB_NAME = _club.name;  // shown in the logo as "OPR · <name>"
     link.setAttribute('href', href);
   }catch(e){ /* install stays on the static manifest — no functional impact */ }
 })();
-const OPR_VERSION = "OPR-DOUBLES v2026.09.03-56 · NAT fork n188 (no voice) (of PLAT p117)";  // MANUAL PAIR CREATION REMOVED FROM ADMIN: Create a pair, Bulk create pairs and Re-derive all pairs are gone (they only made match-less ghost pairs, and Re-derive rewrote every stored initial club-wide). Pairs are born automatically at match entry. Current pairs list untouched; the underlying JS is left in place unreferenced, so no other code path changes. Includes v47 (set-score fix + double-tap guard) and all prior.
+const OPR_VERSION = "OPR-DOUBLES v2026.09.03-56 · NAT fork n189 (no voice) (of PLAT p117)";  // MANUAL PAIR CREATION REMOVED FROM ADMIN: Create a pair, Bulk create pairs and Re-derive all pairs are gone (they only made match-less ghost pairs, and Re-derive rewrote every stored initial club-wide). Pairs are born automatically at match entry. Current pairs list untouched; the underlying JS is left in place unreferenced, so no other code path changes. Includes v47 (set-score fix + double-tap guard) and all prior.
 // Explanation shown above the individual ladder. Open on load so it's read; collapsible
 // (state kept for the session) and scrolls away. Mechanics only — no outcome framing, so
 // members aren't nudged away from playing stronger opponents. Every clause maps to a real
@@ -11673,7 +11673,9 @@ W.mePair=function(name,col){
       var pct=(st.setsW+st.setsL)?Math.round(100*st.setsW/(st.setsW+st.setsL)):0;
       var gd=st.gdn?(st.gd/st.gdn):0;
 
-      var h='<div class="band" style="background:linear-gradient(135deg,'+col+','+deep+')">'
+      /* n189: the member page's banner is a banner like any other — the club's TRUE colour and the header picture.
+         It had been a flat gradient in the interface ink, which is why it read lighter than the group's card. */
+      var h='<div class="band"'+regBandStyle(rawCol)+'>'
         + ''+nhMark(club.name)+''
         + '<div style="display:flex;align-items:center;gap:13px;margin-top:11px">'
         + '<span class="av" onclick="window.mePhotoPick()" title="Tap to set your picture" style="width:56px;height:56px;flex:0 0 56px;border-radius:18px;font-size:19px;'
@@ -12196,6 +12198,70 @@ W.mePair=function(name,col){
       clearInterval(t); fix();
       try{ new MutationObserver(fix).observe(scr,{childList:true,subtree:true}); }catch(e){}
     },500);
+    setTimeout(function(){ clearInterval(t); }, 120000);
+  })();
+  /* n189: SHARE OR PRINT A ROUND. A tournament's draw already says who plays whom, so an organiser does not need a
+     court card — they need to hand the round out. This reads what is on the sheet and offers it as plain text to
+     paste into WhatsApp, or as a clean page to print. Nothing is stored and nothing can fall out of step with the
+     draw, because it is only ever a copy of what is already on the screen. */
+  (function(){
+    if(!W.NEWAPP) return;
+    var sheetText=function(){
+      var box=document.getElementById("tournamentSheetContent"); if(!box) return null;
+      var title=((document.getElementById("tournamentSheetTitle")||{}).textContent||"Tournament").trim();
+      /* read what is on the screen, line by line — whatever the sheet is made of */
+      var raw=(box.innerText||"").split("\n").map(function(l){ return l.replace(/\s+/g," ").trim(); }).filter(Boolean);
+      var out=[], seen={};
+      raw.forEach(function(l){
+        if(l.length>140) return;
+        if(/^(loading|enter a team|share these matches|print)$/i.test(l)) return;
+        if(seen[l]) return; seen[l]=1;
+        out.push(/^round\b/i.test(l) ? ("\n"+l.toUpperCase()) : l);
+      });
+      if(!out.length) return null;
+      var who=(W.PLAT.name?(W.PLAT.name+" \u00b7 "):"")+"OPR";
+      return (title+"\n"+who+"\n\n"+out.join("\n")).replace(/\n{3,}/g,"\n\n").trim();
+    };
+    W.nhShareRound=function(){
+      var txt=sheetText(); if(!txt){ alert("Nothing to share yet."); return; }
+      if(navigator.share){ navigator.share({title:"Tournament", text:txt}).catch(function(){}); return; }
+      if(navigator.clipboard && navigator.clipboard.writeText){
+        navigator.clipboard.writeText(txt).then(function(){ alert("Copied \u2014 paste it into WhatsApp."); },
+          function(){ W.prompt("Copy this:", txt); });
+        return;
+      }
+      W.prompt("Copy this:", txt);
+    };
+    W.nhPrintRound=function(){
+      var txt=sheetText(); if(!txt){ alert("Nothing to print yet."); return; }
+      var w=W.open("","_blank"); if(!w){ alert("Allow pop-ups to print."); return; }
+      var esc2=function(x){ return String(x).replace(/&/g,"&amp;").replace(/</g,"&lt;"); };
+      var rows=txt.split("\n").map(function(l){
+        if(!l.trim()) return '<div style="height:8px"></div>';
+        if(/^[A-Z0-9 ·]+$/.test(l.trim()) && l.trim().length<30)
+          return '<div style="margin:14px 0 6px;font-size:12px;letter-spacing:.12em;font-weight:800;color:#5b2bd6">'+esc2(l.trim())+'</div>';
+        return '<div style="padding:7px 0;border-bottom:1px solid #e6e0ee;font-size:14px">'+esc2(l.trim())+'</div>';
+      }).join("");
+      w.document.write('<!doctype html><meta charset="utf-8"><title>'+esc2(txt.split("\n")[0])+'</title>'
+        +'<body style="font-family:system-ui,Arial,sans-serif;max-width:640px;margin:24px auto;padding:0 18px;color:#241d33">'
+        +'<div style="font-size:11px;letter-spacing:.14em;font-weight:800;color:#8a8196">OPR \u00b7 OPEN PADEL RATINGS</div>'
+        +rows+'<div style="margin-top:22px;font-size:11px;color:#8a8196">Scores are entered in the app, on the tournament sheet.</div>'
+        +'<script>window.onload=function(){window.print();}<\/script></body>');
+      w.document.close();
+    };
+    var add=function(){
+      var scr=document.getElementById("tournamentSheetScreen"); if(!scr) return;
+      var box=document.getElementById("tournamentSheetContent"); if(!box || document.getElementById("nhShareRow")) return;
+      var row=document.createElement("div"); row.id="nhShareRow";
+      row.style.cssText="display:flex;gap:8px;margin:10px 12px 0";
+      row.innerHTML='<button onclick="window.nhShareRound()" style="flex:1;padding:11px;border-radius:99px;border:1.5px solid var(--nhc,#6c3483);'
+        +'background:#fff;color:var(--nhc,#6c3483);font:inherit;font-weight:800;font-size:13.5px">Share these matches</button>'
+        +'<button onclick="window.nhPrintRound()" style="flex:1;padding:11px;border-radius:99px;border:1.5px solid var(--nhc,#6c3483);'
+        +'background:#fff;color:var(--nhc,#6c3483);font:inherit;font-weight:800;font-size:13.5px">Print</button>';
+      box.parentNode.insertBefore(row, box);
+    };
+    var t=setInterval(function(){ if(document.getElementById("tournamentSheetScreen")){ clearInterval(t); add();
+      try{ new MutationObserver(add).observe(document.getElementById("tournamentSheetScreen"),{childList:true,subtree:true}); }catch(e){} } },500);
     setTimeout(function(){ clearInterval(t); }, 120000);
   })();
   /* n148: NO KEYBOARD UNTIL YOU ASK FOR ONE. The name picker put the cursor straight in its search box, so the
