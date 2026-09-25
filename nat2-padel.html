@@ -3688,7 +3688,7 @@ const CLUB_NAME = _club.name;  // shown in the logo as "OPR · <name>"
     link.setAttribute('href', href);
   }catch(e){ /* install stays on the static manifest — no functional impact */ }
 })();
-const OPR_VERSION = "OPR-DOUBLES v2026.09.03-56 · NAT fork n195 (no voice) (of PLAT p117)";  // MANUAL PAIR CREATION REMOVED FROM ADMIN: Create a pair, Bulk create pairs and Re-derive all pairs are gone (they only made match-less ghost pairs, and Re-derive rewrote every stored initial club-wide). Pairs are born automatically at match entry. Current pairs list untouched; the underlying JS is left in place unreferenced, so no other code path changes. Includes v47 (set-score fix + double-tap guard) and all prior.
+const OPR_VERSION = "OPR-DOUBLES v2026.09.03-56 · NAT fork n197 (no voice) (of PLAT p117)";  // MANUAL PAIR CREATION REMOVED FROM ADMIN: Create a pair, Bulk create pairs and Re-derive all pairs are gone (they only made match-less ghost pairs, and Re-derive rewrote every stored initial club-wide). Pairs are born automatically at match entry. Current pairs list untouched; the underlying JS is left in place unreferenced, so no other code path changes. Includes v47 (set-score fix + double-tap guard) and all prior.
 // Explanation shown above the individual ladder. Open on load so it's read; collapsible
 // (state kept for the session) and scrolls away. Mechanics only — no outcome framing, so
 // members aren't nudged away from playing stronger opponents. Every clause maps to a real
@@ -4220,7 +4220,7 @@ async function showPartnerships(indivId){
         </div>
       </div>` : '';
     const indivCard=`
-      <div class="profile-card" style="border-radius:16px;padding:20px;margin-bottom:18px;color:#fff;text-align:center;">
+      <div class="profile-card" style="background:linear-gradient(135deg,#6c3483,#3a1d6e);border-radius:16px;padding:20px;margin-bottom:18px;color:#fff;text-align:center;">
         <div style="font-size:20px;font-weight:800;">${who}</div>
         <div style="font-size:40px;font-weight:800;line-height:1.1;margin:6px 0;">${curRating}</div>
         <div style="font-size:14px;opacity:.95;">Level ${level}</div>
@@ -13368,7 +13368,6 @@ W.nhOpenPair=function(name){
         + nhFormBrk(d,ink,"board")
         + '<div class="cols">'+nhCharts(d,ink)+nhMoversBrk(d,ink,"board") + nhMatchesBrk(d,25,"board") + nhTourBrk(d) + nhCardBrk(d)+'</div>'
         /* n195: the switch sits at the foot of the group's own page, where somebody decides this is their group */
-        + nhHomeGroupRow()
         + nhHomeGroupRow()          /* n195: make this my home page */
         + nhFoot(ink,deep,"none")   /* n59: admin lives on the club door only */
 
