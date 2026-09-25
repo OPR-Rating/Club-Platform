@@ -3681,7 +3681,7 @@ const CLUB_NAME = _club.name;  // shown in the logo as "OPR · <name>"
     link.setAttribute('href', href);
   }catch(e){ /* install stays on the static manifest — no functional impact */ }
 })();
-const OPR_VERSION = "OPR-DOUBLES v2026.09.03-56 · NAT fork n187 (no voice) (of PLAT p117)";  // MANUAL PAIR CREATION REMOVED FROM ADMIN: Create a pair, Bulk create pairs and Re-derive all pairs are gone (they only made match-less ghost pairs, and Re-derive rewrote every stored initial club-wide). Pairs are born automatically at match entry. Current pairs list untouched; the underlying JS is left in place unreferenced, so no other code path changes. Includes v47 (set-score fix + double-tap guard) and all prior.
+const OPR_VERSION = "OPR-DOUBLES v2026.09.03-56 · NAT fork n188 (no voice) (of PLAT p117)";  // MANUAL PAIR CREATION REMOVED FROM ADMIN: Create a pair, Bulk create pairs and Re-derive all pairs are gone (they only made match-less ghost pairs, and Re-derive rewrote every stored initial club-wide). Pairs are born automatically at match entry. Current pairs list untouched; the underlying JS is left in place unreferenced, so no other code path changes. Includes v47 (set-score fix + double-tap guard) and all prior.
 // Explanation shown above the individual ladder. Open on load so it's read; collapsible
 // (state kept for the session) and scrolls away. Mechanics only — no outcome framing, so
 // members aren't nudged away from playing stronger opponents. Every clause maps to a real
@@ -10710,6 +10710,10 @@ async function clRemove(id, label){
     var url=function(id){ return PAGE+"?club="+id+"&go="+what+"&back="+back; };
     if(gs.length===1){ location.href=url(gs[0].id); return; }
     var box=document.getElementById("meWhere"); if(!box) return;
+    /* n188: the same action again closes it. Opening a chooser you only wanted to peek at used to leave you with
+       nowhere to go but into a group. */
+    if(box.style.display==="block" && box.dataset.what===what){ box.style.display="none"; box.dataset.what=""; return; }
+    box.dataset.what=what;
     var label={entry:"Enter a score",ladders:"Ratings & ladders",profiles:"Group members",card:"Court card",tournaments:"Tournaments"}[what]||"";
     box.innerHTML='<div style="font-size:12.5px;color:#5f5770;margin:2px 2px 8px">'+esc(label)+' \u2014 which group?</div>'
       + gs.map(function(g){ var c=clubPal(g.id)[0];
