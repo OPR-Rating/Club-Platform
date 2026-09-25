@@ -1551,7 +1551,7 @@ st0.textContent += "html{overflow-y:scroll}";   // p98: the scrollbar's space is
       <button class="back-btn" onclick="profileBack()">&#8592;</button>
       <h1 id="profileTitle">Profile</h1>
     </div>
-    <div class="screen-content"><div style="background:rgba(108,52,131,.08);border:1px solid rgba(108,52,131,.30);border-radius:10px;padding:10px 14px;margin-bottom:14px;font-size:12px;color:#4a235a;line-height:1.5;text-align:center;">Includes All your Matches Recorded on the system</div><div id="profileContent"></div></div>
+    <div class="screen-content"><div id="profileContent"></div></div>
   </div>
 
   <!-- TOURNAMENTS -->
@@ -3681,7 +3681,7 @@ const CLUB_NAME = _club.name;  // shown in the logo as "OPR · <name>"
     link.setAttribute('href', href);
   }catch(e){ /* install stays on the static manifest — no functional impact */ }
 })();
-const OPR_VERSION = "OPR-DOUBLES v2026.09.03-56 · NAT fork n179 (no voice) (of PLAT p117)";  // MANUAL PAIR CREATION REMOVED FROM ADMIN: Create a pair, Bulk create pairs and Re-derive all pairs are gone (they only made match-less ghost pairs, and Re-derive rewrote every stored initial club-wide). Pairs are born automatically at match entry. Current pairs list untouched; the underlying JS is left in place unreferenced, so no other code path changes. Includes v47 (set-score fix + double-tap guard) and all prior.
+const OPR_VERSION = "OPR-DOUBLES v2026.09.03-56 · NAT fork n181 (no voice) (of PLAT p117)";  // MANUAL PAIR CREATION REMOVED FROM ADMIN: Create a pair, Bulk create pairs and Re-derive all pairs are gone (they only made match-less ghost pairs, and Re-derive rewrote every stored initial club-wide). Pairs are born automatically at match entry. Current pairs list untouched; the underlying JS is left in place unreferenced, so no other code path changes. Includes v47 (set-score fix + double-tap guard) and all prior.
 // Explanation shown above the individual ladder. Open on load so it's read; collapsible
 // (state kept for the session) and scrolls away. Mechanics only — no outcome framing, so
 // members aren't nudged away from playing stronger opponents. Every clause maps to a real
@@ -4571,7 +4571,7 @@ function profileTabsHTML(active){
   // ODR: a pair IS the entity — there is no separate "with partner" breakdown.
   // Show a single Team header; the full match history renders below it.
   return '<div class="tm-nav" style="margin-bottom:12px;">'
-    + '<button class="active" style="width:100%;">👥 Team Profile</button>'
+    + ''
     + '</div>';
 }
 
@@ -10127,8 +10127,9 @@ async function clRemove(id, label){
      +"#doorDots i.on{background:var(--nhc,#6c3483);width:16px;border-radius:99px}"
      +".nhExp{width:26px;height:26px;border-radius:50%;background:#fff;border:1.5px solid;box-sizing:border-box;display:inline-grid;place-items:center;flex:0 0 26px;transition:transform .18s ease}"
      +".nhExp.open{transform:rotate(180deg)}"
-     +"#nh .brk > h2{background:#f3eef8;background:color-mix(in srgb,var(--nhc,#6c3483) 11%,#fff);color:var(--nhc,#5b2d8e);"
-     +"padding:10px 14px 9px;margin:0 0 6px;border-bottom:1px solid color-mix(in srgb,var(--nhc,#6c3483) 18%,#fff)}"
+     /* n181: a band you can open reads as something to tap — a deeper shade of the page's colour (was 11%) */
+     +"#nh .brk > h2{background:#e6dcef;background:color-mix(in srgb,var(--nhc,#6c3483) 26%,#fff);color:var(--nhc,#5b2d8e);"
+     +"padding:10px 14px 9px;margin:0 0 6px;border-bottom:1px solid color-mix(in srgb,var(--nhc,#6c3483) 34%,#fff)}"
      /* the jump strip: one row, never wraps, slides sideways if the screen is narrow, and stays under the band */
      /* n168/n169: on the door, four pills in two rows, all the same size; a group keeps its five on one line */
      +"#nhJump{position:sticky;top:0;z-index:40;display:flex;gap:7px;overflow-x:auto;white-space:nowrap;scrollbar-width:none;"
@@ -11432,9 +11433,11 @@ W.mePair=function(name,col){
       fetch(B+"plat_matches?pool_id=eq."+P+"&discipline=eq.padel&or=(t1p1.eq."+encodeURIComponent(pair)+",t2p1.eq."+encodeURIComponent(pair)+")"
             +"&select=id,club_id,match_date,match_type,event,t1p1,t1p2,t2p1,t2p2,t1_sets,t2_sets,t1_games,t2_games,set_scores,display_t1,display_t2,rating_delta"
             +"&order=match_date.desc,id.desc&limit=500").then(J).catch(function(){ return []; }),
-      fetch(B+"plat_clubs?pool_id=eq."+W.PLAT.pool+"&select=id,name,colour,pool_id").then(J).catch(function(){ return []; })
+      fetch(B+"plat_clubs?pool_id=eq."+W.PLAT.pool+"&select=id,name,colour,pool_id").then(J).catch(function(){ return []; }),
+      /* n180: every pair in the register, so this one can be ranked among pairs of its own category */
+      fetch(B+"plat_player_results?pool_id=eq."+P+"&discipline=eq.padel&select=name,gender,current_rating&limit=5000").then(J).catch(function(){ return []; })
     ]).then(function(r){
-      var rows=Array.isArray(r[0])?r[0]:[], ms=Array.isArray(r[1])?r[1]:[], clubs=Array.isArray(r[2])?r[2]:[];
+      var rows=Array.isArray(r[0])?r[0]:[], ms=Array.isArray(r[1])?r[1]:[], clubs=Array.isArray(r[2])?r[2]:[], allPairs=Array.isArray(r[3])?r[3]:[];
       var known={}; (W.PLAT.clubs||[]).forEach(function(c){ known[Number(c.id)]=1; });
       clubs.forEach(function(c){ if(!known[Number(c.id)]){ (W.PLAT.clubs=W.PLAT.clubs||[]).push(c); known[Number(c.id)]=1; } });
       /* the pair may hold a record on more than one board; the one with the most sets is its home */
@@ -11449,6 +11452,17 @@ W.mePair=function(name,col){
       var pct=sets?Math.round(100*won/sets):null;
       var gd=(pr&&pr.game_diff_per_set!=null)?(+pr.game_diff_per_set).toFixed(2):null;
       var kind=(pr&&pr.gender==="F")?"Ladies\u2019":((pr&&pr.gender==="M")?"Men\u2019s":((pr&&pr.gender)?"Mixed":""));
+      /* n180: this pair's rank among pairs of the same category across the register */
+      var rk=(function(){
+        try{
+          if(rating==null) return null;
+          var kindOf=pr?pr.gender:null;
+          var field=(allPairs||[]).filter(function(x){ return x.gender===kindOf && x.current_rating!=null; })
+                                  .sort(function(a,b){ return (b.current_rating||0)-(a.current_rating||0); });
+          var at=field.map(function(x){ return x.name; }).indexOf(pair);
+          return (at>=0 && field.length) ? {rank:at+1, of:field.length} : null;
+        }catch(e){ return null; }
+      })();
       var names=halves(pair);
       var backHref=back?(PAGE+back):(PAGE+"?club="+C);
       var h='<div class="band" style="background:linear-gradient(135deg,'+col+','+deep+')">'
@@ -11456,12 +11470,19 @@ W.mePair=function(name,col){
         +'<div style="display:flex;align-items:center;gap:10px;margin-top:6px">'
         +'<span style="display:flex">'+names.map(function(n,i){ return '<span style="display:inline-block;border:2px solid #fff;border-radius:50%;margin-left:'+(i?"-9px":"0")+'">'+nhFace(n,col,36)+'</span>'; }).join("")+'</span>'
         +'<h1 style="margin:0;font-size:20px">'+esc(pair)+'</h1></div>'
-        +'<div style="display:flex;align-items:center;gap:10px;margin-top:12px">'
-        +'<span style="font-size:38px;font-weight:800;letter-spacing:-1px;line-height:1">'+(rating!=null?rating:"\u2014")+'</span>'
-        +(lvl?('<span style="display:inline-flex;flex-direction:column;align-items:center;border:1.5px solid rgba(255,255,255,.55);border-radius:12px;padding:5px 12px;line-height:1.1"><b style="font-size:15px">'+lvl+'</b><span style="font-size:9.5px;letter-spacing:.08em;text-transform:uppercase;opacity:.85">level</span></span>'):'')
-        +(move!=null?('<span style="display:inline-flex;flex-direction:column;align-items:center;border:1.5px solid rgba(255,255,255,.55);border-radius:12px;padding:5px 12px;line-height:1.1"><b style="font-size:15px">'+(move>0?"+":"")+move+'</b><span style="font-size:9.5px;letter-spacing:.08em;text-transform:uppercase;opacity:.85">move</span></span>'):'')
-        +'</div>'
+        /* n180: the figures leave the banner — they sit in a pill under it, as on a member's page */
         +'<div class="pulse"><a href="'+backHref+'" onclick="return window.nhBack(this.href)">\u2039 back</a>'+(kind?('<span>'+kind+'</span>'):'')+'<span>'+ms.length+' match'+(ms.length===1?"":"es")+'</span></div></div>';
+      /* n180: rating · level · rank · move, the first row of the page */
+      var chip=function(label,val){ return '<span style="display:inline-flex;flex-direction:column;align-items:center;border:1.5px solid '+col+';border-radius:12px;padding:4px 11px;color:'+col+'">'
+             +'<b style="font-size:15px">'+val+'</b><span style="font-size:9.5px;letter-spacing:.08em;text-transform:uppercase;opacity:.85">'+label+'</span></span>'; };
+      h+='<div class="brk" style="margin-top:12px;display:flex;align-items:center;gap:10px;padding:12px 14px;flex-wrap:wrap">'
+        +'<span style="font-size:11px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;color:#8a8196">Rating</span>'
+        +'<span style="font-size:28px;font-weight:800;letter-spacing:-.5px;line-height:1;color:'+col+'">'+(rating!=null?rating:"\u2014")+'</span>'
+        +'<span style="margin-left:auto;display:flex;gap:7px">'
+        +(lvl?chip("level",lvl):'')
+        +(rk?chip("rank",rk.rank+'<span style="font-weight:600;opacity:.8;font-size:11px"> / '+rk.of+'</span>'):'')
+        +(move!=null?chip("move",(move>0?"+":"")+move):'')
+        +'</span></div>';
       h+='<div class="five">'
         + [[ms.length,"Matches"],[sets,"Sets played"],[won,"Sets won"],[pct!=null?(pct+"%"):"\u2014","Win %"],[gd!=null?((+gd>0?"+":"")+gd):"\u2014","Game diff/set"]]
             .map(function(x){ return '<div class="fig"><b>'+esc(String(x[0]))+'</b><span>'+esc(x[1])+'</span></div>'; }).join("")
@@ -12645,7 +12666,16 @@ W.nhOpenPair=function(name){
       try{
         var sc=document.getElementById("laddersScreen"); if(!sc) return;
         var boxes=sc.querySelectorAll(".screen-content > div");
-        if(boxes[0] && boxes[0].dataset.nhScope!=="1"){ boxes[0].dataset.nhScope="1"; boxes[0].textContent=scopeLine(); }
+        if(boxes[0] && boxes[0].dataset.nhScope!=="1"){
+          boxes[0].dataset.nhScope="1"; boxes[0].textContent=scopeLine();
+          /* n181: it was white text on a 12% wash — unreadable. Same shade as the app's bands, with the page's
+             own colour for the words. */
+          var ink=(getComputedStyle(document.documentElement).getPropertyValue("--nhc")||"#6c3483").trim();
+          boxes[0].style.background="color-mix(in srgb,"+ink+" 26%,#fff)";
+          boxes[0].style.color=nhDeep(ink,.35);
+          boxes[0].style.fontWeight="800";
+          boxes[0].style.border="none";
+        }
         if(boxes[1] && boxes[1].dataset.nhGone!=="1" && !boxes[1].className){ boxes[1].dataset.nhGone="1"; boxes[1].style.display="none"; }
       }catch(e){}
     },400);
