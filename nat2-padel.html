@@ -3688,7 +3688,7 @@ const CLUB_NAME = _club.name;  // shown in the logo as "OPR · <name>"
     link.setAttribute('href', href);
   }catch(e){ /* install stays on the static manifest — no functional impact */ }
 })();
-const OPR_VERSION = "OPR-DOUBLES v2026.09.03-56 · NAT fork n199 (no voice) (of PLAT p117)";  // MANUAL PAIR CREATION REMOVED FROM ADMIN: Create a pair, Bulk create pairs and Re-derive all pairs are gone (they only made match-less ghost pairs, and Re-derive rewrote every stored initial club-wide). Pairs are born automatically at match entry. Current pairs list untouched; the underlying JS is left in place unreferenced, so no other code path changes. Includes v47 (set-score fix + double-tap guard) and all prior.
+const OPR_VERSION = "OPR-DOUBLES v2026.09.03-56 · NAT fork n200 (no voice) (of PLAT p117)";  // MANUAL PAIR CREATION REMOVED FROM ADMIN: Create a pair, Bulk create pairs and Re-derive all pairs are gone (they only made match-less ghost pairs, and Re-derive rewrote every stored initial club-wide). Pairs are born automatically at match entry. Current pairs list untouched; the underlying JS is left in place unreferenced, so no other code path changes. Includes v47 (set-score fix + double-tap guard) and all prior.
 // Explanation shown above the individual ladder. Open on load so it's read; collapsible
 // (state kept for the session) and scrolls away. Mechanics only — no outcome framing, so
 // members aren't nudged away from playing stronger opponents. Every clause maps to a real
@@ -4143,7 +4143,7 @@ async function showPartnerships(indivId){
     const cat=ind?(ind.gender==='M'?"Men's":ind.gender==='F'?'Ladies':''):'';
     const winPct=setsPlayed>0?(setsWon/setsPlayed*100).toFixed(1):'0.0';
     const gdps=setsPlayed>0?((gamesFor-gamesAgainst)/setsPlayed).toFixed(2):'0.00';
-    const mvColI=totalMove>=0?'#c4e000':'#ff9e80', mvStrI=(totalMove>0?'+':'')+Math.round(totalMove);
+    const mvColI=totalMove>=0?'#6ee7a0':'#ff6b6b', mvStrI=(totalMove>0?'+':'')+Math.round(totalMove);
     // Individual rank within own gender (by current rating). Reuse the list's map if present,
     // else compute from the loaded individuals. Display only — the list stays alphabetical.
     let _rankI=null;
@@ -14704,7 +14704,7 @@ W.nhOpenPair=function(name){
     st.textContent=".profile-card,.indiv-card{background:url('./header_bg2.png') center top/cover,"
       +"linear-gradient(135deg,"+col+","+deep+") !important;background-blend-mode:luminosity,normal !important;"
       +"color:#fff !important}"
-      +".profile-card *,.indiv-card *{color:#fff !important}";
+      +".profile-card *:not([style*=\"color\"]),.indiv-card *:not([style*=\"color\"]){color:#fff !important}";
     if(!st.parentNode) document.head.appendChild(st);
   }
   /* On a group's board the member list's initials take the GROUP's colour — the same colour as its pill.
@@ -14743,7 +14743,7 @@ W.nhOpenPair=function(name){
       +".profile-card,.indiv-card{background:url('./header_bg2.png') center top/cover,"
       +"linear-gradient(135deg,"+clubRaw(W.PLAT.cid)+","+nhDeep(clubRaw(W.PLAT.cid))+") !important;"
       +"background-blend-mode:luminosity,normal !important;color:#fff !important}"
-      +".profile-card *,.indiv-card *{color:#fff !important}";
+      +".profile-card *:not([style*=\"color\"]),.indiv-card *:not([style*=\"color\"]){color:#fff !important}";
     if(!st.parentNode) document.head.appendChild(st);
     var paint=function(){
       /* n140: the parent's profile card only — never a new-app header, which it used to find first and flatten */
