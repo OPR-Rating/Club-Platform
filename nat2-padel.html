@@ -3681,7 +3681,7 @@ const CLUB_NAME = _club.name;  // shown in the logo as "OPR · <name>"
     link.setAttribute('href', href);
   }catch(e){ /* install stays on the static manifest — no functional impact */ }
 })();
-const OPR_VERSION = "OPR-DOUBLES v2026.09.03-56 · NAT fork n191 (no voice) (of PLAT p117)";  // MANUAL PAIR CREATION REMOVED FROM ADMIN: Create a pair, Bulk create pairs and Re-derive all pairs are gone (they only made match-less ghost pairs, and Re-derive rewrote every stored initial club-wide). Pairs are born automatically at match entry. Current pairs list untouched; the underlying JS is left in place unreferenced, so no other code path changes. Includes v47 (set-score fix + double-tap guard) and all prior.
+const OPR_VERSION = "OPR-DOUBLES v2026.09.03-56 · NAT fork n192 (no voice) (of PLAT p117)";  // MANUAL PAIR CREATION REMOVED FROM ADMIN: Create a pair, Bulk create pairs and Re-derive all pairs are gone (they only made match-less ghost pairs, and Re-derive rewrote every stored initial club-wide). Pairs are born automatically at match entry. Current pairs list untouched; the underlying JS is left in place unreferenced, so no other code path changes. Includes v47 (set-score fix + double-tap guard) and all prior.
 // Explanation shown above the individual ladder. Open on load so it's read; collapsible
 // (state kept for the session) and scrolls away. Mechanics only — no outcome framing, so
 // members aren't nudged away from playing stronger opponents. Every clause maps to a real
@@ -13588,8 +13588,13 @@ W.nhOpenPair=function(name){
             b.classList.remove("rank-1","rank-2","rank-3");     // no gold / silver / bronze in the ledger
             if(cid==null) return;
             var c=(W.PLAT.clubs||[]).find(function(x){return x.id===cid;}); if(!c) return;
-            var col=clubPal(cid)[0];
-            b.style.background=col; b.style.color="#fff"; b.title=c.name;
+            /* n192: every rank disc in the pair's club ink — gold, silver and bronze belong to a podium, not a
+               ladder, and the parent's own colours were winning because they are set with !important. */
+            var col=inkSafe(clubPal(cid)[0]);
+            b.style.setProperty("background", col, "important");
+            b.style.setProperty("color", "#fff", "important");
+            b.style.setProperty("border-color", col, "important");
+            b.title=c.name;
           });
         });
       });
@@ -15374,8 +15379,11 @@ W.nhOpenPair=function(name){
        rank badges take their purple from a CSS rule, so on a blue group they stayed OPR purple — the colour is
        how you know which board you are on, so it has to hold everywhere. */
     try{
-      if(W.PLAT.cid && W.PLAT.colour && String(W.PLAT.colour).toLowerCase()!=="#6c3483"){
-        var cc=W.PLAT.colour;
+      /* n192: this runs for OPR purple too — the rank discs were gold, silver and bronze there, so the top three
+         rows of a ladder read as three different boards. */
+      if(W.PLAT.cid){
+        /* the readable ink — a pale club colour left white numbers on a pale disc */
+        var cc=inkSafe(W.PLAT.colour||"#6c3483");
         var st=document.getElementById("platInkCss") || document.createElement("style");
         st.id="platInkCss";
         /* n29: rank 1 and 2 are a bright chip with dark text by design (gold, silver). Repainting only the
@@ -15383,9 +15391,9 @@ W.nhOpenPair=function(name){
            entirely, and every other badge takes the board's colour with white on it. */
         st.textContent="#profileSearchScreen .screen-content{padding-top:8px !important}"   /* n31: the banner and the search box sat a long way apart */
           +"#profileSearchScreen .sub{margin:2px 0 8px !important}"
-          +".rank-badge{background:"+cc+" !important;color:#fff !important}"
-          +".rank-badge.rank-1{background:#d4f425 !important;color:#1a1a1a !important}"
-          +".rank-badge.rank-2{background:#BDC3C7 !important;color:#1a1a1a !important}"
+          /* n192: every rank disc in the board's ink. Gold and silver for the top two belong on a podium; in a
+             ladder they made the first three rows read as three different boards. */
+          +".rank-badge,.rank-badge.rank-1,.rank-badge.rank-2,.rank-badge.rank-3{background:"+cc+" !important;color:#fff !important}"
           +".rank{color:"+cc+" !important}";
         if(!st.parentNode) document.head.appendChild(st);
       }
