@@ -3681,7 +3681,7 @@ const CLUB_NAME = _club.name;  // shown in the logo as "OPR · <name>"
     link.setAttribute('href', href);
   }catch(e){ /* install stays on the static manifest — no functional impact */ }
 })();
-const OPR_VERSION = "OPR-DOUBLES v2026.09.03-56 · NAT fork n192 (no voice) (of PLAT p117)";  // MANUAL PAIR CREATION REMOVED FROM ADMIN: Create a pair, Bulk create pairs and Re-derive all pairs are gone (they only made match-less ghost pairs, and Re-derive rewrote every stored initial club-wide). Pairs are born automatically at match entry. Current pairs list untouched; the underlying JS is left in place unreferenced, so no other code path changes. Includes v47 (set-score fix + double-tap guard) and all prior.
+const OPR_VERSION = "OPR-DOUBLES v2026.09.03-56 · NAT fork n193 (no voice) (of PLAT p117)";  // MANUAL PAIR CREATION REMOVED FROM ADMIN: Create a pair, Bulk create pairs and Re-derive all pairs are gone (they only made match-less ghost pairs, and Re-derive rewrote every stored initial club-wide). Pairs are born automatically at match entry. Current pairs list untouched; the underlying JS is left in place unreferenced, so no other code path changes. Includes v47 (set-score fix + double-tap guard) and all prior.
 // Explanation shown above the individual ladder. Open on load so it's read; collapsible
 // (state kept for the session) and scrolls away. Mechanics only — no outcome framing, so
 // members aren't nudged away from playing stronger opponents. Every clause maps to a real
@@ -9987,11 +9987,15 @@ async function clRemove(id, label){
   })();
   function nhFetch(){
     if(NEW.data) return Promise.resolve(NEW.data);
+    /* n193: ONE READ, NOT TWO. Two callers asking at the same moment each started their own set of four reads,
+       because the answer is only cached when it arrives. The promise itself is now held, so the second caller
+       waits on the first — four fewer round trips on every page. */
+    if(NEW.busy) return NEW.busy;
     var B=SBREST(), boards=(W.PLAT.myBoards&&W.PLAT.myBoards.length)?W.PLAT.myBoards:[W.PLAT.cid];
     var CK=nhCacheKey(boards), hit=nhCacheGet(CK);
     if(hit){ NEW.data=hit; return Promise.resolve(hit); }
     var inList="club_id=in.("+boards.join(",")+")";
-    return Promise.all([
+    return (NEW.busy=Promise.all([
       fetch(B+"plat_matches?"+inList+"&discipline=eq.padel&select=id,club_id,match_date,match_type,event,t1p1,t1p2,t2p1,t2p2,t1_sets,t2_sets,t1_games,t2_games,set_scores,display_t1,display_t2,rating_delta&order=match_date.desc,id.desc&limit=120").then(J),
       fetch(B+"plat_player_results?"+inList+"&discipline=eq.padel&select=name,club_id,current_rating,initial_rating,sets_played,sets_won&order=current_rating.desc&limit=2000").then(J),
       fetch(B+"plat_padel_v_individuals?"+inList+"&select=id,full_name,club_id,current_rating,seed_rating,pool_seed").then(J).catch(function(){ return []; }),
@@ -10001,8 +10005,9 @@ async function clRemove(id, label){
       NEW.data={matches:r[0]||[],pairs:r[1]||[],people:r[2]||[],
                 tour:live[0]||null, tours:live};        /* n81: a club can be running several at once */
       nhCachePut(CK, NEW.data);
+      NEW.busy=null;
       return NEW.data;
-    }).catch(function(){ NEW.data={matches:[],pairs:[],people:[],tour:null}; return NEW.data; });
+    }).catch(function(){ NEW.busy=null; NEW.data={matches:[],pairs:[],people:[],tour:null}; return NEW.data; }));
   }
   function SBREST(){ return "https://djmbnvikrdgnomjhtkgf.supabase.co/rest/v1/"; }
   function J(r){ return r.json(); }
