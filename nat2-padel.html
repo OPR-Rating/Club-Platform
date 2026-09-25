@@ -3681,7 +3681,7 @@ const CLUB_NAME = _club.name;  // shown in the logo as "OPR · <name>"
     link.setAttribute('href', href);
   }catch(e){ /* install stays on the static manifest — no functional impact */ }
 })();
-const OPR_VERSION = "OPR-DOUBLES v2026.09.03-56 · NAT fork n189 (no voice) (of PLAT p117)";  // MANUAL PAIR CREATION REMOVED FROM ADMIN: Create a pair, Bulk create pairs and Re-derive all pairs are gone (they only made match-less ghost pairs, and Re-derive rewrote every stored initial club-wide). Pairs are born automatically at match entry. Current pairs list untouched; the underlying JS is left in place unreferenced, so no other code path changes. Includes v47 (set-score fix + double-tap guard) and all prior.
+const OPR_VERSION = "OPR-DOUBLES v2026.09.03-56 · NAT fork n191 (no voice) (of PLAT p117)";  // MANUAL PAIR CREATION REMOVED FROM ADMIN: Create a pair, Bulk create pairs and Re-derive all pairs are gone (they only made match-less ghost pairs, and Re-derive rewrote every stored initial club-wide). Pairs are born automatically at match entry. Current pairs list untouched; the underlying JS is left in place unreferenced, so no other code path changes. Includes v47 (set-score fix + double-tap guard) and all prior.
 // Explanation shown above the individual ladder. Open on load so it's read; collapsible
 // (state kept for the session) and scrolls away. Mechanics only — no outcome framing, so
 // members aren't nudged away from playing stronger opponents. Every clause maps to a real
@@ -13765,7 +13765,8 @@ W.nhOpenPair=function(name){
       var btn=function(label,onclick){ return '<button class="menu-btn" style="min-height:32px;padding:5px 11px;font-size:12px" onclick="'+onclick+'">'+esc(label)+'</button>'; };
       return '<div style="padding:10px 0;border-bottom:1px solid #eee">'
         +'<div style="display:flex;align-items:center;gap:8px">'
-        +'<span data-plat-keep="1" style="width:16px;height:16px;border-radius:50%;background:'+p[0]+';flex:0 0 16px"></span>'
+        /* n190: the dot has a name of its own, so a repaint finds IT and not a swatch in the open picker */
+        +'<span id="platDot'+c.id+'" data-plat-keep="1" style="width:16px;height:16px;border-radius:50%;background:'+p[0]+';flex:0 0 16px"></span>'
         +'<span style="flex:1;min-width:0"><span style="font-weight:700;font-size:14px">'+esc(c.name)+'</span>'
         +'<span style="display:block;font-size:11.5px;color:#777;line-height:1.4;margin-top:2px">The region \u2014 its name and its colour. Play happens in the groups.</span>'
         +'</span></div>'
@@ -13787,7 +13788,8 @@ W.nhOpenPair=function(name){
         +'<div style="display:flex;align-items:center;gap:8px">'
         /* n135: a colour dot shows the board's OWN colour — the Global Ledger's charcoal repaint used to turn every
            region still on OPR purple black. data-plat-keep exempts it. */
-        +'<span data-plat-keep="1" style="width:16px;height:16px;border-radius:50%;background:'+p[0]+';flex:0 0 16px"></span>'
+        /* n190: the dot has a name of its own, so a repaint finds IT and not a swatch in the open picker */
+        +'<span id="platDot'+c.id+'" data-plat-keep="1" style="width:16px;height:16px;border-radius:50%;background:'+p[0]+';flex:0 0 16px"></span>'
         +'<span style="flex:1;min-width:0"><span style="font-weight:700;font-size:14px">'+esc(c.name)+'</span>'
         +(sub?'<span style="display:block;font-size:11.5px;color:#777;line-height:1.4;margin-top:2px">'+esc(sub)+'</span>':'')
         +'</span></div>'
@@ -13960,9 +13962,10 @@ W.nhOpenPair=function(name){
       try{
         var box=document.getElementById("platTd"+id);
         if(box){
-          var row=box.parentElement;
-          var dot=row&&row.querySelector('span[style*="border-radius:50%"]');
-          if(dot) dot.style.background=col;
+          /* n190: paint the ROW'S dot. It used to take the first round span in the row, which after the picker
+             was open could be one of the swatches — so a second choice saved but the dot never moved. */
+          var dot=document.getElementById("platDot"+id);
+          if(dot) dot.style.background=inkSafe(col);
           box.innerHTML="";
         }
       }catch(e){}
@@ -14632,11 +14635,16 @@ W.nhOpenPair=function(name){
   function hexToRgb(h){ try{ var n=parseInt(String(h).slice(1),16); return ((n>>16)&255)+","+((n>>8)&255)+","+(n&255); }catch(e){ return "108,52,131"; } }
   function profileCardTint(){
     if(W.PLAT.cid===0) return;   // any group board — an organisation's or a standalone register's
-    var col=(W.PLAT.colour||clubPal(W.PLAT.cid)[0]), deep=darken(col,0.45);
-    if(String(col||"").toLowerCase()==="#6c3483") return;   // the product's own colour: keep the parent's exact shades
+    /* n191: THE PROFILE CARD IS A BANNER TOO. It was a flat gradient with no picture, so beside the group's own
+       banner and its card it looked washed out — worst with a pale club colour. Same treatment as every other
+       banner: the club's true colour, the header picture over it, blended by luminosity. */
+    var col=(W.PLAT.colour||clubRaw(W.PLAT.cid)), deep=nhDeep(col);
     var st=document.getElementById("platCardTint")||document.createElement("style");
     st.id="platCardTint";
-    st.textContent=".profile-card,.indiv-card{background:linear-gradient(135deg,"+col+","+deep+") !important}";
+    st.textContent=".profile-card,.indiv-card{background:url('./header_bg2.png') center top/cover,"
+      +"linear-gradient(135deg,"+col+","+deep+") !important;background-blend-mode:luminosity,normal !important;"
+      +"color:#fff !important}"
+      +".profile-card *,.indiv-card *{color:#fff !important}";
     if(!st.parentNode) document.head.appendChild(st);
   }
   /* On a group's board the member list's initials take the GROUP's colour — the same colour as its pill.
@@ -14668,7 +14676,12 @@ W.nhOpenPair=function(name){
     st.textContent=".stat-card{background:rgba("+rgb+",.12) !important}"
       +".stat-value{color:"+darken(col,0.25)+" !important}"
       +"#chartSnap,[onclick*='chartSnap']{background:rgba("+rgb+",.10) !important;color:"+darken(col,0.30)+" !important}"
-      +".profile-card,.indiv-card{background:linear-gradient(135deg,"+col+","+deep+") !important}";
+      /* n191: the card is a banner — the picture over the club's true colour, blended like every other banner.
+         This rule used to overwrite profileCardTint's, which is why the card stayed flat and washed out. */
+      +".profile-card,.indiv-card{background:url('./header_bg2.png') center top/cover,"
+      +"linear-gradient(135deg,"+clubRaw(W.PLAT.cid)+","+nhDeep(clubRaw(W.PLAT.cid))+") !important;"
+      +"background-blend-mode:luminosity,normal !important;color:#fff !important}"
+      +".profile-card *,.indiv-card *{color:#fff !important}";
     if(!st.parentNode) document.head.appendChild(st);
     var paint=function(){
       /* n140: the parent's profile card only — never a new-app header, which it used to find first and flatten */
