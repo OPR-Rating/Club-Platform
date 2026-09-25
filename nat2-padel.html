@@ -3688,7 +3688,7 @@ const CLUB_NAME = _club.name;  // shown in the logo as "OPR · <name>"
     link.setAttribute('href', href);
   }catch(e){ /* install stays on the static manifest — no functional impact */ }
 })();
-const OPR_VERSION = "OPR-DOUBLES v2026.09.03-56 · NAT fork n200 (no voice) (of PLAT p117)";  // MANUAL PAIR CREATION REMOVED FROM ADMIN: Create a pair, Bulk create pairs and Re-derive all pairs are gone (they only made match-less ghost pairs, and Re-derive rewrote every stored initial club-wide). Pairs are born automatically at match entry. Current pairs list untouched; the underlying JS is left in place unreferenced, so no other code path changes. Includes v47 (set-score fix + double-tap guard) and all prior.
+const OPR_VERSION = "OPR-DOUBLES v2026.09.03-56 · NAT fork n201 (no voice) (of PLAT p117)";  // MANUAL PAIR CREATION REMOVED FROM ADMIN: Create a pair, Bulk create pairs and Re-derive all pairs are gone (they only made match-less ghost pairs, and Re-derive rewrote every stored initial club-wide). Pairs are born automatically at match entry. Current pairs list untouched; the underlying JS is left in place unreferenced, so no other code path changes. Includes v47 (set-score fix + double-tap guard) and all prior.
 // Explanation shown above the individual ladder. Open on load so it's read; collapsible
 // (state kept for the session) and scrolls away. Mechanics only — no outcome framing, so
 // members aren't nudged away from playing stronger opponents. Every clause maps to a real
@@ -10128,7 +10128,9 @@ async function clRemove(id, label){
      "#nh{max-width:520px;margin:0 auto;padding:0 0 40px;font-family:inherit;flex:1 1 auto;overflow-y:auto;-webkit-overflow-scrolling:touch;width:100%}"
 
      +"#homeScreen{overflow:hidden}"
-     +"#nh .band{color:#fff;padding:15px 16px 18px;position:sticky;top:0;z-index:20;overflow:hidden;border-radius:0}"   /* n154: square bottom edge */
+     +"#nh .band{color:#fff;padding:15px 16px 18px;position:sticky;top:0;z-index:20;overflow:hidden;border-radius:0}"
+     /* n201: on a DOOR the banner runs deeper, because the Enter-a-score button sits into it */
+     +"#nh .band.doorband{padding-bottom:46px;z-index:4}"   /* n154: square bottom edge */
      /* n142: YOUR HEADER'S DESIGN ON EVERY HEADER. The picture is laid over each page's own colour and blended by
         luminosity — the arc, glow and streaks carry the page's colour (a group's, a region's, the register's
         charcoal). The door's OPR header (.opr) already carries the picture itself. */
@@ -13268,7 +13270,7 @@ W.nhOpenPair=function(name){
       };
 
       w.innerHTML =
-        '<div class="band opr"'+regBandStyle(RC)+'>'+nhMark()+''
+        '<div class="band opr doorband"'+regBandStyle(RC)+'>'+nhMark()+''
         /* n150: A SHORT HERO THAT SAYS WHAT THIS IS, and the member's own page on the right — the first question
            everyone asks is "where do I see my rating". The week's count moved to Recent matches. */
         + '<div style="display:flex;align-items:center;gap:10px;margin-top:8px">'
@@ -13280,10 +13282,12 @@ W.nhOpenPair=function(name){
         + '</div></div>'
         /* where am I */
         /* n114: the region's name was repeated here under the banner that already says it — removed */
-        /* the one thing they came for */
-        + '<button onclick="window.doorPick(\'score\')" style="display:block;width:calc(100% - 24px);margin:16px 12px 4px;'
-        + 'background:linear-gradient(180deg,#e4ff5c 0%,#d4f425 46%,#bce400 100%);box-shadow:inset 0 1px 0 rgba(255,255,255,.55),0 1px 3px rgba(26,16,48,.12);border:none;border-radius:16px;padding:16px;text-align:center;'
-        + 'font:inherit;font-weight:800;font-size:16px;color:#1a1a1a;cursor:pointer">+ &nbsp;Enter a score</button>'
+        /* n201: THE ONE THING THEY CAME FOR, sitting into the banner. The door's banner carries extra depth at its
+           foot and the button is pulled up into it, so it overlaps by about half — the shape Andre's members know
+           from OPR. The blue is the one they know; the lime edge says this is the thing to press. */
+        + '<button onclick="window.doorPick(\'score\')" style="display:block;width:calc(100% - 24px);margin:-27px 12px 4px;position:relative;z-index:5;'
+        + 'background:linear-gradient(180deg,#5aabe3,#3b9ada);border:2.5px solid #c6e400;border-radius:16px;padding:16px;text-align:center;'
+        + 'box-shadow:0 4px 14px rgba(12,10,40,.28);font:inherit;font-weight:800;font-size:16px;color:#fff;cursor:pointer">+ &nbsp;Enter a score</button>'
         + '<div id="doorWhere" style="display:none;padding:2px 12px 4px"></div>'
         /* the engine */
         /* n128: THE GROUPS BAND. Each phone chooses which groups' cards the door shows — all, one, or none — from a
