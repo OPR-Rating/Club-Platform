@@ -3681,7 +3681,7 @@ const CLUB_NAME = _club.name;  // shown in the logo as "OPR · <name>"
     link.setAttribute('href', href);
   }catch(e){ /* install stays on the static manifest — no functional impact */ }
 })();
-const OPR_VERSION = "OPR-DOUBLES v2026.09.03-56 · NAT fork n193 (no voice) (of PLAT p117)";  // MANUAL PAIR CREATION REMOVED FROM ADMIN: Create a pair, Bulk create pairs and Re-derive all pairs are gone (they only made match-less ghost pairs, and Re-derive rewrote every stored initial club-wide). Pairs are born automatically at match entry. Current pairs list untouched; the underlying JS is left in place unreferenced, so no other code path changes. Includes v47 (set-score fix + double-tap guard) and all prior.
+const OPR_VERSION = "OPR-DOUBLES v2026.09.03-56 · NAT fork n194 (no voice) (of PLAT p117)";  // MANUAL PAIR CREATION REMOVED FROM ADMIN: Create a pair, Bulk create pairs and Re-derive all pairs are gone (they only made match-less ghost pairs, and Re-derive rewrote every stored initial club-wide). Pairs are born automatically at match entry. Current pairs list untouched; the underlying JS is left in place unreferenced, so no other code path changes. Includes v47 (set-score fix + double-tap guard) and all prior.
 // Explanation shown above the individual ladder. Open on load so it's read; collapsible
 // (state kept for the session) and scrolls away. Mechanics only — no outcome framing, so
 // members aren't nudged away from playing stronger opponents. Every clause maps to a real
@@ -4213,7 +4213,7 @@ async function showPartnerships(indivId){
         </div>
       </div>` : '';
     const indivCard=`
-      <div style="background:linear-gradient(135deg,#6c3483,#3a1d6e);border-radius:16px;padding:20px;margin-bottom:18px;color:#fff;text-align:center;">
+      <div class="profile-card" style="border-radius:16px;padding:20px;margin-bottom:18px;color:#fff;text-align:center;">
         <div style="font-size:20px;font-weight:800;">${who}</div>
         <div style="font-size:40px;font-weight:800;line-height:1.1;margin:6px 0;">${curRating}</div>
         <div style="font-size:14px;opacity:.95;">Level ${level}</div>
@@ -12596,7 +12596,9 @@ W.mePair=function(name,col){
       var mv=(cur!=null&&init!=null)?(cur-init):null, mvStr=(mv==null)?"\u2014":((mv>0?"+":"")+mv), mvFg=(mv==null||mv>=0)?"#1e8449":"#c0392b";
       var rateBg=(p.gender==="F")?"#ffe6f0":"#e3edff", rateFg=(p.gender==="F")?"#a02166":"#2148a0";
       var rk=rank[p.full_name], rkStr=(rk!=null)?("("+rk+")"):"\u2014";
-      var boards=(p.boards||[]).map(function(id){ var c=CL[id]||{}; var col=c.colour||clubPal(id)[0];
+      /* n194: the group pill under a name takes the readable ink, the same colour it wears on a match row.
+         It was using the club's raw colour, so a pale group read as a faded pill here and a solid one there. */
+      var boards=(p.boards||[]).map(function(id){ var c=CL[id]||{}; var col=inkSafe(c.colour||clubPal(id)[0]);
         return '<span style="display:inline-block;background:'+col+';color:#fff;border-radius:99px;padding:1px 7px;font-size:9.5px;font-weight:800;margin:2px 4px 0 0">'+esc(c.name||nhBoardName(id)||"")+'</span>'; }).join("");
       var who=String(p.full_name).replace(/'/g,"\\'");
       return '<button data-plat-keep="1" onclick="window.nhOpenProfile(\''+who+'\')" style="display:flex;width:100%;align-items:center;gap:10px;'
@@ -13616,7 +13618,14 @@ W.nhOpenPair=function(name){
       regMap().then(function(map){
         var cs=map[nm.trim()]||[]; if(!cs.length) return;
         var p=clubPal(cs[0].id);
-        box.style.background="linear-gradient(135deg,"+darken(p[0],0.12)+","+darken(p[0],0.55)+")";
+        /* n194: THIS is the card Andre photographed — the one behind Group members → a name. It was a flat
+           gradient written straight onto the element, so no CSS rule could reach it, which is why the earlier
+           fixes to .profile-card never showed. It is a banner like the rest now: the header picture over the
+           club's TRUE colour, blended by luminosity. */
+        var rawC=clubRaw(cs[0].id);
+        box.style.background="url('./header_bg2.png') center top/cover,linear-gradient(135deg,"+rawC+","+nhDeep(rawC)+")";
+        box.style.backgroundBlendMode="luminosity,normal";
+        box.style.color="#fff";
         box.dataset.platCol="1";
         tintTiles(card, p[0]);
         try{ card.querySelectorAll('div[style*="color:#5b3a6e"],div[style*="color:#6c3483"]').forEach(function(h){
