@@ -3681,7 +3681,7 @@ const CLUB_NAME = _club.name;  // shown in the logo as "OPR · <name>"
     link.setAttribute('href', href);
   }catch(e){ /* install stays on the static manifest — no functional impact */ }
 })();
-const OPR_VERSION = "OPR-DOUBLES v2026.09.03-56 · NAT fork n181 (no voice) (of PLAT p117)";  // MANUAL PAIR CREATION REMOVED FROM ADMIN: Create a pair, Bulk create pairs and Re-derive all pairs are gone (they only made match-less ghost pairs, and Re-derive rewrote every stored initial club-wide). Pairs are born automatically at match entry. Current pairs list untouched; the underlying JS is left in place unreferenced, so no other code path changes. Includes v47 (set-score fix + double-tap guard) and all prior.
+const OPR_VERSION = "OPR-DOUBLES v2026.09.03-56 · NAT fork n184 (no voice) (of PLAT p117)";  // MANUAL PAIR CREATION REMOVED FROM ADMIN: Create a pair, Bulk create pairs and Re-derive all pairs are gone (they only made match-less ghost pairs, and Re-derive rewrote every stored initial club-wide). Pairs are born automatically at match entry. Current pairs list untouched; the underlying JS is left in place unreferenced, so no other code path changes. Includes v47 (set-score fix + double-tap guard) and all prior.
 // Explanation shown above the individual ladder. Open on load so it's read; collapsible
 // (state kept for the session) and scrolls away. Mechanics only — no outcome framing, so
 // members aren't nudged away from playing stronger opponents. Every clause maps to a real
@@ -10127,9 +10127,13 @@ async function clRemove(id, label){
      +"#doorDots i.on{background:var(--nhc,#6c3483);width:16px;border-radius:99px}"
      +".nhExp{width:26px;height:26px;border-radius:50%;background:#fff;border:1.5px solid;box-sizing:border-box;display:inline-grid;place-items:center;flex:0 0 26px;transition:transform .18s ease}"
      +".nhExp.open{transform:rotate(180deg)}"
-     /* n181: a band you can open reads as something to tap — a deeper shade of the page's colour (was 11%) */
-     +"#nh .brk > h2{background:#e6dcef;background:color-mix(in srgb,var(--nhc,#6c3483) 26%,#fff);color:var(--nhc,#5b2d8e);"
-     +"padding:10px 14px 9px;margin:0 0 6px;border-bottom:1px solid color-mix(in srgb,var(--nhc,#6c3483) 34%,#fff)}"
+     +"#nh .brk > h2{background:#f3eef8;background:color-mix(in srgb,var(--nhc,#6c3483) 11%,#fff);color:var(--nhc,#5b2d8e);"
+     +"padding:10px 14px 9px;margin:0 0 6px;border-bottom:1px solid color-mix(in srgb,var(--nhc,#6c3483) 18%,#fff)}"
+     /* n182: ONLY A BAND THAT OPENS is deeper — the ones with the ⌄ arrow. A plain heading keeps the light tint,
+        so the darker shade means "there is more behind this". */
+     +"#nh .nhRoll > h2{background:#dccbe8;background:color-mix(in srgb,var(--nhc,#6c3483) 38%,#fff);"
+     +"color:color-mix(in srgb,var(--nhc,#6c3483) 82%,#000)!important;"
+     +"border-bottom:1px solid color-mix(in srgb,var(--nhc,#6c3483) 50%,#fff)!important}"
      /* the jump strip: one row, never wraps, slides sideways if the screen is narrow, and stays under the band */
      /* n168/n169: on the door, four pills in two rows, all the same size; a group keeps its five on one line */
      +"#nhJump{position:sticky;top:0;z-index:40;display:flex;gap:7px;overflow-x:auto;white-space:nowrap;scrollbar-width:none;"
@@ -10264,7 +10268,7 @@ async function clRemove(id, label){
           /* n97: a mover's name opens their profile — the single page — with the way back to here */
           var who=String(m.name).replace(/'/g,"\\'");
           return '<button class="row" onclick="window.nhOpenProfile(\''+who+'\')">'
-          +'<span class="av" style="'+avRing(col)+'">'+esc(inits(m.name))+'</span>'
+          + nhFace(m.name,col,34)   /* n183: their photo if they have claimed, initials if not */
           +'<span class="nm"><b>'+esc(m.name)+'</b><span>'+(m.move>=0?"climbing":"giving ground")+(where?(" \u00b7 "+esc(where)):"")+'</span></span>'
           +'<span class="val"><b class="'+(m.move>=0?"up":"dn")+'">'+(m.move>0?"\u25b2 +":"\u25bc ")+Math.round(m.move)+'</b><span>'+nhWhen()+'</span></span></button>'; }).join("")
       /* n97: on the door this opened plat's profile list scoped to the region's own board — empty, "no individuals
@@ -10392,7 +10396,7 @@ async function clRemove(id, label){
     return '<div class="brk"><h2 style="display:flex;align-items:center;gap:8px">'+esc(title)+' '+nhTag()+'</h2>'
       +'<div style="padding:4px 14px 12px">'
       +'<div style="display:flex;align-items:center;gap:11px;padding:4px 0 6px">'
-      +'<span class="av" style="'+avRing(col)+'">'+esc(inits(mv.name))+'</span>'
+      + nhFace(mv.name,col,34)   /* n183 */
       +'<span class="nm"><b style="font-size:15.5px">'+esc(mv.name)+'</b><span>'+esc(mv.club?nhBoardName(mv.club):"")+'</span></span>'
       +'<span class="val"><b class="'+(up?"up":"dn")+'" style="font-size:18px">'+(up?"\u25b2 +":"\u25bc ")+Math.round(mv.move)+'</b><span>this week</span></span></div>'
       +body+'</div></div>';
@@ -11352,8 +11356,11 @@ W.mePair=function(name,col){
     var A=meAxes(me,st,all), d=A.donut;
     var key=function(c,t,v){ return '<span><span style="display:inline-block;width:8px;height:8px;background:'+c+';border-radius:2px"></span> '+t+' '+v+'</span>'; };
     return '<div style="margin:12px 12px 0">'
-      +'<button type="button" onclick="window.meChartToggle(this)" style="width:100%;text-align:left;background:#f6f0fa;'
-      +'border:1.5px solid #e6ddec;border-radius:10px;padding:11px 14px;font-size:14px;font-weight:800;color:var(--nhc,#6c3483);'
+      /* n182: it opens, so it wears the same deeper shade as the other bands that open */
+      +'<button type="button" onclick="window.meChartToggle(this)" style="width:100%;text-align:left;'
+      +'background:color-mix(in srgb,var(--nhc,#6c3483) 38%,#fff);'
+      +'border:1.5px solid color-mix(in srgb,var(--nhc,#6c3483) 50%,#fff);border-radius:10px;padding:11px 14px;font-size:14px;font-weight:800;'
+      +'color:color-mix(in srgb,var(--nhc,#6c3483) 82%,#000);'
       +'cursor:pointer;font-family:inherit">\u25B8 Chart Snapshot</button>'
       +'<div id="meChartSnap" style="display:none;background:#f6f0fa;border-radius:12px;padding:14px;margin-top:10px">'
       +'<div style="font-weight:800;color:var(--nhc,#6c3483);font-size:15px;text-align:center;margin-bottom:2px">Overall Performance</div>'
@@ -11427,6 +11434,8 @@ W.mePair=function(name,col){
     w.innerHTML='<div class="band" style="background:linear-gradient(135deg,'+first+','+nhDeep(first)+')">'+nhMark("Pair")+'<h1>'+esc(pair)+'</h1></div>'
       +'<div style="padding:16px 14px;font-size:13px;color:#5f5770">Reading the record\u2026</div>'+homeBar();
     var B=SBREST(), P=W.PLAT.pool, like="*"+encodeURIComponent(pair)+"*";
+    /* n182: the faces map, so the two people on a pair page wear their photos like everywhere else */
+    nhFaces().then(function(){
     Promise.all([
       fetch(B+"plat_player_results?pool_id=eq."+P+"&discipline=eq.padel&name=eq."+encodeURIComponent(pair)
             +"&select=name,gender,club_id,current_rating,initial_rating,sets_played,sets_won,game_diff_per_set&limit=20").then(J).catch(function(){ return []; }),
@@ -11500,6 +11509,7 @@ W.mePair=function(name,col){
         ? nhMatchesBrk({matches:ms},500,"board",names[0],false)
         : '<div class="brk">'+nhLimeBar("Matches")+meEmpty("This pair has not played yet.")+'</div>';
       w.innerHTML=h+homeBar();
+    });
     });
   }
   function newMePage(){
@@ -11754,7 +11764,7 @@ W.mePair=function(name,col){
       var pid=p?Number(p.id||p.individual_id||0):0;
       return '<button onclick="window.meDoClaim('+pid+',&quot;'+String(n).replace(/"/g,'')+'&quot;)" '
         +'style="display:flex;width:100%;gap:10px;align-items:center;background:none;border:none;border-bottom:1px solid #efeaf5;padding:10px 12px;font:inherit;cursor:pointer;text-align:left">'
-        +'<span class="av" style="'+avRing(p&&p.club_id?clubPal(p.club_id)[0]:"#6c3483")+'">'+esc(inits(n))+'</span>'
+        + nhFace(n, (p&&p.club_id)?clubPal(p.club_id)[0]:"#6c3483", 34)   /* n183 */
         +'<span class="nm"><b>'+esc(n)+'</b><span>'+((p&&p.current_rating)?("rating "+Math.round(p.current_rating)):"no rating yet")+'</span></span></button>';
     }).join("")||'<div style="padding:12px;font-size:12.5px;color:#5f5770">No name like that here.</div>';
     /* the club's contact, for anyone who is not on the list */
@@ -12331,6 +12341,7 @@ W.mePair=function(name,col){
   /* ---- profiles: the group's Team Profile page, drawn here in the records skin ------------------------------ */
   function recProfiles(sc,w){
     w.innerHTML = recBand(sc,"Member profiles", sc.base, "Records") + recPanel(sc,"Finding who has played\u2026","") + homeBar();
+    nhFaces();   /* n182: so the rows can wear real faces the moment the map arrives */
     var B=SBREST();
     /* n92: THE REGISTER'S PROFILES CARRY THEIR STATS. The pool-wide view names everybody but does not carry a
        rating for people outside the region you came from, so external members showed with empty pills. Both
@@ -12407,7 +12418,10 @@ W.mePair=function(name,col){
       var who=String(p.full_name).replace(/'/g,"\\'");
       return '<button data-plat-keep="1" onclick="window.nhOpenProfile(\''+who+'\')" style="display:flex;width:100%;align-items:center;gap:10px;'
         +'padding:10px 13px;border:none;border-top:1px solid #f0ecf6;background:#fff;font:inherit;text-align:left;cursor:pointer">'
-        +'<span style="width:26px;height:26px;border-radius:50%;'+avRing(W.__recCol||"#6c3483")+'box-sizing:border-box;display:grid;place-items:center;font-weight:800;font-size:11.5px;flex:0 0 26px">'+esc(String(p.full_name||"?")[0])+'</span>'
+        /* n182: a claimed member wears their photo here; everyone else keeps their letter */
+        +'<span style="'+((FACES||{})[p.full_name]
+            ? ('width:26px;height:26px;border-radius:50%;flex:0 0 26px;background:#fff url('+(FACES||{})[p.full_name]+') center/cover no-repeat')
+            : ('width:26px;height:26px;border-radius:50%;'+avRing(W.__recCol||"#6c3483")+'box-sizing:border-box;display:grid;place-items:center;font-weight:800;font-size:11.5px;flex:0 0 26px'))+'">'+esc(String(p.full_name||"?")[0])+'</span>'
         +'<span style="flex:1;min-width:0"><span style="display:block;font-size:14px;font-weight:700;color:#241d33;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+esc(p.full_name)+'</span>'
         +(boards?('<span style="display:block;margin-top:2px">'+boards+'</span>'):'')+'</span>'
         +'<span style="white-space:nowrap;flex-shrink:0">'
