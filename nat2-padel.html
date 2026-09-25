@@ -3688,7 +3688,7 @@ const CLUB_NAME = _club.name;  // shown in the logo as "OPR · <name>"
     link.setAttribute('href', href);
   }catch(e){ /* install stays on the static manifest — no functional impact */ }
 })();
-const OPR_VERSION = "OPR-DOUBLES v2026.09.03-56 · NAT fork n197 (no voice) (of PLAT p117)";  // MANUAL PAIR CREATION REMOVED FROM ADMIN: Create a pair, Bulk create pairs and Re-derive all pairs are gone (they only made match-less ghost pairs, and Re-derive rewrote every stored initial club-wide). Pairs are born automatically at match entry. Current pairs list untouched; the underlying JS is left in place unreferenced, so no other code path changes. Includes v47 (set-score fix + double-tap guard) and all prior.
+const OPR_VERSION = "OPR-DOUBLES v2026.09.03-56 · NAT fork n198 (no voice) (of PLAT p117)";  // MANUAL PAIR CREATION REMOVED FROM ADMIN: Create a pair, Bulk create pairs and Re-derive all pairs are gone (they only made match-less ghost pairs, and Re-derive rewrote every stored initial club-wide). Pairs are born automatically at match entry. Current pairs list untouched; the underlying JS is left in place unreferenced, so no other code path changes. Includes v47 (set-score fix + double-tap guard) and all prior.
 // Explanation shown above the individual ladder. Open on load so it's read; collapsible
 // (state kept for the session) and scrolls away. Mechanics only — no outcome framing, so
 // members aren't nudged away from playing stronger opponents. Every clause maps to a real
@@ -11611,7 +11611,9 @@ W.mePair=function(name,col){
         +'<span style="margin-left:auto;display:flex;gap:7px">'
         +(lvl?chip("level",lvl):'')
         +(rk?chip("rank",rk.rank+'<span style="font-weight:600;opacity:.8;font-size:11px"> / '+rk.of+'</span>'):'')
-        +(move!=null?chip("move",(move>0?"+":"")+move):'')
+        /* n198: the move chip reads by its sign */
+        +(move!=null?('<span style="display:inline-flex;flex-direction:column;align-items:center;border:1.5px solid '+(move<0?"#c0392b":"#1e8449")+';border-radius:12px;padding:4px 11px;color:'+(move<0?"#c0392b":"#1e8449")+'">'
+           +'<b style="font-size:15px">'+(move>0?"+":"")+move+'</b><span style="font-size:9.5px;letter-spacing:.08em;text-transform:uppercase;opacity:.85">move</span></span>'):'')
         +'</span></div>';
       h+='<div class="five">'
         + [[ms.length,"Matches"],[sets,"Sets played"],[won,"Sets won"],[pct!=null?(pct+"%"):"\u2014","Win %"],[gd!=null?((+gd>0?"+":"")+gd):"\u2014","Game diff/set"]]
@@ -13594,7 +13596,9 @@ W.nhOpenPair=function(name){
         // and its partnership pills, and it follows the stored colour if you re-colour the group.
         el.innerHTML='<span style="color:#7a6f8a;margin-right:8px;font-weight:600">Overall move</span>'
           +others.map(function(o){
-            return '<span title="'+esc(o.name)+'" style="display:inline-block;background:'+o.colour+';color:#fff;'
+            /* n198: a move reads by its sign — green for a gain, red for a loss. The group's own colour is
+               already carried by the dot beneath, so the pill can say something the dot cannot. */
+            return '<span title="'+esc(o.name)+'" style="display:inline-block;background:'+((o.mv||0)<0?"#c0392b":"#1e8449")+';color:#fff;'
               +'border-radius:99px;padding:3px 12px;font-weight:800;font-size:13px;margin:0 6px 4px 0;'
               +'box-shadow:0 1px 3px rgba(0,0,0,.15)">'+(o.mv>0?"+":"")+o.mv+'</span>'; }).join("")
           +'<div style="margin-top:3px;font-size:12px;color:#7a6f8a">'
