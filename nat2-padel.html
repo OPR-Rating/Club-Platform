@@ -893,8 +893,15 @@
       if(W.NEWAPP && CID>0 && !/[?&]go=/.test(String(location.search||""))){
         var first=!sessionStorage.getItem("nh_visit");
         sessionStorage.setItem("nh_visit","1");
-        if(first && localStorage.getItem("opr_home_me_"+CID)==="1" && localStorage.getItem("opr_me_"+CID)){
-          location.replace((location.pathname.split("/").pop()||"nat-padel.html")+"?club="+CID+"&go=me");
+        var page=(location.pathname.split("/").pop()||"nat-padel.html");
+        /* n195: OPEN ON MY GROUP. The same idea as "open on my page", with a board to go to instead of a flag.
+           Only on the first landing of a visit, and never over a page that asks for something. */
+        var homeGroup=null; try{ homeGroup=localStorage.getItem("opr_home_group_"+CID); }catch(e){}
+        if(first && homeGroup && /^[0-9]+$/.test(homeGroup) && Number(homeGroup)!==Number(CID)){
+          location.replace(page+"?club="+homeGroup);
+        }
+        else if(first && localStorage.getItem("opr_home_me_"+CID)==="1" && localStorage.getItem("opr_me_"+CID)){
+          location.replace(page+"?club="+CID+"&go=me");
         }
       } else { try{ sessionStorage.setItem("nh_visit","1"); }catch(e){} }
     }catch(e){}
@@ -3681,7 +3688,7 @@ const CLUB_NAME = _club.name;  // shown in the logo as "OPR · <name>"
     link.setAttribute('href', href);
   }catch(e){ /* install stays on the static manifest — no functional impact */ }
 })();
-const OPR_VERSION = "OPR-DOUBLES v2026.09.03-56 · NAT fork n194 (no voice) (of PLAT p117)";  // MANUAL PAIR CREATION REMOVED FROM ADMIN: Create a pair, Bulk create pairs and Re-derive all pairs are gone (they only made match-less ghost pairs, and Re-derive rewrote every stored initial club-wide). Pairs are born automatically at match entry. Current pairs list untouched; the underlying JS is left in place unreferenced, so no other code path changes. Includes v47 (set-score fix + double-tap guard) and all prior.
+const OPR_VERSION = "OPR-DOUBLES v2026.09.03-56 · NAT fork n195 (no voice) (of PLAT p117)";  // MANUAL PAIR CREATION REMOVED FROM ADMIN: Create a pair, Bulk create pairs and Re-derive all pairs are gone (they only made match-less ghost pairs, and Re-derive rewrote every stored initial club-wide). Pairs are born automatically at match entry. Current pairs list untouched; the underlying JS is left in place unreferenced, so no other code path changes. Includes v47 (set-score fix + double-tap guard) and all prior.
 // Explanation shown above the individual ladder. Open on load so it's read; collapsible
 // (state kept for the session) and scrolls away. Mechanics only — no outcome framing, so
 // members aren't nudged away from playing stronger opponents. Every clause maps to a real
@@ -12307,6 +12314,33 @@ W.mePair=function(name,col){
     },400);
     setTimeout(function(){ clearInterval(t); }, 120000);
   })();
+  /* n195: MAKE THIS MY HOME PAGE — on a group's own page, at the foot. The choice is this phone's, it belongs to
+     the region it was made in, and it falls back to the door if the group is no longer there. */
+  function homeGroupKey(){ return "opr_home_group_"+(W.PLAT.parentId||W.PLAT.cid); }
+  function homeGroupOn(){
+    try{ return String(localStorage.getItem(homeGroupKey())||"")===String(W.PLAT.cid); }catch(e){ return false; }
+  }
+  W.nhHomeGroupToggle=function(){
+    try{
+      if(homeGroupOn()) localStorage.removeItem(homeGroupKey());
+      else localStorage.setItem(homeGroupKey(), String(W.PLAT.cid));
+    }catch(e){}
+    var sw=document.getElementById("nhHomeSw"); if(!sw) return;
+    var on=homeGroupOn();
+    sw.style.background=on?"var(--nhc,#6c3483)":"#d8d2e2";
+    var knob=sw.querySelector("span"); if(knob) knob.style.left=on?"24px":"4px";
+  };
+  function nhHomeGroupRow(){
+    var on=homeGroupOn();
+    return '<div style="margin:14px 12px 0;display:flex;align-items:center;gap:10px;background:#fff;border:1px solid #e6e0ee;'
+      +'border-radius:12px;padding:11px 13px">'
+      +'<span style="flex:1;font-size:13.5px;font-weight:700;color:#241d33">Make this my home page'
+      +'<span style="display:block;font-size:11.5px;font-weight:400;color:#6b6585">OPR opens here instead of the region\u2019s door</span></span>'
+      +'<button data-plat-keep="1" id="nhHomeSw" onclick="window.nhHomeGroupToggle()" style="flex:0 0 46px;height:26px;border:none;'
+      +'border-radius:99px;position:relative;cursor:pointer;background:'+(on?"var(--nhc,#6c3483)":"#d8d2e2")+'">'
+      +'<span style="position:absolute;top:4px;left:'+(on?"24px":"4px")+';width:18px;height:18px;border-radius:50%;background:#fff;'
+      +'box-shadow:0 1px 2px rgba(0,0,0,.25);transition:left .15s"></span></button></div>';
+  }
   W.mePartToggle=function(){
     var b=document.getElementById("mePartBody"), c=document.getElementById("mePartCaret"); if(!b) return;
     var open=b.style.display==="none"; b.style.display=open?"block":"none"; if(c) c.classList.toggle("open",open);
@@ -13333,6 +13367,9 @@ W.nhOpenPair=function(name){
         + nhActions(ink,deep)
         + nhFormBrk(d,ink,"board")
         + '<div class="cols">'+nhCharts(d,ink)+nhMoversBrk(d,ink,"board") + nhMatchesBrk(d,25,"board") + nhTourBrk(d) + nhCardBrk(d)+'</div>'
+        /* n195: the switch sits at the foot of the group's own page, where somebody decides this is their group */
+        + nhHomeGroupRow()
+        + nhHomeGroupRow()          /* n195: make this my home page */
         + nhFoot(ink,deep,"none")   /* n59: admin lives on the club door only */
 
         + homeBar();
@@ -14687,7 +14724,9 @@ W.nhOpenPair=function(name){
     // Watch the PAGE: each parent puts the profile card on a different screen under a different id, and
     // picking one is how earlier passes kept missing whichever screen was open.
     var card=document.body; if(!card) return;
-    var col=(W.PLAT.colour||clubPal(W.PLAT.cid)[0]), deep=darken(col,0.42);
+    /* n195: the tiles, their figures and the snapshot bar work in the readable ink — a pale club colour left
+       them a faint wash with faint numbers on it. The card above them keeps the club's true colour. */
+    var col=inkSafe(W.PLAT.colour||clubPal(W.PLAT.cid)[0]), deep=darken(col,0.42);
     if(String(col||"").toLowerCase()==="#6c3483") return;   // the product's own colour: keep the parent's exact shades
     var rgb=(function(h){ try{ var n=parseInt(h.slice(1),16); return ((n>>16)&255)+","+((n>>8)&255)+","+(n&255); }catch(e){ return "108,52,131"; } })(col);
     var st=document.getElementById("platBoardWash")||document.createElement("style");
@@ -14728,6 +14767,7 @@ W.nhOpenPair=function(name){
     }catch(e){}
   }
   function tintTiles(root, col){
+    col=inkSafe(col);   /* n195: the wash and its figures must read, whatever colour the club chose */
     oneRowTiles(root);
     try{
       var rgb=(function(h){ var n=parseInt(h.slice(1),16); return ((n>>16)&255)+","+((n>>8)&255)+","+(n&255); })(col);
