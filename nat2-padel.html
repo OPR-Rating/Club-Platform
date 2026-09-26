@@ -3688,7 +3688,7 @@ const CLUB_NAME = _club.name;  // shown in the logo as "OPR · <name>"
     link.setAttribute('href', href);
   }catch(e){ /* install stays on the static manifest — no functional impact */ }
 })();
-const OPR_VERSION = "OPR-DOUBLES v2026.09.03-56 · NAT fork n202 (no voice) (of PLAT p117)";  // MANUAL PAIR CREATION REMOVED FROM ADMIN: Create a pair, Bulk create pairs and Re-derive all pairs are gone (they only made match-less ghost pairs, and Re-derive rewrote every stored initial club-wide). Pairs are born automatically at match entry. Current pairs list untouched; the underlying JS is left in place unreferenced, so no other code path changes. Includes v47 (set-score fix + double-tap guard) and all prior.
+const OPR_VERSION = "OPR-DOUBLES v2026.09.03-56 · NAT fork n203 (no voice) (of PLAT p117)";  // MANUAL PAIR CREATION REMOVED FROM ADMIN: Create a pair, Bulk create pairs and Re-derive all pairs are gone (they only made match-less ghost pairs, and Re-derive rewrote every stored initial club-wide). Pairs are born automatically at match entry. Current pairs list untouched; the underlying JS is left in place unreferenced, so no other code path changes. Includes v47 (set-score fix + double-tap guard) and all prior.
 // Explanation shown above the individual ladder. Open on load so it's read; collapsible
 // (state kept for the session) and scrolls away. Mechanics only — no outcome framing, so
 // members aren't nudged away from playing stronger opponents. Every clause maps to a real
@@ -12334,24 +12334,40 @@ W.mePair=function(name,col){
     try{
       var B=SBREST(), boards=(W.PLAT.myBoards&&W.PLAT.myBoards.length)?W.PLAT.myBoards:[W.PLAT.cid];
       var inList="club_id=in.("+boards.join(",")+")";
-      var esc2=encodeURIComponent("*"+me+"*");
-      return fetch(B+"plat_matches?"+inList+"&discipline=eq.padel&or=(t1p1.ilike."+esc2+",t2p1.ilike."+esc2+")"
+      /* n203: every match of these boards, oldest first — the bands have to be judged on the ratings as they
+         stood ON THE DAY, which means replaying the season, exactly as the tests did. */
+      return fetch(B+"plat_matches?"+inList+"&discipline=eq.padel"
         +"&select=id,club_id,match_date,t1p1,t1p2,t2p1,t2p2,t1_sets,t2_sets,t1_games,t2_games,display_t1,display_t2"
-        +"&order=match_date.desc&limit=1000").then(J).catch(function(){ return null; });
+        +"&order=match_date.asc,id.asc&limit=4000").then(J).catch(function(){ return null; });
     }catch(e){ return Promise.resolve(null); }
   }
   function meLiftBlock(me, all, col){
     try{
-      var people = {}, i;
-      (all.people||[]).forEach(function(p){ if(p.full_name) people[p.full_name] = Number(p.current_rating||p.seed_rating||1500); });
-      var rt = function(n){ return people[n]==null ? 1500 : people[n]; };
+      /* n203: start everyone at their seed and walk the season forward, so a partner is judged by what they were
+         rated THAT DAY. Using today's ratings put nearly every match in one band for a player whose own rating has
+         since moved. */
+      var seeds = {};
+      (all.people||[]).forEach(function(p){
+        if(p.full_name) seeds[p.full_name] = Number(p.seed_rating || p.pool_seed || 1500);
+      });
+      var live = {};
+      var rt = function(n){
+        if(live[n]==null) live[n] = (seeds[n]==null ? 1500 : seeds[n]);
+        return live[n];
+      };
       var w6040 = function(a,b){ return Math.max(a,b)*0.6 + Math.min(a,b)*0.4; };
+      var move = function(L,M,s1,s2,g1,g2){
+        var N=1/(1+Math.pow(10,(M-L)/250)), ts=s1+s2, tg=g1+g2;
+        var O=Math.max(0.05,Math.min(0.95,(ts?s1/ts:0.5)*0.6+(tg?g1/tg:0.5)*0.4));
+        var raw=(O>0.5?1:-1)*(2+Math.abs(O-0.5)*2*4+Math.abs(O-N)*8)*Math.max(1,ts);
+        var cap=10*Math.max(1,ts);
+        return Math.max(-cap, Math.min(cap, raw));
+      };
       var bands = {higher:[], even:[], lower:[]};
       (all.matches||[]).forEach(function(m){
         var A = nhSides(m), t1 = String(A[0]||"").split(" & "), t2 = String(A[1]||"").split(" & ");
         if(t1.length!==2 || t2.length!==2) return;
         var onT1 = (t1.indexOf(me)>=0), onT2 = (t2.indexOf(me)>=0);
-        if(!onT1 && !onT2) return;
         var mine = onT1 ? t1 : t2, theirs = onT1 ? t2 : t1;
         var mate = (mine[0]===me) ? mine[1] : mine[0];
         var s1 = Number(m.t1_sets)||0, s2 = Number(m.t2_sets)||0;
@@ -12360,14 +12376,23 @@ W.mePair=function(name,col){
         var myGames = onT1 ? g1 : g2, theirGames = onT1 ? g2 : g1;
         var ts = mySets+theirSets, tg = myGames+theirGames;
         if(!ts && !tg) return;
+        /* n203: every match moves its four players, whether or not this member was in it — that is what makes the
+           ratings on the day right. Only the member's own matches are recorded below. */
+        var La = w6040(rt(t1[0]), rt(t1[1])), Mb = w6040(rt(t2[0]), rt(t2[1]));
+        var d = move(La, Mb, Number(m.t1_sets)||0, Number(m.t2_sets)||0, Number(m.t1_games)||0, Number(m.t2_games)||0);
         var got = Math.max(0.05, Math.min(0.95,
               (ts ? mySets/ts : 0.5)*0.6 + (tg ? myGames/tg : 0.5)*0.4));
-        var us = w6040(rt(me), rt(mate)), them = w6040(rt(theirs[0]), rt(theirs[1]));
-        var exp = 1/(1+Math.pow(10,(them-us)/250));
-        var gap = rt(mate) - rt(me);
-        var band = (gap>50) ? "higher" : ((gap<-50) ? "lower" : "even");
+        var us=0, them=0, exp=0, gap=0, band="even";
+        if(onT1 || onT2){
+          us = w6040(rt(me), rt(mate)); them = w6040(rt(theirs[0]), rt(theirs[1]));
+          exp = 1/(1+Math.pow(10,(them-us)/250));
+          gap = rt(mate) - rt(me);
+          band = (gap>50) ? "higher" : ((gap<-50) ? "lower" : "even");
+        }
         /* n202: a SET is the unit OPR rates in — a three-setter counts three times, not once */
-        bands[band].push({d:(got-exp), sets:Math.max(1, ts)});
+        if(onT1 || onT2) bands[band].push({d:(got-exp), sets:Math.max(1, ts)});
+        live[t1[0]] = rt(t1[0]) + d; live[t1[1]] = rt(t1[1]) + d;
+        live[t2[0]] = rt(t2[0]) - d; live[t2[1]] = rt(t2[1]) - d;
       });
       var setsOf = function(v){ var n=0; for(var k=0;k<v.length;k++) n+=v[k].sets; return n; };
       var total = setsOf(bands.higher) + setsOf(bands.even) + setsOf(bands.lower);
