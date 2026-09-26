@@ -3688,7 +3688,7 @@ const CLUB_NAME = _club.name;  // shown in the logo as "OPR · <name>"
     link.setAttribute('href', href);
   }catch(e){ /* install stays on the static manifest — no functional impact */ }
 })();
-const OPR_VERSION = "OPR-DOUBLES v2026.09.03-56 · NAT fork n206 (no voice) (of PLAT p117)";  // MANUAL PAIR CREATION REMOVED FROM ADMIN: Create a pair, Bulk create pairs and Re-derive all pairs are gone (they only made match-less ghost pairs, and Re-derive rewrote every stored initial club-wide). Pairs are born automatically at match entry. Current pairs list untouched; the underlying JS is left in place unreferenced, so no other code path changes. Includes v47 (set-score fix + double-tap guard) and all prior.
+const OPR_VERSION = "OPR-DOUBLES v2026.09.03-56 · NAT fork n207 (no voice) (of PLAT p117)";  // MANUAL PAIR CREATION REMOVED FROM ADMIN: Create a pair, Bulk create pairs and Re-derive all pairs are gone (they only made match-less ghost pairs, and Re-derive rewrote every stored initial club-wide). Pairs are born automatically at match entry. Current pairs list untouched; the underlying JS is left in place unreferenced, so no other code path changes. Includes v47 (set-score fix + double-tap guard) and all prior.
 // Explanation shown above the individual ladder. Open on load so it's read; collapsible
 // (state kept for the session) and scrolls away. Mechanics only — no outcome framing, so
 // members aren't nudged away from playing stronger opponents. Every clause maps to a real
@@ -14982,7 +14982,11 @@ W.nhOpenPair=function(name){
     }
   }
   function watchAndPaint(colFn){
-    platSchedule(function(){ var c=colFn(); if(c) repaint(document.body, c); });
+    /* n207: THE REPAINT WORKS IN THE READABLE INK. It was handed the club's raw colour, so on a pale club every
+       button your original app draws came out pale with white words on it — the Make tonight's courts button
+       measured 1.0 against white, which is invisible. The banners keep the true colour; everything the repaint
+       touches is interface. */
+    platSchedule(function(){ var c=colFn(); if(c) repaint(document.body, inkSafe(c)); });
     platRun();
   }
   // one row of five, on every screen and in every mode
@@ -15048,7 +15052,10 @@ W.nhOpenPair=function(name){
     return courts;
   }
   W.platMakeCourts=makeCourts;   // exposed so the maths can be checked outside the page
-  function sessCol(){ return (W.PLAT.cid && W.PLAT.colour) ? W.PLAT.colour : "#6c3483"; }
+  /* n207: THE COURT CARD AND THE SCORE ENTRY WORK IN THE READABLE INK. This one function feeds both screens'
+     tints and their primary buttons, so on a pale club "Make tonight's courts" and "Next: Enter Player Names"
+     came out white on pale lilac. The banners above them keep the club's true colour. */
+  function sessCol(){ return (W.PLAT.cid && W.PLAT.colour) ? inkSafe(W.PLAT.colour) : "#6c3483"; }
   function sessRgb(){ var h=sessCol(); try{ var n=parseInt(h.slice(1),16); return ((n>>16)&255)+","+((n>>8)&255)+","+(n&255); }catch(e){ return "108,52,131"; } }
   function sessStyle(){
     var col=sessCol(), rgb=sessRgb(), deep=darken(col,0.42);
@@ -15442,7 +15449,8 @@ W.nhOpenPair=function(name){
      (the product's own purple) is left exactly as the parent draws it. */
   function entryTint(){
     if(!W.PLAT.cid) return;
-    var col=(W.PLAT.colour||clubPal(W.PLAT.cid)[0]); if(String(col||"").toLowerCase()==="#6c3483") return;
+    /* n207: the readable ink, for the same reason as the court card — these are buttons with white words on them */
+    var col=inkSafe(W.PLAT.colour||clubPal(W.PLAT.cid)[0]); if(String(col||"").toLowerCase()==="#6c3483") return;
     var rgb=sessRgb(), deep=darken(col,0.42), mid=darken(col,0.25);
     var st=document.getElementById("platEntryTint")||document.createElement("style"); st.id="platEntryTint";
     st.textContent=
@@ -15562,7 +15570,13 @@ W.nhOpenPair=function(name){
           /* n192: every rank disc in the board's ink. Gold and silver for the top two belong on a podium; in a
              ladder they made the first three rows read as three different boards. */
           +".rank-badge,.rank-badge.rank-1,.rank-badge.rank-2,.rank-badge.rank-3{background:"+cc+" !important;color:#fff !important}"
-          +".rank{color:"+cc+" !important}";
+          +".rank{color:"+cc+" !important}"
+          /* n207: the buttons your original app styles by CLASS keep their own colour — the repaint only rewrites
+             inline styles, so on a pale club "Next: Enter Player Names" and "Make tonight's courts" came out white
+             on pale lilac. They take the readable ink, like everything else. */
+          +".btn-primary,button.btn-primary,.btn.btn-primary{background:"+cc+" !important;color:#fff !important}"
+          +".menu-btn{border-color:"+cc+" !important;color:"+cc+" !important}"
+          +".ac-tab.active,.tm-nav button.active{background:"+cc+" !important;color:#fff !important}";
         if(!st.parentNode) document.head.appendChild(st);
       }
     }catch(e){}
