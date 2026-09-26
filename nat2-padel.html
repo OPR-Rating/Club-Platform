@@ -3688,7 +3688,7 @@ const CLUB_NAME = _club.name;  // shown in the logo as "OPR · <name>"
     link.setAttribute('href', href);
   }catch(e){ /* install stays on the static manifest — no functional impact */ }
 })();
-const OPR_VERSION = "OPR-DOUBLES v2026.09.03-56 · NAT fork n210 (no voice) (of PLAT p117)";  // MANUAL PAIR CREATION REMOVED FROM ADMIN: Create a pair, Bulk create pairs and Re-derive all pairs are gone (they only made match-less ghost pairs, and Re-derive rewrote every stored initial club-wide). Pairs are born automatically at match entry. Current pairs list untouched; the underlying JS is left in place unreferenced, so no other code path changes. Includes v47 (set-score fix + double-tap guard) and all prior.
+const OPR_VERSION = "OPR-DOUBLES v2026.09.03-56 · NAT fork n211 (no voice) (of PLAT p117)";  // MANUAL PAIR CREATION REMOVED FROM ADMIN: Create a pair, Bulk create pairs and Re-derive all pairs are gone (they only made match-less ghost pairs, and Re-derive rewrote every stored initial club-wide). Pairs are born automatically at match entry. Current pairs list untouched; the underlying JS is left in place unreferenced, so no other code path changes. Includes v47 (set-score fix + double-tap guard) and all prior.
 // Explanation shown above the individual ladder. Open on load so it's read; collapsible
 // (state kept for the session) and scrolls away. Mechanics only — no outcome framing, so
 // members aren't nudged away from playing stronger opponents. Every clause maps to a real
@@ -9924,7 +9924,7 @@ async function clRemove(id, label){
            links here; back returns to the page that sent us. */
         if(go==="tsheet" && typeof loadTournamentSheet==="function"){
           var tq=new URLSearchParams(location.search), tn=tq.get("tn")||"", dv=tq.get("div")||null;
-          if(tn){ try{ TOURNAMENT_EVENT=tn; }catch(e){} loadTournamentSheet(tn, dv); return true; }
+          if(tn){ try{ TOURNAMENT_EVENT=tn; }catch(e){} try{ nhTourColour(tn); }catch(e){} loadTournamentSheet(tn, dv); return true; }
         }
         if(go==="tournaments" && typeof loadActiveTournaments==="function"){ loadActiveTournaments(); return true; }
         if(go==="tournaments" && typeof showScreen==="function"){ if(typeof loadActiveTournaments==="function"){ try{ loadActiveTournaments(); }catch(e){} } showScreen("tournamentScreen"); return true; }
@@ -10571,6 +10571,33 @@ async function clRemove(id, label){
   /* n84: ALL THE TOURNAMENTS, ROLLED UP. Four running at once filled the page; now one bracket lists them and
      each opens on a tap. */
   /* n144: the door's tournament list opens the tournament itself */
+  /* n211: A TOURNAMENT BELONGS TO A GROUP. Opened from the region's door the sheet kept the region's purple, even
+     though the tournament is a group's. This finds the tournament's own club and dresses the page in that group's
+     colour — the banner in its true colour, everything else in the readable ink. */
+  function nhTourColour(name){
+    try{
+      var tours=(W.__nhTours||[]).concat(((NEW.data||{}).tour)||[]);
+      var t=tours.filter(function(x){ return x && String(x.name||"")===String(name); })[0];
+      var cid=t&&t.club_id;
+      if(!cid || Number(cid)===Number(W.PLAT.cid)) return;
+      var raw=clubRaw(cid);
+      if(!raw) return;
+      W.__nhTourCol=raw;
+      nhInk(raw);
+      nhHeaderSkin(raw, nhDeep(raw));
+      /* the parent's own screens read W.PLAT.colour, so the tints follow the tournament's group too */
+      try{ W.PLAT.colour=raw; if(W.platInkRefresh) W.platInkRefresh(); }catch(e){}
+      /* the pill beside the title should name the GROUP whose tournament this is, not the region */
+      try{
+        var nm=(W.PLAT.clubs||[]).filter(function(c){ return Number(c.id)===Number(cid); })[0];
+        if(nm) setTimeout(function(){
+          var pill=document.querySelector(".screen.active .header .club-pill, .screen.active .header .chip, .screen.active .header span");
+          if(pill && /^[A-Za-z]/.test(pill.textContent||"")) pill.textContent=nm.name;
+        }, 600);
+      }catch(e){}
+    }catch(e){}
+  }
+  W.nhTourColour=nhTourColour;
   W.nhOpenTour=function(k){
     var t=(W.__nhTours||[])[k]; if(!t) return W.nhGo("tournaments");
     var club=t.club_id||W.PLAT.cid;
@@ -15565,7 +15592,9 @@ W.nhOpenPair=function(name){
     /* n27: THE BOARD'S COLOUR, IN THE STYLESHEET TOO. The repainter rewrites inline styles, but the ladder's
        rank badges take their purple from a CSS rule, so on a blue group they stayed OPR purple — the colour is
        how you know which board you are on, so it has to hold everywhere. */
-    try{
+    /* n211: re-runnable, because a tournament opened from the region's door changes the colour after boot */
+    W.platInkRefresh=function(){
+     try{
       /* n192: this runs for OPR purple too — the rank discs were gold, silver and bronze there, so the top three
          rows of a ladder read as three different boards. */
       if(W.PLAT.cid){
@@ -15590,7 +15619,9 @@ W.nhOpenPair=function(name){
           +".ac-tab.active,.tm-nav button.active{background:"+cc+" !important;color:#fff !important}";
         if(!st.parentNode) document.head.appendChild(st);
       }
-    }catch(e){}
+     }catch(e){}
+    };
+    W.platInkRefresh();
     try{ if(W.PLAT.cid) localStorage.setItem("plat_org_of_club_"+W.PLAT.cid, W.PLAT.orgId ? "1" : "0"); }catch(e){}
     fixManifest();
     var ht=document.getElementById("heroTitle");
