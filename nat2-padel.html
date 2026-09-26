@@ -3688,7 +3688,7 @@ const CLUB_NAME = _club.name;  // shown in the logo as "OPR · <name>"
     link.setAttribute('href', href);
   }catch(e){ /* install stays on the static manifest — no functional impact */ }
 })();
-const OPR_VERSION = "OPR-DOUBLES v2026.09.03-56 · NAT fork n211 (no voice) (of PLAT p117)";  // MANUAL PAIR CREATION REMOVED FROM ADMIN: Create a pair, Bulk create pairs and Re-derive all pairs are gone (they only made match-less ghost pairs, and Re-derive rewrote every stored initial club-wide). Pairs are born automatically at match entry. Current pairs list untouched; the underlying JS is left in place unreferenced, so no other code path changes. Includes v47 (set-score fix + double-tap guard) and all prior.
+const OPR_VERSION = "OPR-DOUBLES v2026.09.03-56 · NAT fork n212 (no voice) (of PLAT p117)";  // MANUAL PAIR CREATION REMOVED FROM ADMIN: Create a pair, Bulk create pairs and Re-derive all pairs are gone (they only made match-less ghost pairs, and Re-derive rewrote every stored initial club-wide). Pairs are born automatically at match entry. Current pairs list untouched; the underlying JS is left in place unreferenced, so no other code path changes. Includes v47 (set-score fix + double-tap guard) and all prior.
 // Explanation shown above the individual ladder. Open on load so it's read; collapsible
 // (state kept for the session) and scrolls away. Mechanics only — no outcome framing, so
 // members aren't nudged away from playing stronger opponents. Every clause maps to a real
@@ -15617,10 +15617,48 @@ W.nhOpenPair=function(name){
           +".btn-primary,button.btn-primary,.btn.btn-primary{background:"+cc+" !important;color:#fff !important}"
           +".menu-btn{border-color:"+cc+" !important;color:"+cc+" !important}"
           +".ac-tab.active,.tm-nav button.active{background:"+cc+" !important;color:#fff !important}";
+        st.textContent += platInkSweep(cc);
         if(!st.parentNode) document.head.appendChild(st);
       }
      }catch(e){}
     };
+
+    /* n212: EVERY PURPLE RULE IN THE PARENT'S STYLESHEET, NOT A LIST OF THEM. Thirty-six classes hardcode
+       #6c3483 — .bkt-title, .team-label, .winner, .seed, .score, .tm-divtag, .section-header and the rest — which
+       is why a tournament's rounds and standings stayed purple on a blue group however many single rules we added.
+       This walks the parent's own rules once, and for any rule that mentions the product purple it writes the same
+       rule again in the board's ink. New purple rules are covered automatically. */
+    function platInkSweep(cc){
+      var deep=darken(cc,0.42), out=[], seen=0;
+      var PUR=/#6c3483|#6C3483|rgb\(108,\s*52,\s*131\)|rgba\(108,\s*52,\s*131/g;
+      var DEEP=/#3a1d6e|#3A1D6E|rgb\(58,\s*29,\s*110\)/g;
+      try{
+        for(var i=0;i<document.styleSheets.length;i++){
+          var sheet=document.styleSheets[i];
+          if(sheet.ownerNode && /platInkCss|platEntryTint|platCardTint|nhSkin/.test(sheet.ownerNode.id||"")) continue;
+          var rules=null; try{ rules=sheet.cssRules; }catch(e){ continue; }
+          if(!rules) continue;
+          for(var j=0;j<rules.length;j++){
+            var r=rules[j];
+            if(!r || !r.selectorText || !r.style) continue;
+            var body=r.style.cssText;
+            if(!body || !PUR.test(body)){ PUR.lastIndex=0; continue; }
+            PUR.lastIndex=0;
+            var swapped=body.replace(PUR, function(m){ return /rgba/.test(m) ? "rgba("+hexRgb(cc) : cc; })
+                            .replace(DEEP, deep);
+            /* every declaration wins over the original, which sits in the same sheet */
+            swapped=swapped.split(";").filter(Boolean).map(function(d){ return d.trim()+" !important"; }).join(";");
+            out.push(r.selectorText+"{"+swapped+"}");
+            seen++;
+            if(seen>400) break;
+          }
+        }
+      }catch(e){}
+      return out.join("\n");
+    }
+    function hexRgb(h){
+      try{ var n=parseInt(String(h).slice(1),16); return ((n>>16)&255)+","+((n>>8)&255)+","+(n&255); }catch(e){ return "108,52,131"; }
+    }
     W.platInkRefresh();
     try{ if(W.PLAT.cid) localStorage.setItem("plat_org_of_club_"+W.PLAT.cid, W.PLAT.orgId ? "1" : "0"); }catch(e){}
     fixManifest();
