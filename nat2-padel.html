@@ -3688,7 +3688,7 @@ const CLUB_NAME = _club.name;  // shown in the logo as "OPR · <name>"
     link.setAttribute('href', href);
   }catch(e){ /* install stays on the static manifest — no functional impact */ }
 })();
-const OPR_VERSION = "OPR-DOUBLES v2026.09.03-56 · NAT fork n209 (no voice) (of PLAT p117)";  // MANUAL PAIR CREATION REMOVED FROM ADMIN: Create a pair, Bulk create pairs and Re-derive all pairs are gone (they only made match-less ghost pairs, and Re-derive rewrote every stored initial club-wide). Pairs are born automatically at match entry. Current pairs list untouched; the underlying JS is left in place unreferenced, so no other code path changes. Includes v47 (set-score fix + double-tap guard) and all prior.
+const OPR_VERSION = "OPR-DOUBLES v2026.09.03-56 · NAT fork n210 (no voice) (of PLAT p117)";  // MANUAL PAIR CREATION REMOVED FROM ADMIN: Create a pair, Bulk create pairs and Re-derive all pairs are gone (they only made match-less ghost pairs, and Re-derive rewrote every stored initial club-wide). Pairs are born automatically at match entry. Current pairs list untouched; the underlying JS is left in place unreferenced, so no other code path changes. Includes v47 (set-score fix + double-tap guard) and all prior.
 // Explanation shown above the individual ladder. Open on load so it's read; collapsible
 // (state kept for the session) and scrolls away. Mechanics only — no outcome framing, so
 // members aren't nudged away from playing stronger opponents. Every clause maps to a real
@@ -13391,15 +13391,15 @@ W.nhOpenPair=function(name){
            know with a lime edge; Groups is the quiet one beside it, and opens the list below. */
         + '<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:-30px 12px 0;position:relative;z-index:5">'
         /* n208: a deep blue for the one you press, edged in the lighter blue of its neighbour */
-        + '<button onclick="window.doorPick(\'score\')" style="background:linear-gradient(180deg,#123a6b,#0a2340);'
-        + 'border:2.5px solid #c6e400;border-radius:16px;padding:11px 10px;text-align:center;color:#fff;font:inherit;cursor:pointer;'
+        + '<button onclick="window.doorPick(\'score\')" style="background:linear-gradient(180deg,#17518f,#0d3160);'
+        + 'border:2.5px solid #5aabe3;border-radius:16px;padding:11px 10px;text-align:center;color:#fff;font:inherit;cursor:pointer;'
         + 'box-shadow:0 4px 14px rgba(12,10,40,.28)">'
         + '<span style="display:block;font-size:22px;line-height:1">+</span>'
         + '<span style="display:block;font-weight:800;font-size:15.5px;margin-top:3px;line-height:1.2">Enter your<br>match score</span></button>'
         /* n205: the pair read as one thing to do and one thing to choose — same blue, same lime edge */
         /* n208: keeps its lighter blue, edged in the deep blue of the one beside it */
         + '<button onclick="window.doorGroupsOpen()" style="background:linear-gradient(180deg,#5aabe3,#3b9ada);'
-        + 'border:2.5px solid #0a2340;border-radius:16px;padding:11px 10px;text-align:center;color:#fff;font:inherit;cursor:pointer;'
+        + 'border:2.5px solid #0d3160;border-radius:16px;padding:11px 10px;text-align:center;color:#fff;font:inherit;cursor:pointer;'
         + 'box-shadow:0 4px 14px rgba(12,10,40,.28)">'
         + '<span style="display:block;font-size:19px;line-height:1">\u2630</span>'
         + '<span style="display:block;font-weight:800;font-size:15.5px;margin-top:3px;line-height:1.2">Select your<br>active group'+(((W.__doorKids||[]).length===1)?'':'s')
