@@ -10129,8 +10129,7 @@ async function clRemove(id, label){
 
      +"#homeScreen{overflow:hidden}"
      +"#nh .band{color:#fff;padding:15px 16px 18px;position:sticky;top:0;z-index:20;overflow:hidden;border-radius:0}"
-     /* n201: on a DOOR the banner runs deeper, because the Enter-a-score button sits into it */
-     +"#nh .band.doorband{padding-bottom:46px;z-index:4}"   /* n154: square bottom edge */
+   /* n154: square bottom edge */
      /* n142: YOUR HEADER'S DESIGN ON EVERY HEADER. The picture is laid over each page's own colour and blended by
         luminosity — the arc, glow and streaks carry the page's colour (a group's, a region's, the register's
         charcoal). The door's OPR header (.opr) already carries the picture itself. */
@@ -11467,6 +11466,73 @@ W.mePair=function(name,col){
   function meEmpty(msg){
     return '<div style="padding:10px 14px 16px;font-size:12.5px;color:#5f5770;line-height:1.55">'+esc(msg)+'</div>';
   }
+  /* n202: OPR LIFT — how well a member plays alongside higher, even and lower rated partners.
+     NOT wins. Every match the ratings expect the pair to take a share of it (the engine's own
+     sets-60/games-40 reading); this compares what the pair actually took. A good loss counts.
+     The ratings are REPLAYED from each player's seed through every match in order, so a match
+     played in March is judged against the ratings as they stood in March, not as they stand today. */
+  function liftReplay(all){
+    var ms=(all.matches||[]).slice().filter(function(m){ return m && m.match_date; });
+    ms.sort(function(a,b){ return (a.match_date<b.match_date)?-1:(a.match_date>b.match_date?1:((a.id||0)-(b.id||0))); });
+    var seed={}; (all.people||[]).forEach(function(p){
+      if(p && p.full_name!=null) seed[p.full_name]=Number(p.seed_rating||p.pool_seed||p.current_rating||1500);
+    });
+    var R={}, rt=function(n){ if(R[n]==null) R[n]=(seed[n]!=null?seed[n]:1500); return R[n]; };
+    var w6040=function(a,b){ return Math.max(a,b)*0.6+Math.min(a,b)*0.4; };
+    var expect=function(us,them){ return 1/(1+Math.pow(10,(them-us)/250)); };
+    var out={};   /* name -> band -> [residuals] */
+    ms.forEach(function(m){
+      var A=String(m.t1p1||"").split(" & "), B=String(m.t2p1||"").split(" & ");
+      if(A.length!==2 || B.length!==2) return;
+      var s1=Number(m.t1_sets||0), s2=Number(m.t2_sets||0), g1=Number(m.t1_games||0), g2=Number(m.t2_games||0);
+      var ts=s1+s2, tg=g1+g2; if(!ts) return;
+      var O=Math.max(.05,Math.min(.95,(s1/ts)*0.6+((tg?g1/tg:0.5))*0.4));
+      var L=w6040(rt(A[0]),rt(A[1])), M=w6040(rt(B[0]),rt(B[1]));
+      var N=expect(L,M);
+      [[A[0],A[1],L,M,O],[A[1],A[0],L,M,O],[B[0],B[1],M,L,1-O],[B[1],B[0],M,L,1-O]].forEach(function(x){
+        var me=x[0], mate=x[1], us=x[2], them=x[3], got=x[4];
+        var d=rt(mate)-rt(me);
+        var band=(d>50)?"higher":((d<-50)?"lower":"even");
+        (out[me]=out[me]||{})[band]=((out[me]||{})[band]||[]);
+        out[me][band].push(got-expect(us,them));
+      });
+      /* the engine's own movement, so the next match is judged against updated ratings */
+      var margin=Math.abs(O-0.5)*2, surprise=Math.abs(O-N);
+      var raw=((O>0.5)?1:-1)*(2+margin*4+surprise*8)*Math.max(1,ts), cap=10*Math.max(1,ts);
+      var dd=Math.max(-cap,Math.min(cap,raw));
+      R[A[0]]=rt(A[0])+dd; R[A[1]]=rt(A[1])+dd; R[B[0]]=rt(B[0])-dd; R[B[1]]=rt(B[1])-dd;
+    });
+    return out;
+  }
+  function nhLiftBlock(me,all,col){
+    var MIN=8;   /* fewer than this in a band is noise, and it is said so rather than shown */
+    var d=null; try{ d=liftReplay(all)[me]; }catch(e){ return ""; }
+    if(!d) return "";
+    var bands=[["higher","With a higher rated partner"],["even","With an evenly rated partner"],["lower","With a lower rated partner"]];
+    var any=false; bands.forEach(function(b){ if((d[b[0]]||[]).length>=MIN) any=true; });
+    if(!any) return "";
+    var ink=inkSafe(col||"#6c3483");
+    var rows=bands.map(function(b){
+      var v=d[b[0]]||[];
+      if(v.length<MIN){
+        return '<div style="display:flex;align-items:center;gap:10px;padding:10px 14px;border-top:1px solid #f0ecf6;opacity:.55">'
+          +'<span style="flex:1;font-size:13.5px">'+b[1]+'</span>'
+          +'<span style="font-size:11.5px;color:#8a8196">not enough matches yet ('+v.length+')</span></div>';
+      }
+      var m=0; v.forEach(function(x){ m+=x; }); m=m/v.length*100;
+      var good=m>=0, c=good?"#1e8449":"#c0392b", w=Math.min(100,Math.abs(m)*3);
+      return '<div style="display:flex;align-items:center;gap:9px;padding:10px 14px;border-top:1px solid #f0ecf6">'
+        +'<span style="flex:1.1;font-size:13.5px;color:#241d33">'+b[1]+'</span>'
+        +'<span style="flex:1;position:relative;height:9px;background:#f2eef8;border-radius:99px">'
+        +'<i style="position:absolute;top:0;bottom:0;width:1px;left:50%;background:#cfc5e0"></i>'
+        +'<i style="position:absolute;top:0;bottom:0;'+(good?"left:50%":"right:50%")+';width:'+w+'%;background:'+c+';border-radius:99px"></i></span>'
+        +'<span style="flex:0 0 96px;text-align:right;font-size:13px;font-weight:800;color:'+c+'">'+(good?"+":"")+m.toFixed(1)+'%'
+        +'<span style="display:block;font-size:11px;font-weight:500;color:#8a8196">over '+v.length+' matches</span></span></div>';
+    }).join("");
+    return '<div class="brk nhRoll"><h2>OPR lift &middot; how you play with different partners</h2>'
+      +'<div style="padding:9px 14px 2px;font-size:12.5px;color:#5f5770;line-height:1.5">Every match the ratings expect the pair to take a share of it. This is how much more, or less, the pair actually took &mdash; so a close loss to a stronger pair counts in your favour.</div>'
+      +rows+'</div>';
+  }
   function meChartBlock(me,st,all){
     if(!st.matches.length){
       return '<div style="margin:12px 12px 0">'
@@ -11735,6 +11801,7 @@ W.mePair=function(name,col){
            the foot. n171: it belongs to the OWNER's page; a member profile is for reading. */
         + ((fromRecords||viewing) ? "" : nhActions(col,deep,"me"))
         + meMoveBy(st)
+        + nhLiftBlock(me,all,col)   /* n202: OPR lift */
         /* n171: My partnerships is moved here in the DOM once the page is drawn (see liftPartners) */
         +'<div class="cols">';
 
@@ -11855,6 +11922,22 @@ W.mePair=function(name,col){
         }catch(e){}
       };
       liftPartners(); setTimeout(liftPartners,0); setTimeout(liftPartners,300);
+      /* n201: OPR Lift sits directly under My partnerships, and only on the OWNER's page */
+      if(!viewing){
+        try{
+          /* n201: under My partnerships — or under Move by group when a member has no pairings yet */
+          var mp2=document.getElementById("mePartners");
+          if(!mp2) mp2=[].slice.call(w.querySelectorAll(".brk")).filter(function(b){
+            return /^\s*move by group/i.test(((b.firstElementChild&&b.firstElementChild.textContent)||""));
+          })[0];
+          if(mp2 && !document.getElementById("meLiftBrk")){
+            var box=document.createElement("div");
+            box.innerHTML=meLiftBlock(me, all, col);
+            var node=box.firstChild;
+            if(node){ node.id="meLiftBrk"; mp2.parentNode.insertBefore(node, mp2.nextSibling); }
+          }
+        }catch(e){}
+      }
     });
   }
 
@@ -12216,70 +12299,10 @@ W.mePair=function(name,col){
     },500);
     setTimeout(function(){ clearInterval(t); }, 120000);
   })();
-  /* n189: SHARE OR PRINT A ROUND. A tournament's draw already says who plays whom, so an organiser does not need a
-     court card — they need to hand the round out. This reads what is on the sheet and offers it as plain text to
-     paste into WhatsApp, or as a clean page to print. Nothing is stored and nothing can fall out of step with the
-     draw, because it is only ever a copy of what is already on the screen. */
-  (function(){
-    if(!W.NEWAPP) return;
-    var sheetText=function(){
-      var box=document.getElementById("tournamentSheetContent"); if(!box) return null;
-      var title=((document.getElementById("tournamentSheetTitle")||{}).textContent||"Tournament").trim();
-      /* read what is on the screen, line by line — whatever the sheet is made of */
-      var raw=(box.innerText||"").split("\n").map(function(l){ return l.replace(/\s+/g," ").trim(); }).filter(Boolean);
-      var out=[], seen={};
-      raw.forEach(function(l){
-        if(l.length>140) return;
-        if(/^(loading|enter a team|share these matches|print)$/i.test(l)) return;
-        if(seen[l]) return; seen[l]=1;
-        out.push(/^round\b/i.test(l) ? ("\n"+l.toUpperCase()) : l);
-      });
-      if(!out.length) return null;
-      var who=(W.PLAT.name?(W.PLAT.name+" \u00b7 "):"")+"OPR";
-      return (title+"\n"+who+"\n\n"+out.join("\n")).replace(/\n{3,}/g,"\n\n").trim();
-    };
-    W.nhShareRound=function(){
-      var txt=sheetText(); if(!txt){ alert("Nothing to share yet."); return; }
-      if(navigator.share){ navigator.share({title:"Tournament", text:txt}).catch(function(){}); return; }
-      if(navigator.clipboard && navigator.clipboard.writeText){
-        navigator.clipboard.writeText(txt).then(function(){ alert("Copied \u2014 paste it into WhatsApp."); },
-          function(){ W.prompt("Copy this:", txt); });
-        return;
-      }
-      W.prompt("Copy this:", txt);
-    };
-    W.nhPrintRound=function(){
-      var txt=sheetText(); if(!txt){ alert("Nothing to print yet."); return; }
-      var w=W.open("","_blank"); if(!w){ alert("Allow pop-ups to print."); return; }
-      var esc2=function(x){ return String(x).replace(/&/g,"&amp;").replace(/</g,"&lt;"); };
-      var rows=txt.split("\n").map(function(l){
-        if(!l.trim()) return '<div style="height:8px"></div>';
-        if(/^[A-Z0-9 ·]+$/.test(l.trim()) && l.trim().length<30)
-          return '<div style="margin:14px 0 6px;font-size:12px;letter-spacing:.12em;font-weight:800;color:#5b2bd6">'+esc2(l.trim())+'</div>';
-        return '<div style="padding:7px 0;border-bottom:1px solid #e6e0ee;font-size:14px">'+esc2(l.trim())+'</div>';
-      }).join("");
-      w.document.write('<!doctype html><meta charset="utf-8"><title>'+esc2(txt.split("\n")[0])+'</title>'
-        +'<body style="font-family:system-ui,Arial,sans-serif;max-width:640px;margin:24px auto;padding:0 18px;color:#241d33">'
-        +'<div style="font-size:11px;letter-spacing:.14em;font-weight:800;color:#8a8196">OPR \u00b7 OPEN PADEL RATINGS</div>'
-        +rows+'<div style="margin-top:22px;font-size:11px;color:#8a8196">Scores are entered in the app, on the tournament sheet.</div>'
-        +'<script>window.onload=function(){window.print();}<\/script></body>');
-      w.document.close();
-    };
-    var add=function(){
-      var scr=document.getElementById("tournamentSheetScreen"); if(!scr) return;
-      var box=document.getElementById("tournamentSheetContent"); if(!box || document.getElementById("nhShareRow")) return;
-      var row=document.createElement("div"); row.id="nhShareRow";
-      row.style.cssText="display:flex;gap:8px;margin:10px 12px 0";
-      row.innerHTML='<button onclick="window.nhShareRound()" style="flex:1;padding:11px;border-radius:99px;border:1.5px solid var(--nhc,#6c3483);'
-        +'background:#fff;color:var(--nhc,#6c3483);font:inherit;font-weight:800;font-size:13.5px">Share these matches</button>'
-        +'<button onclick="window.nhPrintRound()" style="flex:1;padding:11px;border-radius:99px;border:1.5px solid var(--nhc,#6c3483);'
-        +'background:#fff;color:var(--nhc,#6c3483);font:inherit;font-weight:800;font-size:13.5px">Print</button>';
-      box.parentNode.insertBefore(row, box);
-    };
-    var t=setInterval(function(){ if(document.getElementById("tournamentSheetScreen")){ clearInterval(t); add();
-      try{ new MutationObserver(add).observe(document.getElementById("tournamentSheetScreen"),{childList:true,subtree:true}); }catch(e){} } },500);
-    setTimeout(function(){ clearInterval(t); }, 120000);
-  })();
+  /* n203: the Share/Print row for a tournament round was removed. It gathered its text from the sheet's markup
+     and came back empty, and inserting itself after the page had drawn pushed the content down (the SMOOTH
+     NAVIGATION guard caught it at 0.019). If it is rebuilt: read the sheet's own innerText, and render the row
+     WITH the sheet rather than appending to it afterwards. */
   /* n148: NO KEYBOARD UNTIL YOU ASK FOR ONE. The name picker put the cursor straight in its search box, so the
      phone's keyboard covered half the list and names from D onwards could not be seen without closing it again.
      The box now opens as read-only — a phone shows no keyboard for one — and the first tap on it makes it
@@ -12344,6 +12367,80 @@ W.mePair=function(name,col){
       +'border-radius:99px;position:relative;cursor:pointer;background:'+(on?"var(--nhc,#6c3483)":"#d8d2e2")+'">'
       +'<span style="position:absolute;top:4px;left:'+(on?"24px":"4px")+';width:18px;height:18px;border-radius:50%;background:#fff;'
       +'box-shadow:0 1px 2px rgba(0,0,0,.25);transition:left .15s"></span></button></div>';
+  }
+  /* n201: OPR LIFT — how a member plays with higher, even and lower rated partners.
+     The ratings expect a pair to take a share of each match (sets 60 / games 40, the engine's own reading).
+     Afterwards we compare what the pair actually took, so a close loss to a stronger pair counts ABOVE
+     expectation and a thrashing counts below. It is worked out here in the page, by replaying the register's
+     matches from each member's seed with the same sum the engine uses — nothing is stored, nothing can drift.
+     Andre's page only for now, and only once there are matches enough for it to mean anything. */
+  W.meLiftBlock=meLiftBlock;   /* n201: reachable for tests */
+  /* n201: OPR LIFT — how a member plays with higher, even and lower rated partners.
+     Every match the ratings expect the pair to take a share of it (sets 60 / games 40, the engine's own
+     reading). This compares what the pair actually took. A close loss to a stronger pair reads above
+     expectation, a hiding reads below — so it measures how you PLAY, not whether you won.
+     Ratings are taken as they stand now, which is why the block waits for 15 matches: until then it would
+     be describing where people started rather than how they play. Owner's page only for now. */
+  function meLiftBlock(me, all, col){
+    try{
+      var people = {}, i;
+      (all.people||[]).forEach(function(p){ if(p.full_name) people[p.full_name] = Number(p.current_rating||p.seed_rating||1500); });
+      var rt = function(n){ return people[n]==null ? 1500 : people[n]; };
+      var w6040 = function(a,b){ return Math.max(a,b)*0.6 + Math.min(a,b)*0.4; };
+      var bands = {higher:[], even:[], lower:[]};
+      (all.matches||[]).forEach(function(m){
+        var A = nhSides(m), t1 = String(A[0]||"").split(" & "), t2 = String(A[1]||"").split(" & ");
+        if(t1.length!==2 || t2.length!==2) return;
+        var onT1 = (t1.indexOf(me)>=0), onT2 = (t2.indexOf(me)>=0);
+        if(!onT1 && !onT2) return;
+        var mine = onT1 ? t1 : t2, theirs = onT1 ? t2 : t1;
+        var mate = (mine[0]===me) ? mine[1] : mine[0];
+        var s1 = Number(m.t1_sets)||0, s2 = Number(m.t2_sets)||0;
+        var g1 = Number(m.t1_games)||0, g2 = Number(m.t2_games)||0;
+        var mySets = onT1 ? s1 : s2, theirSets = onT1 ? s2 : s1;
+        var myGames = onT1 ? g1 : g2, theirGames = onT1 ? g2 : g1;
+        var ts = mySets+theirSets, tg = myGames+theirGames;
+        if(!ts && !tg) return;
+        var got = Math.max(0.05, Math.min(0.95,
+              (ts ? mySets/ts : 0.5)*0.6 + (tg ? myGames/tg : 0.5)*0.4));
+        var us = w6040(rt(me), rt(mate)), them = w6040(rt(theirs[0]), rt(theirs[1]));
+        var exp = 1/(1+Math.pow(10,(them-us)/250));
+        var gap = rt(mate) - rt(me);
+        var band = (gap>50) ? "higher" : ((gap<-50) ? "lower" : "even");
+        bands[band].push(got-exp);
+      });
+      var total = bands.higher.length + bands.even.length + bands.lower.length;
+      if(total < 15) return "";
+      var row = function(label, v){
+        if(v.length < 8){
+          return '<div style="display:flex;align-items:center;gap:10px;padding:12px 14px;border-top:1px solid #f0ecf6;opacity:.55">'
+            +'<span style="flex:1;font-size:14px;color:#241d33">'+label+'</span>'
+            +'<span style="font-size:12px;color:#8a8196">not enough matches yet ('+v.length+')</span></div>';
+        }
+        var m=0; for(var k=0;k<v.length;k++) m+=v[k];
+        m = m/v.length*100;
+        var flat = Math.abs(m) < 2;
+        var colour = flat ? "#6b6585" : (m>0 ? "#1e8449" : "#c0392b");
+        var word = flat ? "as expected" : (m>0 ? (m.toFixed(1)+"% above expected") : (m.toFixed(1)+"% below expected"));
+        var bar = Math.min(100, Math.abs(m)*3.2);
+        var side = (m>0) ? "left:50%" : "right:50%";
+        return '<div style="display:flex;align-items:center;gap:10px;padding:12px 14px;border-top:1px solid #f0ecf6">'
+          +'<span style="flex:1.25;font-size:13.5px;color:#241d33">'+label+'</span>'
+          +'<span style="flex:1;position:relative;height:9px;background:#f2eef8;border-radius:99px">'
+          +'<i style="position:absolute;top:0;bottom:0;width:1px;left:50%;background:#cfc5e0"></i>'
+          +'<i style="position:absolute;top:0;bottom:0;'+side+';width:'+bar+'%;background:'+(flat?"#cfc5e0":colour)+';border-radius:99px"></i></span>'
+          +'<span style="flex:0 0 126px;text-align:right;font-size:12.5px;font-weight:800;color:'+colour+'">'+word
+          +'<span style="display:block;font-size:11px;font-weight:500;color:#8a8196">over '+v.length+' matches</span></span></div>';
+      };
+      return '<div class="brk nhRoll" style="margin-top:12px">'
+        + '<h2>OPR Lift \u00b7 playing with different partners</h2>'
+        + '<div style="padding:10px 14px 2px;font-size:12.5px;color:#5f5770;line-height:1.5">Every match, the ratings expect the pair to take a certain share of it. This is how much of the match the pair actually took, by who the partner was. A close loss to a stronger pair counts above expectation.</div>'
+        + row("With a higher rated partner", bands.higher)
+        + row("With an even rated partner", bands.even)
+        + row("With a lower rated partner", bands.lower)
+        + '<div style="padding:10px 14px 13px;font-size:11.5px;color:#6b6585;background:#faf8fd;border-top:1px solid #f0ecf6">Higher = partner 50+ points above you \u00b7 even = within 50 \u00b7 lower = 50+ below. Worked out from ratings as they stand now.</div>'
+        + '</div>';
+    }catch(e){ return ""; }
   }
   W.mePartToggle=function(){
     var b=document.getElementById("mePartBody"), c=document.getElementById("mePartCaret"); if(!b) return;
@@ -12932,7 +13029,7 @@ W.nhOpenPair=function(name){
   /* Records is on the door because with several groups it sits well below the fold, and it matters */
   /* n167: no "Recent" — the matches are the first thing under the groups. "Records" opens the records on their
      own page rather than scrolling to the band. */
-  var NH_JUMP_DOOR =[["Form & Move",/^\s*in form/i],["Ratings & Ladders",null,"records"],
+  var NH_JUMP_DOOR =[["Form & Move",/^\s*in form/i],["Ratings · Ladders · Profiles",null,"records"],
                      ["Tournaments",/^\s*tournaments/i],["Up",null]];   /* n169: the bar is now "Tournaments · N running" */
   var NH_JUMP_GROUP=[["Climb",/^\s*biggest climb/i],["Move",/^\s*movers/i],["Recent",/^\s*recent matches/i],["Card",/^\s*card matches/i],["Up",null]];
   var NH_JUMP=NH_JUMP_GROUP;
@@ -13270,7 +13367,7 @@ W.nhOpenPair=function(name){
       };
 
       w.innerHTML =
-        '<div class="band opr doorband"'+regBandStyle(RC)+'>'+nhMark()+''
+        '<div class="band opr"'+regBandStyle(RC)+'>'+nhMark()+''
         /* n150: A SHORT HERO THAT SAYS WHAT THIS IS, and the member's own page on the right — the first question
            everyone asks is "where do I see my rating". The week's count moved to Recent matches. */
         + '<div style="display:flex;align-items:center;gap:10px;margin-top:8px">'
@@ -13282,12 +13379,10 @@ W.nhOpenPair=function(name){
         + '</div></div>'
         /* where am I */
         /* n114: the region's name was repeated here under the banner that already says it — removed */
-        /* n201: THE ONE THING THEY CAME FOR, sitting into the banner. The door's banner carries extra depth at its
-           foot and the button is pulled up into it, so it overlaps by about half — the shape Andre's members know
-           from OPR. The blue is the one they know; the lime edge says this is the thing to press. */
-        + '<button onclick="window.doorPick(\'score\')" style="display:block;width:calc(100% - 24px);margin:-27px 12px 4px;position:relative;z-index:5;'
-        + 'background:linear-gradient(180deg,#5aabe3,#3b9ada);border:2.5px solid #c6e400;border-radius:16px;padding:16px;text-align:center;'
-        + 'box-shadow:0 4px 14px rgba(12,10,40,.28);font:inherit;font-weight:800;font-size:17.5px;letter-spacing:.01em;color:#fff;cursor:pointer">+ &nbsp;Enter your match score here</button>'
+        /* the one thing they came for */
+        + '<button onclick="window.doorPick(\'score\')" style="display:block;width:calc(100% - 24px);margin:16px 12px 4px;'
+        + 'background:linear-gradient(180deg,#e4ff5c 0%,#d4f425 46%,#bce400 100%);box-shadow:inset 0 1px 0 rgba(255,255,255,.55),0 1px 3px rgba(26,16,48,.12);border:none;border-radius:16px;padding:16px;text-align:center;'
+        + 'font:inherit;font-weight:800;font-size:16px;color:#1a1a1a;cursor:pointer">+ &nbsp;Enter a score</button>'
         + '<div id="doorWhere" style="display:none;padding:2px 12px 4px"></div>'
         /* the engine */
         /* n128: THE GROUPS BAND. Each phone chooses which groups' cards the door shows — all, one, or none — from a
@@ -13300,7 +13395,7 @@ W.nhOpenPair=function(name){
            score, their own page and who played whom; the records are a place you go to afterwards. The strip under
            the header carries a "Records" pill again, so it is one tap from the top. */
         + nhMatchesBrk(d,12,"club")
-        /* n168: no records band on the door — "Ratings & Ladders" in the strip opens the records page, where the
+        /* n168: no records band on the door — "Ratings · Ladders · Profiles" in the strip opens the records page, where the
            region's three lists sit open and the Global Ledger folds out beneath them. */
         + lastMatchRibbon(d)
         + '<div class="cols">'+nhFormBrk(d,RC,"club") + nhMoversBrk(d,RC,"club") + nhTourBrk(d)+'</div>'
