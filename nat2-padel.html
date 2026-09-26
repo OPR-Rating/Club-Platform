@@ -3688,7 +3688,7 @@ const CLUB_NAME = _club.name;  // shown in the logo as "OPR · <name>"
     link.setAttribute('href', href);
   }catch(e){ /* install stays on the static manifest — no functional impact */ }
 })();
-const OPR_VERSION = "OPR-DOUBLES v2026.09.03-56 · NAT fork n201 (no voice) (of PLAT p117)";  // MANUAL PAIR CREATION REMOVED FROM ADMIN: Create a pair, Bulk create pairs and Re-derive all pairs are gone (they only made match-less ghost pairs, and Re-derive rewrote every stored initial club-wide). Pairs are born automatically at match entry. Current pairs list untouched; the underlying JS is left in place unreferenced, so no other code path changes. Includes v47 (set-score fix + double-tap guard) and all prior.
+const OPR_VERSION = "OPR-DOUBLES v2026.09.03-56 · NAT fork n202 (no voice) (of PLAT p117)";  // MANUAL PAIR CREATION REMOVED FROM ADMIN: Create a pair, Bulk create pairs and Re-derive all pairs are gone (they only made match-less ghost pairs, and Re-derive rewrote every stored initial club-wide). Pairs are born automatically at match entry. Current pairs list untouched; the underlying JS is left in place unreferenced, so no other code path changes. Includes v47 (set-score fix + double-tap guard) and all prior.
 // Explanation shown above the individual ladder. Open on load so it's read; collapsible
 // (state kept for the session) and scrolls away. Mechanics only — no outcome framing, so
 // members aren't nudged away from playing stronger opponents. Every clause maps to a real
@@ -11363,7 +11363,9 @@ W.mePair=function(name,col){
     var p=document.getElementById("meChartSnap"); if(!p) return;
     var open=(p.style.display!=="none");
     p.style.display=open?"none":"block";
-    b.innerHTML=(open?"\u25B8":"\u25BE")+" Chart Snapshot";
+    /* n202: the same round arrow as the other bands, turned when it is open */
+    b.innerHTML=(open?"\u25B8":"\u25BE")+" Chart Snapshot"
+      +'<span style="float:right;width:22px;height:22px;border-radius:50%;border:1.5px solid currentColor;display:inline-grid;place-items:center;font-size:11px;line-height:1;transform:rotate('+(open?180:0)+'deg)">\u25be</span>';
   };
   /* n70: SIX AXES THAT SAY SOMETHING ABOUT HOW SOMEBODY PLAYS.
      Out: "Active" (a count of turning up, and its "club average" is meaningless once a club has groups that
@@ -11471,73 +11473,11 @@ W.mePair=function(name,col){
      sets-60/games-40 reading); this compares what the pair actually took. A good loss counts.
      The ratings are REPLAYED from each player's seed through every match in order, so a match
      played in March is judged against the ratings as they stood in March, not as they stand today. */
-  function liftReplay(all){
-    var ms=(all.matches||[]).slice().filter(function(m){ return m && m.match_date; });
-    ms.sort(function(a,b){ return (a.match_date<b.match_date)?-1:(a.match_date>b.match_date?1:((a.id||0)-(b.id||0))); });
-    var seed={}; (all.people||[]).forEach(function(p){
-      if(p && p.full_name!=null) seed[p.full_name]=Number(p.seed_rating||p.pool_seed||p.current_rating||1500);
-    });
-    var R={}, rt=function(n){ if(R[n]==null) R[n]=(seed[n]!=null?seed[n]:1500); return R[n]; };
-    var w6040=function(a,b){ return Math.max(a,b)*0.6+Math.min(a,b)*0.4; };
-    var expect=function(us,them){ return 1/(1+Math.pow(10,(them-us)/250)); };
-    var out={};   /* name -> band -> [residuals] */
-    ms.forEach(function(m){
-      var A=String(m.t1p1||"").split(" & "), B=String(m.t2p1||"").split(" & ");
-      if(A.length!==2 || B.length!==2) return;
-      var s1=Number(m.t1_sets||0), s2=Number(m.t2_sets||0), g1=Number(m.t1_games||0), g2=Number(m.t2_games||0);
-      var ts=s1+s2, tg=g1+g2; if(!ts) return;
-      var O=Math.max(.05,Math.min(.95,(s1/ts)*0.6+((tg?g1/tg:0.5))*0.4));
-      var L=w6040(rt(A[0]),rt(A[1])), M=w6040(rt(B[0]),rt(B[1]));
-      var N=expect(L,M);
-      [[A[0],A[1],L,M,O],[A[1],A[0],L,M,O],[B[0],B[1],M,L,1-O],[B[1],B[0],M,L,1-O]].forEach(function(x){
-        var me=x[0], mate=x[1], us=x[2], them=x[3], got=x[4];
-        var d=rt(mate)-rt(me);
-        var band=(d>50)?"higher":((d<-50)?"lower":"even");
-        (out[me]=out[me]||{})[band]=((out[me]||{})[band]||[]);
-        out[me][band].push(got-expect(us,them));
-      });
-      /* the engine's own movement, so the next match is judged against updated ratings */
-      var margin=Math.abs(O-0.5)*2, surprise=Math.abs(O-N);
-      var raw=((O>0.5)?1:-1)*(2+margin*4+surprise*8)*Math.max(1,ts), cap=10*Math.max(1,ts);
-      var dd=Math.max(-cap,Math.min(cap,raw));
-      R[A[0]]=rt(A[0])+dd; R[A[1]]=rt(A[1])+dd; R[B[0]]=rt(B[0])-dd; R[B[1]]=rt(B[1])-dd;
-    });
-    return out;
-  }
-  function nhLiftBlock(me,all,col){
-    var MIN=8;   /* fewer than this in a band is noise, and it is said so rather than shown */
-    var d=null; try{ d=liftReplay(all)[me]; }catch(e){ return ""; }
-    if(!d) return "";
-    var bands=[["higher","With a higher rated partner"],["even","With an evenly rated partner"],["lower","With a lower rated partner"]];
-    var any=false; bands.forEach(function(b){ if((d[b[0]]||[]).length>=MIN) any=true; });
-    if(!any) return "";
-    var ink=inkSafe(col||"#6c3483");
-    var rows=bands.map(function(b){
-      var v=d[b[0]]||[];
-      if(v.length<MIN){
-        return '<div style="display:flex;align-items:center;gap:10px;padding:10px 14px;border-top:1px solid #f0ecf6;opacity:.55">'
-          +'<span style="flex:1;font-size:13.5px">'+b[1]+'</span>'
-          +'<span style="font-size:11.5px;color:#8a8196">not enough matches yet ('+v.length+')</span></div>';
-      }
-      var m=0; v.forEach(function(x){ m+=x; }); m=m/v.length*100;
-      var good=m>=0, c=good?"#1e8449":"#c0392b", w=Math.min(100,Math.abs(m)*3);
-      return '<div style="display:flex;align-items:center;gap:9px;padding:10px 14px;border-top:1px solid #f0ecf6">'
-        +'<span style="flex:1.1;font-size:13.5px;color:#241d33">'+b[1]+'</span>'
-        +'<span style="flex:1;position:relative;height:9px;background:#f2eef8;border-radius:99px">'
-        +'<i style="position:absolute;top:0;bottom:0;width:1px;left:50%;background:#cfc5e0"></i>'
-        +'<i style="position:absolute;top:0;bottom:0;'+(good?"left:50%":"right:50%")+';width:'+w+'%;background:'+c+';border-radius:99px"></i></span>'
-        +'<span style="flex:0 0 96px;text-align:right;font-size:13px;font-weight:800;color:'+c+'">'+(good?"+":"")+m.toFixed(1)+'%'
-        +'<span style="display:block;font-size:11px;font-weight:500;color:#8a8196">over '+v.length+' matches</span></span></div>';
-    }).join("");
-    return '<div class="brk nhRoll"><h2>OPR lift &middot; how you play with different partners</h2>'
-      +'<div style="padding:9px 14px 2px;font-size:12.5px;color:#5f5770;line-height:1.5">Every match the ratings expect the pair to take a share of it. This is how much more, or less, the pair actually took &mdash; so a close loss to a stronger pair counts in your favour.</div>'
-      +rows+'</div>';
-  }
   function meChartBlock(me,st,all){
     if(!st.matches.length){
       return '<div style="margin:12px 12px 0">'
         +'<button type="button" disabled style="width:100%;text-align:left;background:#f6f0fa;border:1.5px solid #e6ddec;border-radius:10px;'
-        +'padding:11px 14px;font-size:14px;font-weight:800;color:#a79ab5;font-family:inherit">\u25B8 Chart Snapshot</button>'
+        +'padding:11px 14px;font-size:14px;font-weight:800;color:#a79ab5;font-family:inherit">\u25B8 Chart Snapshot<span style="float:right;width:22px;height:22px;border-radius:50%;border:1.5px solid currentColor;display:inline-grid;place-items:center;font-size:11px;line-height:1">\u25be</span></button>'
         + meEmpty("Your chart is drawn from the matches you play \u2014 win rate, the close ones, who you play against, "
           +"how steady you are and which way you are going. It appears with your first result.")
         +'</div>';
@@ -11550,7 +11490,7 @@ W.mePair=function(name,col){
       +'background:color-mix(in srgb,var(--nhc,#6c3483) 38%,#fff);'
       +'border:1.5px solid color-mix(in srgb,var(--nhc,#6c3483) 50%,#fff);border-radius:10px;padding:11px 14px;font-size:14px;font-weight:800;'
       +'color:color-mix(in srgb,var(--nhc,#6c3483) 82%,#000);'
-      +'cursor:pointer;font-family:inherit">\u25B8 Chart Snapshot</button>'
+      +'cursor:pointer;font-family:inherit">\u25B8 Chart Snapshot<span style="float:right;width:22px;height:22px;border-radius:50%;border:1.5px solid currentColor;display:inline-grid;place-items:center;font-size:11px;line-height:1">\u25be</span></button>'
       +'<div id="meChartSnap" style="display:none;background:#f6f0fa;border-radius:12px;padding:14px;margin-top:10px">'
       +'<div style="font-weight:800;color:var(--nhc,#6c3483);font-size:15px;text-align:center;margin-bottom:2px">Overall Performance</div>'
       +'<div style="font-size:10px;color:#6b5a78;text-align:center;margin-bottom:10px;line-height:1.5">'
@@ -11801,7 +11741,7 @@ W.mePair=function(name,col){
            the foot. n171: it belongs to the OWNER's page; a member profile is for reading. */
         + ((fromRecords||viewing) ? "" : nhActions(col,deep,"me"))
         + meMoveBy(st)
-        + nhLiftBlock(me,all,col)   /* n202: OPR lift */
+
         /* n171: My partnerships is moved here in the DOM once the page is drawn (see liftPartners) */
         +'<div class="cols">';
 
@@ -11925,16 +11865,23 @@ W.mePair=function(name,col){
       /* n201: OPR Lift sits directly under My partnerships, and only on the OWNER's page */
       if(!viewing){
         try{
-          /* n201: under My partnerships — or under Move by group when a member has no pairings yet */
-          var mp2=document.getElementById("mePartners");
-          if(!mp2) mp2=[].slice.call(w.querySelectorAll(".brk")).filter(function(b){
-            return /^\s*move by group/i.test(((b.firstElementChild&&b.firstElementChild.textContent)||""));
-          })[0];
-          if(mp2 && !document.getElementById("meLiftBrk")){
-            var box=document.createElement("div");
-            box.innerHTML=meLiftBlock(me, all, col);
-            var node=box.firstChild;
-            if(node){ node.id="meLiftBrk"; mp2.parentNode.insertBefore(node, mp2.nextSibling); }
+          /* n202: BELOW MY RATING (the chart), and drawn from the member's own matches once they arrive */
+          if(!document.getElementById("meLiftBrk")){
+            meLiftFetch(me).then(function(mine){
+              try{
+                if(document.getElementById("meLiftBrk")) return;
+                var data = (mine && mine.length) ? {matches:mine, people:all.people} : all;
+                var anchor=[].slice.call(w.querySelectorAll(".brk")).filter(function(b){
+                  return /^\s*my rating/i.test(((b.firstElementChild&&b.firstElementChild.textContent)||""));
+                })[0];
+                if(!anchor) anchor=document.getElementById("mePartners");
+                if(!anchor) return;
+                var box=document.createElement("div");
+                box.innerHTML=meLiftBlock(me, data, col);
+                var node=box.firstChild;
+                if(node){ node.id="meLiftBrk"; anchor.parentNode.insertBefore(node, anchor.nextSibling); }
+              }catch(e){}
+            });
           }
         }catch(e){}
       }
@@ -12381,6 +12328,18 @@ W.mePair=function(name,col){
      expectation, a hiding reads below — so it measures how you PLAY, not whether you won.
      Ratings are taken as they stand now, which is why the block waits for 15 matches: until then it would
      be describing where people started rather than how they play. Owner's page only for now. */
+  /* n202: the page only loads the last 120 matches for the door's lists, which made the Lift count a slice of a
+     member's record rather than the record. So it fetches that member's own matches — up to 1000 — before it draws. */
+  function meLiftFetch(me){
+    try{
+      var B=SBREST(), boards=(W.PLAT.myBoards&&W.PLAT.myBoards.length)?W.PLAT.myBoards:[W.PLAT.cid];
+      var inList="club_id=in.("+boards.join(",")+")";
+      var esc2=encodeURIComponent("*"+me+"*");
+      return fetch(B+"plat_matches?"+inList+"&discipline=eq.padel&or=(t1p1.ilike."+esc2+",t2p1.ilike."+esc2+")"
+        +"&select=id,club_id,match_date,t1p1,t1p2,t2p1,t2p2,t1_sets,t2_sets,t1_games,t2_games,display_t1,display_t2"
+        +"&order=match_date.desc&limit=1000").then(J).catch(function(){ return null; });
+    }catch(e){ return Promise.resolve(null); }
+  }
   function meLiftBlock(me, all, col){
     try{
       var people = {}, i;
@@ -12407,18 +12366,26 @@ W.mePair=function(name,col){
         var exp = 1/(1+Math.pow(10,(them-us)/250));
         var gap = rt(mate) - rt(me);
         var band = (gap>50) ? "higher" : ((gap<-50) ? "lower" : "even");
-        bands[band].push(got-exp);
+        /* n202: a SET is the unit OPR rates in — a three-setter counts three times, not once */
+        bands[band].push({d:(got-exp), sets:Math.max(1, ts)});
       });
-      var total = bands.higher.length + bands.even.length + bands.lower.length;
-      if(total < 15) return "";
+      var setsOf = function(v){ var n=0; for(var k=0;k<v.length;k++) n+=v[k].sets; return n; };
+      var total = setsOf(bands.higher) + setsOf(bands.even) + setsOf(bands.lower);
+      if(total < 30){
+        return '<div class="brk nhRoll" style="margin-top:12px"><h2>OPR Lift \u00b7 playing with different partners</h2>'
+          + '<div style="padding:12px 14px 14px;font-size:13px;color:#5f5770;line-height:1.55">Available after 30 sets. '
+          + 'Until then the ratings are still settling, and this would say more about where people started than about how they play.</div></div>';
+      }
       var row = function(label, v){
-        if(v.length < 8){
+        var sets = setsOf(v);
+        if(sets < 15){
           return '<div style="display:flex;align-items:center;gap:10px;padding:12px 14px;border-top:1px solid #f0ecf6;opacity:.55">'
             +'<span style="flex:1;font-size:14px;color:#241d33">'+label+'</span>'
-            +'<span style="font-size:12px;color:#8a8196">not enough matches yet ('+v.length+')</span></div>';
+            +'<span style="font-size:12px;color:#8a8196">not enough sets yet ('+sets+')</span></div>';
         }
-        var m=0; for(var k=0;k<v.length;k++) m+=v[k];
-        m = m/v.length*100;
+        /* weighted by sets: a three-setter carries three times the weight of a one-set match */
+        var m=0; for(var k=0;k<v.length;k++) m += v[k].d * v[k].sets;
+        m = m/sets*100;
         var flat = Math.abs(m) < 2;
         var colour = flat ? "#6b6585" : (m>0 ? "#1e8449" : "#c0392b");
         var word = flat ? "as expected" : (m>0 ? (m.toFixed(1)+"% above expected") : (m.toFixed(1)+"% below expected"));
@@ -12430,7 +12397,7 @@ W.mePair=function(name,col){
           +'<i style="position:absolute;top:0;bottom:0;width:1px;left:50%;background:#cfc5e0"></i>'
           +'<i style="position:absolute;top:0;bottom:0;'+side+';width:'+bar+'%;background:'+(flat?"#cfc5e0":colour)+';border-radius:99px"></i></span>'
           +'<span style="flex:0 0 126px;text-align:right;font-size:12.5px;font-weight:800;color:'+colour+'">'+word
-          +'<span style="display:block;font-size:11px;font-weight:500;color:#8a8196">over '+v.length+' matches</span></span></div>';
+          +'<span style="display:block;font-size:11px;font-weight:500;color:#8a8196">over '+sets+' sets</span></span></div>';
       };
       return '<div class="brk nhRoll" style="margin-top:12px">'
         + '<h2>OPR Lift \u00b7 playing with different partners</h2>'
@@ -12438,7 +12405,7 @@ W.mePair=function(name,col){
         + row("With a higher rated partner", bands.higher)
         + row("With an even rated partner", bands.even)
         + row("With a lower rated partner", bands.lower)
-        + '<div style="padding:10px 14px 13px;font-size:11.5px;color:#6b6585;background:#faf8fd;border-top:1px solid #f0ecf6">Higher = partner 50+ points above you \u00b7 even = within 50 \u00b7 lower = 50+ below. Worked out from ratings as they stand now.</div>'
+        + '<div style="padding:10px 14px 13px;font-size:11.5px;color:#6b6585;background:#faf8fd;border-top:1px solid #f0ecf6">Counted in SETS, the way OPR rates \u2014 a three-setter counts three times. Higher = partner 50+ points above you \u00b7 even = within 50 \u00b7 lower = 50+ below. Worked out from ratings as they stand now.</div>'
         + '</div>';
     }catch(e){ return ""; }
   }
