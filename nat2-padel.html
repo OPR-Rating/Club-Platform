@@ -3688,7 +3688,7 @@ const CLUB_NAME = _club.name;  // shown in the logo as "OPR · <name>"
     link.setAttribute('href', href);
   }catch(e){ /* install stays on the static manifest — no functional impact */ }
 })();
-const OPR_VERSION = "OPR-DOUBLES v2026.09.03-56 · NAT fork n213 (no voice) (of PLAT p117)";  // MANUAL PAIR CREATION REMOVED FROM ADMIN: Create a pair, Bulk create pairs and Re-derive all pairs are gone (they only made match-less ghost pairs, and Re-derive rewrote every stored initial club-wide). Pairs are born automatically at match entry. Current pairs list untouched; the underlying JS is left in place unreferenced, so no other code path changes. Includes v47 (set-score fix + double-tap guard) and all prior.
+const OPR_VERSION = "OPR-DOUBLES v2026.09.03-56 · NAT fork n212 (no voice) (of PLAT p117)";  // MANUAL PAIR CREATION REMOVED FROM ADMIN: Create a pair, Bulk create pairs and Re-derive all pairs are gone (they only made match-less ghost pairs, and Re-derive rewrote every stored initial club-wide). Pairs are born automatically at match entry. Current pairs list untouched; the underlying JS is left in place unreferenced, so no other code path changes. Includes v47 (set-score fix + double-tap guard) and all prior.
 // Explanation shown above the individual ladder. Open on load so it's read; collapsible
 // (state kept for the session) and scrolls away. Mechanics only — no outcome framing, so
 // members aren't nudged away from playing stronger opponents. Every clause maps to a real
@@ -10548,17 +10548,7 @@ async function clRemove(id, label){
       +'<span id="nht'+id+'" style="display:inline-block;transition:transform .15s">\u25bc</span></button>'
       +'</div>'
       +'<div style="text-align:center;font-size:13.5px;font-weight:600;color:#241d33;margin-top:3px;line-height:1.4">'
-      + esc(a)+' <span style="color:'+col+'">'+((m.t1_sets||0)+"-"+(m.t2_sets||0))+'</span> '+esc(b)
-      /* n213: WHAT THIS ONE MATCH WAS WORTH. The move sits on the card itself, not inside the drawer, so a pair can
-         see what each night did to their rating without opening anything. It is written from the FIRST-NAMED pair's
-         side, which is how the score beside it reads. */
-      + (function(){
-          var d=(m.rating_delta!=null)? Math.round((+m.rating_delta)*10)/10 : null;
-          if(d==null || !isFinite(d)) return '';
-          var c=(d<0)?"#c0392b":((d>0)?"#1e8449":"#6b6585");
-          return '<span style="float:right;font-size:12px;font-weight:800;color:'+c+'">'+(d>0?"+":"")+d+'</span>';
-        })()
-      + '</div>'
+      + esc(a)+' <span style="color:'+col+'">'+((m.t1_sets||0)+"-"+(m.t2_sets||0))+'</span> '+esc(b)+'</div>'
       +'<div id="nhs'+id+'" style="display:none;border-top:1px solid #efeaf5;margin-top:8px;padding-top:8px;text-align:center">'
       + nhSetPills(m,col,viewer)
       +'<div style="font-size:11px;color:#888;margin-top:6px">Sets: '+((m.t1_sets||0)+"-"+(m.t2_sets||0))
