@@ -3688,7 +3688,7 @@ const CLUB_NAME = _club.name;  // shown in the logo as "OPR · <name>"
     link.setAttribute('href', href);
   }catch(e){ /* install stays on the static manifest — no functional impact */ }
 })();
-const OPR_VERSION = "OPR-DOUBLES v2026.09.03-56 · NAT fork n213 (no voice) (of PLAT p117)";  // MANUAL PAIR CREATION REMOVED FROM ADMIN: Create a pair, Bulk create pairs and Re-derive all pairs are gone (they only made match-less ghost pairs, and Re-derive rewrote every stored initial club-wide). Pairs are born automatically at match entry. Current pairs list untouched; the underlying JS is left in place unreferenced, so no other code path changes. Includes v47 (set-score fix + double-tap guard) and all prior.
+const OPR_VERSION = "OPR-DOUBLES v2026.09.03-56 · NAT fork n214 (no voice) (of PLAT p117)";  // MANUAL PAIR CREATION REMOVED FROM ADMIN: Create a pair, Bulk create pairs and Re-derive all pairs are gone (they only made match-less ghost pairs, and Re-derive rewrote every stored initial club-wide). Pairs are born automatically at match entry. Current pairs list untouched; the underlying JS is left in place unreferenced, so no other code path changes. Includes v47 (set-score fix + double-tap guard) and all prior.
 // Explanation shown above the individual ladder. Open on load so it's read; collapsible
 // (state kept for the session) and scrolls away. Mechanics only — no outcome framing, so
 // members aren't nudged away from playing stronger opponents. Every clause maps to a real
@@ -10003,7 +10003,7 @@ async function clRemove(id, label){
     if(hit){ NEW.data=hit; return Promise.resolve(hit); }
     var inList="club_id=in.("+boards.join(",")+")";
     return (NEW.busy=Promise.all([
-      fetch(B+"plat_matches?"+inList+"&discipline=eq.padel&select=id,club_id,match_date,match_type,event,t1p1,t1p2,t2p1,t2p2,t1_sets,t2_sets,t1_games,t2_games,set_scores,display_t1,display_t2,rating_delta&order=match_date.desc,id.desc&limit=120").then(J),
+      fetch(B+"plat_matches?"+inList+"&discipline=eq.padel&select=id,club_id,match_date,match_type,event,t1p1,t1p2,t2p1,t2p2,t1_sets,t2_sets,t1_games,t2_games,set_scores,display_t1,display_t2,rating_delta,t1_rating_at,t2_rating_at&order=match_date.desc,id.desc&limit=120").then(J),
       fetch(B+"plat_player_results?"+inList+"&discipline=eq.padel&select=name,club_id,current_rating,initial_rating,sets_played,sets_won&order=current_rating.desc&limit=2000").then(J),
       fetch(B+"plat_padel_v_individuals?"+inList+"&select=id,full_name,club_id,current_rating,seed_rating,pool_seed").then(J).catch(function(){ return []; }),
       fetch(B+"plat_padel_tournaments?"+inList+"&select=id,name,club_id,active,archived").then(J).catch(function(){ return []; })
@@ -10527,6 +10527,25 @@ async function clRemove(id, label){
     var b=m.display_t2 || (m.t2p2 ? ((m.t2p1||"")+" & "+m.t2p2) : (m.t2p1||""));
     return [a,b];
   }
+  /* n214: how strong the opposition was ON THE DAY — the parent shows this in its own match history and it is the
+     thing that makes a result mean something. Silent when the match predates the columns. */
+  function nhOppTag(m, onT1){
+    var r = onT1 ? m.t2_rating_at : m.t1_rating_at;
+    if(r==null || !isFinite(+r)) return "";
+    return ' <span style="color:#6b6585;font-weight:700;font-size:12px">('+Math.round(+r)+' \u00b7 L '+((+r)/200).toFixed(1)+')</span>';
+  }
+  /* a chip per set, from the viewer's side. Equal games is a DRAW — neutral, not red. */
+  function nhSetChips(m, onT1, col){
+    var ss=String(m.set_scores||"").trim(); if(!ss) return "";
+    var out=ss.split(",").map(function(x){ return x.trim(); }).filter(Boolean).map(function(sc){
+      var p=sc.split("-"), x=parseInt(p[0],10)||0, y=parseInt(p[1],10)||0;
+      var a2 = onT1 ? x : y, b2 = onT1 ? y : x;
+      var bg = (a2>b2) ? "#1e8449" : ((a2<b2) ? "#c0392b" : "#8a8196");
+      return '<span style="display:inline-block;background:'+bg+';color:#fff;border-radius:6px;padding:1px 6px;'
+           + 'font-size:11px;font-weight:800;margin:0 2px;font-variant-numeric:tabular-nums">'+a2+'/'+b2+'</span>';
+    }).join("");
+    return out ? ('<div style="margin-top:4px">'+out+'</div>') : "";
+  }
   function nhMatchRow(m,scope,viewer){
     var sides=nhSides(m), a=sides[0], b=sides[1];
     var bd=(W.PLAT.clubs||[]).find(function(c){ return Number(c.id)===Number(m.club_id); });
@@ -10547,18 +10566,46 @@ async function clRemove(id, label){
       +'<button onclick="window.nhSets(\''+id+'\')" style="background:none;border:none;cursor:pointer;color:'+col+';font-size:13px;padding:0 2px">'
       +'<span id="nht'+id+'" style="display:inline-block;transition:transform .15s">\u25bc</span></button>'
       +'</div>'
-      +'<div style="text-align:center;font-size:13.5px;font-weight:600;color:#241d33;margin-top:3px;line-height:1.4">'
-      + esc(a)+' <span style="color:'+col+'">'+((m.t1_sets||0)+"-"+(m.t2_sets||0))+'</span> '+esc(b)
-      /* n213: WHAT THIS ONE MATCH WAS WORTH. The move sits on the card itself, not inside the drawer, so a pair can
-         see what each night did to their rating without opening anything. It is written from the FIRST-NAMED pair's
-         side, which is how the score beside it reads. */
+      /* n214: WRITTEN FROM THE VIEWER'S SIDE, the way the parent's own match history does it.
+         On a pair's page the pair is not named again — the banner says who they are — so the line reads
+         "vs Paul Prachma & Pete Badham". On a member's page it reads "with James Johnstone vs ...", because a
+         member partners different people. Everything flips to that side: the score, the set chips and the move.
+         A set with equal games is a draw, not a loss, so its chip is neutral rather than red. */
       + (function(){
-          var d=(m.rating_delta!=null)? Math.round((+m.rating_delta)*10)/10 : null;
-          if(d==null || !isFinite(d)) return '';
-          var c=(d<0)?"#c0392b":((d>0)?"#1e8449":"#6b6585");
-          return '<span style="float:right;font-size:12px;font-weight:800;color:'+c+'">'+(d>0?"+":"")+d+'</span>';
+          var mine=null, theirs=null, mate=null, onT1=true, withWho="";
+          var V=String(viewer||"").trim();
+          if(V){
+            if(V.indexOf(" & ")>0){                                  /* a pair's own page */
+              onT1 = (String(a)===V);
+              if(onT1 || String(b)===V){ mine=V; theirs = onT1 ? b : a; }
+            } else {                                                  /* one member's page */
+              var inA=String(a).split(" & ").indexOf(V)>=0, inB=String(b).split(" & ").indexOf(V)>=0;
+              if(inA || inB){
+                onT1=inA; mine = onT1 ? a : b; theirs = onT1 ? b : a;
+                var halves=String(mine).split(" & ");
+                mate = (halves[0]===V) ? halves[1] : halves[0];
+                withWho = mate ? ('<span style="color:#6b6585;font-weight:600">with </span>'+esc(mate)+' ') : "";
+              }
+            }
+          }
+          var s1 = onT1 ? (m.t1_sets||0) : (m.t2_sets||0);
+          var s2 = onT1 ? (m.t2_sets||0) : (m.t1_sets||0);
+          var line = theirs
+            ? (withWho + '<span style="color:#6b6585;font-weight:600">vs </span>' + esc(theirs)
+               + ' <span style="color:'+col+'">'+s1+"-"+s2+'</span>' + nhOppTag(m, onT1))
+            : (esc(a)+' <span style="color:'+col+'">'+((m.t1_sets||0)+"-"+(m.t2_sets||0))+'</span> '+esc(b));
+          var d=(m.rating_delta!=null)? (+m.rating_delta) : null;
+          if(d!=null && !onT1) d = -d;
+          var mv = "";
+          if(d!=null && isFinite(d)){
+            d=Math.round(d*10)/10;
+            var c=(d<0)?"#c0392b":((d>0)?"#1e8449":"#6b6585");
+            mv = '<div style="margin-top:3px;font-size:12px;font-weight:800;color:'+c+';font-variant-numeric:tabular-nums">'
+               + '<span style="color:#6b6585;font-weight:600">Move </span>'+(d>0?"+":"")+d.toFixed(1)+'</div>';
+          }
+          return '<div style="text-align:center;font-size:13.5px;font-weight:600;color:#241d33;margin-top:3px;line-height:1.4">'
+               + line + nhSetChips(m, onT1, col) + mv + '</div>';
         })()
-      + '</div>'
       +'<div id="nhs'+id+'" style="display:none;border-top:1px solid #efeaf5;margin-top:8px;padding-top:8px;text-align:center">'
       + nhSetPills(m,col,viewer)
       +'<div style="font-size:11px;color:#888;margin-top:6px">Sets: '+((m.t1_sets||0)+"-"+(m.t2_sets||0))
@@ -11676,7 +11723,9 @@ W.mePair=function(name,col){
         /* n158: the sets read from THIS PAIR's side — green won, red lost — as they do on a member's own page.
            Without a viewer the pills fell back to plain purple, so a partnership's matches said nothing about
            who won which set. Either member gives the same side, so the first name is enough. */
-        ? nhMatchesBrk({matches:ms},500,"board",names[0],false)
+        /* n214: the PAIR is the viewer here, so the row reads "vs …" and does not repeat the pairing's own
+           names — the banner above already says whose page this is. */
+        ? nhMatchesBrk({matches:ms},500,"board",(names[0]+" & "+names[1]),false)
         : '<div class="brk">'+nhLimeBar("Matches")+meEmpty("This pair has not played yet.")+'</div>';
       w.innerHTML=h+homeBar();
     });
