@@ -3688,7 +3688,7 @@ const CLUB_NAME = _club.name;  // shown in the logo as "OPR · <name>"
     link.setAttribute('href', href);
   }catch(e){ /* install stays on the static manifest — no functional impact */ }
 })();
-const OPR_VERSION = "OPR-DOUBLES v2026.09.03-56 · NAT fork n225 (no voice) (of PLAT p117)";  // MANUAL PAIR CREATION REMOVED FROM ADMIN: Create a pair, Bulk create pairs and Re-derive all pairs are gone (they only made match-less ghost pairs, and Re-derive rewrote every stored initial club-wide). Pairs are born automatically at match entry. Current pairs list untouched; the underlying JS is left in place unreferenced, so no other code path changes. Includes v47 (set-score fix + double-tap guard) and all prior.
+const OPR_VERSION = "OPR-DOUBLES v2026.09.03-56 · NAT fork n226 (no voice) (of PLAT p117)";  // MANUAL PAIR CREATION REMOVED FROM ADMIN: Create a pair, Bulk create pairs and Re-derive all pairs are gone (they only made match-less ghost pairs, and Re-derive rewrote every stored initial club-wide). Pairs are born automatically at match entry. Current pairs list untouched; the underlying JS is left in place unreferenced, so no other code path changes. Includes v47 (set-score fix + double-tap guard) and all prior.
 // Explanation shown above the individual ladder. Open on load so it's read; collapsible
 // (state kept for the session) and scrolls away. Mechanics only — no outcome framing, so
 // members aren't nudged away from playing stronger opponents. Every clause maps to a real
@@ -10004,7 +10004,7 @@ async function clRemove(id, label){
     if(hit){ NEW.data=hit; return Promise.resolve(hit); }
     var inList="club_id=in.("+boards.join(",")+")";
     return (NEW.busy=Promise.all([
-      fetch(B+"plat_matches?"+inList+"&discipline=eq.padel&select=id,club_id,match_date,match_type,event,t1p1,t1p2,t2p1,t2p2,t1_sets,t2_sets,t1_games,t2_games,set_scores,display_t1,display_t2,rating_delta&order=match_date.desc,id.desc&limit=120").then(J),
+      fetch(B+"plat_matches?"+inList+"&discipline=eq.padel&select=id,club_id,match_date,match_type,event,t1p1,t1p2,t2p1,t2p2,t1_sets,t2_sets,t1_games,t2_games,set_scores,display_t1,display_t2,rating_delta,t1_rating_at,t2_rating_at&order=match_date.desc,id.desc&limit=120").then(J),
       fetch(B+"plat_player_results?"+inList+"&discipline=eq.padel&select=name,club_id,current_rating,initial_rating,sets_played,sets_won&order=current_rating.desc&limit=2000").then(J),
       fetch(B+"plat_padel_v_individuals?"+inList+"&select=id,full_name,club_id,current_rating,seed_rating,pool_seed").then(J).catch(function(){ return []; }),
       fetch(B+"plat_padel_tournaments?"+inList+"&select=id,name,club_id,active,archived").then(J).catch(function(){ return []; })
@@ -10541,43 +10541,66 @@ async function clRemove(id, label){
     }).join("");
     return out ? ('<div style="margin-top:4px">'+out+'</div>') : "";
   }
-  /* n224: ON A PAIR'S OWN PAGE the matches are drawn as the PARTNERSHIP CARDS are drawn in Group members —
-     the same white card with the faint purple edge, the name row with its category pill and a chevron, and a
-     figures row beneath. Here the "name" is the opposition and the figures are that night's: the score, the sets
-     and the move. Tapping opens the set scores, as before. Everywhere else keeps the old row. */
+  /* n226: THE MATCH HISTORY CARD, copied from the one in Group members -> a member -> partnerships.
+     Left: a W or L square, green or red. Then the category, "vs" and the opposition, and beneath them the
+     opposition's rating and level ON THE DAY with the move in brackets. Right: the score, the category and the
+     arrow. The spill is a grey band holding the set pills, green won and red lost, with the date under them. */
   function nhPairCard(m, viewer){
     var sides=nhSides(m), a=sides[0], b=sides[1];
     var onT1=(String(a)===String(viewer));
     var theirs = onT1 ? b : a;
     var s1 = onT1 ? (+m.t1_sets||0) : (+m.t2_sets||0);
     var s2 = onT1 ? (+m.t2_sets||0) : (+m.t1_sets||0);
+    var won = s1>s2, drew = (s1===s2);
     var bd=(W.PLAT.clubs||[]).find(function(c){ return Number(c.id)===Number(m.club_id); });
     var col=inkSafe((bd&&bd.colour)||"#6c3483");
     var d=(m.rating_delta!=null)?(+m.rating_delta):null;
     if(d!=null && isFinite(d)){ if(!onT1) d=-d; d=Math.round(d*10)/10; } else { d=null; }
     var mvCol=(d==null)?"#6b6585":((d<0)?"#c0392b":"#1e8449");
+    var opp = onT1 ? m.t2_rating_at : m.t1_rating_at;
+    var oppTag = (opp!=null && isFinite(+opp))
+      ? ('<span style="color:'+col+';font-weight:800;font-size:13.5px">('+Math.round(+opp)+' \u00b7 L '+((+opp)/200).toFixed(1)+')</span>')
+      : '';
     W.__nhRowN=(W.__nhRowN||0)+1;
     var id="p"+W.__nhRowN+"_"+(m.id||0);
-    /* n225: the edge is the BOARD'S colour, not the product's purple — the card came from the parent, where the
-       purple is hardcoded. A match played at a blue group gets a blue edge. */
-    var rgb=(function(h){ try{ var n=parseInt(String(h).slice(1),16); return ((n>>16)&255)+","+((n>>8)&255)+","+(n&255); }catch(e){ return "108,52,131"; } })(col);
-    return '<div style="background:#fff;border:1px solid rgba('+rgb+',.28);border-radius:12px;padding:12px 14px;'
-      + 'margin-bottom:10px;box-shadow:0 1px 3px rgba(0,0,0,.05)">'
-      + '<div onclick="window.nhSets(\''+id+'\')" style="cursor:pointer">'
-      +   '<div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">'
-      +     '<span style="font-weight:700;flex:1;min-width:0">'+esc(theirs)+'</span>'
-      +     '<span style="display:inline-block;background:'+col+';color:#fff;border-radius:99px;padding:2px 9px;'
-      +       'font-size:10px;font-weight:800">'+esc(m.match_type||"")+'</span>'
-      +     '<span id="nht'+id+'" style="color:#8a8196;font-size:19px;line-height:1">\u25be</span>'
-      +   '</div>'
-      +   '<div style="display:flex;gap:16px;font-size:13px;color:#5b3a6e;flex-wrap:wrap">'
-      +     '<span>Score <b style="color:'+col+'">'+s1+'\u2013'+s2+'</b></span>'
-      +     '<span>'+esc(String(m.match_date||"").slice(0,10))+'</span>'
-      +     (d==null?'':'<span>Move <b style="color:'+mvCol+'">'+(d>0?"+":"")+d.toFixed(1)+'</b></span>')
-      +   '</div>'
+    var badge = drew ? '#6b6585' : (won ? '#1e8449' : '#c0392b');
+    var letter = drew ? 'D' : (won ? 'W' : 'L');
+    return '<div style="padding:10px 2px 8px;border-bottom:1px solid #eee9f2">'
+      + '<div onclick="window.nhSets(\''+id+'\')" style="cursor:pointer;display:flex;align-items:flex-start;gap:10px">'
+      +   '<span style="flex:0 0 30px;height:30px;margin-top:14px;border-radius:7px;background:'+badge+';color:#fff;'
+      +     'display:grid;place-items:center;font-weight:800;font-size:13px">'+letter+'</span>'
+      +   '<span style="flex:1;min-width:0">'
+      +     '<span style="display:block;font-weight:700;font-size:14px;color:#241d33">'+esc(m.match_type||"")+'</span>'
+      +     '<span style="display:block;font-size:14.5px;color:#5f5770;margin:1px 0 2px">'
+      +       '<span style="color:#8a8196">vs </span>'+esc(theirs)+'</span>'
+      +     '<span style="display:block;font-size:13.5px">'+oppTag
+      +       (d==null?'':'<span style="color:'+mvCol+';font-weight:800;margin-left:14px">('+(d>0?"+":"")+d.toFixed(1)+')</span>')
+      +     '</span>'
+      +   '</span>'
+      +   '<span style="flex:0 0 auto;text-align:right">'
+      +     '<span style="display:block;font-weight:800;font-size:16px;color:'+col+'">'+s1+'-'+s2+'</span>'
+      +     '<span style="display:block;font-size:13px;color:#8a8196">'+esc(m.match_type||"")
+      +       ' <span id="nht'+id+'" style="font-size:16px">\u25be</span></span>'
+      +   '</span>'
       + '</div>'
-      + '<div id="nhs'+id+'" style="display:none;padding:8px 0 0">'+nhSetPills(m,col,viewer)+'</div>'
+      + '<div id="nhs'+id+'" style="display:none;background:#c5cddb;border-radius:10px;padding:12px;margin:8px 0 2px;text-align:center">'
+      +   nhPairSetPills(m, onT1)
+      +   '<div style="font-size:13px;color:#6b6585;margin-top:8px">'+esc(String(m.match_date||"").slice(0,10))
+      +     ' \u00b7 '+esc(m.match_type||"")+'</div>'
+      + '</div>'
       + '</div>';
+  }
+  /* the set pills in the spill: green won, red lost, grey where the games were equal */
+  function nhPairSetPills(m, onT1){
+    var ss=String(m.set_scores||"").trim();
+    if(!ss) return '<div style="font-size:13px;color:#6b6585">Game scores not recorded for this match</div>';
+    return ss.split(",").map(function(x){ return x.trim(); }).filter(Boolean).map(function(sc){
+      var p=sc.split("-"), x=parseInt(p[0],10)||0, y=parseInt(p[1],10)||0;
+      var mine = onT1 ? x : y, thrs = onT1 ? y : x;
+      var bg = (mine>thrs) ? "#1e8449" : ((mine<thrs) ? "#c0392b" : "#8a8196");
+      return '<span style="display:inline-block;background:'+bg+';color:#fff;border-radius:8px;padding:6px 14px;'
+           + 'font-size:16px;font-weight:800;margin:0 4px;font-variant-numeric:tabular-nums">'+mine+'/'+thrs+'</span>';
+    }).join("");
   }
   function nhMatchRow(m,scope,viewer){
     var sides=nhSides(m), a=sides[0], b=sides[1];
@@ -11677,7 +11700,7 @@ W.mePair=function(name,col){
     var like="*"+encodeURIComponent(name)+"*";
     return Promise.all([
       fetch(B+"plat_matches?pool_id=eq."+P+"&discipline=eq.padel&or=(t1p1.ilike."+like+",t1p2.ilike."+like+",t2p1.ilike."+like+",t2p2.ilike."+like+")"
-            +"&select=id,club_id,match_date,match_type,event,t1p1,t1p2,t2p1,t2p2,t1_sets,t2_sets,t1_games,t2_games,set_scores,display_t1,display_t2,rating_delta"
+            +"&select=id,club_id,match_date,match_type,event,t1p1,t1p2,t2p1,t2p2,t1_sets,t2_sets,t1_games,t2_games,set_scores,display_t1,display_t2,rating_delta,t1_rating_at,t2_rating_at"
             +"&order=match_date.desc,id.desc&limit=2000").then(J).catch(function(){ return []; }),
       fetch(B+"plat_player_results?pool_id=eq."+P+"&discipline=eq.padel&name=ilike."+like
             +"&select=name,gender,club_id,current_rating,initial_rating,sets_played,sets_won&limit=500").then(J).catch(function(){ return []; }),
@@ -11727,7 +11750,7 @@ W.mePair=function(name,col){
       fetch(B+"plat_player_results?pool_id=eq."+P+"&discipline=eq.padel&name=eq."+encodeURIComponent(pair)
             +"&select=name,gender,club_id,current_rating,initial_rating,sets_played,sets_won,game_diff_per_set&limit=20").then(J).catch(function(){ return []; }),
       fetch(B+"plat_matches?pool_id=eq."+P+"&discipline=eq.padel&or=(t1p1.eq."+encodeURIComponent(pair)+",t2p1.eq."+encodeURIComponent(pair)+")"
-            +"&select=id,club_id,match_date,match_type,event,t1p1,t1p2,t2p1,t2p2,t1_sets,t2_sets,t1_games,t2_games,set_scores,display_t1,display_t2,rating_delta"
+            +"&select=id,club_id,match_date,match_type,event,t1p1,t1p2,t2p1,t2p2,t1_sets,t2_sets,t1_games,t2_games,set_scores,display_t1,display_t2,rating_delta,t1_rating_at,t2_rating_at"
             +"&order=match_date.desc,id.desc&limit=500").then(J).catch(function(){ return []; }),
       fetch(B+"plat_clubs?pool_id=eq."+W.PLAT.pool+"&select=id,name,colour,pool_id").then(J).catch(function(){ return []; }),
       /* n180: every pair in the register, so this one can be ranked among pairs of its own category */
