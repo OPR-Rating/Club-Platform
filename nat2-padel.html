@@ -3688,7 +3688,7 @@ const CLUB_NAME = _club.name;  // shown in the logo as "OPR · <name>"
     link.setAttribute('href', href);
   }catch(e){ /* install stays on the static manifest — no functional impact */ }
 })();
-const OPR_VERSION = "OPR-DOUBLES v2026.09.03-56 · NAT fork n219 (no voice) (of PLAT p117)";  // MANUAL PAIR CREATION REMOVED FROM ADMIN: Create a pair, Bulk create pairs and Re-derive all pairs are gone (they only made match-less ghost pairs, and Re-derive rewrote every stored initial club-wide). Pairs are born automatically at match entry. Current pairs list untouched; the underlying JS is left in place unreferenced, so no other code path changes. Includes v47 (set-score fix + double-tap guard) and all prior.
+const OPR_VERSION = "OPR-DOUBLES v2026.09.03-56 · NAT fork n220 (no voice) (of PLAT p117)";  // MANUAL PAIR CREATION REMOVED FROM ADMIN: Create a pair, Bulk create pairs and Re-derive all pairs are gone (they only made match-less ghost pairs, and Re-derive rewrote every stored initial club-wide). Pairs are born automatically at match entry. Current pairs list untouched; the underlying JS is left in place unreferenced, so no other code path changes. Includes v47 (set-score fix + double-tap guard) and all prior.
 // Explanation shown above the individual ladder. Open on load so it's read; collapsible
 // (state kept for the session) and scrolls away. Mechanics only — no outcome framing, so
 // members aren't nudged away from playing stronger opponents. Every clause maps to a real
@@ -15650,7 +15650,7 @@ W.nhOpenPair=function(name){
         if(card.querySelector(".nsRow")) return;
         var team=(n==="1")?"t1":"t2";
         var box=document.createElement("div");
-        box.innerHTML='<div style="font-size:11px;color:#7a6f8a;margin:2px 0 4px">Names from</div>'+nsRow(team);
+        box.innerHTML='<div style="font-size:11.5px;color:#7a6f8a;font-weight:700;margin:2px 0 5px">Select name from:</div>'+nsRow(team);
         lab.parentNode.insertBefore(box, lab.nextSibling);
       });
     }catch(e){}
@@ -15903,6 +15903,149 @@ W.nhOpenPair=function(name){
     if(location.hash==="#enter"){ W.showScreen("entryScreen"); }
   });
 })();
+
+/* n220: HOW TO USE OPR — a tab on the About screen.
+   People are handed this app at a club night and nobody explains it. This is the explanation: what the three
+   rungs mean, how to enter a score, what the name pills do, how ratings move, and what each page is for.
+   Written for a member, not for an administrator — the admin brief covers the other side.
+   It is injected into #aboutScreen, and About's own content becomes the first tab. */
+(function(){
+  var W = window;
+
+  function tabBtn(id, label, on, col){
+    return '<button type="button" id="htTab'+id+'" onclick="window.htShow(\'' + id + '\')" '
+      + 'style="flex:1;padding:9px 6px;border:none;border-bottom:3px solid '+(on?col:"transparent")+';background:none;'
+      + 'font:inherit;font-size:13.5px;font-weight:800;color:'+(on?col:"#6b6585")+';cursor:pointer">'+label+'</button>';
+  }
+
+  function h(title){
+    return '<h3 style="font-size:14px;font-weight:800;color:var(--nhc,#6c3483);margin:18px 0 6px">'+title+'</h3>';
+  }
+  function p(text){
+    return '<p style="font-size:14px;line-height:1.6;color:#332b44;margin:0 0 10px">'+text+'</p>';
+  }
+  function step(n, title, text){
+    return '<div style="display:flex;gap:10px;margin:0 0 11px">'
+      + '<span style="flex:0 0 22px;height:22px;border-radius:50%;background:var(--nhc,#6c3483);color:#fff;'
+      + 'display:grid;place-items:center;font-size:12px;font-weight:800">'+n+'</span>'
+      + '<span style="flex:1;font-size:14px;line-height:1.55;color:#332b44"><b>'+title+'</b><br>'+text+'</span></div>';
+  }
+
+  function guide(){
+    return ''
+    + '<div style="background:#f4f0fa;border-left:4px solid var(--nhc,#6c3483);border-radius:8px;padding:12px 14px;margin:0 0 14px">'
+    + '<b style="color:var(--nhc,#6c3483)">One rating, wherever you play.</b><br>'
+    + '<span style="font-size:13.5px;line-height:1.55">Your rating follows you between groups, clubs and regions. '
+    + 'Play a Tuesday night at one group and a tournament at another — it is all the same rating.</span></div>'
+
+    + h('The three rungs')
+    + p('<b>A group</b> is where you play: Tuesday Ladies, the Wednesday social, a club night. '
+      + '<b>A region</b> holds several groups and keeps the records for all of them. '
+      + '<b>The register</b> is everyone, across every region. You will normally live on your group\u2019s page, '
+      + 'and step up to the region when you want ladders and records.')
+
+    + h('Entering a score')
+    + step(1,'Tap <b>+ Enter your match score</b>','On the region\u2019s door or your group\u2019s page. It is the blue square at the top.')
+    + step(2,'Say what the match was','The event, the date, whether it was Men\u2019s, Ladies, Mixed or All Sorts, and how many sets you played.')
+    + step(3,'Pick the four players','Tap each slot and choose the name. If a name is missing, see <b>Select name from</b> below.')
+    + step(4,'Put in the score','Sets in the sets boxes and games in the games boxes. A single set won 16\u20138 is <b>1\u20130 in sets</b> and <b>16\u20138 in games</b> \u2014 never 16\u20138 in the sets boxes.')
+    + step(5,'Save','Ratings move the moment it is saved, for all four players.')
+
+    + h('Select name from: Group \u00b7 Region \u00b7 Global')
+    + p('Each team card has a row of three. <b>Group</b> shows the people at this group, and is where you start. '
+      + '<b>Region</b> widens it to everybody in the region, including a member who has just joined and not played yet. '
+      + '<b>Global</b> is the whole register \u2014 use it for a visitor from another club.')
+    + p('Each team has its own row, so you can pick a visitor on one side and your own group on the other.')
+
+    + h('How your rating moves')
+    + p('Before the match, the two pairs\u2019 ratings say how it should go. Afterwards, the result is compared with that. '
+      + 'Beat what was expected and you go up; fall short and you go down \u2014 <b>even if you won</b>. '
+      + 'A close loss to a much stronger pair can move you up.')
+    + p('The move is worked out from <b>sets first and games second</b>, and every set counts: a three-setter moves '
+      + 'a rating more than a single set. A narrow win by a strong favourite earns very little, which is what stops '
+      + 'ratings drifting upward at the top of a club.')
+    + p('A pair\u2019s rating is <b>60% the stronger player and 40% the other</b>, so a new pairing is fairly rated from '
+      + 'its first ball, and both partners move by the same amount.')
+
+    + h('Your own page')
+    + p('<b>My page</b> is reached from the button at the top right of any door. It holds your rating, your level and '
+      + 'your rank, your form, your partnerships, and every match you have played. '
+      + '<b>Move by group</b> shows where your rating has come from, group by group.')
+    + p('You can set your picture there, and choose to have OPR open on your page \u2014 or on your group \u2014 whenever you start it.')
+
+    + h('Ratings, ladders and profiles')
+    + p('From a region\u2019s door: <b>Ratings \u00b7 Ladders \u00b7 Profiles</b>. Ladders are by category \u2014 Men\u2019s pairs, Ladies pairs, '
+      + 'Mixed \u2014 and show every pair in order. <b>Member profiles</b> lists everyone who has played, with the group '
+      + 'they played at beside their name.')
+
+    + h('Tournaments and court cards')
+    + p('A <b>tournament</b> belongs to a group and keeps its own rounds, standings and results. '
+      + 'A <b>court card</b> is for a club night: set the courts and who is on them, and the scores come back to the card.')
+    + p('<b>Enter tournament results through the tournament itself</b>, not through Enter a score, so they attach to the '
+      + 'right round.')
+
+    + h('If something looks wrong')
+    + p('Tell your group\u2019s administrator. A match can be corrected or removed, and every rating is worked out again '
+      + 'from the matches \u2014 so a mistake is always fixable and nothing is lost by fixing it.')
+
+    + '<div style="height:24px"></div>';
+  }
+
+  W.htShow = function(which){
+    try{
+      var col = getComputedStyle(document.documentElement).getPropertyValue('--nhc').trim() || '#6c3483';
+      var a = document.getElementById('htPaneAbout'), g = document.getElementById('htPaneHow');
+      if(!a || !g) return;
+      var onHow = (which === 'how');
+      a.style.display = onHow ? 'none' : 'block';
+      g.style.display = onHow ? 'block' : 'none';
+      var ta = document.getElementById('htTababout'), tg = document.getElementById('htTabhow');
+      if(ta){ ta.style.color = onHow ? '#6b6585' : col; ta.style.borderBottomColor = onHow ? 'transparent' : col; }
+      if(tg){ tg.style.color = onHow ? col : '#6b6585'; tg.style.borderBottomColor = onHow ? col : 'transparent'; }
+    }catch(e){}
+  };
+
+  function mount(){
+    try{
+      var scr = document.getElementById('aboutScreen');
+      if(!scr || document.getElementById('htTabs')) return;
+      var body = scr.querySelector('.screen-content');
+      if(!body) return;
+      var col = getComputedStyle(document.documentElement).getPropertyValue('--nhc').trim() || '#6c3483';
+
+      /* the hero stays at the top; everything below it becomes the About pane */
+      var hero = body.querySelector('.about-hero');
+      var paneA = document.createElement('div');
+      paneA.id = 'htPaneAbout';
+      var node = hero ? hero.nextSibling : body.firstChild;
+      while(node){ var nx = node.nextSibling; paneA.appendChild(node); node = nx; }
+
+      var tabs = document.createElement('div');
+      tabs.id = 'htTabs';
+      tabs.style.cssText = 'display:flex;border-bottom:1px solid #e6e0ee;margin:10px 0 4px';
+      tabs.innerHTML = tabBtn('about','About OPR',true,col) + tabBtn('how','How to use it',false,col);
+
+      var paneG = document.createElement('div');
+      paneG.id = 'htPaneHow';
+      paneG.style.display = 'none';
+      paneG.innerHTML = guide();
+
+      body.appendChild(tabs);
+      body.appendChild(paneA);
+      body.appendChild(paneG);
+    }catch(e){}
+  }
+
+  setInterval(function(){
+    try{
+      var scr = document.getElementById('aboutScreen');
+      if(!scr || scr.classList.contains('hidden')) return;
+      if(document.getElementById('htTabs')) return;
+      mount();
+    }catch(e){}
+  }, 500);
+})();
+
 </script>
 </body>
 </html>
