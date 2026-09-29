@@ -3688,7 +3688,7 @@ const CLUB_NAME = _club.name;  // shown in the logo as "OPR · <name>"
     link.setAttribute('href', href);
   }catch(e){ /* install stays on the static manifest — no functional impact */ }
 })();
-const OPR_VERSION = "OPR-DOUBLES v2026.09.03-56 · NAT fork n227 (no voice) (of PLAT p117)";  // MANUAL PAIR CREATION REMOVED FROM ADMIN: Create a pair, Bulk create pairs and Re-derive all pairs are gone (they only made match-less ghost pairs, and Re-derive rewrote every stored initial club-wide). Pairs are born automatically at match entry. Current pairs list untouched; the underlying JS is left in place unreferenced, so no other code path changes. Includes v47 (set-score fix + double-tap guard) and all prior.
+const OPR_VERSION = "OPR-DOUBLES v2026.09.03-56 · NAT fork n228 (no voice) (of PLAT p117)";  // MANUAL PAIR CREATION REMOVED FROM ADMIN: Create a pair, Bulk create pairs and Re-derive all pairs are gone (they only made match-less ghost pairs, and Re-derive rewrote every stored initial club-wide). Pairs are born automatically at match entry. Current pairs list untouched; the underlying JS is left in place unreferenced, so no other code path changes. Includes v47 (set-score fix + double-tap guard) and all prior.
 // Explanation shown above the individual ladder. Open on load so it's read; collapsible
 // (state kept for the session) and scrolls away. Mechanics only — no outcome framing, so
 // members aren't nudged away from playing stronger opponents. Every clause maps to a real
@@ -10567,8 +10567,9 @@ async function clRemove(id, label){
     var letter = drew ? 'D' : (won ? 'W' : 'L');
     return '<div style="padding:10px 2px 8px;border-bottom:1px solid #eee9f2">'
       + '<div onclick="window.nhSets(\''+id+'\')" style="cursor:pointer;display:flex;align-items:flex-start;gap:10px">'
-      +   '<span style="flex:0 0 30px;height:30px;margin-top:14px;border-radius:7px;background:'+badge+';color:#fff;'
-      +     'display:grid;place-items:center;font-weight:800;font-size:13px">'+letter+'</span>'
+      /* n228: the W/L square sized against the text beside it, not against the card */
+      +   '<span style="flex:0 0 24px;height:24px;margin-top:15px;border-radius:6px;background:'+badge+';color:#fff;'
+      +     'display:grid;place-items:center;font-weight:800;font-size:11.5px">'+letter+'</span>'
       +   '<span style="flex:1;min-width:0">'
       +     '<span style="display:block;font-weight:700;font-size:14px;color:#241d33">'+esc(m.match_type||"")+'</span>'
       +     '<span style="display:block;font-size:14.5px;color:#5f5770;margin:1px 0 2px">'
