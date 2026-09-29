@@ -3688,7 +3688,7 @@ const CLUB_NAME = _club.name;  // shown in the logo as "OPR · <name>"
     link.setAttribute('href', href);
   }catch(e){ /* install stays on the static manifest — no functional impact */ }
 })();
-const OPR_VERSION = "OPR-DOUBLES v2026.09.03-56 · NAT fork n215 (no voice) (of PLAT p117)";  // MANUAL PAIR CREATION REMOVED FROM ADMIN: Create a pair, Bulk create pairs and Re-derive all pairs are gone (they only made match-less ghost pairs, and Re-derive rewrote every stored initial club-wide). Pairs are born automatically at match entry. Current pairs list untouched; the underlying JS is left in place unreferenced, so no other code path changes. Includes v47 (set-score fix + double-tap guard) and all prior.
+const OPR_VERSION = "OPR-DOUBLES v2026.09.03-56 · NAT fork n216 (no voice) (of PLAT p117)";  // MANUAL PAIR CREATION REMOVED FROM ADMIN: Create a pair, Bulk create pairs and Re-derive all pairs are gone (they only made match-less ghost pairs, and Re-derive rewrote every stored initial club-wide). Pairs are born automatically at match entry. Current pairs list untouched; the underlying JS is left in place unreferenced, so no other code path changes. Includes v47 (set-score fix + double-tap guard) and all prior.
 // Explanation shown above the individual ladder. Open on load so it's read; collapsible
 // (state kept for the session) and scrolls away. Mechanics only — no outcome framing, so
 // members aren't nudged away from playing stronger opponents. Every clause maps to a real
@@ -15516,23 +15516,46 @@ W.nhOpenPair=function(name){
       NCACHE[scope]=out; return out;
     }).catch(function(){ return []; });
   }
-  W.nsPick=function(team, scope){
-    NSCOPE[team]=scope;
-    nsRowPaint();
-    nsPeople(scope).then(function(people){
+  /* n216: THE PICKER REFETCHES ON EVERY OPEN. openPlayerModal() calls loadPlayers(), which reads this board's
+     individuals and overwrites MEN / LADIES — so the scope was being set correctly and then wiped a moment later,
+     which is why Region and Global still showed only the group. loadPlayers is wrapped: when a wider scope is
+     chosen it hands back the scope's roster instead of the board's, and behaves exactly as before on "group". */
+  (function(){
+    var arm=function(){
+      if(typeof W.loadPlayers!=="function") return setTimeout(arm,300);
+      if(W.loadPlayers.__ns) return;
+      var orig=W.loadPlayers;
+      var wrapped=function(force){
+        var scope=W.__nsScope||"group";
+        if(scope==="group") return orig.apply(this, arguments);
+        return Promise.resolve(nsApply(scope));      /* the wider list, already cached */
+      };
+      wrapped.__ns=true;
+      W.loadPlayers=wrapped;
+    };
+    arm();
+  })();
+  /* hand the parent its roster in the chosen scope */
+  function nsApply(scope){
+    return nsPeople(scope).then(function(people){
       try{
-        /* hand the parent its own roster back, in the chosen scope */
-        var men=[], ladies=[], byName=(W.INDIV_BY_NAME||{});
+        var men=[], ladies=[], byName={};
         people.forEach(function(p){
           byName[p.full_name]={id:p.id, gender:p.gender, seed_rating:p.seed_rating};
           if(String(p.gender||"").toUpperCase()==="M") men.push(p.full_name); else ladies.push(p.full_name);
         });
         W.INDIV_BY_NAME=byName;
         W.MEN=men.sort(); W.LADIES=ladies.sort();
-        if(W.MIXED) W.MIXED=men.concat(ladies).sort();
-        W.__nsScope=scope;
+        if(W.MIXED!=null) W.MIXED=men.concat(ladies).sort();
       }catch(e){}
+      return people;
     });
+  }
+  W.nsPick=function(team, scope){
+    NSCOPE[team]=scope;
+    nsRowPaint();
+    W.__nsScope=scope;          /* set FIRST, so a refetch from the picker respects it */
+    nsApply(scope);
   };
   function nsRow(team){
     var col=inkSafe(W.PLAT.colour||"#6c3483");
