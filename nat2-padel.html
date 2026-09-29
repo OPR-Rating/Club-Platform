@@ -3688,7 +3688,7 @@ const CLUB_NAME = _club.name;  // shown in the logo as "OPR · <name>"
     link.setAttribute('href', href);
   }catch(e){ /* install stays on the static manifest — no functional impact */ }
 })();
-const OPR_VERSION = "OPR-DOUBLES v2026.09.03-56 · NAT fork n228 (no voice) (of PLAT p117)";  // MANUAL PAIR CREATION REMOVED FROM ADMIN: Create a pair, Bulk create pairs and Re-derive all pairs are gone (they only made match-less ghost pairs, and Re-derive rewrote every stored initial club-wide). Pairs are born automatically at match entry. Current pairs list untouched; the underlying JS is left in place unreferenced, so no other code path changes. Includes v47 (set-score fix + double-tap guard) and all prior.
+const OPR_VERSION = "OPR-DOUBLES v2026.09.03-56 · NAT fork n229 (no voice) (of PLAT p117)";  // MANUAL PAIR CREATION REMOVED FROM ADMIN: Create a pair, Bulk create pairs and Re-derive all pairs are gone (they only made match-less ghost pairs, and Re-derive rewrote every stored initial club-wide). Pairs are born automatically at match entry. Current pairs list untouched; the underlying JS is left in place unreferenced, so no other code path changes. Includes v47 (set-score fix + double-tap guard) and all prior.
 // Explanation shown above the individual ladder. Open on load so it's read; collapsible
 // (state kept for the session) and scrolls away. Mechanics only — no outcome framing, so
 // members aren't nudged away from playing stronger opponents. Every clause maps to a real
@@ -15877,6 +15877,27 @@ W.nhOpenPair=function(name){
     }, 500);
   }
   W.nsWatch=nsWatch;
+  /* n229: THE TOURNAMENT NAME LIST CAME BACK DOUBLED AND TRIPLED. The tournament screen asks for
+     `individuals?club_id=eq.<this board>`, and the platform shim rewrites that to `club_id=in.(<all my boards>)`
+     — so a member who belongs to the region AND a group is returned once per board. The list is deduped by name
+     as soon as it is built; the screen itself is untouched. */
+  (function(){
+    var seenLen=-1;
+    setInterval(function(){
+      try{
+        var L=W._etPlayers;
+        if(!L || !L.length || L.length===seenLen) return;
+        var out=[], seen={};
+        for(var i=0;i<L.length;i++){
+          var n=L[i] && L[i].name;
+          if(!n || seen[n]) continue;
+          seen[n]=1; out.push(L[i]);
+        }
+        if(out.length!==L.length){ W._etPlayers=out; }
+        seenLen=(W._etPlayers||[]).length;
+      }catch(e){}
+    }, 400);
+  })();
   nsWatch();   /* n215: started at load. Waiting for entryTint() to start it meant it never ran on the path a
                   member actually takes, which is why the rows mounted once in a test and never in the app. */
   function entryTint(){
