@@ -3688,7 +3688,7 @@ const CLUB_NAME = _club.name;  // shown in the logo as "OPR · <name>"
     link.setAttribute('href', href);
   }catch(e){ /* install stays on the static manifest — no functional impact */ }
 })();
-const OPR_VERSION = "OPR-DOUBLES v2026.09.03-56 · NAT fork n223 (no voice) (of PLAT p117)";  // MANUAL PAIR CREATION REMOVED FROM ADMIN: Create a pair, Bulk create pairs and Re-derive all pairs are gone (they only made match-less ghost pairs, and Re-derive rewrote every stored initial club-wide). Pairs are born automatically at match entry. Current pairs list untouched; the underlying JS is left in place unreferenced, so no other code path changes. Includes v47 (set-score fix + double-tap guard) and all prior.
+const OPR_VERSION = "OPR-DOUBLES v2026.09.03-56 · NAT fork n225 (no voice) (of PLAT p117)";  // MANUAL PAIR CREATION REMOVED FROM ADMIN: Create a pair, Bulk create pairs and Re-derive all pairs are gone (they only made match-less ghost pairs, and Re-derive rewrote every stored initial club-wide). Pairs are born automatically at match entry. Current pairs list untouched; the underlying JS is left in place unreferenced, so no other code path changes. Includes v47 (set-score fix + double-tap guard) and all prior.
 // Explanation shown above the individual ladder. Open on load so it's read; collapsible
 // (state kept for the session) and scrolls away. Mechanics only — no outcome framing, so
 // members aren't nudged away from playing stronger opponents. Every clause maps to a real
@@ -4258,6 +4258,7 @@ async function showPartnerships(indivId){
         <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;">
           <span style="font-weight:700;flex:1;">${t.name}</span>
           <span class="odr-cat-pill ${catCls(t.gender)}">${catLabel(t.gender)}</span>
+          <span style="color:#8a8196;font-size:19px;line-height:1;margin-left:2px">\u203a</span>
         </div>
         <div style="display:flex;gap:16px;font-size:13px;color:#5b3a6e;">
           <span>Rating <b style="color:#6c3483;">${r.cur}</b></span>
@@ -10540,6 +10541,44 @@ async function clRemove(id, label){
     }).join("");
     return out ? ('<div style="margin-top:4px">'+out+'</div>') : "";
   }
+  /* n224: ON A PAIR'S OWN PAGE the matches are drawn as the PARTNERSHIP CARDS are drawn in Group members —
+     the same white card with the faint purple edge, the name row with its category pill and a chevron, and a
+     figures row beneath. Here the "name" is the opposition and the figures are that night's: the score, the sets
+     and the move. Tapping opens the set scores, as before. Everywhere else keeps the old row. */
+  function nhPairCard(m, viewer){
+    var sides=nhSides(m), a=sides[0], b=sides[1];
+    var onT1=(String(a)===String(viewer));
+    var theirs = onT1 ? b : a;
+    var s1 = onT1 ? (+m.t1_sets||0) : (+m.t2_sets||0);
+    var s2 = onT1 ? (+m.t2_sets||0) : (+m.t1_sets||0);
+    var bd=(W.PLAT.clubs||[]).find(function(c){ return Number(c.id)===Number(m.club_id); });
+    var col=inkSafe((bd&&bd.colour)||"#6c3483");
+    var d=(m.rating_delta!=null)?(+m.rating_delta):null;
+    if(d!=null && isFinite(d)){ if(!onT1) d=-d; d=Math.round(d*10)/10; } else { d=null; }
+    var mvCol=(d==null)?"#6b6585":((d<0)?"#c0392b":"#1e8449");
+    W.__nhRowN=(W.__nhRowN||0)+1;
+    var id="p"+W.__nhRowN+"_"+(m.id||0);
+    /* n225: the edge is the BOARD'S colour, not the product's purple — the card came from the parent, where the
+       purple is hardcoded. A match played at a blue group gets a blue edge. */
+    var rgb=(function(h){ try{ var n=parseInt(String(h).slice(1),16); return ((n>>16)&255)+","+((n>>8)&255)+","+(n&255); }catch(e){ return "108,52,131"; } })(col);
+    return '<div style="background:#fff;border:1px solid rgba('+rgb+',.28);border-radius:12px;padding:12px 14px;'
+      + 'margin-bottom:10px;box-shadow:0 1px 3px rgba(0,0,0,.05)">'
+      + '<div onclick="window.nhSets(\''+id+'\')" style="cursor:pointer">'
+      +   '<div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">'
+      +     '<span style="font-weight:700;flex:1;min-width:0">'+esc(theirs)+'</span>'
+      +     '<span style="display:inline-block;background:'+col+';color:#fff;border-radius:99px;padding:2px 9px;'
+      +       'font-size:10px;font-weight:800">'+esc(m.match_type||"")+'</span>'
+      +     '<span id="nht'+id+'" style="color:#8a8196;font-size:19px;line-height:1">\u25be</span>'
+      +   '</div>'
+      +   '<div style="display:flex;gap:16px;font-size:13px;color:#5b3a6e;flex-wrap:wrap">'
+      +     '<span>Score <b style="color:'+col+'">'+s1+'\u2013'+s2+'</b></span>'
+      +     '<span>'+esc(String(m.match_date||"").slice(0,10))+'</span>'
+      +     (d==null?'':'<span>Move <b style="color:'+mvCol+'">'+(d>0?"+":"")+d.toFixed(1)+'</b></span>')
+      +   '</div>'
+      + '</div>'
+      + '<div id="nhs'+id+'" style="display:none;padding:8px 0 0">'+nhSetPills(m,col,viewer)+'</div>'
+      + '</div>';
+  }
   function nhMatchRow(m,scope,viewer){
     var sides=nhSides(m), a=sides[0], b=sides[1];
     var bd=(W.PLAT.clubs||[]).find(function(c){ return Number(c.id)===Number(m.club_id); });
@@ -10650,7 +10689,10 @@ async function clRemove(id, label){
     var wk=all.filter(function(m){ return ago(m.match_date)<7; }).length;
     return '<div class="brk">'+((bar===false)?"":nhLimeBar("Recent matches"+(wk?(" \u00b7 "+wk+" this week"):"")+(NHEG?" \u00b7 example":"")))
       +'<div style="max-height:'+(scope==="club"?430:360)+'px;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:4px 10px 8px">'
-      + ms.map(function(m){ return nhMatchRow(m,scope,viewer); }).join("")
+      + ms.map(function(m){
+          /* a pair's own page gets the partnership-card format; every other list keeps the plain row */
+          return (viewer && String(viewer).indexOf(" & ")>0) ? nhPairCard(m, viewer) : nhMatchRow(m,scope,viewer);
+        }).join("")
       +'</div>'
       + ((all.length>ms.length)?'<div style="padding:7px 10px 9px;text-align:center;font-size:11.5px;color:#8a8196">'+ms.length+' of '+all.length+' \u00b7 scroll for more</div>':'')
       +'</div>';
@@ -11966,7 +12008,7 @@ W.mePair=function(name,col){
                   })()
                 + '</span></span>'
                 +'<span class="val"><b class="'+(myS>thS?"up":"dn")+'">'+myS+'\u2013'+thS+'</b>'
-                +'<span id="nht'+id+'" style="display:inline-block;font-size:15px;color:#7a6f8a;margin-left:6px">\u25bc</span></span></button>'
+                +'<span id="nht'+id+'" style="display:inline-block;font-size:20px;color:#7a6f8a;margin-left:6px">\u25bc</span></span></button>'
                 /* n109: this is the member's own page — each set is green won, red lost, from their side */
                 +'<div id="nhs'+id+'" style="display:none;padding:0 12px 10px 20px">'+nhSetPills(m,col,me)+'</div></div>'; }).join("")
           +'</div></div>';
