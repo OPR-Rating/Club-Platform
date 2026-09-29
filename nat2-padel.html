@@ -3688,7 +3688,7 @@ const CLUB_NAME = _club.name;  // shown in the logo as "OPR · <name>"
     link.setAttribute('href', href);
   }catch(e){ /* install stays on the static manifest — no functional impact */ }
 })();
-const OPR_VERSION = "OPR-DOUBLES v2026.09.03-56 · NAT fork n216 (no voice) (of PLAT p117)";  // MANUAL PAIR CREATION REMOVED FROM ADMIN: Create a pair, Bulk create pairs and Re-derive all pairs are gone (they only made match-less ghost pairs, and Re-derive rewrote every stored initial club-wide). Pairs are born automatically at match entry. Current pairs list untouched; the underlying JS is left in place unreferenced, so no other code path changes. Includes v47 (set-score fix + double-tap guard) and all prior.
+const OPR_VERSION = "OPR-DOUBLES v2026.09.03-56 · NAT fork n218 (no voice) (of PLAT p117)";  // MANUAL PAIR CREATION REMOVED FROM ADMIN: Create a pair, Bulk create pairs and Re-derive all pairs are gone (they only made match-less ghost pairs, and Re-derive rewrote every stored initial club-wide). Pairs are born automatically at match entry. Current pairs list untouched; the underlying JS is left in place unreferenced, so no other code path changes. Includes v47 (set-score fix + double-tap guard) and all prior.
 // Explanation shown above the individual ladder. Open on load so it's read; collapsible
 // (state kept for the session) and scrolls away. Mechanics only — no outcome framing, so
 // members aren't nudged away from playing stronger opponents. Every clause maps to a real
@@ -15501,14 +15501,19 @@ W.nhOpenPair=function(name){
   var NCACHE = {group:null, region:null, global:null};
   function nsPeople(scope){
     if(NCACHE[scope]) return Promise.resolve(NCACHE[scope]);
-    var B=SBREST(), sel="select=id,full_name,gender,seed_rating,club_id&order=full_name.asc";
-    var url;
-    if(scope==="group") url = B+"plat_individuals?"+sel+"&club_id=eq."+W.PLAT.cid;
-    else if(scope==="region"){
-      var ids=(W.PLAT.myBoards&&W.PLAT.myBoards.length)?W.PLAT.myBoards:[W.PLAT.cid];
-      url = B+"plat_individuals?"+sel+"&club_id=in.("+ids.join(",")+")";
+    /* n218: THE REGISTER HOLDS THE PEOPLE; A BOARD HOLDS THE AFFILIATION.
+       plat_individuals is register-level — it has pool_id and NO club_id — so asking it for club_id returned
+       nothing and the picker quietly fell back to the group, which is why Region and Global showed the group.
+       A board's people come from plat_padel_v_individuals, the view that carries club_id (built on
+       plat_memberships); the whole register comes from plat_individuals itself. */
+    var B=SBREST(), url;
+    if(scope==="global"){
+      url = B+"plat_individuals?select=id,full_name,gender,default_seed&pool_id=eq."+(W.PLAT.pool||13)
+          + "&order=full_name.asc&limit=4000";
     } else {
-      url = B+"plat_individuals?"+sel+"&pool_id=eq."+(W.PLAT.pool||13)+"&limit=4000";
+      var ids = (scope==="region" && W.PLAT.myBoards && W.PLAT.myBoards.length) ? W.PLAT.myBoards : [W.PLAT.cid];
+      url = B+"plat_padel_v_individuals?select=id,full_name,gender,seed_rating,club_id&club_id=in.("+ids.join(",")+")"
+          + "&order=full_name.asc";
     }
     return fetch(url).then(J).then(function(rows){
       var seen={}, out=[];
@@ -15536,6 +15541,32 @@ W.nhOpenPair=function(name){
     arm();
   })();
   /* hand the parent its roster in the chosen scope */
+  /* n217: MEN and LADIES are declared with `let`, so they are private to the parent's script — assigning
+     window.MEN never reached them, which is why Region and Global still showed the group. getPlayerList() is the
+     one function the picker calls for its list, and it IS on window (a function declaration), so the scope is
+     applied there instead: on "group" the parent's own list, otherwise the scope's names. */
+  (function(){
+    var arm=function(){
+      if(typeof W.getPlayerList!=="function") return setTimeout(arm,300);
+      if(W.getPlayerList.__ns) return;
+      var orig=W.getPlayerList;
+      var wrapped=function(type){
+        var scope=W.__nsScope||"group";
+        var rows=NCACHE[scope];
+        if(scope==="group" || !rows || !rows.length) return orig.apply(this, arguments);
+        var men=[], ladies=[];
+        rows.forEach(function(p){
+          if(String(p.gender||"").toUpperCase()==="M") men.push(p.full_name); else ladies.push(p.full_name);
+        });
+        men.sort(); ladies.sort();
+        if(type==="Men's") return men;
+        if(type==="Ladies") return ladies;
+        return men.concat(ladies).sort();
+      };
+      wrapped.__ns=true; W.getPlayerList=wrapped;
+    };
+    arm();
+  })();
   function nsApply(scope){
     return nsPeople(scope).then(function(people){
       try{
