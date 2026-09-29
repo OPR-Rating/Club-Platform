@@ -3688,7 +3688,7 @@ const CLUB_NAME = _club.name;  // shown in the logo as "OPR · <name>"
     link.setAttribute('href', href);
   }catch(e){ /* install stays on the static manifest — no functional impact */ }
 })();
-const OPR_VERSION = "OPR-DOUBLES v2026.09.03-56 · NAT fork n220 (no voice) (of PLAT p117)";  // MANUAL PAIR CREATION REMOVED FROM ADMIN: Create a pair, Bulk create pairs and Re-derive all pairs are gone (they only made match-less ghost pairs, and Re-derive rewrote every stored initial club-wide). Pairs are born automatically at match entry. Current pairs list untouched; the underlying JS is left in place unreferenced, so no other code path changes. Includes v47 (set-score fix + double-tap guard) and all prior.
+const OPR_VERSION = "OPR-DOUBLES v2026.09.03-56 · NAT fork n221 (no voice) (of PLAT p117)";  // MANUAL PAIR CREATION REMOVED FROM ADMIN: Create a pair, Bulk create pairs and Re-derive all pairs are gone (they only made match-less ghost pairs, and Re-derive rewrote every stored initial club-wide). Pairs are born automatically at match entry. Current pairs list untouched; the underlying JS is left in place unreferenced, so no other code path changes. Includes v47 (set-score fix + double-tap guard) and all prior.
 // Explanation shown above the individual ladder. Open on load so it's read; collapsible
 // (state kept for the session) and scrolls away. Mechanics only — no outcome framing, so
 // members aren't nudged away from playing stronger opponents. Every clause maps to a real
@@ -15498,6 +15498,8 @@ W.nhOpenPair=function(name){
      and Global asks for two letters before it offers anything — a register of hundreds is not a list to scroll.
      The parent keeps its roster in MEN / LADIES / INDIV_BY_NAME, so a scope change refills those and redraws. */
   var NSCOPE = {t1:"group", t2:"group"};
+  /* n221: the board's own people are fetched when the entry step appears — not at start-up, which put a read on
+     every door and showed as an extra console error in the REGRESSION guard. */
   var NCACHE = {group:null, region:null, global:null};
   function nsTidy(rows){
     var seen={}, out=[];
@@ -15578,7 +15580,10 @@ W.nhOpenPair=function(name){
       var wrapped=function(type){
         var scope=W.__nsScope||"group";
         var rows=NCACHE[scope];
-        if(scope==="group" || !rows || !rows.length) return orig.apply(this, arguments);
+        /* n221: GROUP IS ANSWERED FROM MEMBERSHIP TOO. It used to fall through to the parent's own list, which is
+           wider than the board — a member added to the REGION appeared in a group's picker, which is precisely what
+           the three pills exist to prevent. Only an empty cache falls back now. */
+        if(!rows || !rows.length) return orig.apply(this, arguments);
         var men=[], ladies=[];
         rows.forEach(function(p){
           if(String(p.gender||"").toUpperCase()==="M") men.push(p.full_name); else ladies.push(p.full_name);
@@ -15649,6 +15654,7 @@ W.nhOpenPair=function(name){
         if(!card.querySelector(".player-display")) return;    /* and only while it holds name buttons */
         if(card.querySelector(".nsRow")) return;
         var team=(n==="1")?"t1":"t2";
+        try{ nsPeople("group"); }catch(e){}     /* warm the board's own list while the step is being drawn */
         var box=document.createElement("div");
         box.innerHTML='<div style="font-size:11.5px;color:#7a6f8a;font-weight:700;margin:2px 0 5px">Select name from:</div>'+nsRow(team);
         lab.parentNode.insertBefore(box, lab.nextSibling);
