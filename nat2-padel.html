@@ -3688,7 +3688,7 @@ const CLUB_NAME = _club.name;  // shown in the logo as "OPR · <name>"
     link.setAttribute('href', href);
   }catch(e){ /* install stays on the static manifest — no functional impact */ }
 })();
-const OPR_VERSION = "OPR-DOUBLES v2026.09.03-56 · NAT fork n221 (no voice) (of PLAT p117)";  // MANUAL PAIR CREATION REMOVED FROM ADMIN: Create a pair, Bulk create pairs and Re-derive all pairs are gone (they only made match-less ghost pairs, and Re-derive rewrote every stored initial club-wide). Pairs are born automatically at match entry. Current pairs list untouched; the underlying JS is left in place unreferenced, so no other code path changes. Includes v47 (set-score fix + double-tap guard) and all prior.
+const OPR_VERSION = "OPR-DOUBLES v2026.09.03-56 · NAT fork n223 (no voice) (of PLAT p117)";  // MANUAL PAIR CREATION REMOVED FROM ADMIN: Create a pair, Bulk create pairs and Re-derive all pairs are gone (they only made match-less ghost pairs, and Re-derive rewrote every stored initial club-wide). Pairs are born automatically at match entry. Current pairs list untouched; the underlying JS is left in place unreferenced, so no other code path changes. Includes v47 (set-score fix + double-tap guard) and all prior.
 // Explanation shown above the individual ladder. Open on load so it's read; collapsible
 // (state kept for the session) and scrolls away. Mechanics only — no outcome framing, so
 // members aren't nudged away from playing stronger opponents. Every clause maps to a real
@@ -10527,6 +10527,19 @@ async function clRemove(id, label){
     var b=m.display_t2 || (m.t2p2 ? ((m.t2p1||"")+" & "+m.t2p2) : (m.t2p1||""));
     return [a,b];
   }
+  /* n223: one chip per set, from the reader's side. Equal games is a DRAW, so it is neutral, not red. */
+  function nhSetChips2(m, onT1){
+    var ss=String(m.set_scores||"").trim(); if(!ss) return "";
+    var out=ss.split(",").map(function(x){ return x.trim(); }).filter(Boolean).map(function(sc){
+      var p=sc.split("-"), x=parseInt(p[0],10), y=parseInt(p[1],10);
+      if(!isFinite(x)||!isFinite(y)) return "";
+      var a2=onT1?x:y, b2=onT1?y:x;
+      var bg=(a2>b2)?"#1e8449":((a2<b2)?"#c0392b":"#8a8196");
+      return '<span style="display:inline-block;background:'+bg+';color:#fff;border-radius:6px;padding:1px 6px;'
+           + 'font-size:11px;font-weight:800;margin:0 2px;font-variant-numeric:tabular-nums">'+a2+'/'+b2+'</span>';
+    }).join("");
+    return out ? ('<div style="margin-top:4px">'+out+'</div>') : "";
+  }
   function nhMatchRow(m,scope,viewer){
     var sides=nhSides(m), a=sides[0], b=sides[1];
     var bd=(W.PLAT.clubs||[]).find(function(c){ return Number(c.id)===Number(m.club_id); });
@@ -10547,8 +10560,82 @@ async function clRemove(id, label){
       +'<button onclick="window.nhSets(\''+id+'\')" style="background:none;border:none;cursor:pointer;color:'+col+';font-size:13px;padding:0 2px">'
       +'<span id="nht'+id+'" style="display:inline-block;transition:transform .15s">\u25bc</span></button>'
       +'</div>'
-      +'<div style="text-align:center;font-size:13.5px;font-weight:600;color:#241d33;margin-top:3px;line-height:1.4">'
-      + esc(a)+' <span style="color:'+col+'">'+((m.t1_sets||0)+"-"+(m.t2_sets||0))+'</span> '+esc(b)+'</div>'
+      /* n223: A CARD IS WRITTEN FROM THE VIEWER'S SIDE — AND ONLY WHEN THERE IS ONE.
+         On a pair's page or a member's page the reader is known, so the card can say "vs …", show each set from
+         their side, and say what the match did to their rating. On the door and on a group's recent matches there
+         is NO viewer: a move there would silently belong to the first-named pair, which is a number with no owner.
+         So those lists keep exactly the row they always had. This was built twice before (n213/n214) without that
+         guard and had to be reverted twice; the guard is the whole point. */
+      + (function(){
+          var plain = '<div style="text-align:center;font-size:13.5px;font-weight:600;color:#241d33;margin-top:3px;line-height:1.4">'
+                    + (function(){
+          /* n223: ON A PAIR'S OR A MEMBER'S OWN PAGE the row is written from THEIR side: the pairing is not named
+             again on its own page ("vs Paul & Pete"), a member's row says who they played with ("with James
+             Johnstone vs ..."), and the match's own move is shown, flipped to that side — the stored delta is the
+             first-named pair's, so on the other side the sign must turn over.
+             WITH NO VIEWER — the door, a group's recent matches — NOTHING is added. A move with no owner is worse
+             than no move at all, which is what n213/n214 got wrong. */
+          var V=String(viewer||"").trim();
+          if(!V) return esc(a)+' <span style="color:'+col+'">'+((m.t1_sets||0)+"-"+(m.t2_sets||0))+'</span> '+esc(b);
+          var onT1, mine, theirs, withWho="";
+          if(V.indexOf(" & ")>0){
+            onT1=(String(a)===V);
+            if(!onT1 && String(b)!==V) return esc(a)+' <span style="color:'+col+'">'+((m.t1_sets||0)+"-"+(m.t2_sets||0))+'</span> '+esc(b);
+            theirs = onT1 ? b : a;
+          } else {
+            var inA=String(a).split(" & ").indexOf(V)>=0, inB=String(b).split(" & ").indexOf(V)>=0;
+            if(!inA && !inB) return esc(a)+' <span style="color:'+col+'">'+((m.t1_sets||0)+"-"+(m.t2_sets||0))+'</span> '+esc(b);
+            onT1=inA; mine = onT1 ? a : b; theirs = onT1 ? b : a;
+            var halves=String(mine).split(" & ");
+            var mate=(halves[0]===V)?halves[1]:halves[0];
+            if(mate) withWho='<span style="color:#6b6585;font-weight:600">with </span>'+esc(mate)+' ';
+          }
+          var s1 = onT1 ? (m.t1_sets||0) : (m.t2_sets||0);
+          var s2 = onT1 ? (m.t2_sets||0) : (m.t1_sets||0);
+          var out = withWho + '<span style="color:#6b6585;font-weight:600">vs </span>' + esc(theirs)
+                  + ' <span style="color:'+col+'">'+s1+"-"+s2+'</span>';
+          var d=(m.rating_delta!=null)? (+m.rating_delta) : null;
+          if(d!=null && isFinite(d)){
+            if(!onT1) d=-d;
+            d=Math.round(d*10)/10;
+            var c=(d<0)?"#c0392b":((d>0)?"#1e8449":"#6b6585");
+            out += '<div style="margin-top:3px;font-size:12px;font-weight:800;color:'+c+';font-variant-numeric:tabular-nums">'
+                 + '<span style="color:#6b6585;font-weight:600">Move </span>'+(d>0?"+":"")+d.toFixed(1)+'</div>';
+          }
+          return out;
+        })()
+      + '</div>';
+          var V=String(viewer||"").trim();
+          if(!V) return plain;                       /* no viewer: the door and group lists, untouched */
+          var onT1, mine, theirs, withWho="";
+          if(V.indexOf(" & ")>0){                    /* a pair's own page */
+            onT1=(String(a)===V);
+            if(!onT1 && String(b)!==V) return plain;
+            theirs = onT1 ? b : a;
+          } else {                                   /* one member's page */
+            var inA=String(a).split(" & ").indexOf(V)>=0, inB=String(b).split(" & ").indexOf(V)>=0;
+            if(!inA && !inB) return plain;
+            onT1=inA; mine = onT1 ? a : b; theirs = onT1 ? b : a;
+            var halves=String(mine).split(" & ");
+            var mate=(halves[0]===V)?halves[1]:halves[0];
+            if(mate) withWho='<span style="color:#6b6585;font-weight:600">with </span>'+esc(mate)+' ';
+          }
+          var s1 = onT1 ? (m.t1_sets||0) : (m.t2_sets||0);
+          var s2 = onT1 ? (m.t2_sets||0) : (m.t1_sets||0);
+          var d=(m.rating_delta!=null && isFinite(+m.rating_delta)) ? (+m.rating_delta) : null;
+          if(d!=null && !onT1) d=-d;                 /* the move belongs to the reader, not to team 1 */
+          var mv="";
+          if(d!=null){
+            d=Math.round(d*10)/10;
+            var mc=(d<0)?"#c0392b":((d>0)?"#1e8449":"#6b6585");
+            mv='<div style="margin-top:3px;font-size:12px;font-weight:800;color:'+mc+';font-variant-numeric:tabular-nums">'
+              +'<span style="color:#6b6585;font-weight:600">Move </span>'+(d>0?"+":"")+d.toFixed(1)+'</div>';
+          }
+          return '<div style="text-align:center;font-size:13.5px;font-weight:600;color:#241d33;margin-top:3px;line-height:1.4">'
+               + withWho + '<span style="color:#6b6585;font-weight:600">vs </span>' + esc(theirs)
+               + ' <span style="color:'+col+'">'+s1+"-"+s2+'</span>'
+               + nhSetChips2(m, onT1) + mv + '</div>';
+        })()
       +'<div id="nhs'+id+'" style="display:none;border-top:1px solid #efeaf5;margin-top:8px;padding-top:8px;text-align:center">'
       + nhSetPills(m,col,viewer)
       +'<div style="font-size:11px;color:#888;margin-top:6px">Sets: '+((m.t1_sets||0)+"-"+(m.t2_sets||0))
@@ -11666,7 +11753,8 @@ W.mePair=function(name,col){
         /* n158: the sets read from THIS PAIR's side — green won, red lost — as they do on a member's own page.
            Without a viewer the pills fell back to plain purple, so a partnership's matches said nothing about
            who won which set. Either member gives the same side, so the first name is enough. */
-        ? nhMatchesBrk({matches:ms},500,"board",names[0],false)
+        /* n223: the PAIR is the reader here, so the card says "vs …" and does not repeat the pairing's own names */
+        ? nhMatchesBrk({matches:ms},500,"board",(names[0]+" & "+names[1]),false)
         : '<div class="brk">'+nhLimeBar("Matches")+meEmpty("This pair has not played yet.")+'</div>';
       w.innerHTML=h+homeBar();
     });
@@ -11864,7 +11952,19 @@ W.mePair=function(name,col){
               var a=+m.t1_sets||0,b=+m.t2_sets||0, myS=iAmT1?a:b, thS=iAmT1?b:a;
               var id="me"+(m.id||Math.round(Math.random()*1e6));
               return '<div><button class="row" onclick="window.nhSets(\''+id+'\')">'
-                +'<span class="nm"><b>'+esc(us)+'</b><span>v '+esc(them)+' \u00b7 '+esc(nhBoardName(m.club_id))+'</span></span>'
+                /* n223: this member's own page, so the row says who they played WITH and what the match was
+                   worth to them. The stored delta belongs to the first-named pair, so it turns over when they
+                   were the second. */
+                +'<span class="nm"><b>'+esc(us)+'</b><span>v '+esc(them)+' \u00b7 '+esc(nhBoardName(m.club_id))
+                + (function(){
+                    var d=(m.rating_delta!=null)?(+m.rating_delta):null;
+                    if(d==null || !isFinite(d)) return "";
+                    if(!iAmT1) d=-d;
+                    d=Math.round(d*10)/10;
+                    var c=(d<0)?"#c0392b":((d>0)?"#1e8449":"#6b6585");
+                    return ' \u00b7 <b style="color:'+c+';font-variant-numeric:tabular-nums">Move '+(d>0?"+":"")+d.toFixed(1)+'</b>';
+                  })()
+                + '</span></span>'
                 +'<span class="val"><b class="'+(myS>thS?"up":"dn")+'">'+myS+'\u2013'+thS+'</b>'
                 +'<span id="nht'+id+'" style="display:inline-block;font-size:15px;color:#7a6f8a;margin-left:6px">\u25bc</span></span></button>'
                 /* n109: this is the member's own page — each set is green won, red lost, from their side */
@@ -12104,6 +12204,20 @@ W.mePair=function(name,col){
   function recBackOverride(){
     try{ var bq=new URLSearchParams(location.search).get("back")||""; return bq?PAGE+bq:null; }catch(e){ return null; }
   }
+  /* n222: a heading that says where you are. "Member profiles" alone could be any region; on the wide view it is
+     every region at once, so it says so. */
+  function recWhere(sc){
+    try{
+      if(sc && sc.wide) return "All clubs";        /* n223: the same words as the score-entry pill */
+      var nm = (sc && sc.title) ? String(sc.title) : (W.PLAT.name||"");
+      nm = nm.replace(/^\s*(the\s+)?register\s*[\u00b7:-]?\s*/i,"").trim();
+      return nm || "";
+    }catch(e){ return ""; }
+  }
+  function recTitle(sc, label){
+    var w = recWhere(sc);
+    return w ? (label + " \u2014 " + w) : label;
+  }
   function recBand(sc, sub, backHref, backLabel){
     var ov=recBackOverride(); if(ov){ backHref=ov; backLabel="back"; }
     /* the records are purple; nothing on these pages is repainted to a board's colour */
@@ -12112,13 +12226,13 @@ W.mePair=function(name,col){
     return '<div class="band" style="background:linear-gradient(135deg,'+sc.col+','+sc.deep+')">'
       +''+nhMark(sc.wide?"The register":"Records")+''
       +'<h1>'+esc(sc.title)+'</h1>'
-      +'<div class="sub">'+esc(sub)+'</div>'
+      +'<div class="sub">'+esc(recTitle(sc, sub))+'</div>'
       +'<div class="pulse"><a href="'+backHref+'" onclick="return window.nhBack(this.href)">\u2039 '+esc(backLabel)+'</a></div></div>';
   }
   function recPill(sc,label,sub,href){
     return '<a href="'+href+'" data-plat-keep="1" style="display:flex;width:calc(100% - 24px);align-items:center;gap:10px;box-sizing:border-box;'
       +'text-decoration:none;background:#fff;border:1px solid #d8d0e6;border-radius:14px;padding:13px 14px;margin:10px 12px 0">'
-      +'<span style="flex:1;min-width:0"><span style="display:block;font-size:14.5px;font-weight:800;color:#241d33">'+esc(label)+'</span>'
+      +'<span style="flex:1;min-width:0"><span style="display:block;font-size:14.5px;font-weight:800;color:#241d33">'+esc(recTitle(sc,label))+'</span>'
       +'<span style="display:block;font-size:12px;color:#5f5770;margin-top:2px">'+esc(sub)+'</span></span>'
       +'<span style="display:inline-grid;place-items:center;width:28px;height:28px;border-radius:50%;background:'+sc.col+';color:#fff;font-weight:800">\u203a</span></a>';
   }
@@ -15620,6 +15734,23 @@ W.nhOpenPair=function(name){
   };
   function nsRow(team){
     var col=inkSafe(W.PLAT.colour||"#6c3483");
+    /* n222: the middle pill says WHICH region, so a member knows what they are widening to. Long names are
+       shortened to fit three pills on a phone. */
+    var regionName=(function(){
+      try{
+        var par=W.PLAT.parentId||W.PLAT.myClub;
+        var c=(W.PLAT.clubs||[]).filter(function(x){ return Number(x.id)===Number(par); })[0];
+        var nm=(c&&c.name)?String(c.name):"Region";
+        /* drop the filler words wherever they sit — "Sun Padel Sibaya" becomes "Sun Sibaya", not "Sun P" */
+        nm=nm.replace(/\b(padel|area|region|club)\b/gi," ").replace(/\s+/g," ").trim();
+        if(nm.length>14){
+          var bits=nm.split(/\s+/);
+          nm = (bits.length>1) ? (bits[0]+" "+bits[bits.length-1]) : nm.slice(0,13);
+        }
+        if(nm.length>16) nm=nm.slice(0,15)+"\u2026";
+        return nm||"Region";
+      }catch(e){ return "Region"; }
+    })();
     var one=function(k,label){
       var on=(NSCOPE[team]===k);
       return '<button type="button" id="ns'+team+k+'" onclick="window.nsPick(\''+team+'\',\''+k+'\')" '
@@ -15627,7 +15758,7 @@ W.nhOpenPair=function(name){
         +'font-size:11.5px;font-weight:800;background:'+(on?col:"#fff")+';color:'+(on?"#fff":col)+'">'+label+'</button>';
     };
     return '<div class="nsRow" data-team="'+team+'" style="display:flex;gap:6px;margin:0 0 9px">'
-      + one("group","Group") + one("region","Region") + one("global","Global") + '</div>';
+      + one("group","Group") + one("region",regionName) + one("global","All clubs") + '</div>';
   }
   function nsRowPaint(){
     try{
