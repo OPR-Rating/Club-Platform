@@ -3688,7 +3688,7 @@ const CLUB_NAME = _club.name;  // shown in the logo as "OPR · <name>"
     link.setAttribute('href', href);
   }catch(e){ /* install stays on the static manifest — no functional impact */ }
 })();
-const OPR_VERSION = "OPR-DOUBLES v2026.09.03-56 · NAT fork n229 (no voice) (of PLAT p117)";  // MANUAL PAIR CREATION REMOVED FROM ADMIN: Create a pair, Bulk create pairs and Re-derive all pairs are gone (they only made match-less ghost pairs, and Re-derive rewrote every stored initial club-wide). Pairs are born automatically at match entry. Current pairs list untouched; the underlying JS is left in place unreferenced, so no other code path changes. Includes v47 (set-score fix + double-tap guard) and all prior.
+const OPR_VERSION = "OPR-DOUBLES v2026.09.03-56 · NAT fork n230 (no voice) (of PLAT p117)";  // MANUAL PAIR CREATION REMOVED FROM ADMIN: Create a pair, Bulk create pairs and Re-derive all pairs are gone (they only made match-less ghost pairs, and Re-derive rewrote every stored initial club-wide). Pairs are born automatically at match entry. Current pairs list untouched; the underlying JS is left in place unreferenced, so no other code path changes. Includes v47 (set-score fix + double-tap guard) and all prior.
 // Explanation shown above the individual ladder. Open on load so it's read; collapsible
 // (state kept for the session) and scrolls away. Mechanics only — no outcome framing, so
 // members aren't nudged away from playing stronger opponents. Every clause maps to a real
@@ -9923,6 +9923,10 @@ async function clRemove(id, label){
         if(go==="player" && who && typeof loadProfile==="function"){ loadProfile(who,""); return true; }
         /* n131: ONE TOURNAMENT'S SHEET, directly — its draw and standings, in the member's own category. My tournaments
            links here; back returns to the page that sent us. */
+        if(go==="tenter" && typeof showEnterTournament==="function"){
+          var eq=new URLSearchParams(location.search), etn=eq.get("tn")||"";
+          if(etn){ try{ TOURNAMENT_EVENT=etn; nhTourColour(etn); }catch(e){} showEnterTournament(etn); return true; }
+        }
         if(go==="tsheet" && typeof loadTournamentSheet==="function"){
           var tq=new URLSearchParams(location.search), tn=tq.get("tn")||"", dv=tq.get("div")||null;
           if(tn){ try{ TOURNAMENT_EVENT=tn; }catch(e){} try{ nhTourColour(tn); }catch(e){} loadTournamentSheet(tn, dv); return true; }
@@ -10616,7 +10620,7 @@ async function clRemove(id, label){
     var id="m"+W.__nhRowN+"_"+(m.id||0);
     var pillHTML=(scope!=="one"&&bd)?('<span style="display:inline-block;background:'+col+';color:#fff;border-radius:99px;'
       +'padding:2px 9px;font-size:10px;font-weight:800;margin-right:6px;vertical-align:middle">'+esc(bd.name)+'</span>'):'';
-    return '<div style="border:1px solid #e9e4f0;border-radius:12px;padding:9px 11px;margin:6px 0;background:#fff">'
+    return '<div style="border:1px solid #e9e4f0;border-radius:12px;padding:8px 6px;margin:5px 0;background:#fff">'
       +'<div style="display:flex;align-items:center;gap:6px;font-size:11.5px;color:#8a8196;justify-content:center;flex-wrap:wrap">'
       + pillHTML
       +'<span>'+esc(String(m.match_date||"").slice(0,10))+'</span>'
@@ -10632,7 +10636,7 @@ async function clRemove(id, label){
          So those lists keep exactly the row they always had. This was built twice before (n213/n214) without that
          guard and had to be reverted twice; the guard is the whole point. */
       + (function(){
-          var plain = '<div style="text-align:center;font-size:13.5px;font-weight:600;color:#241d33;margin-top:3px;line-height:1.4">'
+          var plain = '<div style="text-align:center;font-size:11px;font-weight:600;color:#241d33;margin-top:3px;line-height:1.45">'
                     + (function(){
           /* n223: ON A PAIR'S OR A MEMBER'S OWN PAGE the row is written from THEIR side: the pairing is not named
              again on its own page ("vs Paul & Pete"), a member's row says who they played with ("with James
@@ -10696,7 +10700,7 @@ async function clRemove(id, label){
             mv='<div style="margin-top:3px;font-size:12px;font-weight:800;color:'+mc+';font-variant-numeric:tabular-nums">'
               +'<span style="color:#6b6585;font-weight:600">Move </span>'+(d>0?"+":"")+d.toFixed(1)+'</div>';
           }
-          return '<div style="text-align:center;font-size:13.5px;font-weight:600;color:#241d33;margin-top:3px;line-height:1.4">'
+          return '<div style="text-align:center;font-size:11px;font-weight:600;color:#241d33;margin-top:3px;line-height:1.45">'
                + withWho + '<span style="color:#6b6585;font-weight:600">vs </span>' + esc(theirs)
                + ' <span style="color:'+col+'">'+s1+"-"+s2+'</span>'
                + nhSetChips2(m, onT1) + mv + '</div>';
@@ -10714,7 +10718,9 @@ async function clRemove(id, label){
     var all=(d.matches||[]); var ms=all.slice(0,n||12); if(!ms.length) return "";
     var wk=all.filter(function(m){ return ago(m.match_date)<7; }).length;
     return '<div class="brk">'+((bar===false)?"":nhLimeBar("Recent matches"+(wk?(" \u00b7 "+wk+" this week"):"")+(NHEG?" \u00b7 example":"")))
-      +'<div style="max-height:'+(scope==="club"?430:360)+'px;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:4px 10px 8px">'
+      /* n230: the row was a card inside a card — the list keeps only a hair of side padding so a match line
+         gets the width OPR gives it */
+      +'<div style="max-height:'+(scope==="club"?430:360)+'px;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:4px 4px 8px">'
       + ms.map(function(m){
           /* a pair's own page gets the partnership-card format; every other list keeps the plain row */
           return (viewer && String(viewer).indexOf(" & ")>0) ? nhPairCard(m, viewer) : nhMatchRow(m,scope,viewer);
@@ -10753,6 +10759,18 @@ async function clRemove(id, label){
     }catch(e){}
   }
   W.nhTourColour=nhTourColour;
+  /* n230: straight to the tournament's own entry screen, with the tournament preselected */
+  W.nhEnterTour=function(k){
+    var t=(W.__nhTours||[])[k]; if(!t) return;
+    try{ W.TOURNAMENT_EVENT=t.name; }catch(e){}
+    var club=t.club_id||W.PLAT.cid;
+    if(Number(club)!==Number(W.PLAT.cid)){
+      location.href=PAGE+"?club="+club+"&go=tenter&tn="+encodeURIComponent(t.name)
+        +"&back="+encodeURIComponent(location.search||"");
+      return;
+    }
+    try{ if(W.showEnterTournament) W.showEnterTournament(t.name); }catch(e){}
+  };
   W.nhOpenTour=function(k){
     var t=(W.__nhTours||[])[k]; if(!t) return W.nhGo("tournaments");
     var club=t.club_id||W.PLAT.cid;
@@ -10791,6 +10809,10 @@ async function clRemove(id, label){
             +'<div id="nhtour'+k+'" style="display:none;padding:2px 0 6px">'
             +  '<div style="padding:8px 12px 4px;font-weight:800;font-size:13.5px;color:'+gcol+'">'+esc(t.name)+'</div>'
             /* n172: the draw and standings sit ABOVE the matches — you should not scroll a season to reach them */
+            /* n230: the card led ONLY to the draw and standings — there was no way through to entering teams and
+               scores, which is what an organiser opens it for. Both are offered now, entry first. */
+            +  '<button class="more" style="margin:0 12px 6px;border:1.5px solid '+gcol+';color:'+gcol+';font-weight:800" '
+            +    'onclick="window.nhEnterTour('+k+')">Enter teams and scores \u2192</button>'
             +  '<button class="more" style="margin:0 12px 8px" onclick="window.nhOpenTour('+k+')">Open the draw and standings \u2192</button>'
             + (ms.length
                 ? '<div style="max-height:186px;overflow-y:auto;-webkit-overflow-scrolling:touch">'
