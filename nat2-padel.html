@@ -3688,7 +3688,7 @@ const CLUB_NAME = _club.name;  // shown in the logo as "OPR · <name>"
     link.setAttribute('href', href);
   }catch(e){ /* install stays on the static manifest — no functional impact */ }
 })();
-const OPR_VERSION = "OPR-DOUBLES v2026.09.03-56 · NAT fork n212 (no voice) (of PLAT p117)";  // MANUAL PAIR CREATION REMOVED FROM ADMIN: Create a pair, Bulk create pairs and Re-derive all pairs are gone (they only made match-less ghost pairs, and Re-derive rewrote every stored initial club-wide). Pairs are born automatically at match entry. Current pairs list untouched; the underlying JS is left in place unreferenced, so no other code path changes. Includes v47 (set-score fix + double-tap guard) and all prior.
+const OPR_VERSION = "OPR-DOUBLES v2026.09.03-56 · NAT fork n215 (no voice) (of PLAT p117)";  // MANUAL PAIR CREATION REMOVED FROM ADMIN: Create a pair, Bulk create pairs and Re-derive all pairs are gone (they only made match-less ghost pairs, and Re-derive rewrote every stored initial club-wide). Pairs are born automatically at match entry. Current pairs list untouched; the underlying JS is left in place unreferenced, so no other code path changes. Includes v47 (set-score fix + double-tap guard) and all prior.
 // Explanation shown above the individual ladder. Open on load so it's read; collapsible
 // (state kept for the session) and scrolls away. Mechanics only — no outcome framing, so
 // members aren't nudged away from playing stronger opponents. Every clause maps to a real
@@ -15024,7 +15024,12 @@ W.nhOpenPair=function(name){
        button your original app draws came out pale with white words on it — the Make tonight's courts button
        measured 1.0 against white, which is invisible. The banners keep the true colour; everything the repaint
        touches is interface. */
-    platSchedule(function(){ var c=colFn(); if(c) repaint(document.body, inkSafe(c)); });
+    platSchedule(function(){
+      var c=colFn(); if(c) repaint(document.body, inkSafe(c));
+      /* n215: the parent redraws the entry step as you move through it, so the name-scope rows are re-mounted
+         in the same batched pass rather than on a timer of their own */
+      try{ if(W.nsMount) W.nsMount(); }catch(e){}
+    });
     platRun();
   }
   // one row of five, on every screen and in every mode
@@ -15485,11 +15490,117 @@ W.nhOpenPair=function(name){
      the team cards and their numbers, the chosen-player boxes, the winning set boxes, the result cards, the club
      selector — takes the group's colour, so a member always knows which board they are on. The club itself
      (the product's own purple) is left exactly as the parent draws it. */
+  /* n215: WHERE THE NAMES COME FROM — one row of three on each team card.
+       Group   the people who have played at this board   (the default, and how it behaved before)
+       Region  everyone across the region's groups
+       Global  the whole register
+     Region and Global are read only when tapped, so score entry is not slowed for a feature most nights never use,
+     and Global asks for two letters before it offers anything — a register of hundreds is not a list to scroll.
+     The parent keeps its roster in MEN / LADIES / INDIV_BY_NAME, so a scope change refills those and redraws. */
+  var NSCOPE = {t1:"group", t2:"group"};
+  var NCACHE = {group:null, region:null, global:null};
+  function nsPeople(scope){
+    if(NCACHE[scope]) return Promise.resolve(NCACHE[scope]);
+    var B=SBREST(), sel="select=id,full_name,gender,seed_rating,club_id&order=full_name.asc";
+    var url;
+    if(scope==="group") url = B+"plat_individuals?"+sel+"&club_id=eq."+W.PLAT.cid;
+    else if(scope==="region"){
+      var ids=(W.PLAT.myBoards&&W.PLAT.myBoards.length)?W.PLAT.myBoards:[W.PLAT.cid];
+      url = B+"plat_individuals?"+sel+"&club_id=in.("+ids.join(",")+")";
+    } else {
+      url = B+"plat_individuals?"+sel+"&pool_id=eq."+(W.PLAT.pool||13)+"&limit=4000";
+    }
+    return fetch(url).then(J).then(function(rows){
+      var seen={}, out=[];
+      (rows||[]).forEach(function(r){ if(r.full_name && !seen[r.full_name]){ seen[r.full_name]=1; out.push(r); } });
+      NCACHE[scope]=out; return out;
+    }).catch(function(){ return []; });
+  }
+  W.nsPick=function(team, scope){
+    NSCOPE[team]=scope;
+    nsRowPaint();
+    nsPeople(scope).then(function(people){
+      try{
+        /* hand the parent its own roster back, in the chosen scope */
+        var men=[], ladies=[], byName=(W.INDIV_BY_NAME||{});
+        people.forEach(function(p){
+          byName[p.full_name]={id:p.id, gender:p.gender, seed_rating:p.seed_rating};
+          if(String(p.gender||"").toUpperCase()==="M") men.push(p.full_name); else ladies.push(p.full_name);
+        });
+        W.INDIV_BY_NAME=byName;
+        W.MEN=men.sort(); W.LADIES=ladies.sort();
+        if(W.MIXED) W.MIXED=men.concat(ladies).sort();
+        W.__nsScope=scope;
+      }catch(e){}
+    });
+  };
+  function nsRow(team){
+    var col=inkSafe(W.PLAT.colour||"#6c3483");
+    var one=function(k,label){
+      var on=(NSCOPE[team]===k);
+      return '<button type="button" id="ns'+team+k+'" onclick="window.nsPick(\''+team+'\',\''+k+'\')" '
+        +'style="flex:1;padding:5px 4px;border-radius:99px;border:1.5px solid '+col+';cursor:pointer;font:inherit;'
+        +'font-size:11.5px;font-weight:800;background:'+(on?col:"#fff")+';color:'+(on?"#fff":col)+'">'+label+'</button>';
+    };
+    return '<div class="nsRow" data-team="'+team+'" style="display:flex;gap:6px;margin:0 0 9px">'
+      + one("group","Group") + one("region","Region") + one("global","Global") + '</div>';
+  }
+  function nsRowPaint(){
+    try{
+      [].slice.call(document.querySelectorAll(".nsRow")).forEach(function(row){
+        var team=row.getAttribute("data-team"), col=inkSafe(W.PLAT.colour||"#6c3483");
+        ["group","region","global"].forEach(function(k){
+          var b=document.getElementById("ns"+team+k); if(!b) return;
+          var on=(NSCOPE[team]===k);
+          b.style.background=on?col:"#fff"; b.style.color=on?"#fff":col; b.style.borderColor=col;
+        });
+      });
+    }catch(e){}
+  }
+  /* put one row at the top of each team card, and keep it there as the parent redraws the step */
+  function nsMount(){
+    try{
+      /* n215: the step's cards are written into #entryContent, which is NOT inside #entryScreen — scoping the
+         search to the screen found nothing at all. */
+      var cards=[].slice.call(document.querySelectorAll("#entryContent .team-card, #entryScreen .team-card"));
+      cards.forEach(function(card){
+        var lab=card.querySelector(".team-label"); if(!lab) return;
+        var n=(lab.textContent||"").trim().charAt(0);
+        if(n!=="1" && n!=="2") return;                       /* only the two player cards */
+        if(!card.querySelector(".player-display")) return;    /* and only while it holds name buttons */
+        if(card.querySelector(".nsRow")) return;
+        var team=(n==="1")?"t1":"t2";
+        var box=document.createElement("div");
+        box.innerHTML='<div style="font-size:11px;color:#7a6f8a;margin:2px 0 4px">Names from</div>'+nsRow(team);
+        lab.parentNode.insertBefore(box, lab.nextSibling);
+      });
+    }catch(e){}
+  }
+  W.nsMount=nsMount;
+  /* n215: the parent re-draws this step from its own internal reference and wipes whatever was added, so the rows
+     are kept in place by a light check twice a second. It starts from entryTint(), which the entry screen calls —
+     a plain top-level starter sat after an early return in this scope and never ran, which is why every earlier
+     attempt mounted once and then vanished. */
+  var NSTIMER=null;
+  function nsWatch(){
+    if(NSTIMER) return;
+    NSTIMER=setInterval(function(){
+      try{
+        if(document.querySelector(".nsRow")) return;
+        if(!document.querySelector("#entryContent .team-card")) return;
+        nsMount();
+      }catch(e){}
+    }, 500);
+  }
+  W.nsWatch=nsWatch;
+  nsWatch();   /* n215: started at load. Waiting for entryTint() to start it meant it never ran on the path a
+                  member actually takes, which is why the rows mounted once in a test and never in the app. */
   function entryTint(){
     if(!W.PLAT.cid) return;
     /* n207: the readable ink, for the same reason as the court card — these are buttons with white words on them */
     var col=inkSafe(W.PLAT.colour||clubPal(W.PLAT.cid)[0]); if(String(col||"").toLowerCase()==="#6c3483") return;
     var rgb=sessRgb(), deep=darken(col,0.42), mid=darken(col,0.25);
+    nsMount(); nsWatch();
     var st=document.getElementById("platEntryTint")||document.createElement("style"); st.id="platEntryTint";
     st.textContent=
        "#entryScreen .btn-primary{background:"+col+"!important}#entryScreen .btn-primary:active{background:"+deep+"!important}"
