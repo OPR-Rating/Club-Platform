@@ -3688,7 +3688,7 @@ const CLUB_NAME = _club.name;  // shown in the logo as "OPR · <name>"
     link.setAttribute('href', href);
   }catch(e){ /* install stays on the static manifest — no functional impact */ }
 })();
-const OPR_VERSION = "OPR-DOUBLES v2026.09.03-56 · NAT fork n218 (no voice) (of PLAT p117)";  // MANUAL PAIR CREATION REMOVED FROM ADMIN: Create a pair, Bulk create pairs and Re-derive all pairs are gone (they only made match-less ghost pairs, and Re-derive rewrote every stored initial club-wide). Pairs are born automatically at match entry. Current pairs list untouched; the underlying JS is left in place unreferenced, so no other code path changes. Includes v47 (set-score fix + double-tap guard) and all prior.
+const OPR_VERSION = "OPR-DOUBLES v2026.09.03-56 · NAT fork n219 (no voice) (of PLAT p117)";  // MANUAL PAIR CREATION REMOVED FROM ADMIN: Create a pair, Bulk create pairs and Re-derive all pairs are gone (they only made match-less ghost pairs, and Re-derive rewrote every stored initial club-wide). Pairs are born automatically at match entry. Current pairs list untouched; the underlying JS is left in place unreferenced, so no other code path changes. Includes v47 (set-score fix + double-tap guard) and all prior.
 // Explanation shown above the individual ladder. Open on load so it's read; collapsible
 // (state kept for the session) and scrolls away. Mechanics only — no outcome framing, so
 // members aren't nudged away from playing stronger opponents. Every clause maps to a real
@@ -15499,6 +15499,11 @@ W.nhOpenPair=function(name){
      The parent keeps its roster in MEN / LADIES / INDIV_BY_NAME, so a scope change refills those and redraws. */
   var NSCOPE = {t1:"group", t2:"group"};
   var NCACHE = {group:null, region:null, global:null};
+  function nsTidy(rows){
+    var seen={}, out=[];
+    (rows||[]).forEach(function(r){ if(r && r.full_name && !seen[r.full_name]){ seen[r.full_name]=1; out.push(r); } });
+    return out;
+  }
   function nsPeople(scope){
     if(NCACHE[scope]) return Promise.resolve(NCACHE[scope]);
     /* n218: THE REGISTER HOLDS THE PEOPLE; A BOARD HOLDS THE AFFILIATION.
@@ -15506,15 +15511,35 @@ W.nhOpenPair=function(name){
        nothing and the picker quietly fell back to the group, which is why Region and Global showed the group.
        A board's people come from plat_padel_v_individuals, the view that carries club_id (built on
        plat_memberships); the whole register comes from plat_individuals itself. */
-    var B=SBREST(), url;
+    var B=SBREST();
+    /* n219: GLOBAL is the register itself. GROUP and REGION are the MEMBERSHIP table, read directly rather than
+       through plat_padel_v_individuals — that view is padel's own and carries people who have results, so a member
+       added to a region and not yet played would never appear. Region takes the region board AND its groups, which
+       is the case Andre described: someone's first night, with no group tag yet. */
     if(scope==="global"){
-      url = B+"plat_individuals?select=id,full_name,gender,default_seed&pool_id=eq."+(W.PLAT.pool||13)
-          + "&order=full_name.asc&limit=4000";
-    } else {
-      var ids = (scope==="region" && W.PLAT.myBoards && W.PLAT.myBoards.length) ? W.PLAT.myBoards : [W.PLAT.cid];
-      url = B+"plat_padel_v_individuals?select=id,full_name,gender,seed_rating,club_id&club_id=in.("+ids.join(",")+")"
-          + "&order=full_name.asc";
+      return fetch(B+"plat_individuals?select=id,full_name,gender,default_seed&pool_id=eq."+(W.PLAT.pool||13)
+                   +"&order=full_name.asc&limit=4000").then(J).then(function(rows){
+        NCACHE.global=nsTidy(rows); return NCACHE.global;
+      }).catch(function(){ return []; });
     }
+    var ids;
+    if(scope==="region"){
+      ids = (W.PLAT.myBoards && W.PLAT.myBoards.length) ? W.PLAT.myBoards.slice() : [W.PLAT.cid];
+      var par = W.PLAT.parentId || W.PLAT.myClub;
+      if(par && ids.indexOf(par)<0) ids.push(par);      /* the region's own members, who have no group yet */
+    } else {
+      ids = [W.PLAT.cid];
+    }
+    return fetch(B+"plat_memberships?select=individual_id,club_id&club_id=in.("+ids.join(",")+")&limit=4000")
+      .then(J).then(function(ms){
+        var idList=[]; var seen={};
+        (ms||[]).forEach(function(m){ var k=m.individual_id; if(k && !seen[k]){ seen[k]=1; idList.push(k); } });
+        if(!idList.length) return [];
+        return fetch(B+"plat_individuals?select=id,full_name,gender,default_seed&id=in.("+idList.join(",")+")"
+                     +"&order=full_name.asc&limit=4000").then(J);
+      }).then(function(rows){
+        NCACHE[scope]=nsTidy(rows); return NCACHE[scope];
+      }).catch(function(){ return []; });
     return fetch(url).then(J).then(function(rows){
       var seen={}, out=[];
       (rows||[]).forEach(function(r){ if(r.full_name && !seen[r.full_name]){ seen[r.full_name]=1; out.push(r); } });
