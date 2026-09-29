@@ -3688,7 +3688,7 @@ const CLUB_NAME = _club.name;  // shown in the logo as "OPR · <name>"
     link.setAttribute('href', href);
   }catch(e){ /* install stays on the static manifest — no functional impact */ }
 })();
-const OPR_VERSION = "OPR-DOUBLES v2026.09.03-56 · NAT fork n231 (no voice) (of PLAT p117)";  // MANUAL PAIR CREATION REMOVED FROM ADMIN: Create a pair, Bulk create pairs and Re-derive all pairs are gone (they only made match-less ghost pairs, and Re-derive rewrote every stored initial club-wide). Pairs are born automatically at match entry. Current pairs list untouched; the underlying JS is left in place unreferenced, so no other code path changes. Includes v47 (set-score fix + double-tap guard) and all prior.
+const OPR_VERSION = "OPR-DOUBLES v2026.09.03-56 · NAT fork n230 (no voice) (of PLAT p117)";  // MANUAL PAIR CREATION REMOVED FROM ADMIN: Create a pair, Bulk create pairs and Re-derive all pairs are gone (they only made match-less ghost pairs, and Re-derive rewrote every stored initial club-wide). Pairs are born automatically at match entry. Current pairs list untouched; the underlying JS is left in place unreferenced, so no other code path changes. Includes v47 (set-score fix + double-tap guard) and all prior.
 // Explanation shown above the individual ladder. Open on load so it's read; collapsible
 // (state kept for the session) and scrolls away. Mechanics only — no outcome framing, so
 // members aren't nudged away from playing stronger opponents. Every clause maps to a real
@@ -9931,28 +9931,8 @@ async function clRemove(id, label){
           var tq=new URLSearchParams(location.search), tn=tq.get("tn")||"", dv=tq.get("div")||null;
           if(tn){ try{ TOURNAMENT_EVENT=tn; }catch(e){} try{ nhTourColour(tn); }catch(e){} loadTournamentSheet(tn, dv); return true; }
         }
-        /* n231: THE STATS SHEET ONLY ONCE THERE IS SOMETHING TO SHOW. A tournament with no teams entered has no
-           draw and no standings, so the pill opened an empty stats page. It now asks whether this board has any
-           entries: none, and it opens the ENTER TEAM card; some, and it opens the stats sheet as before.
-           If the check cannot be made, it falls back to the stats sheet — the old behaviour. */
-        if(go==="tournaments" && typeof showScreen==="function"){
-          if(typeof loadActiveTournaments==="function"){ try{ loadActiveTournaments(); }catch(e){} }
-          /* this line used to sit ABOVE and return, so nothing below it ever ran */
-          (function(){
-            var done=function(toEntry){
-              try{
-                if(toEntry && typeof W.showEnterTournament==="function"){ W.showEnterTournament(); return; }
-              }catch(e){}
-              showScreen("tournamentScreen");
-            };
-            try{
-              fetch(SBREST()+"plat_padel_tournament_entries?select=id&club_id=eq."+W.PLAT.cid+"&limit=1")
-                .then(J).then(function(rows){ done(!(rows && rows.length)); })
-                .catch(function(){ done(false); });
-            }catch(e){ done(false); }
-          })();
-          return true;
-        }
+        if(go==="tournaments" && typeof loadActiveTournaments==="function"){ loadActiveTournaments(); return true; }
+        if(go==="tournaments" && typeof showScreen==="function"){ if(typeof loadActiveTournaments==="function"){ try{ loadActiveTournaments(); }catch(e){} } showScreen("tournamentScreen"); return true; }
         if(go==="entry"){ var b=document.querySelector("#homeScreen .btn-enter"); if(b){ b.click(); return true; } }
         if(go==="card" && typeof W.platOpenCard==="function"){ W.platOpenCard(); return true; }
         if(go==="card"){ var c=Array.prototype.filter.call(document.querySelectorAll("button"),function(x){ return /court card/i.test(x.textContent||""); })[0];
@@ -10829,7 +10809,10 @@ async function clRemove(id, label){
             +'<div id="nhtour'+k+'" style="display:none;padding:2px 0 6px">'
             +  '<div style="padding:8px 12px 4px;font-weight:800;font-size:13.5px;color:'+gcol+'">'+esc(t.name)+'</div>'
             /* n172: the draw and standings sit ABOVE the matches — you should not scroll a season to reach them */
-            /* n172: the draw and standings sit ABOVE the matches — you should not scroll a season to reach them */
+            /* n230: the card led ONLY to the draw and standings — there was no way through to entering teams and
+               scores, which is what an organiser opens it for. Both are offered now, entry first. */
+            +  '<button class="more" style="margin:0 12px 6px;border:1.5px solid '+gcol+';color:'+gcol+';font-weight:800" '
+            +    'onclick="window.nhEnterTour('+k+')">Enter teams and scores \u2192</button>'
             +  '<button class="more" style="margin:0 12px 8px" onclick="window.nhOpenTour('+k+')">Open the draw and standings \u2192</button>'
             + (ms.length
                 ? '<div style="max-height:186px;overflow-y:auto;-webkit-overflow-scrolling:touch">'
