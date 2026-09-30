@@ -3688,7 +3688,7 @@ const CLUB_NAME = _club.name;  // shown in the logo as "OPR · <name>"
     link.setAttribute('href', href);
   }catch(e){ /* install stays on the static manifest — no functional impact */ }
 })();
-const OPR_VERSION = "OPR-DOUBLES v2026.09.03-56 · NAT fork n233 (no voice) (of PLAT p117)";  // MANUAL PAIR CREATION REMOVED FROM ADMIN: Create a pair, Bulk create pairs and Re-derive all pairs are gone (they only made match-less ghost pairs, and Re-derive rewrote every stored initial club-wide). Pairs are born automatically at match entry. Current pairs list untouched; the underlying JS is left in place unreferenced, so no other code path changes. Includes v47 (set-score fix + double-tap guard) and all prior.
+const OPR_VERSION = "OPR-DOUBLES v2026.09.03-56 · NAT fork n234 (no voice) (of PLAT p117)";  // MANUAL PAIR CREATION REMOVED FROM ADMIN: Create a pair, Bulk create pairs and Re-derive all pairs are gone (they only made match-less ghost pairs, and Re-derive rewrote every stored initial club-wide). Pairs are born automatically at match entry. Current pairs list untouched; the underlying JS is left in place unreferenced, so no other code path changes. Includes v47 (set-score fix + double-tap guard) and all prior.
 // Explanation shown above the individual ladder. Open on load so it's read; collapsible
 // (state kept for the session) and scrolls away. Mechanics only — no outcome framing, so
 // members aren't nudged away from playing stronger opponents. Every clause maps to a real
@@ -9927,8 +9927,20 @@ async function clRemove(id, label){
           var tq=new URLSearchParams(location.search), tn=tq.get("tn")||"", dv=tq.get("div")||null;
           if(tn){ try{ TOURNAMENT_EVENT=tn; }catch(e){} try{ nhTourColour(tn); }catch(e){} loadTournamentSheet(tn, dv); return true; }
         }
-        if(go==="tournaments" && typeof loadActiveTournaments==="function"){ loadActiveTournaments(); return true; }
-        if(go==="tournaments" && typeof showScreen==="function"){ if(typeof loadActiveTournaments==="function"){ try{ loadActiveTournaments(); }catch(e){} } showScreen("tournamentScreen"); return true; }
+        if(go==="tournaments"){
+          /* n234: OPEN THE TOURNAMENT'S OWN PAGE. The first of the two old lines populated the match-event
+             dropdown and RETURNED, so this route never showed tournamentScreen at all — which is why no link
+             in the app reached a tournament's page. It now fills the dropdown, selects the tournament named in
+             the address, and shows the page, so "Spring Open is running" opens Spring Open. */
+          try{ if(typeof loadActiveTournaments==="function") loadActiveTournaments(); }catch(e){}
+          try{
+            var _tq=new URLSearchParams(location.search), _tn=_tq.get("tn")||"";
+            if(_tn){ TOURNAMENT_EVENT=_tn; try{ nhTourColour(_tn); }catch(e){} }
+          }catch(e){}
+          if(typeof showScreen==="function") showScreen("tournamentScreen");
+          try{ if(typeof loadTournamentPicker==="function") loadTournamentPicker(); }catch(e){}
+          return true;
+        }
         if(go==="entry"){ var b=document.querySelector("#homeScreen .btn-enter"); if(b){ b.click(); return true; } }
         if(go==="card" && typeof W.platOpenCard==="function"){ W.platOpenCard(); return true; }
         if(go==="card"){ var c=Array.prototype.filter.call(document.querySelectorAll("button"),function(x){ return /court card/i.test(x.textContent||""); })[0];
@@ -10758,7 +10770,12 @@ async function clRemove(id, label){
   W.nhOpenTour=function(k){
     var t=(W.__nhTours||[])[k]; if(!t) return W.nhGo("tournaments");
     var club=t.club_id||W.PLAT.cid;
-    location.href=PAGE+"?club="+club+"&go=tsheet&tn="+encodeURIComponent(t.name)+(t.division?"&div="+encodeURIComponent(t.division):"")
+    /* n234: TO THE TOURNAMENT'S OWN PAGE, not straight to the stats sheet. tournamentScreen is where a
+       tournament lives: its picker, "Enter a team" WHILE ENTRY IS OPEN (a division closes once its draw
+       exists), and Draw & Rounds / Stats once it does. Jumping to the sheet bypassed all of it, so nothing
+       in the app led to entering a team or seeing the draw.
+       "My tournaments" on a member's page still uses go=tsheet and is untouched. */
+    location.href=PAGE+"?club="+club+"&go=tournaments&tn="+encodeURIComponent(t.name)+(t.division?"&div="+encodeURIComponent(t.division):"")
       +"&back="+encodeURIComponent(location.search||"");
   };
   W.nhTourOpen=function(k){
