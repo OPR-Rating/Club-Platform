@@ -3688,7 +3688,7 @@ const CLUB_NAME = _club.name;  // shown in the logo as "OPR · <name>"
     link.setAttribute('href', href);
   }catch(e){ /* install stays on the static manifest — no functional impact */ }
 })();
-const OPR_VERSION = "OPR-DOUBLES v2026.09.03-56 · NAT fork n235 (no voice) (of PLAT p117)";  // MANUAL PAIR CREATION REMOVED FROM ADMIN: Create a pair, Bulk create pairs and Re-derive all pairs are gone (they only made match-less ghost pairs, and Re-derive rewrote every stored initial club-wide). Pairs are born automatically at match entry. Current pairs list untouched; the underlying JS is left in place unreferenced, so no other code path changes. Includes v47 (set-score fix + double-tap guard) and all prior.
+const OPR_VERSION = "OPR-DOUBLES v2026.09.03-56 · NAT fork n236 (no voice) (of PLAT p117)";  // MANUAL PAIR CREATION REMOVED FROM ADMIN: Create a pair, Bulk create pairs and Re-derive all pairs are gone (they only made match-less ghost pairs, and Re-derive rewrote every stored initial club-wide). Pairs are born automatically at match entry. Current pairs list untouched; the underlying JS is left in place unreferenced, so no other code path changes. Includes v47 (set-score fix + double-tap guard) and all prior.
 // Explanation shown above the individual ladder. Open on load so it's read; collapsible
 // (state kept for the session) and scrolls away. Mechanics only — no outcome framing, so
 // members aren't nudged away from playing stronger opponents. Every clause maps to a real
@@ -13468,6 +13468,14 @@ W.nhOpenPair=function(name){
       +'</div><div id="doorWhere" style="display:none;padding:2px 12px 14px"></div></div>';
   }
   W.doorPick=function(what){
+    /* n236: ENTERING A SCORE GOES STRAIGHT TO THE PAGE. The door asked "where did you play?" first, so a member
+       tapped a square, tapped a group, and only then reached the sheet — on a busy door that reads as friction
+       rather than progress. The group is now chosen ON the sheet, where it has to be confirmed anyway, and the
+       sheet will not proceed until it is. The other pickers (ladders, profiles, card) are unchanged. */
+    if(what==="score"){
+      location.href = PAGE+"?club="+W.PLAT.cid+"&board=1&go=entry&back="+encodeURIComponent(location.search||"");
+      return;
+    }
     var box=document.getElementById("doorWhere"); if(!box) return;
     if(box.dataset.open===what){ box.style.display="none"; box.dataset.open=""; return; }
     box.dataset.open=what; box.style.display="block";
@@ -14817,11 +14825,42 @@ W.nhOpenPair=function(name){
       if(!cs.length) return;
     }
     var box=document.createElement("div"); box.id="platEntryClub"; box.style.cssText="margin:10px 12px 0;padding:10px 12px;background:#f5f0fa;border:1px solid rgba(108,52,131,.35);border-radius:10px";
-    box.innerHTML='<label style="display:block;font-size:12px;font-weight:700;color:#6c3483;margin-bottom:6px">Club — where is this match being played?</label>'
+    box.innerHTML='<label style="display:block;font-size:12px;font-weight:700;color:#6c3483;margin-bottom:6px">Select group where this match is being played</label>'
       +'<select onchange="window.platGo(parseInt(this.value,10))" style="width:100%;padding:10px 12px;border:1.5px solid #ddd;border-radius:10px;font-size:14px">'
-      +(W.PLAT.cid===0?'<option value="0" selected>— choose a club —</option>':'')
-      +cs.map(function(c){ var nm=(natMode()&&isClubWithKids(c.id))?"General play":c.name; return '<option value="'+c.id+'"'+(c.id===W.PLAT.cid?' selected':'')+'>'+esc(nm)+'</option>'; }).join("")+'</select>';   /* n3 */
+      /* n236: it always opens on "Select group" — the member says where they played rather than inheriting
+         whichever door they came through, and nothing proceeds until they do. */
+      +'<option value="0"'+((natMode() && isClubWithKids(W.PLAT.cid))?' selected':'')+'>\u2014 Select group \u2014</option>'
+      /* n236: no "General play" — a padel score belongs to a group, and the region itself is not a place to play */
+      +cs.filter(function(c){ return !(natMode() && isClubWithKids(c.id)); })
+         .map(function(c){ return '<option value="'+c.id+'"'+((c.id===W.PLAT.cid)?' selected':'')+'>'+esc(c.name)+'</option>'; }).join("")+'</select>';
     var hdr=scr.querySelector(".header"); if(hdr&&hdr.nextSibling) scr.insertBefore(box,hdr.nextSibling); else scr.insertBefore(box,scr.firstChild);
+    /* n236: NOTHING PROCEEDS UNTIL A GROUP IS CHOSEN. The member arrives here straight from the door, so the
+       group is unset — the Next button is held until they say where they played, with a line saying why. */
+    try{
+      var gate=function(){
+        var sel=box.querySelector("select");
+        var chosen = !!(W.__grpChosen) || (sel && String(sel.value)!=="0");
+        var nxt=[].slice.call(document.querySelectorAll("#entryContent .btn-primary, #entryScreen .btn-primary"))
+                  .filter(function(b){ return /Next/i.test(b.textContent||""); })[0];
+        if(nxt){
+          nxt.disabled = !chosen;
+          nxt.style.opacity = chosen ? "" : "0.5";
+          nxt.title = chosen ? "" : "Choose the group first";
+        }
+        var note=document.getElementById("grpGateNote");
+        if(!chosen){
+          if(!note && nxt && nxt.parentNode){
+            note=document.createElement("div"); note.id="grpGateNote";
+            note.style.cssText="margin:6px 12px 0;font-size:12.5px;color:#c0392b;font-weight:700";
+            note.textContent="Choose the group where this match was played to continue.";
+            nxt.parentNode.insertBefore(note, nxt);
+          }
+        } else if(note){ note.remove(); }
+      };
+      var sel=box.querySelector("select");
+      if(sel){ sel.addEventListener("change", function(){ W.__grpChosen = (String(this.value)!=="0"); }); }
+      gate(); setInterval(gate, 400);
+    }catch(e){}
   }
   // NAT: where "back" goes in the new shape — a group climbs to its club's door, a club's board to its door, a
   // club (or a club ledger) to the national door; a register without parent rows keeps the p117 behaviour (null).
@@ -15232,6 +15271,7 @@ W.nhOpenPair=function(name){
          in the same batched pass rather than on a timer of their own */
       try{ if(W.nsMount) W.nsMount(); }catch(e){}
       try{ if(W.nhStripSingles) W.nhStripSingles(); }catch(e){}
+      try{ if(W.nhGroupGate) W.nhGroupGate(); }catch(e){}
     });
     platRun();
   }
@@ -15904,6 +15944,31 @@ W.nhOpenPair=function(name){
      'singles' code paths are untouched: an existing record carrying the flag still renders.
      Called from the batched repaint pass — a plain starter in this scope sits after an early return and never
      runs, which is the same trap the name-scope rows hit in n215. */
+  /* n236: NOTHING PROCEEDS UNTIL A GROUP IS CHOSEN. Arriving from the door the sheet opens on the region, which
+     is not a place anyone plays — so Next is held until the member picks their group, with the reason said plainly
+     rather than a button that simply does nothing. */
+  function nhGroupGate(){
+    try{
+      var sel=document.querySelector("#platEntryClub select"); if(!sel) return;
+      var onRegion = (natMode() && isClubWithKids(W.PLAT.cid));
+      var btn=[].slice.call(document.querySelectorAll("#entryContent button, #entryScreen button"))
+                .filter(function(b){ return /Next:/.test(b.textContent||""); })[0];
+      var note=document.getElementById("nhGrpNote");
+      if(!note && sel.parentNode){
+        note=document.createElement("div"); note.id="nhGrpNote";
+        note.style.cssText="font-size:12px;color:#c0392b;font-weight:700;margin-top:6px;display:none";
+        note.textContent="Choose the group you played at to carry on.";
+        sel.parentNode.appendChild(note);
+      }
+      if(note) note.style.display = onRegion ? "block" : "none";
+      if(btn){
+        btn.disabled = !!onRegion;
+        btn.style.opacity = onRegion ? "0.5" : "";
+        btn.style.pointerEvents = onRegion ? "none" : "";
+      }
+    }catch(e){}
+  }
+  W.nhGroupGate=nhGroupGate;
   function nhStripSingles(){
     try{
       ["atDivMenSingles","atDivLadiesSingles"].forEach(function(id){
