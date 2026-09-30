@@ -3738,7 +3738,7 @@ const CLUB_NAME = _club.name;  // shown in the logo as "OPR · <name>"
     link.setAttribute('href', href);
   }catch(e){ /* install stays on the static manifest — no functional impact */ }
 })();
-const OPR_VERSION = "OPR-DOUBLES v2026.09.03-56 · NAT fork n307 (no voice) (of PLAT p117)";  // MANUAL PAIR CREATION REMOVED FROM ADMIN: Create a pair, Bulk create pairs and Re-derive all pairs are gone (they only made match-less ghost pairs, and Re-derive rewrote every stored initial club-wide). Pairs are born automatically at match entry. Current pairs list untouched; the underlying JS is left in place unreferenced, so no other code path changes. Includes v47 (set-score fix + double-tap guard) and all prior.
+const OPR_VERSION = "OPR-DOUBLES v2026.09.03-56 · NAT fork n308 (no voice) (of PLAT p117)";  // MANUAL PAIR CREATION REMOVED FROM ADMIN: Create a pair, Bulk create pairs and Re-derive all pairs are gone (they only made match-less ghost pairs, and Re-derive rewrote every stored initial club-wide). Pairs are born automatically at match entry. Current pairs list untouched; the underlying JS is left in place unreferenced, so no other code path changes. Includes v47 (set-score fix + double-tap guard) and all prior.
 // Explanation shown above the individual ladder. Open on load so it's read; collapsible
 // (state kept for the session) and scrolls away. Mechanics only — no outcome framing, so
 // members aren't nudged away from playing stronger opponents. Every clause maps to a real
@@ -16137,9 +16137,11 @@ W.nhOpenPair=function(name){
   nsWatch();   /* n215: started at load. Waiting for entryTint() to start it meant it never ran on the path a
                   member actually takes, which is why the rows mounted once in a test and never in the app. */
   function entryTint(){
-    if(!W.PLAT.cid) return;
+    /* n308: re-run on every board change (nhParentSync). A board in the product purple, or the ledger, takes the tint
+       AWAY — it used to return early and leave the previous group's colour on the sheet. */
+    var col=W.PLAT.cid ? inkSafe(W.PLAT.colour||clubPal(W.PLAT.cid)[0]) : "#6c3483";
+    if(String(col||"").toLowerCase()==="#6c3483"){ var gone=document.getElementById("platEntryTint"); if(gone) gone.remove(); return; }
     /* n207: the readable ink, for the same reason as the court card — these are buttons with white words on them */
-    var col=inkSafe(W.PLAT.colour||clubPal(W.PLAT.cid)[0]); if(String(col||"").toLowerCase()==="#6c3483") return;
     var rgb=sessRgb(), deep=darken(col,0.42), mid=darken(col,0.25);
     nsMount(); nsWatch();
     var st=document.getElementById("platEntryTint")||document.createElement("style"); st.id="platEntryTint";
@@ -16455,6 +16457,11 @@ W.nhOpenPair=function(name){
     try{ ADMIN_PIN=""; }catch(e){}   /* a code typed on one board is not a code for another; the gate asks again */
     ["refreshClubName","loadRecent","loadPlayers","loadClubStats"].forEach(function(fn){ try{ if(typeof W[fn]==="function") W[fn](); }catch(e){} });
     try{ headerBadges(); }catch(e){}   /* the GROUP · name pill on every parent screen header */
+    /* n308: THE SHEET AND THE CARD WEAR THE BOARD'S COLOUR (p105). Both tints were written once at boot for the booted
+       board; in the shell the board changes, so they are written again for the board we now stand on. */
+    try{ entryTint(); }catch(e){}
+    try{ sessStyle(); }catch(e){}
+    try{ var ink=(W.PLAT.cid && W.PLAT.colour) ? W.PLAT.colour : "#6c3483"; nhInk(ink); nhHeaderSkin(ink, nhDeep(ink)); }catch(e){}
   }
   (function(){
     var _ss=W.showScreen; if(typeof _ss!=="function") return;
@@ -16464,7 +16471,9 @@ W.nhOpenPair=function(name){
       try{
         /* n305: EVERY screen, not a list. `ladderScreen` (a ladder's table) was not on the list, so Men's Pairs fell
            through to the reload below and came back to an empty table — the "slow ratings" on the phone. */
-        if(W.NEWAPP && id && id!=="homeScreen" && nhDrifted() && Number(W.PLAT.cid)>0){ nhParentSync(); return _ss.apply(this,arguments); }
+        /* n308: the sync is keyed to the board, not to "drifted" — coming BACK to the booted board after another one
+           must restore its tints and loaders just the same */
+        if(W.NEWAPP && id && id!=="homeScreen" && Number(W.PLAT.cid)>0){ nhParentSync(); return _ss.apply(this,arguments); }
         if(false){
           var q=new URLSearchParams(location.search);
           ["go","back","who","pair","view","col","tn","div","t","name"].forEach(function(k){ q.delete(k); });
