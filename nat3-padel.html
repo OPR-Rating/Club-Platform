@@ -3738,7 +3738,7 @@ const CLUB_NAME = _club.name;  // shown in the logo as "OPR · <name>"
     link.setAttribute('href', href);
   }catch(e){ /* install stays on the static manifest — no functional impact */ }
 })();
-const OPR_VERSION = "OPR-DOUBLES v2026.09.03-56 · NAT fork n308 (no voice) (of PLAT p117)";  // MANUAL PAIR CREATION REMOVED FROM ADMIN: Create a pair, Bulk create pairs and Re-derive all pairs are gone (they only made match-less ghost pairs, and Re-derive rewrote every stored initial club-wide). Pairs are born automatically at match entry. Current pairs list untouched; the underlying JS is left in place unreferenced, so no other code path changes. Includes v47 (set-score fix + double-tap guard) and all prior.
+const OPR_VERSION = "OPR-DOUBLES v2026.09.03-56 · NAT fork n309 (no voice) (of PLAT p117)";  // MANUAL PAIR CREATION REMOVED FROM ADMIN: Create a pair, Bulk create pairs and Re-derive all pairs are gone (they only made match-less ghost pairs, and Re-derive rewrote every stored initial club-wide). Pairs are born automatically at match entry. Current pairs list untouched; the underlying JS is left in place unreferenced, so no other code path changes. Includes v47 (set-score fix + double-tap guard) and all prior.
 // Explanation shown above the individual ladder. Open on load so it's read; collapsible
 // (state kept for the session) and scrolls away. Mechanics only — no outcome framing, so
 // members aren't nudged away from playing stronger opponents. Every clause maps to a real
@@ -6411,6 +6411,9 @@ async function loadClubStats(){
      +'<div class="club-stat"><span class="lbl">Matches played</span><span class="val">'+matches.length+'</span></div>';
   }catch(e){ box.innerHTML='<div style="color:#999;font-size:12px;">Stats unavailable.</div>'; }
 }
+
+/* NAT3 n309: generated at build — the parent's mutable state back to its first values on a board change */
+window.__nhParentReset=function(){ try{ MEN = []; LADIES = []; MIXED = []; INDIV_BY_NAME = {}; _playersLoaded = false; ADMIN_PIN = ""; ODR_INDIV=[], ODR_PAIRS=[], odrSelA=null, odrSelB=null, odrSearchWired=false; _adminClubs=[]; TOURNAMENT_EVENT = ''; TOURNAMENT_ARCHIVED = false; entryData={}; recentMatchesData = []; _hcGlimpseLoaded = false; _currentModalPlayers = []; _pmMulti = false; _pmChosen = new Set(); _pmMultiDone = null; ODR_INDIV_RATING = {}; ODR_PAIR_RATING = {}; _modalCallback = null; TM_DIVISION = null; TM_ADMIN_PIN = ''; CL_CAT = "Men's"; CL_FORMAT = 'doubles'; CL_TAB = 'ladder'; }catch(e){ console.warn('parent reset', e); } };
 </script>
 <script>
 function updateOfflineBanner(){
@@ -16450,10 +16453,29 @@ W.nhOpenPair=function(name){
   var NAT3_INSHELL={laddersScreen:1,clubLadderScreen:1,entryScreen:1,enterTournamentScreen:1,profileSearchScreen:1,profileScreen:1,
                     tournamentScreen:1,platSessScreen:1,aboutScreen:1,markerScreen:1,adminScreen:1,platRegScreen:1};
   W.__nhParentBoard=Number(W.PLAT.bootCid||0)+"|"+Number(W.PLAT.bootNat||0);
+  /* n309: THE RELOAD, WITHOUT THE RELOAD. n237 sets everything up once because every tap reloaded the page: every
+     variable back to its first value, every screen's HTML fresh. The shell took the reload away, so a board change
+     must give the same fresh start: the parent's state back to boot (`__nhParentReset`, generated at build from its
+     own `let` declarations) and every parent screen's body back to its boot HTML (snapshotted once, here). Only the
+     frame — the header, the page in view — is kept. */
+  W.__nhScreenBoot={};
+  function nhScreensSnapshot(){
+    document.querySelectorAll(".screen").forEach(function(s){
+      if(!s.id || s.id==="homeScreen" || s.id==="platSessScreen" || s.id==="platRegScreen") return;
+      if(W.__nhScreenBoot[s.id]==null) W.__nhScreenBoot[s.id]=s.innerHTML;
+    });
+  }
+  function nhScreensRestore(){
+    Object.keys(W.__nhScreenBoot).forEach(function(id){ var s=document.getElementById(id); if(s && s.innerHTML!==W.__nhScreenBoot[id]) s.innerHTML=W.__nhScreenBoot[id]; });
+    /* the fork's own screens write their body every time they open — the body is emptied, the screen stays */
+    ["platSessBody","platRegBody"].forEach(function(id){ var s=document.getElementById(id); if(s) s.innerHTML=""; });
+  }
   function nhParentSync(){
     var key=Number(W.PLAT.cid)+"|"+Number(W.PLAT.nat||0);
     if(W.__nhParentBoard===key) return;
     W.__nhParentBoard=key;
+    try{ if(W.__nhParentReset) W.__nhParentReset(); }catch(e){}   /* every parent variable back to its first value */
+    try{ nhScreensRestore(); }catch(e){}                           /* every parent screen back to its boot HTML */
     try{ ADMIN_PIN=""; }catch(e){}   /* a code typed on one board is not a code for another; the gate asks again */
     ["refreshClubName","loadRecent","loadPlayers","loadClubStats"].forEach(function(fn){ try{ if(typeof W[fn]==="function") W[fn](); }catch(e){} });
     try{ headerBadges(); }catch(e){}   /* the GROUP · name pill on every parent screen header */
@@ -16461,6 +16483,14 @@ W.nhOpenPair=function(name){
        board; in the shell the board changes, so they are written again for the board we now stand on. */
     try{ entryTint(); }catch(e){}
     try{ sessStyle(); }catch(e){}
+    /* n309: WHAT THE PARENT DREW FOR THE LAST BOARD IS NOT THIS BOARD'S. Its tournament screen keeps the tabs and
+       buttons of the tournament it showed last and only overwrites the picker; with no tournament here it wrote "No
+       active tournament" above another board's "Open draw & standings" — a way into a different group's tournament.
+       On a board change the tournament screen's body, the chosen tournament and its archive flag are cleared, as they
+       are on a fresh load. */
+    try{ TOURNAMENT_EVENT=""; }catch(e){} try{ TOURNAMENT_ARCHIVED=false; }catch(e){}
+    try{ ["tournamentInternal","tournamentBody","tournamentPicker"].forEach(function(id){ var el=document.getElementById(id); if(el) el.innerHTML=""; }); }catch(e){}
+    try{ W._tourInternalView="draw"; }catch(e){}
     try{ var ink=(W.PLAT.cid && W.PLAT.colour) ? W.PLAT.colour : "#6c3483"; nhInk(ink); nhHeaderSkin(ink, nhDeep(ink)); }catch(e){}
   }
   (function(){
@@ -16486,6 +16516,7 @@ W.nhOpenPair=function(name){
       return _ss.apply(this,arguments);
     };
   })();
+  try{ nhScreensSnapshot(); }catch(e){}   /* n309: the parent's screens as they are at boot */
   W.PLAT.ready.then(function(){
     elsewhereLine();
     // p24: name known — reveal the title and remember it for the next visit's first frame
