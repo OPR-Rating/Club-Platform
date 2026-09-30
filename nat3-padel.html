@@ -3738,7 +3738,7 @@ const CLUB_NAME = _club.name;  // shown in the logo as "OPR · <name>"
     link.setAttribute('href', href);
   }catch(e){ /* install stays on the static manifest — no functional impact */ }
 })();
-const OPR_VERSION = "OPR-DOUBLES v2026.09.03-56 · NAT fork n305 (no voice) (of PLAT p117)";  // MANUAL PAIR CREATION REMOVED FROM ADMIN: Create a pair, Bulk create pairs and Re-derive all pairs are gone (they only made match-less ghost pairs, and Re-derive rewrote every stored initial club-wide). Pairs are born automatically at match entry. Current pairs list untouched; the underlying JS is left in place unreferenced, so no other code path changes. Includes v47 (set-score fix + double-tap guard) and all prior.
+const OPR_VERSION = "OPR-DOUBLES v2026.09.03-56 · NAT fork n306 (no voice) (of PLAT p117)";  // MANUAL PAIR CREATION REMOVED FROM ADMIN: Create a pair, Bulk create pairs and Re-derive all pairs are gone (they only made match-less ghost pairs, and Re-derive rewrote every stored initial club-wide). Pairs are born automatically at match entry. Current pairs list untouched; the underlying JS is left in place unreferenced, so no other code path changes. Includes v47 (set-score fix + double-tap guard) and all prior.
 // Explanation shown above the individual ladder. Open on load so it's read; collapsible
 // (state kept for the session) and scrolls away. Mechanics only — no outcome framing, so
 // members aren't nudged away from playing stronger opponents. Every clause maps to a real
@@ -13278,7 +13278,10 @@ W.nhOpenPair=function(name){
              another screen — a ladder table back to the ladders menu — keeps its own way back. */
           var orig=a.getAttribute("onclick")||"";
           if(/showScreen\(/.test(orig)){ a.dataset.nhBack="1"; return; }
-          a.dataset.nhBack="1"; a.onclick=function(ev){ var h=hrefNow(); if(!h){ try{ return (new Function("event",orig)).call(a,ev); }catch(e){ return; } } ev.preventDefault(); ev.stopPropagation(); W.nhNav(h); };
+          /* n306: every goHome arrow steps back along the trail; ?back= / ?from= only when there is no trail (a deep link) */
+          a.dataset.nhBack="1"; a.onclick=function(ev){ ev.preventDefault(); ev.stopPropagation();
+            if(W.__nhTrail && W.__nhTrail.length>1){ W.nhBackPath(); return; }
+            var h=hrefNow(); if(h){ W.nhNav(h); return; } try{ (new Function("event",orig)).call(a,ev); }catch(e){} };
         });
       }catch(e){}
     },250);
@@ -15490,7 +15493,7 @@ W.nhOpenPair=function(name){
   }
   /* n303 fix: the card's arrow goes back to wherever the card was opened from — the entry sheet's pills, or the
      group page's bracket. It always went to the sheet, so from the bracket you landed somewhere you had not been. */
-  W.platSessPlain=function(){ W.PLAT.sessionCourt=null; W.showScreen(W.__nhSessFrom==="entryScreen"?"entryScreen":"homeScreen"); };
+  W.platSessPlain=function(){ W.PLAT.sessionCourt=null; W.nhBackPath(); };   /* n306: back along the path */
   function loadMembers(){
     return Promise.all([
       // p94: THE WHOLE REGISTER, not the group's members: names live at the club, and a group has no members
@@ -16270,6 +16273,8 @@ W.nhOpenPair=function(name){
       else { history.pushState({nat3:1},"",location.pathname+search); nhCrumbPush("?"+p.q.toString()); }
       W.__nhLastSearch=String(location.search||"");
     }catch(e){ location.href=url; return false; }
+    /* the view is recorded by the screen that opens; an address naming a screen has no "home" step in between */
+    try{ var gq=(p.q.get("go")||"").toLowerCase(); if(!(gq && NAT3_PARENT_GO[gq]) && p.hash!=="enter") nhTrailPush("homeScreen"); }catch(e){}
     nhRender(shape);
     return false;
   };
@@ -16278,12 +16283,17 @@ W.nhOpenPair=function(name){
     var tok=++W.__nhNavTok;
     NEW.data=null; NEW.busy=null;   /* the per-board cache (nhCacheGet) still serves the reads */
     try{ if(W.__nhHeroHold) clearInterval(W.__nhHeroHold); }catch(e){}
+    var goq0=""; try{ goq0=(new URLSearchParams(location.search).get("go")||"").toLowerCase(); }catch(e){}
+    var toScreen = !!(goq0 && NAT3_PARENT_GO[goq0]) || location.hash==="#enter";
     W.PLAT.rekey(location.search).then(function(){
       if(tok!==W.__nhNavTok) return;   /* a later tap won */
       try{
-        /* exactly one active screen: the home screen, where the fork's pages live */
+        /* exactly one active screen: the home screen, where the fork's pages live.
+           n306: NOT when the address names a parent screen — then the screen you are on stays up while the board's
+           page is drawn beneath it, and the named screen opens over that. Flipping to the home screen first is what
+           showed the group's page for a moment ("the bounce") when a group was picked on the entry sheet. */
         var home=document.getElementById("homeScreen");
-        if(home && !home.classList.contains("active")){
+        if(home && !home.classList.contains("active") && !toScreen){
           document.querySelectorAll('.screen').forEach(function(s){ s.classList.remove('active'); s.classList.add('hidden'); });
           home.classList.remove('hidden'); home.classList.add('active');
         }
@@ -16322,11 +16332,42 @@ W.nhOpenPair=function(name){
           _set(); var _n=0; W.__nhHeroHold=setInterval(function(){ _set(); if(++_n>20) clearInterval(W.__nhHeroHold); },100); }
       }
       try{ var sc=nhScroller(); if(sc&&sc.scrollTo) sc.scrollTo(0,0); else if(sc) sc.scrollTop=0; }catch(e){} try{ window.scrollTo(0,0); }catch(e){}
-      /* an address that names a parent screen: the board's page is drawn beneath, then the screen opens on it */
-      try{ var goq=(new URLSearchParams(location.search).get("go")||"").toLowerCase(); if(goq && NAT3_PARENT_GO[goq]){ if(Number(W.PLAT.cid)>0) nhParentSync(); setTimeout(goWhere,0); }
-           else if(location.hash==="#enter" && Number(W.PLAT.cid)>0){ nhParentSync(); setTimeout(function(){ W.showScreen("entryScreen"); },0); } }catch(e){}
+      /* an address that names a parent screen: the board's page is drawn beneath, then the screen opens on it —
+         in the same tick, so no frame shows the page underneath */
+      try{ var goq=(new URLSearchParams(location.search).get("go")||"").toLowerCase();
+           if(goq && NAT3_PARENT_GO[goq]){ if(Number(W.PLAT.cid)>0) nhParentSync(); goWhere(); }
+           else if(location.hash==="#enter" && Number(W.PLAT.cid)>0){ nhParentSync(); W.showScreen("entryScreen"); } }catch(e){}
+      try{ if(W.__nhAfterNav){ var f=W.__nhAfterNav; W.__nhAfterNav=null; f(); } }catch(e){}
     });
   }
+  /* n306: THE PATH YOU CAME. Every view — an address and the screen open on it — is written to one trail as you move,
+     and every back arrow steps back along it: the group's sheet back to the region's sheet, that back to the door;
+     Men's Pairs back to the ladders menu, that back to the group's page. No rules about doors and parents. */
+  W.__nhTrail=[{search:String(location.search||""),screen:"homeScreen"}];
+  (function(){ var _gh=W.goHome; if(typeof _gh!=="function") return; W.goHome=function(){ var r=_gh.apply(this,arguments); try{ nhTrailPush("homeScreen"); }catch(e){} return r; }; })();
+  W.__nhTrailHold=false;
+  function nhTrailPush(screen){
+    if(W.__nhTrailHold) return;
+    var t=W.__nhTrail, v={search:String(location.search||""),screen:screen||"homeScreen"}, last=t[t.length-1];
+    if(last && last.search===v.search && last.screen===v.screen) return;
+    /* stepping onto the view behind us IS a back — unwind rather than grow */
+    var prev=t[t.length-2]; if(prev && prev.search===v.search && prev.screen===v.screen){ t.pop(); return; }
+    t.push(v); if(t.length>60) t.shift();
+  }
+  W.nhBackPath=function(){
+    var t=W.__nhTrail; if(t.length<2){ try{ goHome(); }catch(e){} return; }
+    t.pop(); var prev=t[t.length-1];
+    W.__nhTrailHold=true;
+    var open=function(){ try{ if(prev.screen==="homeScreen") goHome(); else W.showScreen(prev.screen); }catch(e){} W.__nhTrailHold=false; };
+    if(prev.search!==String(location.search||"")){
+      W.__nhAfterNav=open;
+      /* the shell keeps the screen up while the previous board is drawn beneath, then opens the previous screen */
+      var q=new URLSearchParams(prev.search.replace(/^\?/,"")); var goq=(q.get("go")||"").toLowerCase();
+      if(prev.screen!=="homeScreen" && !(goq && NAT3_PARENT_GO[goq])){ /* the view had a screen but no go=: name it so nothing flips home */ q.set("go", NAT3_SCREEN_GO2[prev.screen]||"ladders"); }
+      W.nhNav(PAGE+"?"+q.toString(),{replace:true,force:true});
+    } else { open(); }
+  };
+  var NAT3_SCREEN_GO2={laddersScreen:"ladders",ladderScreen:"ladders",clubLadderScreen:"ladders",entryScreen:"entry",enterTournamentScreen:"entry",tournamentScreen:"tournaments",profileSearchScreen:"profiles",profileScreen:"profiles",adminScreen:"admin",platSessScreen:"card"};
   /* the phone's back gesture and the browser's back button */
   W.__nhLastSearch=String(location.search||"");
   W.addEventListener("popstate",function(){
@@ -16334,6 +16375,7 @@ W.nhOpenPair=function(name){
        fires popstate for that too; taken as "the address moved", the shell redrew the board's page under the ladder
        and re-scoped the register — fifteen reads, and Men's Pairs never finished. Only a change of ?search is ours. */
     var s=String(location.search||""); if(s===W.__nhLastSearch) return; W.__nhLastSearch=s;
+    try{ var t=W.__nhTrail; for(var i=t.length-1;i>=0;i--){ if(t[i].search===s){ t.length=i+1; break; } } }catch(e){}   /* n306: the gesture unwinds the trail too */
     var shape=null; try{ shape=nhShape(new URLSearchParams(location.search)); }catch(e){}
     if(shape && nhOnShellPage()){ nhRender(shape); return; }
     location.reload();   /* a parent page or another register: the page has to be loaded on that address */
@@ -16376,6 +16418,7 @@ W.nhOpenPair=function(name){
     var _ss=W.showScreen; if(typeof _ss!=="function") return;
     W.showScreen=function(id){
       try{ if(id==="platSessScreen"){ var cur=document.querySelector(".screen.active"); W.__nhSessFrom=(cur&&cur.id)||"homeScreen"; } }catch(e){}
+      try{ nhTrailPush(id); }catch(e){}
       try{
         /* n305: EVERY screen, not a list. `ladderScreen` (a ladder's table) was not on the list, so Men's Pairs fell
            through to the reload below and came back to an empty table — the "slow ratings" on the phone. */
