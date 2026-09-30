@@ -3688,7 +3688,7 @@ const CLUB_NAME = _club.name;  // shown in the logo as "OPR · <name>"
     link.setAttribute('href', href);
   }catch(e){ /* install stays on the static manifest — no functional impact */ }
 })();
-const OPR_VERSION = "OPR-DOUBLES v2026.09.03-56 · NAT fork n232 (no voice) (of PLAT p117)";  // MANUAL PAIR CREATION REMOVED FROM ADMIN: Create a pair, Bulk create pairs and Re-derive all pairs are gone (they only made match-less ghost pairs, and Re-derive rewrote every stored initial club-wide). Pairs are born automatically at match entry. Current pairs list untouched; the underlying JS is left in place unreferenced, so no other code path changes. Includes v47 (set-score fix + double-tap guard) and all prior.
+const OPR_VERSION = "OPR-DOUBLES v2026.09.03-56 · NAT fork n233 (no voice) (of PLAT p117)";  // MANUAL PAIR CREATION REMOVED FROM ADMIN: Create a pair, Bulk create pairs and Re-derive all pairs are gone (they only made match-less ghost pairs, and Re-derive rewrote every stored initial club-wide). Pairs are born automatically at match entry. Current pairs list untouched; the underlying JS is left in place unreferenced, so no other code path changes. Includes v47 (set-score fix + double-tap guard) and all prior.
 // Explanation shown above the individual ladder. Open on load so it's read; collapsible
 // (state kept for the session) and scrolls away. Mechanics only — no outcome framing, so
 // members aren't nudged away from playing stronger opponents. Every clause maps to a real
@@ -9923,21 +9923,12 @@ async function clRemove(id, label){
         if(go==="player" && who && typeof loadProfile==="function"){ loadProfile(who,""); return true; }
         /* n131: ONE TOURNAMENT'S SHEET, directly — its draw and standings, in the member's own category. My tournaments
            links here; back returns to the page that sent us. */
-        if(go==="tenter" && typeof showEnterTournament==="function"){
-          var eq=new URLSearchParams(location.search), etn=eq.get("tn")||"";
-          if(etn){ try{ TOURNAMENT_EVENT=etn; nhTourColour(etn); }catch(e){} showEnterTournament(etn); return true; }
-        }
         if(go==="tsheet" && typeof loadTournamentSheet==="function"){
           var tq=new URLSearchParams(location.search), tn=tq.get("tn")||"", dv=tq.get("div")||null;
           if(tn){ try{ TOURNAMENT_EVENT=tn; }catch(e){} try{ nhTourColour(tn); }catch(e){} loadTournamentSheet(tn, dv); return true; }
         }
-        /* n232: the pill opens the tournament list, as it always did. WHICH SCREEN A TOURNAMENT OPENS is decided
-           when one is chosen — see the wrapper on loadTournamentSheet. n231 asked whether the BOARD had entries,
-           which is wrong: ten groups can each run a tournament, and one group can run several. */
-        if(go==="tournaments" && typeof showScreen==="function"){
-          if(typeof loadActiveTournaments==="function"){ try{ loadActiveTournaments(); }catch(e){} }
-          showScreen("tournamentScreen"); return true;
-        }
+        if(go==="tournaments" && typeof loadActiveTournaments==="function"){ loadActiveTournaments(); return true; }
+        if(go==="tournaments" && typeof showScreen==="function"){ if(typeof loadActiveTournaments==="function"){ try{ loadActiveTournaments(); }catch(e){} } showScreen("tournamentScreen"); return true; }
         if(go==="entry"){ var b=document.querySelector("#homeScreen .btn-enter"); if(b){ b.click(); return true; } }
         if(go==="card" && typeof W.platOpenCard==="function"){ W.platOpenCard(); return true; }
         if(go==="card"){ var c=Array.prototype.filter.call(document.querySelectorAll("button"),function(x){ return /court card/i.test(x.textContent||""); })[0];
@@ -10764,47 +10755,6 @@ async function clRemove(id, label){
     }catch(e){}
   }
   W.nhTourColour=nhTourColour;
-  /* n230: straight to the tournament's own entry screen, with the tournament preselected */
-  W.nhEnterTour=function(k){
-    var t=(W.__nhTours||[])[k]; if(!t) return;
-    try{ W.TOURNAMENT_EVENT=t.name; }catch(e){}
-    var club=t.club_id||W.PLAT.cid;
-    if(Number(club)!==Number(W.PLAT.cid)){
-      location.href=PAGE+"?club="+club+"&go=tenter&tn="+encodeURIComponent(t.name)
-        +"&back="+encodeURIComponent(location.search||"");
-      return;
-    }
-    try{ if(W.showEnterTournament) W.showEnterTournament(t.name); }catch(e){}
-  };
-  /* n232: THE CHOSEN TOURNAMENT DECIDES, AT THIS GROUP. No teams entered — the enter-team card; teams entered —
-     the stats sheet. Asked of that tournament BY NAME at this club, so another group's tournament cannot answer
-     for it. If the question cannot be asked, it behaves exactly as before. */
-  (function(){
-    var arm=function(){
-      if(typeof W.loadTournamentSheet!=="function") return setTimeout(arm,400);
-      if(W.loadTournamentSheet.__n232) return;
-      var orig=W.loadTournamentSheet;
-      var wrapped=function(name, div){
-        var self=this, args=arguments;
-        if(!name) return orig.apply(self,args);
-        try{
-          fetch(SBREST()+"plat_padel_tournament_entries?select=id&club_id=eq."+W.PLAT.cid
-                +"&tournament=eq."+encodeURIComponent(name)+"&limit=1")
-            .then(J)
-            .then(function(rows){
-              if(rows && rows.length) return orig.apply(self,args);
-              try{ W.TOURNAMENT_EVENT=name; }catch(e){}
-              if(typeof W.showEnterTournament==="function") return W.showEnterTournament(name);
-              return orig.apply(self,args);
-            })
-            .catch(function(){ orig.apply(self,args); });
-          return;
-        }catch(e){ return orig.apply(self,args); }
-      };
-      wrapped.__n232=true; W.loadTournamentSheet=wrapped;
-    };
-    arm();
-  })();
   W.nhOpenTour=function(k){
     var t=(W.__nhTours||[])[k]; if(!t) return W.nhGo("tournaments");
     var club=t.club_id||W.PLAT.cid;
