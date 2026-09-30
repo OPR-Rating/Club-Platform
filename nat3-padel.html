@@ -1291,6 +1291,15 @@ st0.textContent += "html{overflow-y:scroll}";   // p98: the scrollbar's space is
       var m=u.match(/\/rest\/v1\/(.*)$/);
       if(m){
         var tbl=m[1].split("?")[0];
+        /* NAT3: THE PARENT SPEAKS ONLY OF THE BOARD IT BOOTED ON. Every read and write it makes names CLUB_ID, a const
+           read from the address at load. In the shell the board changes without a reload, so wherever the parent says
+           the BOOTED board, it means the board we now stand on — the id is swapped here, once, for everything the
+           parent sends. Bare table names only: the fork's own reads use plat_/nat_ names and already say what they mean. */
+        var B0=Number(W.PLAT.bootCid||0);
+        if(CID>0 && B0>0 && CID!==B0 && tbl.indexOf("plat_")!==0 && tbl.indexOf("nat_")!==0){
+          m[1]=m[1].replace(new RegExp("club_id=eq\\."+B0+"(?![0-9])","g"),"club_id=eq."+CID);
+          if(tbl==="clubs") m[1]=m[1].replace(new RegExp("([?&])id=eq\\."+B0+"(?![0-9])","g"),"$1id=eq."+CID);
+        }
         if(method==="POST"&&tbl==="players"){
           // p34 SPEED: OPR only needs the pair's NAME back, and plat_submit_match (v5) births any pair the
           // match names. So answer here with no round trip — two edge invocations per score disappear.
@@ -1414,6 +1423,9 @@ st0.textContent += "html{overflow-y:scroll}";   // p98: the scrollbar's space is
       }
       if(f&&FN[f[1]]){
         u=u.replace("/functions/v1/"+f[1],"/functions/v1/"+FN[f[1]]);
+        /* NAT3: the same swap for the parent's function calls — a body naming the booted board means this board */
+        try{ var B1=Number(W.PLAT.bootCid||0);
+          if(CID>0 && B1>0 && CID!==B1 && init.body){ var rb=JSON.parse(init.body); if(rb && Number(rb.club_id)===B1){ rb.club_id=CID; init=Object.assign({},init,{body:JSON.stringify(rb)}); } } }catch(e){}
         // p92: every admin call names the board it was made from, so a code is checked against THIS group —
         // never against every group on the platform (a squash code opened squash from a padel board).
         if(f[1]==="admin"){ var ab={}; try{ ab=JSON.parse(init.body||"{}"); }catch(e){}
@@ -3706,7 +3718,7 @@ const CLUB_NAME = _club.name;  // shown in the logo as "OPR · <name>"
 // unaffected; this fixes the far commoner "install from the app page" route.
 (function(){
   try{
-    const url = './' + (location.pathname.split('/').pop() || 'nat-padel.html') + '?club=' + CLUB_ID;   // NAT MARKED HUNK: install reopens THIS file, whatever it is called
+    const url = './' + (location.pathname.split('/').pop() || 'nat-padel.html') + '?club=' + ((window.PLAT&&window.PLAT.cid)||CLUB_ID);   // NAT MARKED HUNK: install reopens THIS file, whatever it is called, on the board we stand on (NAT3)
     const mf = {
       name: 'OPR · ' + CLUB_NAME,
       short_name: (String(CLUB_NAME).length > 12 ? String(CLUB_NAME).slice(0,12) : String(CLUB_NAME)) || 'OPR',
@@ -3726,7 +3738,7 @@ const CLUB_NAME = _club.name;  // shown in the logo as "OPR · <name>"
     link.setAttribute('href', href);
   }catch(e){ /* install stays on the static manifest — no functional impact */ }
 })();
-const OPR_VERSION = "OPR-DOUBLES v2026.09.03-56 · NAT fork n302 (no voice) (of PLAT p117)";  // MANUAL PAIR CREATION REMOVED FROM ADMIN: Create a pair, Bulk create pairs and Re-derive all pairs are gone (they only made match-less ghost pairs, and Re-derive rewrote every stored initial club-wide). Pairs are born automatically at match entry. Current pairs list untouched; the underlying JS is left in place unreferenced, so no other code path changes. Includes v47 (set-score fix + double-tap guard) and all prior.
+const OPR_VERSION = "OPR-DOUBLES v2026.09.03-56 · NAT fork n303 (no voice) (of PLAT p117)";  // MANUAL PAIR CREATION REMOVED FROM ADMIN: Create a pair, Bulk create pairs and Re-derive all pairs are gone (they only made match-less ghost pairs, and Re-derive rewrote every stored initial club-wide). Pairs are born automatically at match entry. Current pairs list untouched; the underlying JS is left in place unreferenced, so no other code path changes. Includes v47 (set-score fix + double-tap guard) and all prior.
 // Explanation shown above the individual ladder. Open on load so it's read; collapsible
 // (state kept for the session) and scrolls away. Mechanics only — no outcome framing, so
 // members aren't nudged away from playing stronger opponents. Every clause maps to a real
@@ -13242,8 +13254,13 @@ W.nhOpenPair=function(name){
     var bq="", frm=0; try{ var q=new URLSearchParams(location.search); bq=q.get("back")||""; frm=Number(q.get("from")||0); }catch(e){}
     /* n103: the way back is where you came from — ?back= if a page said so, else the door that opened admin
        (?from=), else the region's door. Never plat's goHome(), which is the retired landing. */
-    var href = bq ? (PAGE+bq) : (frm ? (PAGE+"?club="+frm) : (W.PLAT.nat ? (PAGE+"?club="+W.PLAT.nat) : ((W.PLAT.parentId&&W.PLAT.cid&&W.PLAT.parentId!==W.PLAT.cid) ? (PAGE+"?club="+W.PLAT.parentId) : "")));
-    if(!href) return;
+    /* NAT3: worked out at the tap, from the address as it stands — the shell moves the address without a reload */
+    var hrefNow=function(){
+      var bq="", frm=0; try{ var q=new URLSearchParams(location.search); bq=q.get("back")||""; frm=Number(q.get("from")||0); }catch(e){}
+      return bq ? (PAGE+bq) : (frm ? (PAGE+"?club="+frm) : (W.PLAT.nat ? (PAGE+"?club="+W.PLAT.nat) : ((W.PLAT.parentId&&W.PLAT.cid&&W.PLAT.parentId!==W.PLAT.cid) ? (PAGE+"?club="+W.PLAT.parentId) : "")));
+    };
+    var href = hrefNow();
+    if(!href && !W.NEWAPP) return;
     setInterval(function(){
       try{
         var arrows=document.querySelectorAll('.screen .back-btn, .screen [onclick*="goHome"]');
@@ -13253,7 +13270,7 @@ W.nhOpenPair=function(name){
              another screen — a ladder table back to the ladders menu — keeps its own way back. */
           var orig=a.getAttribute("onclick")||"";
           if(/showScreen\(/.test(orig)){ a.dataset.nhBack="1"; return; }
-          a.dataset.nhBack="1"; a.setAttribute("onclick","window.nhNav('"+href.replace(/'/g,"%27")+"')");
+          a.dataset.nhBack="1"; a.onclick=function(ev){ var h=hrefNow(); if(!h){ try{ return (new Function("event",orig)).call(a,ev); }catch(e){ return; } } ev.preventDefault(); ev.stopPropagation(); W.nhNav(h); };
         });
       }catch(e){}
     },250);
@@ -13273,8 +13290,10 @@ W.nhOpenPair=function(name){
       try{
         var sc=document.getElementById("laddersScreen"); if(!sc) return;
         var boxes=sc.querySelectorAll(".screen-content > div");
-        if(boxes[0] && boxes[0].dataset.nhScope!=="1"){
-          boxes[0].dataset.nhScope="1"; boxes[0].textContent=scopeLine();
+        /* NAT3: keyed to the board, so the line follows the shell from board to board */
+        var key=String(W.PLAT.cid)+"|"+String(W.PLAT.nat||0);
+        if(boxes[0] && boxes[0].dataset.nhScope!==key){
+          boxes[0].dataset.nhScope=key; boxes[0].textContent=scopeLine();
           /* n181: it was white text on a 12% wash — unreadable. Same shade as the app's bands, with the page's
              own colour for the words. */
           var ink=(getComputedStyle(document.documentElement).getPropertyValue("--nhc")||"#6c3483").trim();
@@ -14826,7 +14845,8 @@ W.nhOpenPair=function(name){
     if(!label) return;
     var col = (W.PLAT.cid===0) ? "rgba(255,255,255,.22)" : (W.PLAT.colour||clubPal(W.PLAT.cid)[0]);   // the board's own colour, never a fallback
     document.querySelectorAll(".screen .header").forEach(function(h){
-      if(h.querySelector(".platWhere")) return;
+      var have=h.querySelector(".platWhere");
+      if(have){ have.textContent=label; have.style.background=col; return; }   /* NAT3: the badge follows the board the shell stands on */
       if(h.closest("#homeScreen")) return;                 // home already says it in the hero
       h.style.position=h.style.position||"relative";
       var b=document.createElement("span"); b.className="platWhere"; b.dataset.platKeep="1"; b.textContent=label;
@@ -15295,8 +15315,20 @@ W.nhOpenPair=function(name){
           if(re.test(out)){ out=out.replace(re,"color:"+soft); hit=true; }
         });
       });
-      if(hit){ el.setAttribute("style", out); el.dataset.platPaint="1"; }
+      if(hit){ if(el.dataset.platOrig==null) el.dataset.platOrig=st; el.setAttribute("style", out); el.dataset.platPaint="1"; }   /* NAT3: the original is kept, so another board can be painted over it */
     }
+  }
+  function nhPaintReset(){
+    try{
+      document.querySelectorAll('[data-plat-paint="1"]').forEach(function(el){
+        if(el.closest && el.closest("#nh")) return;
+        el.setAttribute("style", el.dataset.platOrig||""); delete el.dataset.platPaint; delete el.dataset.platOrig;
+      });
+      document.querySelectorAll('[data-plat-head],[data-plat-board],[data-plat-tile],[data-plat-col]').forEach(function(el){
+        if(el.closest && el.closest("#nh")) return;
+        delete el.dataset.platHead; delete el.dataset.platBoard; delete el.dataset.platTile; delete el.dataset.platCol;
+      });
+    }catch(e){}
   }
   function watchAndPaint(colFn){
     /* n207: THE REPAINT WORKS IN THE READABLE INK. It was handed the club's raw colour, so on a pale club every
@@ -15304,7 +15336,16 @@ W.nhOpenPair=function(name){
        measured 1.0 against white, which is invisible. The banners keep the true colour; everything the repaint
        touches is interface. */
     platSchedule(function(){
-      var c=colFn(); if(c) repaint(document.body, inkSafe(c));
+      var c=colFn();
+      /* NAT3: PAINTED ONCE WAS PAINTED FOR EVER. The repaint swaps the parent's purple for the board's colour, so a
+         screen painted blue on one group stayed blue when the shell moved to an orange one — the swap only ever
+         looks for purple. When the board's colour changes, every painted element gets its original style back
+         (and the once-only colour passes their markers removed) and this same pass paints it afresh. The product
+         purple needs no paint at all, which is exactly what the originals are. */
+      var ink=c?inkSafe(c):"#6c3483";
+      if(W.__nhPaintCol && W.__nhPaintCol!==ink) nhPaintReset();
+      W.__nhPaintCol=ink;
+      if(c) repaint(document.body, inkSafe(c));
       /* n215: the parent redraws the entry step as you move through it, so the name-scope rows are re-mounted
          in the same batched pass rather than on a timer of their own */
       try{ if(W.nsMount) W.nsMount(); }catch(e){}
@@ -16256,10 +16297,25 @@ W.nhOpenPair=function(name){
   },true);
   /* a PARENT screen asked for while the shell stands on another board: reload on that board, then open it */
   var NAT3_SCREEN_GO={laddersScreen:"ladders",entryScreen:"entry",tournamentScreen:"tournaments",profileSearchScreen:"profiles",adminScreen:"admin",platSessScreen:"card"};
+  /* STAGE 2: the parent's screens on ANY board, in-shell. The shim swaps the booted board's id for the current one in
+     every read and write the parent makes (early_nat.js, NAT3), so the parent's own functions simply run for the board
+     we stand on. What the parent loaded at boot for its board is loaded again, once, the first time a screen is asked
+     for on a new board — the same four loaders its window.onload runs. Admin stays on the reload route for now: it
+     holds a typed code and a club chooser that belong to one board. */
+  var NAT3_INSHELL={laddersScreen:1,clubLadderScreen:1,entryScreen:1,enterTournamentScreen:1,profileSearchScreen:1,profileScreen:1,
+                    tournamentScreen:1,platSessScreen:1,aboutScreen:1,markerScreen:1};
+  W.__nhParentBoard=Number(W.PLAT.bootCid||0);
+  function nhParentSync(){
+    if(W.__nhParentBoard===Number(W.PLAT.cid)) return;
+    W.__nhParentBoard=Number(W.PLAT.cid);
+    ["refreshClubName","loadRecent","loadPlayers","loadClubStats"].forEach(function(fn){ try{ if(typeof W[fn]==="function") W[fn](); }catch(e){} });
+    try{ headerBadges(); }catch(e){}   /* the GROUP · name pill on every parent screen header */
+  }
   (function(){
     var _ss=W.showScreen; if(typeof _ss!=="function") return;
     W.showScreen=function(id){
       try{
+        if(W.NEWAPP && id && id!=="homeScreen" && nhDrifted() && Number(W.PLAT.cid)>0 && NAT3_INSHELL[id]){ nhParentSync(); return _ss.apply(this,arguments); }
         if(W.NEWAPP && id && id!=="homeScreen" && nhDrifted() && Number(W.PLAT.cid)>0){
           var q=new URLSearchParams(location.search);
           ["go","back","who","pair","view","col","tn","div","t","name"].forEach(function(k){ q.delete(k); });
