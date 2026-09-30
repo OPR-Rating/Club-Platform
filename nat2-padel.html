@@ -3688,7 +3688,7 @@ const CLUB_NAME = _club.name;  // shown in the logo as "OPR · <name>"
     link.setAttribute('href', href);
   }catch(e){ /* install stays on the static manifest — no functional impact */ }
 })();
-const OPR_VERSION = "OPR-DOUBLES v2026.09.03-56 · NAT fork n234 (no voice) (of PLAT p117)";  // MANUAL PAIR CREATION REMOVED FROM ADMIN: Create a pair, Bulk create pairs and Re-derive all pairs are gone (they only made match-less ghost pairs, and Re-derive rewrote every stored initial club-wide). Pairs are born automatically at match entry. Current pairs list untouched; the underlying JS is left in place unreferenced, so no other code path changes. Includes v47 (set-score fix + double-tap guard) and all prior.
+const OPR_VERSION = "OPR-DOUBLES v2026.09.03-56 · NAT fork n235 (no voice) (of PLAT p117)";  // MANUAL PAIR CREATION REMOVED FROM ADMIN: Create a pair, Bulk create pairs and Re-derive all pairs are gone (they only made match-less ghost pairs, and Re-derive rewrote every stored initial club-wide). Pairs are born automatically at match entry. Current pairs list untouched; the underlying JS is left in place unreferenced, so no other code path changes. Includes v47 (set-score fix + double-tap guard) and all prior.
 // Explanation shown above the individual ladder. Open on load so it's read; collapsible
 // (state kept for the session) and scrolls away. Mechanics only — no outcome framing, so
 // members aren't nudged away from playing stronger opponents. Every clause maps to a real
@@ -15231,6 +15231,7 @@ W.nhOpenPair=function(name){
       /* n215: the parent redraws the entry step as you move through it, so the name-scope rows are re-mounted
          in the same batched pass rather than on a timer of their own */
       try{ if(W.nsMount) W.nsMount(); }catch(e){}
+      try{ if(W.nhStripSingles) W.nhStripSingles(); }catch(e){}
     });
     platRun();
   }
@@ -15897,6 +15898,23 @@ W.nhOpenPair=function(name){
     }, 500);
   }
   W.nsWatch=nsWatch;
+  /* n235: NO SINGLES IN PADEL. The parent is shared with the racket forks, where singles is real — OTR and OSR
+     keep it. Here the two singles divisions are removed from Create a tournament, and unticked if one was ever
+     ticked, so a padel tournament cannot be created with a division that cannot be played. The underlying
+     'singles' code paths are untouched: an existing record carrying the flag still renders.
+     Called from the batched repaint pass — a plain starter in this scope sits after an early return and never
+     runs, which is the same trap the name-scope rows hit in n215. */
+  function nhStripSingles(){
+    try{
+      ["atDivMenSingles","atDivLadiesSingles"].forEach(function(id){
+        var box=document.getElementById(id); if(!box) return;
+        if(box.checked){ box.checked=false; try{ box.dispatchEvent(new Event("change",{bubbles:true})); }catch(e){} }
+        var row=box.closest(".at-divrow") || box.parentElement;
+        if(row && row.style.display!=="none") row.style.display="none";
+      });
+    }catch(e){}
+  }
+  W.nhStripSingles=nhStripSingles;
   /* n229: THE TOURNAMENT NAME LIST CAME BACK DOUBLED AND TRIPLED. The tournament screen asks for
      `individuals?club_id=eq.<this board>`, and the platform shim rewrites that to `club_id=in.(<all my boards>)`
      — so a member who belongs to the region AND a group is returned once per board. The list is deduped by name
@@ -16082,8 +16100,15 @@ W.nhOpenPair=function(name){
             PUR.lastIndex=0;
             var swapped=body.replace(PUR, function(m){ return /rgba/.test(m) ? "rgba("+hexRgb(cc) : cc; })
                             .replace(DEEP, deep);
-            /* every declaration wins over the original, which sits in the same sheet */
-            swapped=swapped.split(";").filter(Boolean).map(function(d){ return d.trim()+" !important"; }).join(";");
+            /* n235: ONLY THE DECLARATIONS THAT CARRY THE COLOUR. This used to re-emit EVERY declaration in the
+               rule with !important — so a rule like `.at-divrow{display:flex;border:1px solid #6c3483}` gained
+               `display:flex !important`, which then beat the parent's own inline `display:none` and forced hidden
+               rows to show (the singles divisions in Create a tournament). Layout is left entirely alone now;
+               only the colour declarations are overridden. */
+            swapped=swapped.split(";").filter(Boolean).filter(function(d){
+              return /#[0-9a-fA-F]{3,8}|rgba?\(/.test(d);
+            }).map(function(d){ return d.trim()+" !important"; }).join(";");
+            if(!swapped) continue;
             out.push(r.selectorText+"{"+swapped+"}");
             seen++;
             if(seen>400) break;
