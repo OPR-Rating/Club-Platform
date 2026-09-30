@@ -3738,7 +3738,7 @@ const CLUB_NAME = _club.name;  // shown in the logo as "OPR · <name>"
     link.setAttribute('href', href);
   }catch(e){ /* install stays on the static manifest — no functional impact */ }
 })();
-const OPR_VERSION = "OPR-DOUBLES v2026.09.03-56 · NAT fork n309 (no voice) (of PLAT p117)";  // MANUAL PAIR CREATION REMOVED FROM ADMIN: Create a pair, Bulk create pairs and Re-derive all pairs are gone (they only made match-less ghost pairs, and Re-derive rewrote every stored initial club-wide). Pairs are born automatically at match entry. Current pairs list untouched; the underlying JS is left in place unreferenced, so no other code path changes. Includes v47 (set-score fix + double-tap guard) and all prior.
+const OPR_VERSION = "OPR-DOUBLES v2026.09.03-56 · NAT fork n310 (no voice) (of PLAT p117)";  // MANUAL PAIR CREATION REMOVED FROM ADMIN: Create a pair, Bulk create pairs and Re-derive all pairs are gone (they only made match-less ghost pairs, and Re-derive rewrote every stored initial club-wide). Pairs are born automatically at match entry. Current pairs list untouched; the underlying JS is left in place unreferenced, so no other code path changes. Includes v47 (set-score fix + double-tap guard) and all prior.
 // Explanation shown above the individual ladder. Open on load so it's read; collapsible
 // (state kept for the session) and scrolls away. Mechanics only — no outcome framing, so
 // members aren't nudged away from playing stronger opponents. Every clause maps to a real
@@ -10368,6 +10368,7 @@ async function clRemove(id, label){
   function nhStageEnd(){
     try{ document.querySelectorAll('#homeScreen [data-nh-old="1"]').forEach(function(o){ o.remove(); });
          var n=document.getElementById("nh"); if(n && n.style.display==="none" && W.__nhStage) n.style.display=""; }catch(e){}
+    try{ if(W.__nhStageFinish){ var f=W.__nhStageFinish; W.__nhStageFinish=null; f(); } }catch(e){}
     W.__nhStage=false;
   }
   function nhBoardName(id){ var c=(W.PLAT.clubs||[]).find(function(x){ return Number(x.id)===Number(id); }); return c?c.name:""; }
@@ -10907,7 +10908,9 @@ async function clRemove(id, label){
     var head='<div class="brk"><h2 style="display:flex;align-items:center;gap:8px">Card matches \u00b7 '+nhWhen()+' '+nhTag()+'</h2>';
     /* n153: THE CARD BRACKET LEADS SOMEWHERE. Empty, it was a sentence and nothing else — the Card pill jumped to
        dead space. Now it offers the thing itself: make tonight's card, or open the one that is running. */
-    var cardHref=PAGE+"?club="+W.PLAT.cid+"&go=card&back="+encodeURIComponent(location.search||"");
+    /* n310: a region's BOARD page must say &board=1, or the address opens the region's DOOR on a fresh load and the
+       card never appears (the walk found it: in-shell it opened, fresh it did not — the two must agree) */
+    var cardHref=PAGE+"?club="+W.PLAT.cid+(W.PLAT.board?"&board=1":"")+"&go=card&back="+encodeURIComponent(location.search||"");
     var cardBtn=function(label){
       return '<div style="padding:0 14px 14px"><a href="'+cardHref+'" style="display:block;text-align:center;text-decoration:none;'
         +'background:linear-gradient(135deg,#d4f425,#b8d400);color:#1a1a1a;border-radius:14px;padding:12px;font-weight:800;font-size:14px">'+esc(label)+'</a></div>';
@@ -13252,6 +13255,8 @@ W.nhOpenPair=function(name){
     }catch(e){}
   })();
   W.nhBack=function(href){
+    /* n310: the fork pages' own back chips walk the same trail as every other back — the path you came */
+    try{ if(W.__nhTrail && W.__nhTrail.length>1){ W.nhBackPath(); return false; } }catch(e){}
     try{
       var want="?"+(String(href||"").split("?")[1]||"");
       var t=nhCrumbs();
@@ -16323,12 +16328,16 @@ W.nhOpenPair=function(name){
       }catch(e){}
       /* the master page widens the layout; every other page is phone-width */
       try{ var wide=document.getElementById("nhMasterWide"); if(wide && shape!=="master") wide.remove(); }catch(e){}
-      try{ var nh0=document.getElementById("nh"); if(nh0){ nh0.classList.remove("nhLapWide"); nh0.style.paddingBottom=""; nh0.style.display=(shape==="ledger")?"none":""; } }catch(e){}
+      try{ var nh0=document.getElementById("nh"); if(nh0){ nh0.classList.remove("nhLapWide"); nh0.style.paddingBottom=""; if(shape!=="ledger") nh0.style.display=""; } }catch(e){}
       /* the ledger's band and hero-kill belong to the ledger alone */
       try{ var band=document.getElementById("nhBand"); if(band) band.remove(); var kh=document.getElementById("nhKillHero"); if(kh && shape!=="ledger") kh.remove(); }catch(e){}
+      var ledgerShow=function(){ try{ var hm=document.getElementById("homeScreen"); Array.prototype.forEach.call(hm.children,function(el){ if(el.id!=="nh") el.style.display=""; else el.style.display="none"; }); }catch(e){} };
       if(shape==="ledger"){
-        /* the parent's own home page carries the ledger; show its children again (a fork page had hidden them) */
-        try{ var hm=document.getElementById("homeScreen"); Array.prototype.forEach.call(hm.children,function(el){ if(el.id!=="nh") el.style.display=""; }); }catch(e){}
+        /* the parent's own home page carries the ledger; show its children again (a fork page had hidden them).
+           n310: with a screen named in the address, not yet — the page in view stays until that screen is up */
+        var hmA=document.getElementById("homeScreen");
+        if(toScreen && hmA && hmA.classList.contains("active") && document.getElementById("nh")){ W.__nhStage=true; W.__nhStageFinish=ledgerShow; try{ document.getElementById("nh").dataset.nhOld="0"; }catch(e){} }
+        else ledgerShow();
       }
       var ht=document.getElementById("heroTitle");
       try{ natChip(); }catch(e){}
@@ -16344,6 +16353,7 @@ W.nhOpenPair=function(name){
         var t2="OPR \u00b7 "+(W.PLAT.nat?(W.PLAT.natName||"Club"):(W.PLAT.poolName||"Overall"))+" \u00b7 Ledger"; if(ht) ht.textContent=t2; document.title=t2;
         nhParentSync();                         /* the parent's tables for the register / the region */
         try{ newLedgerHome(); }catch(e){}
+        try{ if(W.__nhStage){ var bd=document.getElementById("nhBand"); if(bd){ bd.style.display="none"; var f0=W.__nhStageFinish; W.__nhStageFinish=function(){ if(f0) f0(); bd.style.display=""; }; } } }catch(e){}
         try{ ledgerOnly(); }catch(e){}
         try{ if(!W.PLAT.orgId) regTile(); }catch(e){}
         try{ if(!W.PLAT.nat) markOwnerDevice(); }catch(e){}
@@ -16434,6 +16444,7 @@ W.nhOpenPair=function(name){
       var a=ev.target && ev.target.closest ? ev.target.closest("a[href]") : null; if(!a) return;
       if(a.target && a.target!=="_self") return;
       if(a.hasAttribute("download")) return;
+      if(/nhBack/.test(a.getAttribute("onclick")||"")) return;   /* n310: a back chip walks the trail; not ours to route */
       var href=a.getAttribute("href")||""; if(!href || href.charAt(0)==="#") return;
       if(/^[a-z]+:/i.test(href) && !/^https?:/i.test(href)) return;
       var abs=new URL(href, location.href);
