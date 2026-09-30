@@ -3729,7 +3729,7 @@ const CLUB_NAME = _club.name;  // shown in the logo as "OPR · <name>"
     link.setAttribute('href', href);
   }catch(e){ /* install stays on the static manifest — no functional impact */ }
 })();
-const OPR_VERSION = "OPR-DOUBLES v2026.09.03-56 · NAT fork n238 (no voice) (of PLAT p117)";  // MANUAL PAIR CREATION REMOVED FROM ADMIN: Create a pair, Bulk create pairs and Re-derive all pairs are gone (they only made match-less ghost pairs, and Re-derive rewrote every stored initial club-wide). Pairs are born automatically at match entry. Current pairs list untouched; the underlying JS is left in place unreferenced, so no other code path changes. Includes v47 (set-score fix + double-tap guard) and all prior.
+const OPR_VERSION = "OPR-DOUBLES v2026.09.03-56 · NAT fork n239 (no voice) (of PLAT p117)";  // MANUAL PAIR CREATION REMOVED FROM ADMIN: Create a pair, Bulk create pairs and Re-derive all pairs are gone (they only made match-less ghost pairs, and Re-derive rewrote every stored initial club-wide). Pairs are born automatically at match entry. Current pairs list untouched; the underlying JS is left in place unreferenced, so no other code path changes. Includes v47 (set-score fix + double-tap guard) and all prior.
 // Explanation shown above the individual ladder. Open on load so it's read; collapsible
 // (state kept for the session) and scrolls away. Mechanics only — no outcome framing, so
 // members aren't nudged away from playing stronger opponents. Every clause maps to a real
@@ -13508,53 +13508,15 @@ W.nhOpenPair=function(name){
       + four.map(function(f,k){ return '<button class="fourbtn'+(k===0?" lime":"")+'" onclick="window.doorPick(\''+f[0]+'\')">'+f[3]+esc(f[1]).replace("&amp;","&")+'</button>'; }).join("")
       +'</div><div id="doorWhere" style="display:none;padding:2px 12px 14px"></div></div>';
   }
-  /* n238: put the door back when the sheet is left */
-  function nhDoorBack(){
-    try{
-      if(!W.__nhAside) return false;
-      W.__nhAside=false;
-      var nh=document.getElementById("nh"); if(nh) nh.style.display="";
-      [].slice.call(document.querySelectorAll(".screen")).forEach(function(s){
-        s.classList.remove("active"); s.classList.add("hidden");
-      });
-      return true;
-    }catch(e){ return false; }
-  }
-  W.nhDoorBack=nhDoorBack;
-  (function(){
-    try{
-      W.addEventListener("popstate", function(){ nhDoorBack(); });
-      var arm=function(){
-        if(typeof W.goHome!=="function") return setTimeout(arm,300);
-        if(W.goHome.__nh) return;
-        var orig=W.goHome;
-        var wrapped=function(){ if(nhDoorBack()) return; return orig.apply(this, arguments); };
-        wrapped.__nh=true; W.goHome=wrapped;
-      };
-      arm();
-    }catch(e){}
-  })();
   W.doorPick=function(what){
     /* n236: ENTERING A SCORE GOES STRAIGHT TO THE PAGE. The door asked "where did you play?" first, so a member
        tapped a square, tapped a group, and only then reached the sheet — on a busy door that reads as friction
        rather than progress. The group is now chosen ON the sheet, where it has to be confirmed anyway, and the
        sheet will not proceed until it is. The other pickers (ladders, profiles, card) are unchanged. */
     if(what==="score"){
-      /* n238: NO RELOAD, SO NO WHITE FRAME. The entry sheet is already in the page — reloading the whole app to
-         reach it is what produced the blank flash between taps. The door's own layer steps aside, the sheet is
-         shown in place, and the back button (or the sheet's own back) puts the door back exactly as it was. */
-      try{
-        var nh=document.getElementById("nh");
-        if(nh && typeof showScreen==="function"){
-          nh.style.display="none";
-          W.__nhAside=true;
-          showScreen("entryScreen");
-          try{ if(typeof renderStep1==="function") renderStep1(); }catch(e){}
-          try{ history.pushState({nhEntry:1}, "", location.search); }catch(e){}
-          return;
-        }
-      }catch(e){}
-      /* if the sheet is not in this page for any reason, fall back to the old way rather than do nothing */
+      /* n239: n238 tried to show the sheet in place to avoid the reload. It left the app in a state it was not
+         built for — going back stripped the active screen from every plat screen and could leave nothing but the
+         header band on screen. Reverted: a plain navigation, as in n237. */
       location.href = PAGE+"?club="+W.PLAT.cid+"&board=1&go=entry&back="+encodeURIComponent(location.search||"");
       return;
     }
