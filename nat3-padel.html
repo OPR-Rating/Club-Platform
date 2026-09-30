@@ -3738,7 +3738,7 @@ const CLUB_NAME = _club.name;  // shown in the logo as "OPR · <name>"
     link.setAttribute('href', href);
   }catch(e){ /* install stays on the static manifest — no functional impact */ }
 })();
-const OPR_VERSION = "OPR-DOUBLES v2026.09.03-56 · NAT fork n306 (no voice) (of PLAT p117)";  // MANUAL PAIR CREATION REMOVED FROM ADMIN: Create a pair, Bulk create pairs and Re-derive all pairs are gone (they only made match-less ghost pairs, and Re-derive rewrote every stored initial club-wide). Pairs are born automatically at match entry. Current pairs list untouched; the underlying JS is left in place unreferenced, so no other code path changes. Includes v47 (set-score fix + double-tap guard) and all prior.
+const OPR_VERSION = "OPR-DOUBLES v2026.09.03-56 · NAT fork n307 (no voice) (of PLAT p117)";  // MANUAL PAIR CREATION REMOVED FROM ADMIN: Create a pair, Bulk create pairs and Re-derive all pairs are gone (they only made match-less ghost pairs, and Re-derive rewrote every stored initial club-wide). Pairs are born automatically at match entry. Current pairs list untouched; the underlying JS is left in place unreferenced, so no other code path changes. Includes v47 (set-score fix + double-tap guard) and all prior.
 // Explanation shown above the individual ladder. Open on load so it's read; collapsible
 // (state kept for the session) and scrolls away. Mechanics only — no outcome framing, so
 // members aren't nudged away from playing stronger opponents. Every clause maps to a real
@@ -10347,13 +10347,25 @@ async function clRemove(id, label){
   }
   function nhWrap(){
     var host=document.getElementById("homeScreen"); if(!host) return null;
+    /* n307: STAGED. When the shell moves to an address that names a parent screen while the home screen is showing
+       (a door tap), the page in view is kept as #nhOld and the next board's page is drawn HIDDEN beside it; the
+       parent screen opens over the door, and only then is the old page dropped and the new one shown. Nothing the
+       eye can see changes until the right screen is up. */
     Array.prototype.forEach.call(host.children,function(el){ if(el.id!=="nh") el.style.display="none"; });
     /* the first-frame mask hid everything in here; the new home is the exception */
     var sv=document.getElementById("nhShow");
     if(!sv){ sv=document.createElement("style"); sv.id="nhShow"; sv.textContent="#nh{visibility:visible!important}"; document.head.appendChild(sv); }
     var w=document.getElementById("nh");
-    if(!w){ w=document.createElement("div"); w.id="nh"; host.insertBefore(w,host.firstChild); }
+    /* staged: the page in view keeps its id (every style is keyed to #nh) and is marked old; the next page is a second
+       #nh, hidden, placed first so it is the one getElementById hands to the painters */
+    if(w && W.__nhStage && w.dataset.nhOld==="1"){ w=null; }
+    if(!w){ w=document.createElement("div"); w.id="nh"; if(W.__nhStage) w.style.display="none"; host.insertBefore(w,host.firstChild); }
     return w;
+  }
+  function nhStageEnd(){
+    try{ document.querySelectorAll('#homeScreen [data-nh-old="1"]').forEach(function(o){ o.remove(); });
+         var n=document.getElementById("nh"); if(n && n.style.display==="none" && W.__nhStage) n.style.display=""; }catch(e){}
+    W.__nhStage=false;
   }
   function nhBoardName(id){ var c=(W.PLAT.clubs||[]).find(function(x){ return Number(x.id)===Number(id); }); return c?c.name:""; }
   function nhInk(hex){
@@ -16285,8 +16297,14 @@ W.nhOpenPair=function(name){
     try{ if(W.__nhHeroHold) clearInterval(W.__nhHeroHold); }catch(e){}
     var goq0=""; try{ goq0=(new URLSearchParams(location.search).get("go")||"").toLowerCase(); }catch(e){}
     var toScreen = !!(goq0 && NAT3_PARENT_GO[goq0]) || location.hash==="#enter";
+    nhStageEnd();   /* any earlier staging is over */
     W.PLAT.rekey(location.search).then(function(){
       if(tok!==W.__nhNavTok) return;   /* a later tap won */
+      /* n307: a door tap that names a screen — keep the door in view, draw the board hidden, open the screen over it */
+      try{
+        var hm0=document.getElementById("homeScreen"), cur=document.getElementById("nh");
+        if(toScreen && shape!=="ledger" && hm0 && hm0.classList.contains("active") && cur){ cur.dataset.nhOld="1"; W.__nhStage=true; }
+      }catch(e){}
       try{
         /* exactly one active screen: the home screen, where the fork's pages live.
            n306: NOT when the address names a parent screen — then the screen you are on stays up while the board's
@@ -16335,10 +16353,34 @@ W.nhOpenPair=function(name){
       /* an address that names a parent screen: the board's page is drawn beneath, then the screen opens on it —
          in the same tick, so no frame shows the page underneath */
       try{ var goq=(new URLSearchParams(location.search).get("go")||"").toLowerCase();
-           if(goq && NAT3_PARENT_GO[goq]){ if(Number(W.PLAT.cid)>0) nhParentSync(); goWhere(); }
+           if(goq && NAT3_PARENT_GO[goq]){ if(Number(W.PLAT.cid)>0) nhParentSync(); nhScreenSettle(goq); goWhere(); }
            else if(location.hash==="#enter" && Number(W.PLAT.cid)>0){ nhParentSync(); W.showScreen("entryScreen"); } }catch(e){}
       try{ if(W.__nhAfterNav){ var f=W.__nhAfterNav; W.__nhAfterNav=null; f(); } }catch(e){}
+      /* the staging ends the moment the home screen is no longer the one showing (or after 2 s, whatever happened) */
+      if(W.__nhStage){ var t0=Date.now(); var tk=setInterval(function(){
+        var hm=document.getElementById("homeScreen"); var up=hm && hm.classList.contains("active");
+        if(!up || Date.now()-t0>2000 || tok!==W.__nhNavTok){ clearInterval(tk); nhStageEnd(); } },30); }
     });
+  }
+  /* n307: A SCREEN OPENED BY ADDRESS SHOWS ITS CONTENT ONLY ONCE IT IS ITS OWN. The parent's tournament screen kept
+     whatever it showed last (another board, the picker) and showed that for a moment before the named tournament was
+     drawn — the second flash on a door's tournament tap. Its content is held invisible until the named tournament is
+     in it, or its content changes, or 1.5 s pass. Header and colour stay; only the body waits. */
+  function nhScreenSettle(goq){
+    try{
+      var id={tournaments:"tournamentScreen",tsheet:"tournamentScreen",ladders:"laddersScreen",ladder:"ladderScreen",profiles:"profileSearchScreen",card:"platSessScreen"}[goq];
+      if(!id) return;
+      var body=document.querySelector("#"+id+" .screen-content"); if(!body) return;
+      var want=""; try{ want=new URLSearchParams(location.search).get("tn")||""; }catch(e){}
+      var before=body.innerText;
+      var settled = goq==="ladders";   /* the ladders menu is static: nothing to wait for */
+      if(settled) return;
+      body.style.visibility="hidden"; var t0=Date.now();
+      var tk=setInterval(function(){
+        var txt=body.innerText, done = want ? (txt.indexOf(want)>=0) : (txt!==before);
+        if(done || Date.now()-t0>1500){ clearInterval(tk); body.style.visibility=""; }
+      },40);
+    }catch(e){}
   }
   /* n306: THE PATH YOU CAME. Every view — an address and the screen open on it — is written to one trail as you move,
      and every back arrow steps back along it: the group's sheet back to the region's sheet, that back to the door;
