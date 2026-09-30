@@ -734,47 +734,6 @@
 </style>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script>/* newapp */ window.NEWAPP=true;
-/* n238: NO WHITE BLINK BETWEEN SCREENS. Every hop left the browser showing a blank white page for 160-420ms
-   before the app painted — brief, but it reads as a stutter on a phone. The board's colour is remembered per
-   club, so a header-shaped band can be painted in the FIRST frame, before any data is fetched. It removes
-   itself the moment the real screen has content, and it never waits longer than five seconds. */
-(function(){
-  try{
-    var q=new URLSearchParams(location.search||"");
-    var cid=parseInt(q.get("club")||"0",10);
-    var col=null;
-    try{ col=localStorage.getItem("opr_band_"+(cid||"door")); }catch(e){}
-    if(!col) col="#2b1a4d";
-    var st=document.createElement("style");
-    st.textContent="html,body{background:#ffffff}"
-      +"#nhBoot{position:fixed;left:0;right:0;top:0;height:132px;z-index:1;"
-      +"background:linear-gradient(105deg,"+col+",#1d0a41 60%,"+col+");}"
-      +"#nhBoot b{position:absolute;left:18px;bottom:16px;color:rgba(255,255,255,.55);font:800 15px/1.1 system-ui,sans-serif;letter-spacing:.04em}";
-    (document.head||document.documentElement).appendChild(st);
-    var put=function(){
-      if(document.getElementById("nhBoot")) return;
-      var d=document.createElement("div"); d.id="nhBoot"; d.innerHTML="<b>OPR</b>";
-      (document.body||document.documentElement).appendChild(d);
-    };
-    if(document.body) put(); else document.addEventListener("DOMContentLoaded", put);
-    var started=Date.now();
-    var clear=setInterval(function(){
-      var n=document.getElementById("nh"), sc=document.querySelector(".screen.active");
-      var ready=(n && n.innerText.trim().length>3) || (sc && sc.innerText.trim().length>20);
-      if(ready || (Date.now()-started)>5000){
-        var d=document.getElementById("nhBoot"); if(d && d.parentNode) d.parentNode.removeChild(d);
-        clearInterval(clear);
-      }
-    }, 60);
-    /* remember this board's colour for next time, once the app knows it */
-    setTimeout(function(){
-      try{
-        var c=(window.PLAT&&window.PLAT.colour)||null;
-        if(c) localStorage.setItem("opr_band_"+(cid||"door"), c);
-      }catch(e){}
-    }, 2500);
-  }catch(e){}
-})();
 
 /* ============================================================================
    NAT EARLY SNIPPET — nat2-padel.html  VERSION: NAT-PADEL v2026.09.15-n2  (n2: A RATING IS NATIONAL — the club ledger rebuilt the rating from the club's matches alone, so one person read three numbers; the engine's replay is now pool-wide on every ledger and only the lists are club-scoped.)\n   NAT-PADEL v2026.09.15-n1  (THE NATIONAL REGISTER FORK of PLAT p117.
@@ -3729,7 +3688,7 @@ const CLUB_NAME = _club.name;  // shown in the logo as "OPR · <name>"
     link.setAttribute('href', href);
   }catch(e){ /* install stays on the static manifest — no functional impact */ }
 })();
-const OPR_VERSION = "OPR-DOUBLES v2026.09.03-56 · NAT fork n239 (no voice) (of PLAT p117)";  // MANUAL PAIR CREATION REMOVED FROM ADMIN: Create a pair, Bulk create pairs and Re-derive all pairs are gone (they only made match-less ghost pairs, and Re-derive rewrote every stored initial club-wide). Pairs are born automatically at match entry. Current pairs list untouched; the underlying JS is left in place unreferenced, so no other code path changes. Includes v47 (set-score fix + double-tap guard) and all prior.
+const OPR_VERSION = "OPR-DOUBLES v2026.09.03-56 · NAT fork n237 (no voice) (of PLAT p117)";  // MANUAL PAIR CREATION REMOVED FROM ADMIN: Create a pair, Bulk create pairs and Re-derive all pairs are gone (they only made match-less ghost pairs, and Re-derive rewrote every stored initial club-wide). Pairs are born automatically at match entry. Current pairs list untouched; the underlying JS is left in place unreferenced, so no other code path changes. Includes v47 (set-score fix + double-tap guard) and all prior.
 // Explanation shown above the individual ladder. Open on load so it's read; collapsible
 // (state kept for the session) and scrolls away. Mechanics only — no outcome framing, so
 // members aren't nudged away from playing stronger opponents. Every clause maps to a real
@@ -13514,9 +13473,6 @@ W.nhOpenPair=function(name){
        rather than progress. The group is now chosen ON the sheet, where it has to be confirmed anyway, and the
        sheet will not proceed until it is. The other pickers (ladders, profiles, card) are unchanged. */
     if(what==="score"){
-      /* n239: n238 tried to show the sheet in place to avoid the reload. It left the app in a state it was not
-         built for — going back stripped the active screen from every plat screen and could leave nothing but the
-         header band on screen. Reverted: a plain navigation, as in n237. */
       location.href = PAGE+"?club="+W.PLAT.cid+"&board=1&go=entry&back="+encodeURIComponent(location.search||"");
       return;
     }
