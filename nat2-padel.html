@@ -3688,7 +3688,7 @@ const CLUB_NAME = _club.name;  // shown in the logo as "OPR · <name>"
     link.setAttribute('href', href);
   }catch(e){ /* install stays on the static manifest — no functional impact */ }
 })();
-const OPR_VERSION = "OPR-DOUBLES v2026.09.03-56 · NAT fork n236 (no voice) (of PLAT p117)";  // MANUAL PAIR CREATION REMOVED FROM ADMIN: Create a pair, Bulk create pairs and Re-derive all pairs are gone (they only made match-less ghost pairs, and Re-derive rewrote every stored initial club-wide). Pairs are born automatically at match entry. Current pairs list untouched; the underlying JS is left in place unreferenced, so no other code path changes. Includes v47 (set-score fix + double-tap guard) and all prior.
+const OPR_VERSION = "OPR-DOUBLES v2026.09.03-56 · NAT fork n237 (no voice) (of PLAT p117)";  // MANUAL PAIR CREATION REMOVED FROM ADMIN: Create a pair, Bulk create pairs and Re-derive all pairs are gone (they only made match-less ghost pairs, and Re-derive rewrote every stored initial club-wide). Pairs are born automatically at match entry. Current pairs list untouched; the underlying JS is left in place unreferenced, so no other code path changes. Includes v47 (set-score fix + double-tap guard) and all prior.
 // Explanation shown above the individual ladder. Open on load so it's read; collapsible
 // (state kept for the session) and scrolls away. Mechanics only — no outcome framing, so
 // members aren't nudged away from playing stronger opponents. Every clause maps to a real
@@ -14826,7 +14826,7 @@ W.nhOpenPair=function(name){
     }
     var box=document.createElement("div"); box.id="platEntryClub"; box.style.cssText="margin:10px 12px 0;padding:10px 12px;background:#f5f0fa;border:1px solid rgba(108,52,131,.35);border-radius:10px";
     box.innerHTML='<label style="display:block;font-size:12px;font-weight:700;color:#6c3483;margin-bottom:6px">Select group where this match is being played</label>'
-      +'<select onchange="window.platGo(parseInt(this.value,10))" style="width:100%;padding:10px 12px;border:1.5px solid #ddd;border-radius:10px;font-size:14px">'
+      +'<select onchange="window.nhGrpPick(this)" style="width:100%;padding:10px 12px;border:1.5px solid #ddd;border-radius:10px;font-size:14px">'
       /* n236: it always opens on "Select group" — the member says where they played rather than inheriting
          whichever door they came through, and nothing proceeds until they do. */
       +'<option value="0"'+((natMode() && isClubWithKids(W.PLAT.cid))?' selected':'')+'>\u2014 Select group \u2014</option>'
@@ -15947,10 +15947,22 @@ W.nhOpenPair=function(name){
   /* n236: NOTHING PROCEEDS UNTIL A GROUP IS CHOSEN. Arriving from the door the sheet opens on the region, which
      is not a place anyone plays — so Next is held until the member picks their group, with the reason said plainly
      rather than a button that simply does nothing. */
+  /* n237: "— Select group —" carries the value 0, and club 0 is THE REGISTER — so choosing the placeholder
+     again took the member to the master ledger. It is a placeholder, not a destination: picking it does nothing
+     but put the sheet back to unchosen. */
+  W.nhGrpPick=function(sel){
+    try{
+      var v=parseInt(sel && sel.value, 10);
+      if(!v){ if(W.nhGroupGate) W.nhGroupGate(); return; }
+      if(typeof W.platGo==="function") W.platGo(v);
+    }catch(e){}
+  };
   function nhGroupGate(){
     try{
       var sel=document.querySelector("#platEntryClub select"); if(!sel) return;
-      var onRegion = (natMode() && isClubWithKids(W.PLAT.cid));
+      /* n237: the question is what the DROPDOWN says, not which board the page sits on — a member can put it back
+         to the placeholder, and then nothing should proceed either. */
+      var onRegion = !(parseInt(sel.value,10) > 0);
       var btn=[].slice.call(document.querySelectorAll("#entryContent button, #entryScreen button"))
                 .filter(function(b){ return /Next:/.test(b.textContent||""); })[0];
       var note=document.getElementById("nhGrpNote");
