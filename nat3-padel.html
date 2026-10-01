@@ -1180,7 +1180,8 @@ st0.textContent += "html{overflow-y:scroll}";   // p98: the scrollbar's space is
     W.PLAT.ready=loadScope();
     return W.PLAT.ready;
   };
-  function rewriteRest(path){
+  function rewriteRest(path, method){
+    method=String(method||"GET").toUpperCase();
     var i=path.indexOf("?"); var tbl=i<0?path:path.slice(0,i); var qs=i<0?"":path.slice(i+1);
     var P=W.PLAT.pool, pool=(CID===0);
     var NAT=(pool && W.PLAT.natIds && W.PLAT.natIds.length) ? W.PLAT.natIds.join(",") : "";   // NAT: the club ledger's boards
@@ -1277,6 +1278,8 @@ st0.textContent += "html{overflow-y:scroll}";   // p98: the scrollbar's space is
        reads them for the door AND every group — current and archived — so the whole region is one sheet. Reads only:
        the query string is swapped, a body is not, and the door's screen hides the entry buttons. */
     var doorIds = (!pool && W.PLAT.clubDoor && W.PLAT.kids && W.PLAT.kids.length) ? [CID].concat(W.PLAT.kids).join(",") : "";
+    /* n317: a WRITE to a tournament table from the door is scoped to the tournament's own group */
+    if(doorIds && method!=="GET" && CLUB_TABLES[tbl] && W.PLAT.tourClub){ qs=qs.replace(/club_id=eq\.\d+/g,"club_id=eq."+Number(W.PLAT.tourClub)); doorIds=""; }
     if(CLUB_TABLES[tbl]){ if(pool) swapClub("club_id=in.("+(clubIds||"0")+")"); else if(doorIds) swapClub("club_id=in.("+doorIds+")"); return "plat_"+DISC+"_"+tbl+"?"+qs; }
     /* n105: THE TOURNAMENT STATS TABLE WAS NEVER TRANSLATED. plat's stats sheet reads `tournament_results`
        (per event, per category, per club); it lives on the platform as `plat_tournament_results`, not under
@@ -1345,7 +1348,7 @@ st0.textContent += "html{overflow-y:scroll}";   // p98: the scrollbar's space is
           return call("plat_admin_padel",{action:"delete_member",master_pin:apin,id:rid}).then(function(o){ if(!o||!o.ok) return jsonResp({message:(o&&o.error)||"delete failed"},400); return jsonResp([],204); });
         }
         if(method!=="GET"&&method!=="HEAD") return jsonResp({message:"That change is not available on the platform."},403);
-        var rw=rewriteRest(m[1]);
+        var rw=rewriteRest(m[1], method);
         if(rw&&rw.synthetic) return jsonResp(rw.synthetic);
         u=PLAT+"/rest/v1/"+(rw||m[1]);
         // NAT: on the club ledger the people views are register-wide (every rating is the one national number);
@@ -1430,6 +1433,11 @@ st0.textContent += "html{overflow-y:scroll}";   // p98: the scrollbar's space is
         /* NAT3: the same swap for the parent's function calls — a body naming the booted board means this board */
         try{ var B1=Number(W.PLAT.bootCid||0);
           if(CID>0 && B1>0 && CID!==B1 && init.body){ var rb=JSON.parse(init.body); if(rb && Number(rb.club_id)===B1){ rb.club_id=CID; init=Object.assign({},init,{body:JSON.stringify(rb)}); } } }catch(e){}
+        /* n317: ENTRY FROM THE DOOR LANDS ON THE TOURNAMENT'S GROUP. On a door the member can enter a team or generate a
+           draw for any tournament in the region; the parent names the door's board, so the body is re-pointed to the
+           group that owns the tournament being viewed (W.PLAT.tourClub, set when it is chosen). */
+        try{ if(f[1]==="tournament" && W.PLAT.clubDoor && W.PLAT.tourClub && init.body){ var tb=JSON.parse(init.body);
+          if(tb && Number(tb.club_id)===CID){ tb.club_id=Number(W.PLAT.tourClub); init=Object.assign({},init,{body:JSON.stringify(tb)}); } } }catch(e){}
         // p92: every admin call names the board it was made from, so a code is checked against THIS group —
         // never against every group on the platform (a squash code opened squash from a padel board).
         if(f[1]==="admin"){ var ab={}; try{ ab=JSON.parse(init.body||"{}"); }catch(e){}
@@ -3742,7 +3750,7 @@ const CLUB_NAME = _club.name;  // shown in the logo as "OPR · <name>"
     link.setAttribute('href', href);
   }catch(e){ /* install stays on the static manifest — no functional impact */ }
 })();
-const OPR_VERSION = "OPR-DOUBLES v2026.09.03-56 · NAT fork n315 (no voice) (of PLAT p117)";  // MANUAL PAIR CREATION REMOVED FROM ADMIN: Create a pair, Bulk create pairs and Re-derive all pairs are gone (they only made match-less ghost pairs, and Re-derive rewrote every stored initial club-wide). Pairs are born automatically at match entry. Current pairs list untouched; the underlying JS is left in place unreferenced, so no other code path changes. Includes v47 (set-score fix + double-tap guard) and all prior.
+const OPR_VERSION = "OPR-DOUBLES v2026.09.03-56 · NAT fork n317 (no voice) (of PLAT p117)";  // MANUAL PAIR CREATION REMOVED FROM ADMIN: Create a pair, Bulk create pairs and Re-derive all pairs are gone (they only made match-less ghost pairs, and Re-derive rewrote every stored initial club-wide). Pairs are born automatically at match entry. Current pairs list untouched; the underlying JS is left in place unreferenced, so no other code path changes. Includes v47 (set-score fix + double-tap guard) and all prior.
 // Explanation shown above the individual ladder. Open on load so it's read; collapsible
 // (state kept for the session) and scrolls away. Mechanics only — no outcome framing, so
 // members aren't nudged away from playing stronger opponents. Every clause maps to a real
@@ -9762,12 +9770,17 @@ async function clRemove(id, label){
       var box=document.getElementById("playerModalSearch"); if(!box) return origFilter.apply(this,arguments);
       var q=String(box.value||"").toLowerCase().trim();
       var mine=MINE;
+      /* n316: TYPE "S", SEE THE S's FIRST. A name matched when ANY of its words began with what was typed, and the
+         list kept its A→Z order — so "Alan Sutton" led the S's. Now the names whose FIRST name begins with the letters
+         come first (A→Z), then those matched on a later word (A→Z). */
       var hit=function(n){ return String(n).toLowerCase().split(" ").some(function(w){ return w.indexOf(q)===0; }); };
-      var near=q?mine.filter(hit):mine;
+      var firstHit=function(n){ return String(n).toLowerCase().indexOf(q)===0; };
+      var rank=function(list){ return list.filter(firstHit).concat(list.filter(function(n){ return !firstHit(n); })); };
+      var near=q?rank(mine.filter(hit)):mine;
       if(q.length<3){ W.renderModalList(near); return; }
       var have={}; mine.forEach(function(n){ have[bare(n)]=1; });
       regAll().then(function(all){
-        var extra=(all||[]).filter(function(p){ return !have[p.name] && hit(p.name); }).map(function(p){ return away(p.name); });
+        var extra=rank((all||[]).filter(function(p){ return !have[p.name] && hit(p.name); }).map(function(p){ return p.name; })).map(away);
         W.renderModalList(near.concat(extra.slice(0,25)));
       });
     };
@@ -9944,8 +9957,11 @@ async function clRemove(id, label){
           }
         }
         if(go==="admin"){
-          if(W.PLAT.cid===0){ var t=document.getElementById("platRegTile");
-            if(t){ showScreen("aboutScreen"); setTimeout(function(){ t.click(); },80); return true; } return false; }
+          if(W.PLAT.cid===0){
+            /* n317: straight into the room. It used to open About OPR and click the tile planted there, which made
+               About a step in the trail — back from the Region Ledger landed on About OPR. */
+            if(typeof regScreen==="function"){ regScreen(); W.showScreen("platRegScreen"); try{ regLoad(); }catch(e){} return true; }
+            var t=document.getElementById("platRegTile"); if(t){ t.click(); return true; } return false; }
           if(typeof openAdmin==="function"){
             openAdmin();
             /* n86: THE ROOM BELONGS TO THIS BOARD. The old admin screen carries plat's own club chooser (Club
@@ -11096,6 +11112,7 @@ async function clRemove(id, label){
      Every other admin link is gone. */
   W.nhAdminPage=function(){
     var w=nhWrap(); if(!w) return;
+    try{ nhTrailPush("homeScreen","admin"); }catch(e){}   /* n317: a view of its own — back returns here */
     nhCSS();
     var C=(W.PLAT.parentId||W.PLAT.cid), kids=kidsOf(C).sort(function(a,b){ return String(a.name).localeCompare(String(b.name)); });
     var club=(W.PLAT.clubs||[]).find(function(c){ return Number(c.id)===Number(C); })||{id:C,name:W.PLAT.name};
@@ -13452,6 +13469,7 @@ W.nhOpenPair=function(name){
       var nh=document.getElementById("nh"); if(!nh || document.getElementById("nhJump")) return;
       var go=""; try{ go=(new URLSearchParams(location.search).get("go")||"").toLowerCase(); }catch(e){}
       if(go || !(W.PLAT.cid>0)) return;                       /* doors and group boards only */
+      if(nh.querySelector(".band") && /admin control/i.test((nh.querySelector(".band")||{}).textContent||"")) return;   /* n316: never on the admin page */
       var brks=[].slice.call(nh.querySelectorAll(".brk"));
       if(!brks.length) return;
       /* the door's section titles ("The records") are plain lines, not brackets — they can be jumped to as well */
@@ -14240,7 +14258,8 @@ W.nhOpenPair=function(name){
     }
     rows.sort(REG.sort==="rating" ? function(a,c){ return (c.current_rating||0)-(a.current_rating||0); } : function(a,c){ return a.full_name.localeCompare(c.full_name); });
     var h=adminPanel()
-      +'<div style="display:flex;gap:8px;align-items:center;margin:10px 0"><input id="platRegQ" placeholder="Find a player…" value="'+esc(REG.q)+'" oninput="window.platRegQ(this.value)" style="flex:1;padding:10px 12px;border:1.5px solid #ddd;border-radius:10px;font-size:14px">'
+      /* n317: the search stays put while the register's names scroll past (the ledger rooms: region, group, global) */
+      +'<div id="platRegFind" style="position:sticky;top:-16px;z-index:5;background:#fff;display:flex;gap:8px;align-items:center;margin:0 -4px;padding:10px 4px"><input id="platRegQ" placeholder="Find a player…" value="'+esc(REG.q)+'" oninput="window.platRegQ(this.value)" style="flex:1;padding:10px 12px;border:1.5px solid #ddd;border-radius:10px;font-size:14px">'
       +'<button class="menu-btn" style="min-height:40px;padding:8px 12px" onclick="window.platRegSort()">'+(REG.sort==="rating"?"Sort: rating":"Sort: name")+'</button></div>'
       /* n72: BEFORE A CODE IS TYPED THIS IS THE WHOLE REGISTER. A club admin opening the room sees every
          club's people, which is right — it is how a duplicate is spotted — but it reads as "my club has 149
@@ -16334,17 +16353,15 @@ W.nhOpenPair=function(name){
     }catch(e){ location.href=url; return false; }
     /* the view is recorded by the screen that opens; an address naming a screen has no "home" step in between */
     try{ var gq=(p.q.get("go")||"").toLowerCase(); if(!(gq && NAT3_PARENT_GO[gq]) && p.hash!=="enter") nhTrailPush("homeScreen"); }catch(e){}
-    nhRender(shape);
+    nhRender(shape, opts.page||"");
     return false;
   };
   /* draw the page the address now names, inside the page that is already open */
   function nhDoorMark(shape){
     try{ if(shape==="door" || (shape==null && W.PLAT.clubDoor)) document.body.setAttribute("data-nh-door","1"); else document.body.removeAttribute("data-nh-door"); }catch(e){}
-    try{ if(!document.getElementById("nhDoorRO")){ var st=document.createElement("style"); st.id="nhDoorRO";
-      st.textContent="body[data-nh-door='1'] #tournamentInternal .menu-btn[onclick*='showEnterTournament']{display:none!important}"
-                    +"body[data-nh-door='1'] #tournamentInternal .sub{display:none!important}"; document.head.appendChild(st); } }catch(e){}
+    /* n317: entry from the door IS allowed (Andre) — the write is routed to the tournament's own group by the shim */
   }
-  function nhRender(shape){
+  function nhRender(shape, page){
     var tok=++W.__nhNavTok;
     NEW.data=null; NEW.busy=null;   /* the per-board cache (nhCacheGet) still serves the reads */
     try{ if(W.__nhHeroHold) clearInterval(W.__nhHeroHold); }catch(e){}
@@ -16388,7 +16405,8 @@ W.nhOpenPair=function(name){
       try{ nhBarMount(); }catch(e){}
       try{ if(W.platInkRefresh) W.platInkRefresh(); }catch(e){}
       try{ platRun(); }catch(e){}
-      if(shape==="master"){ var t1="OPR \u00b7 "+(W.PLAT.poolName||"Clubs"); if(ht) ht.textContent=t1; document.title=t1; newMasterPage(); }
+      if(page==="admin"){ var ta="OPR \u00b7 "+(W.PLAT.name||"Club")+" \u00b7 Admin"; if(ht) ht.textContent=ta; document.title=ta; W.__nhTrailHold=true; try{ W.nhAdminPage(); }finally{ W.__nhTrailHold=false; } }   /* n317: back to the Club admin page draws IT, not the door beneath */
+      else if(shape==="master"){ var t1="OPR \u00b7 "+(W.PLAT.poolName||"Clubs"); if(ht) ht.textContent=t1; document.title=t1; newMasterPage(); }
       else if(shape==="records"){ newRecordsPage(); }
       else if(shape==="pair"){ newPairPage(); }
       else if(shape==="me"){ nhInk("#6c3483"); nhHeaderSkin("#6c3483", nhDeep("#6c3483")); newMePage(); }   /* the claim screen has no colour of its own: the app's, as on a fresh load */
@@ -16491,12 +16509,46 @@ W.nhOpenPair=function(name){
       });
       sel.innerHTML=""; if(ph) sel.appendChild(ph); if(now.children.length) sel.appendChild(now); if(past.children.length) sel.appendChild(past);
       sel.value=cur; sel.dataset.nhLabelled=(sel.options.length+"|"+sel.value);
+      /* the tournament the member is looking at, and the GROUP it belongs to — the shim routes entry from the door there */
+      try{ var rr=byName[cur]; W.PLAT.tourClub = rr ? Number(rr.club_id) : 0; }catch(e){}
+      /* n317: THE LIST, NOT THE DROPDOWN. The native select wrapped its long labels into a mess on the phone. The select
+         stays (the parent's screen is keyed to it) but hidden; a list of rows stands in its place — tournament name
+         left, the group's pill right, a tick for archived, the chosen row in the region's colour. */
+      try{
+        var wrap=sel.parentNode; if(!wrap) return;
+        wrap.style.display="none";
+        var old=document.getElementById("nhTourList"); if(old) old.remove();
+        var list=document.createElement("div"); list.id="nhTourList"; list.setAttribute("data-plat-keep","1");
+        var ink=inkSafe(W.PLAT.colour||"#6c3483");
+        var row=function(name, grp, col, arch, on){
+          return '<button data-plat-keep="1" data-name="'+esc(name)+'" onclick="window.nhTourPick('+JSON.stringify(name).replace(/"/g,"&quot;")+')" style="display:flex;align-items:center;gap:10px;width:100%;text-align:left;background:'+(on?ink:"#fff")+';color:'+(on?"#fff":"#1a1a1a")+';border:1.5px solid '+(on?ink:"#e2dbe8")+';border-radius:12px;padding:11px 12px;margin:0 0 6px;font:inherit;font-size:14.5px;font-weight:'+(on?"800":"600")+'">'
+            +'<span style="flex:1;min-width:0">'+esc(name)+(arch?' <span style="opacity:.75;font-weight:600">\u2713 past</span>':'')+'</span>'
+            +(grp?'<span style="flex:none;padding:3px 9px;border-radius:999px;font-size:11px;font-weight:800;color:#fff;background:'+(on?"rgba(255,255,255,.28)":col)+'">'+esc(grp)+'</span>':'')
+            +'</button>';
+        };
+        var h='<div style="font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:#7a6688;font-weight:800;margin:2px 0 8px">'+esc(region||"Tournaments")+'</div>';
+        var nowRows=rows.filter(function(r){ return r.active && !r.archived; }), pastRows=rows.filter(function(r){ return r.archived; });
+        var seen={};
+        nowRows.forEach(function(r){ if(seen[r.name]) return; seen[r.name]=1; h+=row(r.name, clubName(r.club_id), clubCol(r.club_id), false, r.name===cur); });
+        if(pastRows.length){ h+='<div style="font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:#7a6688;font-weight:800;margin:12px 0 8px">Past (archived)</div>';
+          pastRows.forEach(function(r){ if(seen[r.name]) return; seen[r.name]=1; h+=row(r.name, clubName(r.club_id), clubCol(r.club_id), true, r.name===cur); }); }
+        list.innerHTML=h; wrap.parentNode.insertBefore(list, wrap);
+        /* once a tournament is chosen, the list folds to the chosen row with a "Change" link, so the page below is the tournament's */
+        if(cur){ list.querySelectorAll("button[data-name]").forEach(function(b){ if(b.getAttribute("data-name")!==esc(cur)) b.style.display="none"; });
+          list.querySelectorAll("div").forEach(function(d){ d.style.display="none"; });
+          var ch=document.createElement("button"); ch.setAttribute("data-plat-keep","1"); ch.textContent="Change tournament"; ch.onclick=function(){ W.nhTourPick(""); };
+          ch.style.cssText="display:block;margin:0 auto 10px;background:transparent;border:none;color:"+ink+";font:inherit;font-size:13px;font-weight:700;text-decoration:underline;padding:4px 10px"; list.appendChild(ch); }
+      }catch(e){}
       /* the heading under the dropdown: the group's pill */
       try{ var r2=byName[cur]; var pk=document.getElementById("tournamentPicker"); var head=pk?Array.prototype.filter.call(pk.children,function(d){ return d.textContent.trim()===cur; })[0]:null;
         if(head && r2 && !head.querySelector(".nhTourGrp")){ var s=document.createElement("span"); s.className="nhTourGrp"; s.textContent=clubName(r2.club_id);
           s.style.cssText="display:inline-block;margin-left:8px;padding:2px 9px;border-radius:999px;font-size:11px;font-weight:800;color:#fff;vertical-align:middle;background:"+clubCol(r2.club_id); head.appendChild(s); } }catch(e){}
     });
   }
+  W.nhTourPick=function(name){
+    var sel=document.getElementById("tournamentSelect"); if(!sel) return;
+    sel.value=name||""; try{ onTournamentPick(); }catch(e){}
+  };
   /* the picker re-renders on every pick and every tab: hold the body through each, then name region and group */
   (function(){
     var _ltp=W.loadTournamentPicker; if(typeof _ltp!=="function") return;
@@ -16514,25 +16566,25 @@ W.nhOpenPair=function(name){
   W.__nhTrail=[{search:String(location.search||""),screen:"homeScreen"}];
   (function(){ var _gh=W.goHome; if(typeof _gh!=="function") return; W.goHome=function(){ var r=_gh.apply(this,arguments); try{ nhTrailPush("homeScreen"); }catch(e){} return r; }; })();
   W.__nhTrailHold=false;
-  function nhTrailPush(screen){
+  function nhTrailPush(screen, page){
     if(W.__nhTrailHold) return;
-    var t=W.__nhTrail, v={search:String(location.search||""),screen:screen||"homeScreen"}, last=t[t.length-1];
-    if(last && last.search===v.search && last.screen===v.screen) return;
+    var t=W.__nhTrail, v={search:String(location.search||""),screen:screen||"homeScreen",page:page||""}, last=t[t.length-1];
+    if(last && last.search===v.search && last.screen===v.screen && (last.page||"")===v.page) return;
     /* stepping onto the view behind us IS a back — unwind rather than grow */
-    var prev=t[t.length-2]; if(prev && prev.search===v.search && prev.screen===v.screen){ t.pop(); return; }
+    var prev=t[t.length-2]; if(prev && prev.search===v.search && prev.screen===v.screen && (prev.page||"")===v.page){ t.pop(); return; }
     t.push(v); if(t.length>60) t.shift();
   }
   W.nhBackPath=function(){
     var t=W.__nhTrail; if(t.length<2){ try{ goHome(); }catch(e){} return; }
     t.pop(); var prev=t[t.length-1];
     W.__nhTrailHold=true;
-    var open=function(){ try{ if(prev.screen==="homeScreen") goHome(); else W.showScreen(prev.screen); }catch(e){} W.__nhTrailHold=false; };
+    var open=function(){ try{ if(prev.screen==="homeScreen"){ goHome(); if(prev.page==="admin" && !document.querySelector("#nh .band") ) W.nhAdminPage(); } else W.showScreen(prev.screen); }catch(e){} W.__nhTrailHold=false; };
     if(prev.search!==String(location.search||"")){
       W.__nhAfterNav=open;
       /* the shell keeps the screen up while the previous board is drawn beneath, then opens the previous screen */
       var q=new URLSearchParams(prev.search.replace(/^\?/,"")); var goq=(q.get("go")||"").toLowerCase();
       if(prev.screen!=="homeScreen" && !(goq && NAT3_PARENT_GO[goq])){ /* the view had a screen but no go=: name it so nothing flips home */ q.set("go", NAT3_SCREEN_GO2[prev.screen]||"ladders"); }
-      W.nhNav(PAGE+"?"+q.toString(),{replace:true,force:true});
+      W.nhNav(PAGE+"?"+q.toString(),{replace:true,force:true,page:prev.page||""});
     } else { open(); }
   };
   var NAT3_SCREEN_GO2={laddersScreen:"ladders",ladderScreen:"ladders",clubLadderScreen:"ladders",entryScreen:"entry",enterTournamentScreen:"entry",tournamentScreen:"tournaments",profileSearchScreen:"profiles",profileScreen:"profiles",adminScreen:"admin",platSessScreen:"card"};
