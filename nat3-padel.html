@@ -3738,7 +3738,7 @@ const CLUB_NAME = _club.name;  // shown in the logo as "OPR · <name>"
     link.setAttribute('href', href);
   }catch(e){ /* install stays on the static manifest — no functional impact */ }
 })();
-const OPR_VERSION = "OPR-DOUBLES v2026.09.03-56 · NAT fork n310 (no voice) (of PLAT p117)";  // MANUAL PAIR CREATION REMOVED FROM ADMIN: Create a pair, Bulk create pairs and Re-derive all pairs are gone (they only made match-less ghost pairs, and Re-derive rewrote every stored initial club-wide). Pairs are born automatically at match entry. Current pairs list untouched; the underlying JS is left in place unreferenced, so no other code path changes. Includes v47 (set-score fix + double-tap guard) and all prior.
+const OPR_VERSION = "OPR-DOUBLES v2026.09.03-56 · NAT fork n311 (no voice) (of PLAT p117)";  // MANUAL PAIR CREATION REMOVED FROM ADMIN: Create a pair, Bulk create pairs and Re-derive all pairs are gone (they only made match-less ghost pairs, and Re-derive rewrote every stored initial club-wide). Pairs are born automatically at match entry. Current pairs list untouched; the underlying JS is left in place unreferenced, so no other code path changes. Includes v47 (set-score fix + double-tap guard) and all prior.
 // Explanation shown above the individual ladder. Open on load so it's read; collapsible
 // (state kept for the session) and scrolls away. Mechanics only — no outcome framing, so
 // members aren't nudged away from playing stronger opponents. Every clause maps to a real
@@ -9990,8 +9990,7 @@ async function clRemove(id, label){
             var _tq=new URLSearchParams(location.search), _tn=_tq.get("tn")||"";
             if(_tn){ TOURNAMENT_EVENT=_tn; try{ nhTourColour(_tn); }catch(e){} }
           }catch(e){}
-          if(typeof showScreen==="function") showScreen("tournamentScreen");
-          try{ if(typeof loadTournamentPicker==="function") loadTournamentPicker(); }catch(e){}
+          if(typeof showScreen==="function") showScreen("tournamentScreen");   /* its showScreen hook renders the picker once (n311: the second call is gone) */
           return true;
         }
         if(go==="entry"){ var b=document.querySelector("#homeScreen .btn-enter"); if(b){ b.click(); return true; } }
@@ -16381,22 +16380,45 @@ W.nhOpenPair=function(name){
      whatever it showed last (another board, the picker) and showed that for a moment before the named tournament was
      drawn — the second flash on a door's tournament tap. Its content is held invisible until the named tournament is
      in it, or its content changes, or 1.5 s pass. Header and colour stay; only the body waits. */
+  /* n311: ONE CHANGE, NOT THREE. The parent paints its tournament screen in stages — heading, then after two reads the
+     tabs and buttons, then after another the stats buttons — and each stage was a visible jump. nhHoldBody keeps what
+     is on screen as a still copy (a ghost laid over the body) while the body renders beneath; when the body has been
+     quiet for 250 ms (and carries the named tournament, if one is named), the ghost goes and the finished body shows.
+     Cap 3 s. Used when a screen is opened by address and whenever the tournament picker re-renders. */
+  function nhHoldBody(body, want){
+    try{
+      if(!body || body.dataset.nhHeld==="1") return;
+      var host=body.parentNode; if(!host) return;
+      var ghost=body.cloneNode(true); ghost.removeAttribute("id"); ghost.querySelectorAll("[id]").forEach(function(e){ e.removeAttribute("id"); });
+      ghost.className=body.className+" nhGhost"; ghost.style.position="absolute"; ghost.style.left="0"; ghost.style.right="0"; ghost.style.top=body.offsetTop+"px";
+      ghost.style.pointerEvents="none"; ghost.style.visibility="visible"; ghost.style.zIndex="5";
+      if(getComputedStyle(host).position==="static") host.style.position="relative";
+      host.insertBefore(ghost, body); body.style.visibility="hidden"; body.dataset.nhHeld="1";
+      var last=Date.now(), t0=last;
+      var mo=new MutationObserver(function(){ last=Date.now(); }); mo.observe(body,{childList:true,subtree:true,characterData:true,attributes:true});
+      var tk=setInterval(function(){
+        var now=Date.now(), quiet=now-last>250, has=!want || (body.innerText.indexOf(want)>=0);
+        if((quiet && has) || now-t0>3000){ clearInterval(tk); mo.disconnect(); try{ ghost.remove(); }catch(e){} body.style.visibility=""; delete body.dataset.nhHeld; }
+      },40);
+    }catch(e){ try{ body.style.visibility=""; delete body.dataset.nhHeld; }catch(e2){} }
+  }
   function nhScreenSettle(goq){
     try{
-      var id={tournaments:"tournamentScreen",tsheet:"tournamentScreen",ladders:"laddersScreen",ladder:"ladderScreen",profiles:"profileSearchScreen",card:"platSessScreen"}[goq];
+      var id={tournaments:"tournamentScreen",tsheet:"tournamentScreen",ladder:"ladderScreen",profiles:"profileSearchScreen",card:"platSessScreen"}[goq];
       if(!id) return;
       var body=document.querySelector("#"+id+" .screen-content"); if(!body) return;
       var want=""; try{ want=new URLSearchParams(location.search).get("tn")||""; }catch(e){}
-      var before=body.innerText;
-      var settled = goq==="ladders";   /* the ladders menu is static: nothing to wait for */
-      if(settled) return;
-      body.style.visibility="hidden"; var t0=Date.now();
-      var tk=setInterval(function(){
-        var txt=body.innerText, done = want ? (txt.indexOf(want)>=0) : (txt!==before);
-        if(done || Date.now()-t0>1500){ clearInterval(tk); body.style.visibility=""; }
-      },40);
+      nhHoldBody(body, want);
     }catch(e){}
   }
+  /* the picker re-renders on every pick and every tab: hold the body through each */
+  (function(){
+    var _ltp=W.loadTournamentPicker; if(typeof _ltp!=="function") return;
+    W.loadTournamentPicker=function(){
+      try{ var scr=document.getElementById("tournamentScreen"); if(scr && scr.classList.contains("active")){ var body=scr.querySelector(".screen-content"); nhHoldBody(body, (function(){ try{ return TOURNAMENT_EVENT||""; }catch(e){ return ""; } })()); } }catch(e){}
+      return _ltp.apply(this,arguments);
+    };
+  })();
   /* n306: THE PATH YOU CAME. Every view — an address and the screen open on it — is written to one trail as you move,
      and every back arrow steps back along it: the group's sheet back to the region's sheet, that back to the door;
      Men's Pairs back to the ladders menu, that back to the group's page. No rules about doors and parents. */
