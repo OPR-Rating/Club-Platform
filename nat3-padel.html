@@ -1273,12 +1273,16 @@ st0.textContent += "html{overflow-y:scroll}";   // p98: the scrollbar's space is
       else if(pool){ swapClub("pool_id=eq."+P+((tbl==="doubles_results")?"&club_id=is.null":"")); }   // p6: pairs are CLUB rows — Overall lists every club's pairs; only the category tables have a pool-wide set
       return "plat_"+tbl+"?"+qs+(qs?"&":"")+"discipline=eq."+DISC;
     }
-    if(CLUB_TABLES[tbl]){ if(pool) swapClub("club_id=in.("+(clubIds||"0")+")"); return "plat_"+DISC+"_"+tbl+"?"+qs; }
+    /* n314: ON A DOOR, THE TOURNAMENTS ARE THE REGION'S. Tournaments live on the groups; the door's "All tournaments"
+       reads them for the door AND every group — current and archived — so the whole region is one sheet. Reads only:
+       the query string is swapped, a body is not, and the door's screen hides the entry buttons. */
+    var doorIds = (!pool && W.PLAT.clubDoor && W.PLAT.kids && W.PLAT.kids.length) ? [CID].concat(W.PLAT.kids).join(",") : "";
+    if(CLUB_TABLES[tbl]){ if(pool) swapClub("club_id=in.("+(clubIds||"0")+")"); else if(doorIds) swapClub("club_id=in.("+doorIds+")"); return "plat_"+DISC+"_"+tbl+"?"+qs; }
     /* n105: THE TOURNAMENT STATS TABLE WAS NEVER TRANSLATED. plat's stats sheet reads `tournament_results`
        (per event, per category, per club); it lives on the platform as `plat_tournament_results`, not under
        the discipline prefix, and it was in neither list — so the request went out untranslated, 404'd, and
        the sheet showed "No tournament matches in this category yet" over a table full of rows. */
-    if(tbl==="tournament_results"){ if(pool) swapClub("club_id=in.("+(clubIds||"0")+")"); return "plat_tournament_results?"+qs; }
+    if(tbl==="tournament_results"){ if(pool) swapClub("club_id=in.("+(clubIds||"0")+")"); else if(doorIds) swapClub("club_id=in.("+doorIds+")"); return "plat_tournament_results?"+qs; }
     return null;
   }
   var FN={submit_match:"plat_submit_match",recompute:"plat_recompute_"+DISC,admin:"nat_admin_padel",tournament:"plat_tournament_"+DISC,ladder:"plat_ladder_"+DISC};   // NAT: admin is the fork; everything else is the platform's own, used as it is
@@ -3738,7 +3742,7 @@ const CLUB_NAME = _club.name;  // shown in the logo as "OPR · <name>"
     link.setAttribute('href', href);
   }catch(e){ /* install stays on the static manifest — no functional impact */ }
 })();
-const OPR_VERSION = "OPR-DOUBLES v2026.09.03-56 · NAT fork n313 (no voice) (of PLAT p117)";  // MANUAL PAIR CREATION REMOVED FROM ADMIN: Create a pair, Bulk create pairs and Re-derive all pairs are gone (they only made match-less ghost pairs, and Re-derive rewrote every stored initial club-wide). Pairs are born automatically at match entry. Current pairs list untouched; the underlying JS is left in place unreferenced, so no other code path changes. Includes v47 (set-score fix + double-tap guard) and all prior.
+const OPR_VERSION = "OPR-DOUBLES v2026.09.03-56 · NAT fork n314 (no voice) (of PLAT p117)";  // MANUAL PAIR CREATION REMOVED FROM ADMIN: Create a pair, Bulk create pairs and Re-derive all pairs are gone (they only made match-less ghost pairs, and Re-derive rewrote every stored initial club-wide). Pairs are born automatically at match entry. Current pairs list untouched; the underlying JS is left in place unreferenced, so no other code path changes. Includes v47 (set-score fix + double-tap guard) and all prior.
 // Explanation shown above the individual ladder. Open on load so it's read; collapsible
 // (state kept for the session) and scrolls away. Mechanics only — no outcome framing, so
 // members aren't nudged away from playing stronger opponents. Every clause maps to a real
@@ -13554,6 +13558,13 @@ W.nhOpenPair=function(name){
       + four.map(function(f,k){ return '<button class="fourbtn'+(k===0?" lime":"")+'" onclick="window.doorPick(\''+f[0]+'\')">'+f[3]+esc(f[1]).replace("&amp;","&")+'</button>'; }).join("")
       +'</div><div id="doorWhere" style="display:none;padding:2px 12px 14px"></div></div>';
   }
+  /* n314: ALL TOURNAMENTS from the door — the parent's tournament screen on the door's board; the shim reads the
+     tournament tables for the door and every group, so the picker lists every current and archived tournament in the
+     region, with the snapshot and the way into each. Read-only here: entry and draws belong to a group. */
+  W.nhAllTournaments=function(){
+    var C=W.PLAT.cid; if(!C) return;
+    W.nhNav(PAGE+"?club="+C+"&go=tournaments&back="+encodeURIComponent(location.search||""));
+  };
   W.doorPick=function(what){
     /* n236: ENTERING A SCORE GOES STRAIGHT TO THE PAGE. The door asked "where did you play?" first, so a member
        tapped a square, tapped a group, and only then reached the sheet — on a busy door that reads as friction
@@ -13752,6 +13763,7 @@ W.nhOpenPair=function(name){
            looked dead. They ask the same question, in place. */
         /* n97: ratings, profiles and the court card belong to a group; the door keeps the three that are not */
         + quiet((meName()?esc(meName()):"My page"),"window.nhNav('"+PAGE+"?club="+C+"&go=me')")
+        + quiet("All tournaments","window.nhAllTournaments()")   /* n314: the region's tournaments, current and archived, one sheet */
         + quiet("Club admin","window.nhAdminPage()")
         + quiet("About OPR","showScreen('aboutScreen')")
         + '</div>'
@@ -16319,6 +16331,12 @@ W.nhOpenPair=function(name){
     return false;
   };
   /* draw the page the address now names, inside the page that is already open */
+  function nhDoorMark(shape){
+    try{ if(shape==="door" || (shape==null && W.PLAT.clubDoor)) document.body.setAttribute("data-nh-door","1"); else document.body.removeAttribute("data-nh-door"); }catch(e){}
+    try{ if(!document.getElementById("nhDoorRO")){ var st=document.createElement("style"); st.id="nhDoorRO";
+      st.textContent="body[data-nh-door='1'] #tournamentInternal .menu-btn[onclick*='showEnterTournament']{display:none!important}"
+                    +"body[data-nh-door='1'] #tournamentInternal .sub{display:none!important}"; document.head.appendChild(st); } }catch(e){}
+  }
   function nhRender(shape){
     var tok=++W.__nhNavTok;
     NEW.data=null; NEW.busy=null;   /* the per-board cache (nhCacheGet) still serves the reads */
@@ -16328,6 +16346,7 @@ W.nhOpenPair=function(name){
     nhStageEnd();   /* any earlier staging is over */
     W.PLAT.rekey(location.search).then(function(){
       if(tok!==W.__nhNavTok) return;   /* a later tap won */
+      nhDoorMark(shape);
       /* n307: a door tap that names a screen — keep the door in view, draw the board hidden, open the screen over it */
       try{
         var hm0=document.getElementById("homeScreen"), cur=document.getElementById("nh");
@@ -16575,6 +16594,7 @@ W.nhOpenPair=function(name){
     };
   })();
   try{ nhScreensSnapshot(); }catch(e){}   /* n309: the parent's screens as they are at boot */
+  W.PLAT.ready.then(function(){ try{ nhDoorMark(null); }catch(e){} });   /* n314 */
   W.PLAT.ready.then(function(){
     elsewhereLine();
     // p24: name known — reveal the title and remember it for the next visit's first frame
