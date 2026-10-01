@@ -3742,7 +3742,7 @@ const CLUB_NAME = _club.name;  // shown in the logo as "OPR · <name>"
     link.setAttribute('href', href);
   }catch(e){ /* install stays on the static manifest — no functional impact */ }
 })();
-const OPR_VERSION = "OPR-DOUBLES v2026.09.03-56 · NAT fork n314 (no voice) (of PLAT p117)";  // MANUAL PAIR CREATION REMOVED FROM ADMIN: Create a pair, Bulk create pairs and Re-derive all pairs are gone (they only made match-less ghost pairs, and Re-derive rewrote every stored initial club-wide). Pairs are born automatically at match entry. Current pairs list untouched; the underlying JS is left in place unreferenced, so no other code path changes. Includes v47 (set-score fix + double-tap guard) and all prior.
+const OPR_VERSION = "OPR-DOUBLES v2026.09.03-56 · NAT fork n315 (no voice) (of PLAT p117)";  // MANUAL PAIR CREATION REMOVED FROM ADMIN: Create a pair, Bulk create pairs and Re-derive all pairs are gone (they only made match-less ghost pairs, and Re-derive rewrote every stored initial club-wide). Pairs are born automatically at match entry. Current pairs list untouched; the underlying JS is left in place unreferenced, so no other code path changes. Includes v47 (set-score fix + double-tap guard) and all prior.
 // Explanation shown above the individual ladder. Open on load so it's read; collapsible
 // (state kept for the session) and scrolls away. Mechanics only — no outcome framing, so
 // members aren't nudged away from playing stronger opponents. Every clause maps to a real
@@ -12952,17 +12952,22 @@ W.mePair=function(name,col){
       }).join("");
       W.__recMembers=mine.map(function(p){ var g=G[p.full_name]||{}; return {p:p,g:g,col:(!g.club_id)?"#8a8196":(COL[Number(g.club_id)]||clubPal(g.club_id)[0])}; });
       w.innerHTML = recBand(sc,"List all members", sc.base, "Records")
-        +'<div style="margin:12px 12px 0"><input id="recFindM" data-plat-keep="1" placeholder="Find a member" autocomplete="off" '
-        +'style="width:100%;box-sizing:border-box;padding:13px 14px;border:1.5px solid '+sc.col+';border-radius:14px;font:inherit;font-size:15px" '
+        /* n315: the search stays put while the register scrolls past (sticky under the band) */
+        +'<div id="recFindWrapM" class="nhStickFind" style="position:sticky;top:0;z-index:6;margin:12px 0 0;padding:6px 12px 8px;background:#f4f1f8"><input id="recFindM" data-plat-keep="1" placeholder="Find a member" autocomplete="off" '
+        +'style="width:100%;box-sizing:border-box;padding:13px 14px;border:1.5px solid '+sc.col+';border-radius:14px;font:inherit;font-size:15px;background:#fff" '
         +'oninput="window.recFilterM()"></div>'
         + recPanel(sc, esc(sc.wide?"Every registered member":("Members \u00b7 "+(W.PLAT.name||"")))+' \u00b7 <span id="recCountM">'+mine.length+'</span>',
                    '<div id="recMembers" style="max-height:60vh;overflow-y:auto"></div>')
         + homeBar();
-      W.__recCol=sc.col; W.recFilterM();
+      W.__recCol=sc.col; nhStickFind(); W.recFilterM();
     });
   }
   /* ---- profiles: a search bar and the names of everyone who has played ----------------------------------- */
   /* ---- profiles: the group's Team Profile page, drawn here in the records skin ------------------------------ */
+  function nhStickFind(){
+    try{ var pin=nhPinnedHeight(); var pg=getComputedStyle(document.body).backgroundColor;
+      document.querySelectorAll(".nhStickFind").forEach(function(fw){ fw.style.top=(pin||0)+"px"; if(pg && pg!=="rgba(0, 0, 0, 0)") fw.style.background=pg; }); }catch(e){}
+  }
   function recProfiles(sc,w){
     w.innerHTML = recBand(sc,"Member profiles", sc.base, "Records") + recPanel(sc,"Finding who has played\u2026","") + homeBar();
     nhFaces();   /* n182: so the rows can wear real faces the moment the map arrives */
@@ -13004,8 +13009,9 @@ W.mePair=function(name,col){
       W.__recPeople=rows; W.__recClubs=CL; W.__recCol=sc.col;
       w.innerHTML = recBand(sc,"Member profiles", sc.base, "Records")
         +'<div style="margin:12px 14px 0;text-align:center;font-size:12px;color:#7a6688">Tap a name to open the profile.</div>'
-        +'<div style="margin:8px 12px 0"><input id="recFind" data-plat-keep="1" placeholder="Search your name..." autocomplete="off" '
-        +'style="width:100%;box-sizing:border-box;padding:12px 14px;border:1.5px solid '+sc.col+';border-radius:12px;font:inherit;font-size:15px" '
+        /* n315: the search stays put while a thousand names scroll past (sticky under the band) */
+        +'<div id="recFindWrap" class="nhStickFind" style="position:sticky;top:0;z-index:6;margin:8px 0 0;padding:6px 12px 8px;background:#f4f1f8"><input id="recFind" data-plat-keep="1" placeholder="Search your name..." autocomplete="off" '
+        +'style="width:100%;box-sizing:border-box;padding:12px 14px;border:1.5px solid '+sc.col+';border-radius:12px;font:inherit;font-size:15px;background:#fff" '
         +'oninput="window.recFilter()"></div>'
         /* n178: a plain list, like Group members — the card and its coloured heading made it read as a table.
            The group pill stays on every row: it is where that member has played. */
@@ -13013,6 +13019,7 @@ W.mePair=function(name,col){
         + esc(sc.wide?" people have played":(" have played at "+(W.PLAT.name||"")))+'</div>'
         + '<div id="recNames"></div>' 
         + homeBar();
+      nhStickFind();
       W.recFilter();
     });
   }
@@ -16439,7 +16446,7 @@ W.nhOpenPair=function(name){
       var mo=new MutationObserver(function(){ last=Date.now(); }); mo.observe(body,{childList:true,subtree:true,characterData:true,attributes:true});
       var tk=setInterval(function(){
         var now=Date.now(), quiet=now-last>180, has=!want || ((body.textContent||"").indexOf(want)>=0);   /* textContent: innerText of a hidden element is empty */
-        if((quiet && has) || now-t0>3000){ clearInterval(tk); mo.disconnect(); try{ ghost.remove(); }catch(e){} body.style.opacity=""; body.style.pointerEvents=""; delete body.dataset.nhHeld; }
+        if((quiet && has && !W.__nhHoldPending) || now-t0>3000){   /* n315: and the region/group labelling has landed */ clearInterval(tk); mo.disconnect(); try{ ghost.remove(); }catch(e){} body.style.opacity=""; body.style.pointerEvents=""; delete body.dataset.nhHeld; }
       },40);
     }catch(e){ try{ body.style.opacity=""; body.style.pointerEvents=""; delete body.dataset.nhHeld; }catch(e2){} }
   }
@@ -16452,12 +16459,53 @@ W.nhOpenPair=function(name){
       nhHoldBody(body, want);
     }catch(e){}
   }
-  /* the picker re-renders on every pick and every tab: hold the body through each */
+  /* n315: WHICH REGION, WHICH GROUP. Four regions could run a tournament of the same name, and so could two groups.
+     The picker's options are grouped under the region's name (current, then "Past (archived)") and each reads
+     "<tournament> · <group>"; the heading under the dropdown carries the group's pill in its colour. The option VALUES
+     stay the bare name — the parent's screen is keyed to it. */
+  var NHTOUR={rows:null, key:""};
+  function nhTourRows(){
+    var ids = W.PLAT.clubDoor ? [W.PLAT.cid].concat(W.PLAT.kids||[]) : [W.PLAT.cid];
+    var key=ids.join(","); if(NHTOUR.rows && NHTOUR.key===key) return Promise.resolve(NHTOUR.rows);
+    return fetch(SBREST()+"plat_padel_tournaments?select=id,name,club_id,active,archived&club_id=in.("+key+")&order=id.desc").then(J)
+      .then(function(rows){ NHTOUR.rows=rows||[]; NHTOUR.key=key; return NHTOUR.rows; }).catch(function(){ return []; });
+  }
+  W.__nhTourDrop=function(){ NHTOUR.rows=null; NHTOUR.key=""; };
+  function nhTourLabel(){
+    var sel=document.getElementById("tournamentSelect"); if(!sel || sel.dataset.nhLabelled===(sel.options.length+"|"+sel.value)) return Promise.resolve();
+    return nhTourRows().then(function(rows){
+      var sel=document.getElementById("tournamentSelect"); if(!sel) return;
+      var byName={}; rows.forEach(function(r){ if(!byName[r.name]) byName[r.name]=r; });
+      var clubName=function(id){ var c=(W.PLAT.clubs||[]).filter(function(x){ return Number(x.id)===Number(id); })[0]; return c?c.name:""; };
+      var clubCol=function(id){ var c=(W.PLAT.clubs||[]).filter(function(x){ return Number(x.id)===Number(id); })[0]; return (c&&c.colour)||"#6c3483"; };
+      var region = W.PLAT.clubDoor ? (W.PLAT.name||"") : (function(){ var pc=(W.PLAT.clubs||[]).filter(function(x){ return Number(x.id)===Number(W.PLAT.parentId); })[0]; return pc?pc.name:(W.PLAT.poolName||""); })();
+      var cur=sel.value; var opts=Array.prototype.slice.call(sel.options);
+      var ph=opts.filter(function(o){ return o.value===""; })[0];
+      var now=document.createElement("optgroup"); now.label=region||"Tournaments";
+      var past=document.createElement("optgroup"); past.label=(region?region+" \u00b7 ":"")+"Past (archived)";
+      opts.forEach(function(o){
+        if(o.value==="") return;
+        var r=byName[o.value]; var grp=r?clubName(r.club_id):"";
+        o.textContent=o.value+(grp?(" \u00b7 "+grp):"")+(o.dataset.arch==="1"?" \u2713":"");
+        (o.dataset.arch==="1"?past:now).appendChild(o);
+      });
+      sel.innerHTML=""; if(ph) sel.appendChild(ph); if(now.children.length) sel.appendChild(now); if(past.children.length) sel.appendChild(past);
+      sel.value=cur; sel.dataset.nhLabelled=(sel.options.length+"|"+sel.value);
+      /* the heading under the dropdown: the group's pill */
+      try{ var r2=byName[cur]; var pk=document.getElementById("tournamentPicker"); var head=pk?Array.prototype.filter.call(pk.children,function(d){ return d.textContent.trim()===cur; })[0]:null;
+        if(head && r2 && !head.querySelector(".nhTourGrp")){ var s=document.createElement("span"); s.className="nhTourGrp"; s.textContent=clubName(r2.club_id);
+          s.style.cssText="display:inline-block;margin-left:8px;padding:2px 9px;border-radius:999px;font-size:11px;font-weight:800;color:#fff;vertical-align:middle;background:"+clubCol(r2.club_id); head.appendChild(s); } }catch(e){}
+    });
+  }
+  /* the picker re-renders on every pick and every tab: hold the body through each, then name region and group */
   (function(){
     var _ltp=W.loadTournamentPicker; if(typeof _ltp!=="function") return;
     W.loadTournamentPicker=function(){
       try{ var scr=document.getElementById("tournamentScreen"); if(scr && scr.classList.contains("active")){ var body=scr.querySelector(".screen-content:not(.nhGhost)"); nhHoldBody(body, (function(){ try{ return TOURNAMENT_EVENT||""; }catch(e){ return ""; } })()); } }catch(e){}
-      return _ltp.apply(this,arguments);
+      var r=_ltp.apply(this,arguments);
+      W.__nhHoldPending=true;
+      try{ Promise.resolve(r).then(function(){ return nhTourLabel(); }).then(function(){ W.__nhHoldPending=false; }, function(){ W.__nhHoldPending=false; }); }catch(e){ W.__nhHoldPending=false; }
+      return r;
     };
   })();
   /* n306: THE PATH YOU CAME. Every view — an address and the screen open on it — is written to one trail as you move,
@@ -16560,6 +16608,7 @@ W.nhOpenPair=function(name){
     /* n313: the picker's three rosters (Group / Region / All clubs) were cached once per session — the first group's
        roster was handed to the next group. Dropped on every board change, like everything else the board owns. */
     try{ W.__nsCacheDrop && W.__nsCacheDrop(); }catch(e){}
+    try{ W.__nhTourDrop && W.__nhTourDrop(); }catch(e){}
     /* n309: WHAT THE PARENT DREW FOR THE LAST BOARD IS NOT THIS BOARD'S. Its tournament screen keeps the tabs and
        buttons of the tournament it showed last and only overwrites the picker; with no tournament here it wrote "No
        active tournament" above another board's "Open draw & standings" — a way into a different group's tournament.
