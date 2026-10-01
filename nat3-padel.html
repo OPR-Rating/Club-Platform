@@ -3738,7 +3738,7 @@ const CLUB_NAME = _club.name;  // shown in the logo as "OPR · <name>"
     link.setAttribute('href', href);
   }catch(e){ /* install stays on the static manifest — no functional impact */ }
 })();
-const OPR_VERSION = "OPR-DOUBLES v2026.09.03-56 · NAT fork n311 (no voice) (of PLAT p117)";  // MANUAL PAIR CREATION REMOVED FROM ADMIN: Create a pair, Bulk create pairs and Re-derive all pairs are gone (they only made match-less ghost pairs, and Re-derive rewrote every stored initial club-wide). Pairs are born automatically at match entry. Current pairs list untouched; the underlying JS is left in place unreferenced, so no other code path changes. Includes v47 (set-score fix + double-tap guard) and all prior.
+const OPR_VERSION = "OPR-DOUBLES v2026.09.03-56 · NAT fork n313 (no voice) (of PLAT p117)";  // MANUAL PAIR CREATION REMOVED FROM ADMIN: Create a pair, Bulk create pairs and Re-derive all pairs are gone (they only made match-less ghost pairs, and Re-derive rewrote every stored initial club-wide). Pairs are born automatically at match entry. Current pairs list untouched; the underlying JS is left in place unreferenced, so no other code path changes. Includes v47 (set-score fix + double-tap guard) and all prior.
 // Explanation shown above the individual ladder. Open on load so it's read; collapsible
 // (state kept for the session) and scrolls away. Mechanics only — no outcome framing, so
 // members aren't nudged away from playing stronger opponents. Every clause maps to a real
@@ -15868,13 +15868,30 @@ W.nhOpenPair=function(name){
   /* n221: the board's own people are fetched when the entry step appears — not at start-up, which put a read on
      every door and showed as an extra console error in the REGRESSION guard. */
   var NCACHE = {group:null, region:null, global:null};
+  W.__nsCacheDrop=function(){ NCACHE.group=null; NCACHE.region=null; NCACHE.global=null; };
   function nsTidy(rows){
     var seen={}, out=[];
     (rows||[]).forEach(function(r){ if(r && r.full_name && !seen[r.full_name]){ seen[r.full_name]=1; out.push(r); } });
     return out;
   }
+  /* n313: THE WHOLE REGISTER, IN PAGES. Supabase answers at most 1,000 rows to one request whatever limit= says, so a
+     register past a thousand people lost every name after the first thousand A→Z — which is where Sheila Kemp was.
+     Every roster read now pages (offset) until a short page comes back. */
+  function nsAll(url){
+    var PAGE_N=1000, out=[];
+    var step=function(off){
+      return fetch(url+"&limit="+PAGE_N+"&offset="+off).then(J).then(function(rows){
+        rows=rows||[]; out=out.concat(rows);
+        return rows.length<PAGE_N ? out : step(off+PAGE_N);
+      });
+    };
+    return step(0);
+  }
   function nsPeople(scope){
-    if(NCACHE[scope]) return Promise.resolve(NCACHE[scope]);
+    /* n313: an EMPTY roster is never remembered. A read that failed once (a dropped request on the court) used to be
+       cached as "nobody" for the whole session, and every open of that pill after it fell back to the group's list —
+       which is how a registered member was "never" in All clubs one day and there the next. */
+    if(NCACHE[scope] && NCACHE[scope].length) return Promise.resolve(NCACHE[scope]);
     /* n218: THE REGISTER HOLDS THE PEOPLE; A BOARD HOLDS THE AFFILIATION.
        plat_individuals is register-level — it has pool_id and NO club_id — so asking it for club_id returned
        nothing and the picker quietly fell back to the group, which is why Region and Global showed the group.
@@ -15886,8 +15903,8 @@ W.nhOpenPair=function(name){
        added to a region and not yet played would never appear. Region takes the region board AND its groups, which
        is the case Andre described: someone's first night, with no group tag yet. */
     if(scope==="global"){
-      return fetch(B+"plat_individuals?select=id,full_name,gender,default_seed&pool_id=eq."+(W.PLAT.pool||13)
-                   +"&order=full_name.asc&limit=4000").then(J).then(function(rows){
+      return nsAll(B+"plat_individuals?select=id,full_name,gender,default_seed&pool_id=eq."+(W.PLAT.pool||13)
+                   +"&order=full_name.asc").then(function(rows){
         NCACHE.global=nsTidy(rows); return NCACHE.global;
       }).catch(function(){ return []; });
     }
@@ -15899,13 +15916,15 @@ W.nhOpenPair=function(name){
     } else {
       ids = [W.PLAT.cid];
     }
-    return fetch(B+"plat_memberships?select=individual_id,club_id&club_id=in.("+ids.join(",")+")&limit=4000")
-      .then(J).then(function(ms){
+    return nsAll(B+"plat_memberships?select=individual_id,club_id&club_id=in.("+ids.join(",")+")&order=individual_id.asc")
+      .then(function(ms){
         var idList=[]; var seen={};
         (ms||[]).forEach(function(m){ var k=m.individual_id; if(k && !seen[k]){ seen[k]=1; idList.push(k); } });
         if(!idList.length) return [];
-        return fetch(B+"plat_individuals?select=id,full_name,gender,default_seed&id=in.("+idList.join(",")+")"
-                     +"&order=full_name.asc&limit=4000").then(J);
+        /* ids in chunks of 300 — a URL has a length limit too */
+        var chunks=[]; for(var i=0;i<idList.length;i+=300) chunks.push(idList.slice(i,i+300));
+        return Promise.all(chunks.map(function(ch){ return nsAll(B+"plat_individuals?select=id,full_name,gender,default_seed&id=in.("+ch.join(",")+")&order=full_name.asc"); }))
+          .then(function(parts){ return [].concat.apply([],parts).sort(function(a,b){ return String(a.full_name).localeCompare(String(b.full_name)); }); });
       }).then(function(rows){
         NCACHE[scope]=nsTidy(rows); return NCACHE[scope];
       }).catch(function(){ return []; });
@@ -16387,26 +16406,29 @@ W.nhOpenPair=function(name){
      Cap 3 s. Used when a screen is opened by address and whenever the tournament picker re-renders. */
   function nhHoldBody(body, want){
     try{
-      if(!body || body.dataset.nhHeld==="1") return;
+      if(!body || body.classList.contains("nhGhost") || body.dataset.nhHeld==="1") return;
       var host=body.parentNode; if(!host) return;
+      host.querySelectorAll(":scope > .nhGhost").forEach(function(x){ x.remove(); });   /* a ghost of an earlier hold never outlives a new one */
       var ghost=body.cloneNode(true); ghost.removeAttribute("id"); ghost.querySelectorAll("[id]").forEach(function(e){ e.removeAttribute("id"); });
       ghost.className=body.className+" nhGhost"; ghost.style.position="absolute"; ghost.style.left="0"; ghost.style.right="0"; ghost.style.top=body.offsetTop+"px";
       ghost.style.pointerEvents="none"; ghost.style.visibility="visible"; ghost.style.zIndex="5";
       if(getComputedStyle(host).position==="static") host.style.position="relative";
-      host.insertBefore(ghost, body); body.style.visibility="hidden"; body.dataset.nhHeld="1";
+      /* opacity, not visibility: a child with its own visibility:visible would show through a hidden parent (the
+         parent's menu buttons do), and that showed as doubled buttons while the body rendered */
+      host.insertBefore(ghost, body); body.style.opacity="0"; body.style.pointerEvents="none"; body.dataset.nhHeld="1";
       var last=Date.now(), t0=last;
       var mo=new MutationObserver(function(){ last=Date.now(); }); mo.observe(body,{childList:true,subtree:true,characterData:true,attributes:true});
       var tk=setInterval(function(){
-        var now=Date.now(), quiet=now-last>250, has=!want || (body.innerText.indexOf(want)>=0);
-        if((quiet && has) || now-t0>3000){ clearInterval(tk); mo.disconnect(); try{ ghost.remove(); }catch(e){} body.style.visibility=""; delete body.dataset.nhHeld; }
+        var now=Date.now(), quiet=now-last>180, has=!want || ((body.textContent||"").indexOf(want)>=0);   /* textContent: innerText of a hidden element is empty */
+        if((quiet && has) || now-t0>3000){ clearInterval(tk); mo.disconnect(); try{ ghost.remove(); }catch(e){} body.style.opacity=""; body.style.pointerEvents=""; delete body.dataset.nhHeld; }
       },40);
-    }catch(e){ try{ body.style.visibility=""; delete body.dataset.nhHeld; }catch(e2){} }
+    }catch(e){ try{ body.style.opacity=""; body.style.pointerEvents=""; delete body.dataset.nhHeld; }catch(e2){} }
   }
   function nhScreenSettle(goq){
     try{
       var id={tournaments:"tournamentScreen",tsheet:"tournamentScreen",ladder:"ladderScreen",profiles:"profileSearchScreen",card:"platSessScreen"}[goq];
       if(!id) return;
-      var body=document.querySelector("#"+id+" .screen-content"); if(!body) return;
+      var body=document.querySelector("#"+id+" .screen-content:not(.nhGhost)"); if(!body) return;
       var want=""; try{ want=new URLSearchParams(location.search).get("tn")||""; }catch(e){}
       nhHoldBody(body, want);
     }catch(e){}
@@ -16415,7 +16437,7 @@ W.nhOpenPair=function(name){
   (function(){
     var _ltp=W.loadTournamentPicker; if(typeof _ltp!=="function") return;
     W.loadTournamentPicker=function(){
-      try{ var scr=document.getElementById("tournamentScreen"); if(scr && scr.classList.contains("active")){ var body=scr.querySelector(".screen-content"); nhHoldBody(body, (function(){ try{ return TOURNAMENT_EVENT||""; }catch(e){ return ""; } })()); } }catch(e){}
+      try{ var scr=document.getElementById("tournamentScreen"); if(scr && scr.classList.contains("active")){ var body=scr.querySelector(".screen-content:not(.nhGhost)"); nhHoldBody(body, (function(){ try{ return TOURNAMENT_EVENT||""; }catch(e){ return ""; } })()); } }catch(e){}
       return _ltp.apply(this,arguments);
     };
   })();
@@ -16516,6 +16538,9 @@ W.nhOpenPair=function(name){
        board; in the shell the board changes, so they are written again for the board we now stand on. */
     try{ entryTint(); }catch(e){}
     try{ sessStyle(); }catch(e){}
+    /* n313: the picker's three rosters (Group / Region / All clubs) were cached once per session — the first group's
+       roster was handed to the next group. Dropped on every board change, like everything else the board owns. */
+    try{ W.__nsCacheDrop && W.__nsCacheDrop(); }catch(e){}
     /* n309: WHAT THE PARENT DREW FOR THE LAST BOARD IS NOT THIS BOARD'S. Its tournament screen keeps the tabs and
        buttons of the tournament it showed last and only overwrites the picker; with no tournament here it wrote "No
        active tournament" above another board's "Open draw & standings" — a way into a different group's tournament.
