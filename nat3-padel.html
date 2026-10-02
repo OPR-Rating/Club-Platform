@@ -3750,7 +3750,7 @@ const CLUB_NAME = _club.name;  // shown in the logo as "OPR · <name>"
     link.setAttribute('href', href);
   }catch(e){ /* install stays on the static manifest — no functional impact */ }
 })();
-const OPR_VERSION = "OPR-DOUBLES v2026.09.03-56 · NAT fork n333 (no voice) (of PLAT p117)";  // MANUAL PAIR CREATION REMOVED FROM ADMIN: Create a pair, Bulk create pairs and Re-derive all pairs are gone (they only made match-less ghost pairs, and Re-derive rewrote every stored initial club-wide). Pairs are born automatically at match entry. Current pairs list untouched; the underlying JS is left in place unreferenced, so no other code path changes. Includes v47 (set-score fix + double-tap guard) and all prior.
+const OPR_VERSION = "OPR-DOUBLES v2026.09.03-56 · NAT fork n334 (no voice) (of PLAT p117)";  // MANUAL PAIR CREATION REMOVED FROM ADMIN: Create a pair, Bulk create pairs and Re-derive all pairs are gone (they only made match-less ghost pairs, and Re-derive rewrote every stored initial club-wide). Pairs are born automatically at match entry. Current pairs list untouched; the underlying JS is left in place unreferenced, so no other code path changes. Includes v47 (set-score fix + double-tap guard) and all prior.
 // Explanation shown above the individual ladder. Open on load so it's read; collapsible
 // (state kept for the session) and scrolls away. Mechanics only — no outcome framing, so
 // members aren't nudged away from playing stronger opponents. Every clause maps to a real
@@ -10511,7 +10511,7 @@ async function clRemove(id, label){
       +'<text x="2" y="'+(+y(lo)+11)+'" font-size="9" fill="#8a8196">low '+Math.round(lo)+'</text>'
       +'</svg>'
       +'<div style="display:flex;justify-content:space-between;font-size:11.5px;color:#5f5770;margin-top:2px">'
-      +'<span>'+(startWord||"started")+' '+Math.round(seedLabel!=null?seedLabel:first)+'</span>'
+      +'<span>'+(startWord||"initial")+' '+Math.round(seedLabel!=null?seedLabel:first)+'</span>'   /* n334: our first rating is "initial" */
       +'<span style="font-weight:800;color:'+col+'">'+esc(endLabel||("now "+Math.round(last)))+'</span></div>';
   }
   /* a cumulative run of deltas, expressed as the ratings they produced */
@@ -10555,11 +10555,11 @@ async function clRemove(id, label){
       +'<div style="padding:4px 14px 12px">'
       +'<div style="display:flex;align-items:center;gap:11px;padding:4px 0 6px">'
       + nhFace(mv.name,col,34)   /* n183 */
-      /* n333: where this player STARTED (the initial rating on record), beside the name (Andre) */
-      +'<span class="nm"><b style="font-size:15.5px">'+esc(mv.name)
-        +(seedOf!=null?' <span style="display:inline-block;margin-left:4px;padding:1px 8px;border-radius:999px;font-size:11px;font-weight:800;color:'+col+';border:1.5px solid '+col+';vertical-align:middle">started '+seedOf+'</span>':'')
-        +'</b><span>'+esc(mv.club?nhBoardName(mv.club):"")+'</span></span>'
-      +'<span class="val"><b class="'+(up?"up":"dn")+'" style="font-size:18px">'+(up?"\u25b2 +":"\u25bc ")+Math.round(mv.move)+'</b><span>this week</span></span></div>'
+      /* n334: the INITIAL rating (our first rating is "Initial" — Andre), in its own slot directly before the move,
+         centred on the row, the same place every time — never wrapped into the name */
+      +'<span class="nm" style="flex:1;min-width:0"><b style="font-size:15.5px">'+esc(mv.name)+'</b><span>'+esc(mv.club?nhBoardName(mv.club):"")+'</span></span>'
+      +(seedOf!=null?'<span style="flex:none;align-self:center;white-space:nowrap;padding:3px 9px;border-radius:999px;font-size:11px;line-height:1.2;font-weight:800;letter-spacing:.02em;color:#fff;background:'+col+'">Initial '+seedOf+'</span>':'')
+      +'<span class="val" style="flex:none"><b class="'+(up?"up":"dn")+'" style="font-size:18px">'+(up?"\u25b2 +":"\u25bc ")+Math.round(mv.move)+'</b><span>this week</span></span></div>'
       +body+'</div></div>';
   }
   function nhCharts(d,ink){
@@ -12152,7 +12152,7 @@ W.mePair=function(name,col){
         if(rating!=null && series.length) series[series.length-1]=rating;
         /* n333: the starting rating as a pill in the header (Andre) */
         h+='<div class="brk"><h2 style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">My rating \u00b7 '+st.trail.length+' rated '+(st.trail.length===1?"match":"matches")
-          +(seed!=null?'<span style="margin-left:auto;padding:3px 10px;border-radius:999px;font-size:11px;letter-spacing:.04em;font-weight:800;color:#fff;background:'+col+'">Started at '+Math.round(seed)+'</span>':'')+'</h2>'
+          +(seed!=null?'<span style="margin-left:auto;align-self:center;white-space:nowrap;padding:3px 9px;border-radius:999px;font-size:11px;line-height:1.2;letter-spacing:.02em;text-transform:none;font-weight:800;color:#fff;background:'+col+'">Initial '+Math.round(seed)+'</span>':'')+'</h2>'
           +'<div style="padding:4px 14px 14px">'
           + nhChart(series, col, rating?("now "+rating):null, seed)
           +'</div></div>';
