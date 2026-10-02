@@ -3750,7 +3750,7 @@ const CLUB_NAME = _club.name;  // shown in the logo as "OPR · <name>"
     link.setAttribute('href', href);
   }catch(e){ /* install stays on the static manifest — no functional impact */ }
 })();
-const OPR_VERSION = "OPR-DOUBLES v2026.09.03-56 · NAT fork n325 (no voice) (of PLAT p117)";  // MANUAL PAIR CREATION REMOVED FROM ADMIN: Create a pair, Bulk create pairs and Re-derive all pairs are gone (they only made match-less ghost pairs, and Re-derive rewrote every stored initial club-wide). Pairs are born automatically at match entry. Current pairs list untouched; the underlying JS is left in place unreferenced, so no other code path changes. Includes v47 (set-score fix + double-tap guard) and all prior.
+const OPR_VERSION = "OPR-DOUBLES v2026.09.03-56 · NAT fork n326 (no voice) (of PLAT p117)";  // MANUAL PAIR CREATION REMOVED FROM ADMIN: Create a pair, Bulk create pairs and Re-derive all pairs are gone (they only made match-less ghost pairs, and Re-derive rewrote every stored initial club-wide). Pairs are born automatically at match entry. Current pairs list untouched; the underlying JS is left in place unreferenced, so no other code path changes. Includes v47 (set-score fix + double-tap guard) and all prior.
 // Explanation shown above the individual ladder. Open on load so it's read; collapsible
 // (state kept for the session) and scrolls away. Mechanics only — no outcome framing, so
 // members aren't nudged away from playing stronger opponents. Every clause maps to a real
@@ -15996,7 +15996,11 @@ W.nhOpenPair=function(name){
   /* n221: the board's own people are fetched when the entry step appears — not at start-up, which put a read on
      every door and showed as an extra console error in the REGRESSION guard. */
   var NCACHE = {group:null, region:null, global:null};
-  W.__nsCacheDrop=function(){ NCACHE.group=null; NCACHE.region=null; NCACHE.global=null; };
+  /* n326: a roster that was READ and is EMPTY is a true answer — a group where nobody has played has no names (Andre:
+     "group only gets a name when someone has played in the group"). Only a read that FAILED is not remembered (n313).
+     NOK marks the scopes whose roster came back from a successful read, empty or not. */
+  var NOK = {group:false, region:false, global:false};
+  W.__nsCacheDrop=function(){ NCACHE.group=null; NCACHE.region=null; NCACHE.global=null; NOK.group=NOK.region=NOK.global=false; };
   function nsTidy(rows){
     var seen={}, out=[];
     (rows||[]).forEach(function(r){ if(r && r.full_name && !seen[r.full_name]){ seen[r.full_name]=1; out.push(r); } });
@@ -16019,7 +16023,7 @@ W.nhOpenPair=function(name){
     /* n313: an EMPTY roster is never remembered. A read that failed once (a dropped request on the court) used to be
        cached as "nobody" for the whole session, and every open of that pill after it fell back to the group's list —
        which is how a registered member was "never" in All clubs one day and there the next. */
-    if(NCACHE[scope] && NCACHE[scope].length) return Promise.resolve(NCACHE[scope]);
+    if(NOK[scope] && NCACHE[scope]) return Promise.resolve(NCACHE[scope]);
     /* n218: THE REGISTER HOLDS THE PEOPLE; A BOARD HOLDS THE AFFILIATION.
        plat_individuals is register-level — it has pool_id and NO club_id — so asking it for club_id returned
        nothing and the picker quietly fell back to the group, which is why Region and Global showed the group.
@@ -16033,7 +16037,7 @@ W.nhOpenPair=function(name){
     if(scope==="global"){
       return nsAll(B+"plat_individuals?select=id,full_name,gender,default_seed&pool_id=eq."+(W.PLAT.pool||13)
                    +"&order=full_name.asc").then(function(rows){
-        NCACHE.global=nsTidy(rows); return NCACHE.global;
+        NCACHE.global=nsTidy(rows); NOK.global=!!(rows&&rows.length); return NCACHE.global;   /* the register is never truly empty */
       }).catch(function(){ return []; });
     }
     var ids;
@@ -16054,7 +16058,7 @@ W.nhOpenPair=function(name){
         return Promise.all(chunks.map(function(ch){ return nsAll(B+"plat_individuals?select=id,full_name,gender,default_seed&id=in.("+ch.join(",")+")&order=full_name.asc"); }))
           .then(function(parts){ return [].concat.apply([],parts).sort(function(a,b){ return String(a.full_name).localeCompare(String(b.full_name)); }); });
       }).then(function(rows){
-        NCACHE[scope]=nsTidy(rows); return NCACHE[scope];
+        NCACHE[scope]=nsTidy(rows); NOK[scope]=true; return NCACHE[scope];   /* read succeeded — empty is an answer */
       }).catch(function(){ return []; });
     return fetch(url).then(J).then(function(rows){
       var seen={}, out=[];
@@ -16097,7 +16101,8 @@ W.nhOpenPair=function(name){
         /* n221: GROUP IS ANSWERED FROM MEMBERSHIP TOO. It used to fall through to the parent's own list, which is
            wider than the board — a member added to the REGION appeared in a group's picker, which is precisely what
            the three pills exist to prevent. Only an empty cache falls back now. */
-        if(!rows || !rows.length) return orig.apply(this, arguments);
+        /* n326: an empty GROUP or REGION roster that was read stays empty — never the parent's register-wide list */
+        if(!rows || (!rows.length && !NOK[scope])) return orig.apply(this, arguments);
         var men=[], ladies=[];
         rows.forEach(function(p){
           if(String(p.gender||"").toUpperCase()==="M") men.push(p.full_name); else ladies.push(p.full_name);
@@ -16658,13 +16663,20 @@ W.nhOpenPair=function(name){
   function nhEntryEvent(){
     var tn=""; try{ tn=new URLSearchParams(location.search).get("tn")||""; }catch(e){}
     if(!tn) return;
-    var t0=Date.now(), tk=setInterval(function(){
+    /* n326: the sheet redraws itself when it opens. On a second visit in one session the PREVIOUS sheet's dropdown is
+       still in the page when this starts, already holding the tournament — the value was set on the old dropdown and
+       the fresh one came up empty (the first pick worked, the next did not). So: wait for a dropdown that is not the one
+       that was there when we started, choose on it, and keep the choice up for 3 s against any further redraw. */
+    var sel0=document.getElementById("matchEvent");
+    var t0=Date.now(), chosenOn=null, tk=setInterval(function(){
       var sel=document.getElementById("matchEvent");
-      if(sel && Array.prototype.some.call(sel.options,function(o){ return o.value===tn; })){
-        clearInterval(tk); if(sel.value!==tn){ sel.value=tn; try{ sel.onchange && sel.onchange(); }catch(e){} try{ sel.dispatchEvent(new Event("change")); }catch(e){} }
-        return;
+      var fresh = sel && sel!==sel0;
+      if(fresh && Array.prototype.some.call(sel.options,function(o){ return o.value===tn; })){
+        if(sel!==chosenOn || sel.value!==tn){
+          chosenOn=sel; sel.value=tn; try{ sel.onchange && sel.onchange(); }catch(e){} try{ sel.dispatchEvent(new Event("change")); }catch(e){}
+        }
       }
-      if(Date.now()-t0>4000) clearInterval(tk);
+      if(Date.now()-t0>10000 || (chosenOn && Date.now()-t0>3000 && sel===chosenOn)) clearInterval(tk);
     },60);
   }
   /* n325: ONE PROFILE (Andre). Group members → a member, a name on a ladder, a partnership inside the old group profile —
@@ -16674,7 +16686,11 @@ W.nhOpenPair=function(name){
     var C=(W.PLAT.parentId||W.PLAT.cid||W.PLAT.nat||0); if(!C || !name) return false;
     W.nhNav(PAGE+"?club="+C+"&go=me&who="+encodeURIComponent(name)+"&back="+encodeURIComponent(location.search||"")); return true;
   }
+  /* n326: WITHDRAWN for now. On Andre's phone (n325) the name tap in Group members did nothing and the list was slow; the
+     harness cannot reproduce it. The parent's own path (snapshot → group profile) stands until the re-point is proven. */
+  W.__nhOneProfile=false;
   (function(){
+    if(!W.__nhOneProfile) return;
     /* Group members → a member: the parent opened its "member snapshot" (partnershipsScreen) — the card Andre showed */
     var _sp=W.showPartnerships;
     if(typeof _sp==="function") W.showPartnerships=function(indivId){
