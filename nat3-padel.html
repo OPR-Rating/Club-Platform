@@ -3750,7 +3750,7 @@ const CLUB_NAME = _club.name;  // shown in the logo as "OPR · <name>"
     link.setAttribute('href', href);
   }catch(e){ /* install stays on the static manifest — no functional impact */ }
 })();
-const OPR_VERSION = "OPR-DOUBLES v2026.09.03-56 · NAT fork n321 (no voice) (of PLAT p117)";  // MANUAL PAIR CREATION REMOVED FROM ADMIN: Create a pair, Bulk create pairs and Re-derive all pairs are gone (they only made match-less ghost pairs, and Re-derive rewrote every stored initial club-wide). Pairs are born automatically at match entry. Current pairs list untouched; the underlying JS is left in place unreferenced, so no other code path changes. Includes v47 (set-score fix + double-tap guard) and all prior.
+const OPR_VERSION = "OPR-DOUBLES v2026.09.03-56 · NAT fork n322 (no voice) (of PLAT p117)";  // MANUAL PAIR CREATION REMOVED FROM ADMIN: Create a pair, Bulk create pairs and Re-derive all pairs are gone (they only made match-less ghost pairs, and Re-derive rewrote every stored initial club-wide). Pairs are born automatically at match entry. Current pairs list untouched; the underlying JS is left in place unreferenced, so no other code path changes. Includes v47 (set-score fix + double-tap guard) and all prior.
 // Explanation shown above the individual ladder. Open on load so it's read; collapsible
 // (state kept for the session) and scrolls away. Mechanics only — no outcome framing, so
 // members aren't nudged away from playing stronger opponents. Every clause maps to a real
@@ -11869,8 +11869,31 @@ W.mePair=function(name,col){
       +'<h1 style="font-size:20px;line-height:1.25">Select which group you are entering a score in</h1>'
       +'<div class="sub">'+esc(club.name)+'</div>'
       +'<div class="pulse"><a href="'+back+'" onclick="return window.nhBack(this.href)">\u2039 '+esc(club.name)+'</a></div></div>'
-      +grid+homeBar();
+      +grid+'<div id="nhPickTours"></div>'+homeBar();
     try{ var ht=document.getElementById("heroTitle"); var t="OPR \u00b7 "+(club.name||"Club")+" \u00b7 Enter a score"; if(ht) ht.textContent=t; document.title=t; }catch(e){}
+    /* n322: — OR — the tournament you played in (Andre). A member may remember the tournament and not which group
+       runs it. The region's OPEN tournaments are listed, each with its group's pill; a tap opens that group's sheet
+       with the tournament already chosen as the event. */
+    try{
+      var ids=[C].concat(kids.map(function(k){ return k.id; }));
+      fetch(SBREST()+"plat_padel_tournaments?select=id,name,club_id,active,archived&club_id=in.("+ids.join(",")+")&active=eq.true&archived=eq.false&order=id.desc").then(J).then(function(rows){
+        var box=document.getElementById("nhPickTours"); if(!box || !rows || !rows.length) return;
+        var seen={}; rows=rows.filter(function(r){ if(seen[r.name+"|"+r.club_id]) return false; seen[r.name+"|"+r.club_id]=1; return true; });
+        var row=function(r){
+          var gr=(W.PLAT.clubs||[]).filter(function(c){ return Number(c.id)===Number(r.club_id); })[0]; var gname=gr?gr.name:"", col=clubPal(r.club_id)[0];
+          var href=PAGE+"?club="+r.club_id+"&go=entry&tn="+encodeURIComponent(r.name)+"&back="+encodeURIComponent("?club="+C);
+          return '<button onclick="window.nhNav(\''+href+'\')" style="display:flex;align-items:center;gap:10px;width:100%;text-align:left;background:#fff;border:1.5px solid #e2dbe8;'
+            +'border-radius:14px;padding:12px 13px;margin:0 0 8px;font:inherit;cursor:pointer">'
+            +'<span style="flex:1;min-width:0;font-size:14.5px;font-weight:800;color:#241d33">'+esc(r.name)+'</span>'
+            +(gname?'<span style="flex:none;padding:3px 9px;border-radius:999px;font-size:11px;font-weight:800;color:#fff;background:'+col+'">'+esc(gname)+'</span>':'')
+            +'<span style="flex:none;display:inline-grid;place-items:center;width:26px;height:26px;border-radius:50%;background:'+first+';color:#fff;font-weight:800">\u203a</span></button>';
+        };
+        box.innerHTML='<div style="display:flex;align-items:center;gap:12px;margin:18px 12px 10px;color:#8a8196;font-size:11px;font-weight:800;letter-spacing:.12em;text-transform:uppercase">'
+          +'<span style="flex:1;height:1px;background:#e2dbe8"></span>or<span style="flex:1;height:1px;background:#e2dbe8"></span></div>'
+          +'<div style="margin:0 12px 10px;font-size:15px;font-weight:800;color:#241d33">Enter which tournament you played in</div>'
+          +'<div style="padding:0 12px">'+rows.map(row).join("")+'</div>';
+      }).catch(function(){});
+    }catch(e){}
   }
   function newPairPage(){
     var q=new URLSearchParams(location.search);
@@ -16485,7 +16508,7 @@ W.nhOpenPair=function(name){
       /* an address that names a parent screen: the board's page is drawn beneath, then the screen opens on it —
          in the same tick, so no frame shows the page underneath */
       try{ var goq=(new URLSearchParams(location.search).get("go")||"").toLowerCase();
-           if(goq && NAT3_PARENT_GO[goq]){ if(Number(W.PLAT.cid)>0) nhParentSync(); nhScreenSettle(goq); goWhere(); }
+           if(goq && NAT3_PARENT_GO[goq]){ if(Number(W.PLAT.cid)>0) nhParentSync(); nhScreenSettle(goq); goWhere(); if(goq==="entry") nhEntryEvent(); }
            else if(location.hash==="#enter" && Number(W.PLAT.cid)>0){ nhParentSync(); W.showScreen("entryScreen"); } }catch(e){}
       try{ if(W.__nhAfterNav){ var f=W.__nhAfterNav; W.__nhAfterNav=null; f(); } }catch(e){}
       /* the staging ends the moment the home screen is no longer the one showing (or after 2 s, whatever happened) */
@@ -16615,6 +16638,19 @@ W.nhOpenPair=function(name){
       return r;
     };
   })();
+  /* n322: a sheet opened with &tn= has that tournament chosen as the event, as soon as the dropdown holds it */
+  function nhEntryEvent(){
+    var tn=""; try{ tn=new URLSearchParams(location.search).get("tn")||""; }catch(e){}
+    if(!tn) return;
+    var t0=Date.now(), tk=setInterval(function(){
+      var sel=document.getElementById("matchEvent");
+      if(sel && Array.prototype.some.call(sel.options,function(o){ return o.value===tn; })){
+        clearInterval(tk); if(sel.value!==tn){ sel.value=tn; try{ sel.onchange && sel.onchange(); }catch(e){} try{ sel.dispatchEvent(new Event("change")); }catch(e){} }
+        return;
+      }
+      if(Date.now()-t0>4000) clearInterval(tk);
+    },60);
+  }
   /* n306: THE PATH YOU CAME. Every view — an address and the screen open on it — is written to one trail as you move,
      and every back arrow steps back along it: the group's sheet back to the region's sheet, that back to the door;
      Men's Pairs back to the ladders menu, that back to the group's page. No rules about doors and parents. */
