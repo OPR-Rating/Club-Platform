@@ -3750,7 +3750,7 @@ const CLUB_NAME = _club.name;  // shown in the logo as "OPR · <name>"
     link.setAttribute('href', href);
   }catch(e){ /* install stays on the static manifest — no functional impact */ }
 })();
-const OPR_VERSION = "OPR-DOUBLES v2026.09.03-56 · NAT fork n330 (no voice) (of PLAT p117)";  // MANUAL PAIR CREATION REMOVED FROM ADMIN: Create a pair, Bulk create pairs and Re-derive all pairs are gone (they only made match-less ghost pairs, and Re-derive rewrote every stored initial club-wide). Pairs are born automatically at match entry. Current pairs list untouched; the underlying JS is left in place unreferenced, so no other code path changes. Includes v47 (set-score fix + double-tap guard) and all prior.
+const OPR_VERSION = "OPR-DOUBLES v2026.09.03-56 · NAT fork n331 (no voice) (of PLAT p117)";  // MANUAL PAIR CREATION REMOVED FROM ADMIN: Create a pair, Bulk create pairs and Re-derive all pairs are gone (they only made match-less ghost pairs, and Re-derive rewrote every stored initial club-wide). Pairs are born automatically at match entry. Current pairs list untouched; the underlying JS is left in place unreferenced, so no other code path changes. Includes v47 (set-score fix + double-tap guard) and all prior.
 // Explanation shown above the individual ladder. Open on load so it's read; collapsible
 // (state kept for the session) and scrolls away. Mechanics only — no outcome framing, so
 // members aren't nudged away from playing stronger opponents. Every clause maps to a real
@@ -16786,7 +16786,10 @@ W.nhOpenPair=function(name){
       var q=new URLSearchParams(prev.search.replace(/^\?/,"")); var goq=(q.get("go")||"").toLowerCase();
       if(prev.screen!=="homeScreen" && !(goq && NAT3_PARENT_GO[goq])){ /* the view had a screen but no go=: name it so nothing flips home */ q.set("go", NAT3_SCREEN_GO2[prev.screen]||"ladders"); }
       /* n328: a ladder TABLE is drawn by open() itself (loadLadder); goWhere's delayed "ladders" would land on the menu over it */
-      W.__nhSkipGo = (prev.screen==="ladderScreen");
+      /* n331: back to ANY parent screen (members list, ladders, a table, tournaments…) opens that screen directly once
+         the board is drawn beneath — never through goWhere's retry timer, which on a slow phone left the page you were
+         leaving on screen, repainted in the region's colour, until a second press (Andre's screenshot, 2 Oct). */
+      W.__nhSkipGo = (prev.screen!=="homeScreen");
       W.nhNav(PAGE+"?"+q.toString(),{replace:true,force:true,page:prev.page||""});
     } else { open(); }
   };
