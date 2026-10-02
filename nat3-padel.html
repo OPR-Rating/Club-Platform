@@ -3750,7 +3750,7 @@ const CLUB_NAME = _club.name;  // shown in the logo as "OPR · <name>"
     link.setAttribute('href', href);
   }catch(e){ /* install stays on the static manifest — no functional impact */ }
 })();
-const OPR_VERSION = "OPR-DOUBLES v2026.09.03-56 · NAT fork n320 (no voice) (of PLAT p117)";  // MANUAL PAIR CREATION REMOVED FROM ADMIN: Create a pair, Bulk create pairs and Re-derive all pairs are gone (they only made match-less ghost pairs, and Re-derive rewrote every stored initial club-wide). Pairs are born automatically at match entry. Current pairs list untouched; the underlying JS is left in place unreferenced, so no other code path changes. Includes v47 (set-score fix + double-tap guard) and all prior.
+const OPR_VERSION = "OPR-DOUBLES v2026.09.03-56 · NAT fork n321 (no voice) (of PLAT p117)";  // MANUAL PAIR CREATION REMOVED FROM ADMIN: Create a pair, Bulk create pairs and Re-derive all pairs are gone (they only made match-less ghost pairs, and Re-derive rewrote every stored initial club-wide). Pairs are born automatically at match entry. Current pairs list untouched; the underlying JS is left in place unreferenced, so no other code path changes. Includes v47 (set-score fix + double-tap guard) and all prior.
 // Explanation shown above the individual ladder. Open on load so it's read; collapsible
 // (state kept for the session) and scrolls away. Mechanics only — no outcome framing, so
 // members aren't nudged away from playing stronger opponents. Every clause maps to a real
@@ -11842,6 +11842,36 @@ W.mePair=function(name,col){
      read from the system (rating, level, move, sets, win %, game diff) and plat's match rows beneath. One
      back, to whatever page sent us. This replaces plat's pair screen, which arrived with its own header and
      its own back and never matched the page around it. */
+  /* n321: WHICH GROUP? (Andre, 2 Oct). From the door, + Enter your match score used to open the region's sheet with
+     its dropdown, event and date — a page nobody completes, since choosing the group moves you to the group's own
+     sheet. Now the tap opens this: a banner that asks, and the groups as little banners of their own, two to a row,
+     half the height of the door's cards. Tap one → that group's entry sheet. */
+  function newPickPage(){
+    var C=W.PLAT.cid; var club=(W.PLAT.clubs||[]).filter(function(c){ return Number(c.id)===Number(C); })[0]||{name:W.PLAT.name||"Club"};
+    var w=nhWrap(); if(!w) return;
+    var raw=clubRaw(C), first=inkSafe(raw||W.PLAT.colour||"#6c3483");
+    nhCSS(); nhOneWayIn(); nhInk(first); nhHeaderSkin(first, nhDeep(first));
+    var kids=doorPickOrder(kidsOf(C).sort(function(a,b){ return String(a.name).localeCompare(String(b.name)); }));
+    var back=PAGE+"?club="+C;
+    var tile=function(gr){
+      var r=clubRaw(gr.id), href=PAGE+"?club="+gr.id+"&go=entry&back="+encodeURIComponent("?club="+C);
+      return '<button onclick="window.nhNav(\''+href+'\')" style="display:flex;flex-direction:column;justify-content:flex-end;min-height:92px;text-align:left;color:#fff;'
+        +'border:2px solid '+cardEdge(r)+';background:'+cardSkin(r)+';background-blend-mode:luminosity,normal;background-origin:border-box;background-clip:border-box;background-repeat:no-repeat;'
+        +'border-radius:16px;padding:12px 13px;font:inherit;cursor:pointer;overflow:hidden">'
+        +'<span style="display:block;font-size:10px;letter-spacing:.1em;text-transform:uppercase;opacity:.85;font-weight:800">Group</span>'
+        +'<span style="display:block;font-size:15px;font-weight:800;line-height:1.2;margin-top:3px;text-shadow:0 1px 2px rgba(0,0,0,.25)">'+esc(gr.name)+'</span>'
+        +'</button>';
+    };
+    var grid = kids.length
+      ? '<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;padding:14px 12px 4px">'+kids.map(tile).join("")+'</div>'
+      : '<div style="padding:18px 14px;font-size:14px;color:#5f5770">This club has no groups yet \u2014 a score is entered in a group. Ask the club to add one in Club admin.</div>';
+    w.innerHTML='<div class="band" style="background:linear-gradient(135deg,'+first+','+nhDeep(first)+')">'+nhMark("Enter a score")
+      +'<h1 style="font-size:20px;line-height:1.25">Select which group you are entering a score in</h1>'
+      +'<div class="sub">'+esc(club.name)+'</div>'
+      +'<div class="pulse"><a href="'+back+'" onclick="return window.nhBack(this.href)">\u2039 '+esc(club.name)+'</a></div></div>'
+      +grid+homeBar();
+    try{ var ht=document.getElementById("heroTitle"); var t="OPR \u00b7 "+(club.name||"Club")+" \u00b7 Enter a score"; if(ht) ht.textContent=t; document.title=t; }catch(e){}
+  }
   function newPairPage(){
     var q=new URLSearchParams(location.search);
     var pair=q.get("pair")||"", back=q.get("back")||"";
@@ -12328,6 +12358,8 @@ W.mePair=function(name,col){
   /* the chooser, for when the bar cannot know which board you mean */
   W.nhBarWhere=function(){
     var C=(W.PLAT.parentId||W.PLAT.cid||0); if(!C) return;
+    /* n321: on a DOOR the bar's Enter a score opens the group chooser page, the same as the big square */
+    if(W.PLAT.clubDoor && Number(W.PLAT.cid)===Number(C)){ W.nhNav(PAGE+"?club="+C+"&go=pick"); return; }
     var kids=kidsOf(C).sort(function(a,b){ return String(a.name).localeCompare(String(b.name)); });
     var box=document.getElementById("nhBarWhere");
     if(box){ box.remove(); return; }
@@ -13599,7 +13631,7 @@ W.nhOpenPair=function(name){
        rather than progress. The group is now chosen ON the sheet, where it has to be confirmed anyway, and the
        sheet will not proceed until it is. The other pickers (ladders, profiles, card) are unchanged. */
     if(what==="score"){
-      W.nhNav(PAGE+"?club="+W.PLAT.cid+"&board=1&go=entry&back="+encodeURIComponent(location.search||""));
+      W.nhNav(PAGE+"?club="+W.PLAT.cid+"&go=pick");   /* n321: the group chooser, not the region's sheet */
       return;
     }
     var box=document.getElementById("doorWhere"); if(!box) return;
@@ -16303,7 +16335,7 @@ W.nhOpenPair=function(name){
      while the shell stands on another board reloads the page on that board, once, exactly as nat2 does today —
      never a wrong board, never a blank screen. Rule kept from n238's failure: exactly ONE active screen at every
      moment. */
-  var NAT3_SHELL_GO={"":1,"records":1,"pair":1,"me":1,
+  var NAT3_SHELL_GO={"":1,"records":1,"pair":1,"me":1,"pick":1,
     /* stage 2/3: an address that opens one of the parent's screens on the board — drawn, then goWhere() opens it */
     "entry":1,"ladders":1,"ladder":1,"profiles":1,"card":1,"tournaments":1,"tsheet":1,"player":1,"admin":1};
   var NAT3_PARENT_GO={"entry":1,"ladders":1,"ladder":1,"profiles":1,"card":1,"tournaments":1,"tsheet":1,"player":1,"admin":1};
@@ -16334,7 +16366,7 @@ W.nhOpenPair=function(name){
       return "ledger";
     }
     var row=(W.PLAT.clubs||[]).filter(function(c){ return Number(c.id)===cid; })[0]; if(!row) return null;   /* another register: a real load */
-    if(go==="records") return "records"; if(go==="pair") return "pair"; if(go==="me") return "me";
+    if(go==="records") return "records"; if(go==="pair") return "pair"; if(go==="me") return "me"; if(go==="pick") return "pick";
     if(q.has("board")) return "place";
     return row.parent_id ? "place" : "door";   /* n81: a club always has a door; a group is a board */
   }
@@ -16430,6 +16462,7 @@ W.nhOpenPair=function(name){
       if(page==="admin"){ var ta="OPR \u00b7 "+(W.PLAT.name||"Club")+" \u00b7 Admin"; if(ht) ht.textContent=ta; document.title=ta; W.__nhTrailHold=true; try{ W.nhAdminPage(); }finally{ W.__nhTrailHold=false; } }   /* n317: back to the Club admin page draws IT, not the door beneath */
       else if(shape==="master"){ var t1="OPR \u00b7 "+(W.PLAT.poolName||"Clubs"); if(ht) ht.textContent=t1; document.title=t1; newMasterPage(); }
       else if(shape==="records"){ newRecordsPage(); }
+      else if(shape==="pick"){ newPickPage(); }
       else if(shape==="pair"){ newPairPage(); }
       else if(shape==="me"){ nhInk("#6c3483"); nhHeaderSkin("#6c3483", nhDeep("#6c3483")); newMePage(); }   /* the claim screen has no colour of its own: the app's, as on a fresh load */
       else if(shape==="door"){ var t3="OPR \u00b7 "+(W.PLAT.name||"Club"); if(ht) ht.textContent=t3; document.title=t3; newClubDoor(); }
@@ -16860,6 +16893,7 @@ W.nhOpenPair=function(name){
     var goq=(function(){ try{ return (new URLSearchParams(location.search).get("go")||"").toLowerCase(); }catch(e){ return ""; } })();
     if(W.NEWAPP && goq==="records"){ try{ newRecordsPage(); }catch(e){} return; }
     if(W.NEWAPP && goq==="pair"){ try{ newPairPage(); }catch(e){} return; }
+    if(W.NEWAPP && goq==="pick" && W.PLAT.cid>0){ try{ newPickPage(); }catch(e){} return; }   /* n321: the group chooser */
     if(W.NEWAPP && goq==="me") return;
     if(W.PLAT.clubDoor){ var t3="OPR · "+(W.PLAT.name||"Club"); if(ht) ht.textContent=t3; document.title=t3;
       if(W.NEWAPP){ try{ newClubDoor(); }catch(e){} return; }   /* n50: the new front door */
