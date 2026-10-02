@@ -3750,7 +3750,7 @@ const CLUB_NAME = _club.name;  // shown in the logo as "OPR · <name>"
     link.setAttribute('href', href);
   }catch(e){ /* install stays on the static manifest — no functional impact */ }
 })();
-const OPR_VERSION = "OPR-DOUBLES v2026.09.03-56 · NAT fork n329 (no voice) (of PLAT p117)";  // MANUAL PAIR CREATION REMOVED FROM ADMIN: Create a pair, Bulk create pairs and Re-derive all pairs are gone (they only made match-less ghost pairs, and Re-derive rewrote every stored initial club-wide). Pairs are born automatically at match entry. Current pairs list untouched; the underlying JS is left in place unreferenced, so no other code path changes. Includes v47 (set-score fix + double-tap guard) and all prior.
+const OPR_VERSION = "OPR-DOUBLES v2026.09.03-56 · NAT fork n330 (no voice) (of PLAT p117)";  // MANUAL PAIR CREATION REMOVED FROM ADMIN: Create a pair, Bulk create pairs and Re-derive all pairs are gone (they only made match-less ghost pairs, and Re-derive rewrote every stored initial club-wide). Pairs are born automatically at match entry. Current pairs list untouched; the underlying JS is left in place unreferenced, so no other code path changes. Includes v47 (set-score fix + double-tap guard) and all prior.
 // Explanation shown above the individual ladder. Open on load so it's read; collapsible
 // (state kept for the session) and scrolls away. Mechanics only — no outcome framing, so
 // members aren't nudged away from playing stronger opponents. Every clause maps to a real
@@ -16797,8 +16797,23 @@ W.nhOpenPair=function(name){
     /* n305: A HASH IS NOT A PAGE. The parent moves location.hash on its own screens (a ladder, #enter) and the browser
        fires popstate for that too; taken as "the address moved", the shell redrew the board's page under the ladder
        and re-scoped the register — fifteen reads, and Men's Pairs never finished. Only a change of ?search is ours. */
-    var s=String(location.search||""); if(s===W.__nhLastSearch) return; W.__nhLastSearch=s;
-    try{ var t=W.__nhTrail; for(var i=t.length-1;i>=0;i--){ if(t[i].search===s){ t.length=i+1; break; } } }catch(e){}   /* n306: the gesture unwinds the trail too */
+    var s=String(location.search||""); if(s===W.__nhLastSearch) return;
+    /* n330: THE GESTURE WALKS THE TRAIL. The browser's history holds addresses; the trail holds views — and a members
+       list or a ladder table is a screen, not an address, so the gesture skipped it (profile → group page, then out to
+       the door in purple) and disagreed with the arrows. Now a back gesture inside the app puts the address back where
+       it was (one entry, so the gesture stays available) and steps the trail exactly as an arrow does. At the first
+       view there is nothing behind us in the app: the gesture leaves, as a phone expects. */
+    try{
+      var t=W.__nhTrail;
+      if(t && t.length>1 && nhOnShellPage()){
+        var last=t[t.length-1];
+        history.pushState({nat3:1},"",location.pathname+last.search);
+        W.nhBackPath();
+        return;
+      }
+    }catch(e){}
+    W.__nhLastSearch=s;
+    try{ var t2=W.__nhTrail; for(var i=t2.length-1;i>=0;i--){ if(t2[i].search===s){ t2.length=i+1; break; } } }catch(e){}
     var shape=null; try{ shape=nhShape(new URLSearchParams(location.search)); }catch(e){}
     if(shape && nhOnShellPage()){ nhRender(shape); return; }
     location.reload();   /* a parent page or another register: the page has to be loaded on that address */
