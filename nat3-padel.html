@@ -3750,7 +3750,7 @@ const CLUB_NAME = _club.name;  // shown in the logo as "OPR · <name>"
     link.setAttribute('href', href);
   }catch(e){ /* install stays on the static manifest — no functional impact */ }
 })();
-const OPR_VERSION = "OPR-DOUBLES v2026.09.03-56 · NAT fork n332 (no voice) (of PLAT p117)";  // MANUAL PAIR CREATION REMOVED FROM ADMIN: Create a pair, Bulk create pairs and Re-derive all pairs are gone (they only made match-less ghost pairs, and Re-derive rewrote every stored initial club-wide). Pairs are born automatically at match entry. Current pairs list untouched; the underlying JS is left in place unreferenced, so no other code path changes. Includes v47 (set-score fix + double-tap guard) and all prior.
+const OPR_VERSION = "OPR-DOUBLES v2026.09.03-56 · NAT fork n333 (no voice) (of PLAT p117)";  // MANUAL PAIR CREATION REMOVED FROM ADMIN: Create a pair, Bulk create pairs and Re-derive all pairs are gone (they only made match-less ghost pairs, and Re-derive rewrote every stored initial club-wide). Pairs are born automatically at match entry. Current pairs list untouched; the underlying JS is left in place unreferenced, so no other code path changes. Includes v47 (set-score fix + double-tap guard) and all prior.
 // Explanation shown above the individual ladder. Open on load so it's read; collapsible
 // (state kept for the session) and scrolls away. Mechanics only — no outcome framing, so
 // members aren't nudged away from playing stronger opponents. Every clause maps to a real
@@ -10555,7 +10555,10 @@ async function clRemove(id, label){
       +'<div style="padding:4px 14px 12px">'
       +'<div style="display:flex;align-items:center;gap:11px;padding:4px 0 6px">'
       + nhFace(mv.name,col,34)   /* n183 */
-      +'<span class="nm"><b style="font-size:15.5px">'+esc(mv.name)+'</b><span>'+esc(mv.club?nhBoardName(mv.club):"")+'</span></span>'
+      /* n333: where this player STARTED (the initial rating on record), beside the name (Andre) */
+      +'<span class="nm"><b style="font-size:15.5px">'+esc(mv.name)
+        +(seedOf!=null?' <span style="display:inline-block;margin-left:4px;padding:1px 8px;border-radius:999px;font-size:11px;font-weight:800;color:'+col+';border:1.5px solid '+col+';vertical-align:middle">started '+seedOf+'</span>':'')
+        +'</b><span>'+esc(mv.club?nhBoardName(mv.club):"")+'</span></span>'
       +'<span class="val"><b class="'+(up?"up":"dn")+'" style="font-size:18px">'+(up?"\u25b2 +":"\u25bc ")+Math.round(mv.move)+'</b><span>this week</span></span></div>'
       +body+'</div></div>';
   }
@@ -11542,9 +11545,14 @@ async function clRemove(id, label){
     return fetch(SBREST()+"plat_padel_v_pool_individuals?pool_id=eq."+W.PLAT.pool+"&full_name=eq."+encodeURIComponent(n)+"&select=id&limit=1")
       .then(J).then(function(r){
         var ok=Array.isArray(r)&&r.length>0;
-        if(!ok){ try{ localStorage.removeItem(meKey()); }catch(e){} }
-        else { try{ sessionStorage.setItem("nh_me_ok_"+(W.PLAT.pool||0), n); }catch(e){} }
-        return ok;
+        if(!ok){ try{ localStorage.removeItem(meKey()); }catch(e){} return false; }
+        /* n333: A RELEASED CLAIM IS RELEASED ON THE PHONE TOO. The phone remembered "I am Echo" after the register had
+           released Echo's claim (Andre). The claim itself is checked: no claim row → the phone forgets the name and PIN. */
+        return fetch(SBREST()+"nat_v_member_claim?pool_id=eq."+W.PLAT.pool+"&individual_id=eq."+r[0].id+"&select=individual_id&limit=1").then(J).then(function(c){
+          if(Array.isArray(c) && c.length===0){ try{ localStorage.removeItem(meKey()); localStorage.removeItem(mePinKey()); }catch(e){} return false; }
+          try{ sessionStorage.setItem("nh_me_ok_"+(W.PLAT.pool||0), n); }catch(e){}
+          return true;
+        }).catch(function(){ return true; });
       }).catch(function(){ return true; });   /* offline: keep it — never punish a bad connection */
   }
   W.meClaim=function(n){ try{ localStorage.setItem(meKey(),n); }catch(e){} newMePage(); };
@@ -12142,7 +12150,9 @@ W.mePair=function(name,col){
           : nhAsRatings(st.trail,rating);
         /* the last point is what the record says today, so a line whose movements do not add up still ends true */
         if(rating!=null && series.length) series[series.length-1]=rating;
-        h+='<div class="brk"><h2>My rating \u00b7 '+st.trail.length+' rated '+(st.trail.length===1?"match":"matches")+'</h2>'
+        /* n333: the starting rating as a pill in the header (Andre) */
+        h+='<div class="brk"><h2 style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">My rating \u00b7 '+st.trail.length+' rated '+(st.trail.length===1?"match":"matches")
+          +(seed!=null?'<span style="margin-left:auto;padding:3px 10px;border-radius:999px;font-size:11px;letter-spacing:.04em;font-weight:800;color:#fff;background:'+col+'">Started at '+Math.round(seed)+'</span>':'')+'</h2>'
           +'<div style="padding:4px 14px 14px">'
           + nhChart(series, col, rating?("now "+rating):null, seed)
           +'</div></div>';
