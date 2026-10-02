@@ -3750,7 +3750,7 @@ const CLUB_NAME = _club.name;  // shown in the logo as "OPR · <name>"
     link.setAttribute('href', href);
   }catch(e){ /* install stays on the static manifest — no functional impact */ }
 })();
-const OPR_VERSION = "OPR-DOUBLES v2026.09.03-56 · NAT fork n326 (no voice) (of PLAT p117)";  // MANUAL PAIR CREATION REMOVED FROM ADMIN: Create a pair, Bulk create pairs and Re-derive all pairs are gone (they only made match-less ghost pairs, and Re-derive rewrote every stored initial club-wide). Pairs are born automatically at match entry. Current pairs list untouched; the underlying JS is left in place unreferenced, so no other code path changes. Includes v47 (set-score fix + double-tap guard) and all prior.
+const OPR_VERSION = "OPR-DOUBLES v2026.09.03-56 · NAT fork n327 (no voice) (of PLAT p117)";  // MANUAL PAIR CREATION REMOVED FROM ADMIN: Create a pair, Bulk create pairs and Re-derive all pairs are gone (they only made match-less ghost pairs, and Re-derive rewrote every stored initial club-wide). Pairs are born automatically at match entry. Current pairs list untouched; the underlying JS is left in place unreferenced, so no other code path changes. Includes v47 (set-score fix + double-tap guard) and all prior.
 // Explanation shown above the individual ladder. Open on load so it's read; collapsible
 // (state kept for the session) and scrolls away. Mechanics only — no outcome framing, so
 // members aren't nudged away from playing stronger opponents. Every clause maps to a real
@@ -9944,7 +9944,9 @@ async function clRemove(id, label){
                 var nm=(li.querySelector(".player-name")||{}).textContent||"";
                 if(!nm) return;
                 li.dataset.nhWired="1";
-                li.setAttribute("onclick","window.nhOpenProfile("+JSON.stringify(nm).replace(/"/g,"&quot;")+")");
+                /* n327: a real handler, not an attribute string — the string carried &quot; into JavaScript, a syntax
+                   error, and every name on this list was dead after the first visit (Andre, 2 Oct) */
+                li.removeAttribute("onclick"); li.onclick=function(ev){ ev.preventDefault(); ev.stopPropagation(); W.nhOpenProfile(nm); };
               });
             },400);
             setTimeout(function(){ clearInterval(tick); }, 60000);
@@ -16683,6 +16685,8 @@ W.nhOpenPair=function(name){
      every tap that opened the parent's group profile opens the MEMBER PROFILE instead, the same page My page and the
      records open. Nothing is drawn: the tap is re-pointed to `?club=C&go=me&who=<name>`, with the way back kept. */
   function nhToMember(name){
+    /* a PAIR ("A & B") is not a person — it keeps the parent's pair profile; only an individual goes to the Member Profile */
+    if(/\s&\s/.test(String(name||""))) return false;
     var C=(W.PLAT.parentId||W.PLAT.cid||W.PLAT.nat||0); if(!C || !name) return false;
     W.nhNav(PAGE+"?club="+C+"&go=me&who="+encodeURIComponent(name)+"&back="+encodeURIComponent(location.search||"")); return true;
   }
