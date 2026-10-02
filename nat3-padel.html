@@ -3750,7 +3750,7 @@ const CLUB_NAME = _club.name;  // shown in the logo as "OPR · <name>"
     link.setAttribute('href', href);
   }catch(e){ /* install stays on the static manifest — no functional impact */ }
 })();
-const OPR_VERSION = "OPR-DOUBLES v2026.09.03-56 · NAT fork n328 (no voice) (of PLAT p117)";  // MANUAL PAIR CREATION REMOVED FROM ADMIN: Create a pair, Bulk create pairs and Re-derive all pairs are gone (they only made match-less ghost pairs, and Re-derive rewrote every stored initial club-wide). Pairs are born automatically at match entry. Current pairs list untouched; the underlying JS is left in place unreferenced, so no other code path changes. Includes v47 (set-score fix + double-tap guard) and all prior.
+const OPR_VERSION = "OPR-DOUBLES v2026.09.03-56 · NAT fork n329 (no voice) (of PLAT p117)";  // MANUAL PAIR CREATION REMOVED FROM ADMIN: Create a pair, Bulk create pairs and Re-derive all pairs are gone (they only made match-less ghost pairs, and Re-derive rewrote every stored initial club-wide). Pairs are born automatically at match entry. Current pairs list untouched; the underlying JS is left in place unreferenced, so no other code path changes. Includes v47 (set-score fix + double-tap guard) and all prior.
 // Explanation shown above the individual ladder. Open on load so it's read; collapsible
 // (state kept for the session) and scrolls away. Mechanics only — no outcome framing, so
 // members aren't nudged away from playing stronger opponents. Every clause maps to a real
@@ -16482,7 +16482,11 @@ W.nhOpenPair=function(name){
            page is drawn beneath it, and the named screen opens over that. Flipping to the home screen first is what
            showed the group's page for a moment ("the bounce") when a group was picked on the entry sheet. */
         var home=document.getElementById("homeScreen");
-        if(home && !home.classList.contains("active") && !toScreen){
+        /* n329: from a parent screen (the members list, a ladder) to one of our pages: the screen stays up while the
+           page is fetched and drawn beneath; the flip to the home screen comes when #nh has changed (or 2.5 s). A flip
+           first showed the board's page for the length of a fetch — the "bounce" into a profile on the phone. */
+        if(home && !home.classList.contains("active") && !toScreen){ W.__nhFlipLater=true; }
+        if(false && home && !home.classList.contains("active") && !toScreen){
           document.querySelectorAll('.screen').forEach(function(s){ s.classList.remove('active'); s.classList.add('hidden'); });
           home.classList.remove('hidden'); home.classList.add('active');
         }
@@ -16527,6 +16531,28 @@ W.nhOpenPair=function(name){
         if(ht && _bn){ var _set=function(){ if(ht.textContent!=="OPR \u00b7 "+_bn){ ht.textContent="OPR \u00b7 "+_bn; document.title="OPR \u00b7 "+_bn; } };
           _set(); var _n=0; W.__nhHeroHold=setInterval(function(){ _set(); if(++_n>20) clearInterval(W.__nhHeroHold); },100); }
       }
+      if(W.__nhFlipLater){ W.__nhFlipLater=false; (function(){
+        var bandTxt=function(){ var n=document.getElementById("nh"); var b=n&&n.querySelector(".band"); return b?String(b.textContent||"").replace(/\s+/g," ").trim():""; };
+        var nh=document.getElementById("nh"), was=bandTxt(), t0=Date.now(), flipped=false, myTok=tok;
+        var startOn=(document.querySelector(".screen.active")||{}).id;
+        var flip=function(){ if(flipped) return; flipped=true;
+          /* only if nothing else has happened since: the same navigation, the same screen still up */
+          if(myTok!==W.__nhNavTok) return; var cur=(document.querySelector(".screen.active")||{}).id; if(cur!==startOn) return;
+          try{ var hm=document.getElementById("homeScreen");
+          document.querySelectorAll('.screen').forEach(function(s){ s.classList.remove('active'); s.classList.add('hidden'); });
+          hm.classList.remove('hidden'); hm.classList.add('active'); try{ nhTrailPush("homeScreen"); }catch(e){} }catch(e){} };
+        /* the page has DRAWN when its words have changed — a hidden child or a re-wrapped frame is not a page yet */
+        /* the page has DRAWN when a NEW banner has been written into #nh (a page write replaces the whole frame), or
+           the banner reads differently. A removed strip or a re-wrapped frame is not a page yet; a page that happens to
+           read the same as the stale one beneath (the door, back from the ledger) still counts, because its banner node
+           is new. No early cap: on a slow connection a page can take 3–4 s, and flipping before it is there IS the
+           bounce; 12 s is only a safety net. */
+        var written=false;
+        var mo=nh?new MutationObserver(function(ms){ ms.forEach(function(m){ Array.prototype.forEach.call(m.addedNodes||[],function(nd){ if(nd.nodeType===1 && ((nd.classList&&nd.classList.contains("band")) || (nd.querySelector&&nd.querySelector(".band")))) written=true; }); }); }):null;
+        if(mo) mo.observe(nh,{childList:true,subtree:true});
+        var changed=function(){ var b=bandTxt(); return written || (b && b!==was); };
+        var tk=setInterval(function(){ if(changed() || Date.now()-t0>12000){ clearInterval(tk); if(mo) mo.disconnect(); flip(); } },40);
+      })(); }
       try{ var sc=nhScroller(); if(sc&&sc.scrollTo) sc.scrollTo(0,0); else if(sc) sc.scrollTop=0; }catch(e){} try{ window.scrollTo(0,0); }catch(e){}
       /* an address that names a parent screen: the board's page is drawn beneath, then the screen opens on it —
          in the same tick, so no frame shows the page underneath */
@@ -16728,12 +16754,21 @@ W.nhOpenPair=function(name){
     try{ document.querySelectorAll("#nh .doit, #nh .doorRail, #nh [data-nh-row]").forEach(function(r){ if(r.scrollLeft) r.scrollLeft=0; }); }catch(e){}
   }
   W.__nhTrailHold=false;
+  /* n329: TWO ADDRESSES, ONE VIEW. A parent screen reached by a tap has the board's bare address; the same screen
+     reached by a back carries `&go=…`. They were two trail entries, so the screen's arrow stepped to its own twin — the
+     members list "refreshing", the ladders looping. A view is the screen plus the board (club/pool/nat) for a parent
+     screen; the full address (less back=) for the home screen. */
+  function nhViewKey(v){
+    try{ var q=new URLSearchParams(String(v.search||"").replace(/^\?/,"")); q.delete("back");
+      if(v.screen && v.screen!=="homeScreen"){ var k=["club","pool","nat","board"].map(function(x){ return x+"="+(q.get(x)||""); }).join("&"); return v.screen+"|"+k; }
+      return "home|"+(v.page||"")+"|"+q.toString(); }catch(e){ return (v.screen||"")+"|"+String(v.search||""); }
+  }
   function nhTrailPush(screen, page){
     if(W.__nhTrailHold) return;
     var t=W.__nhTrail, v={search:String(location.search||""),screen:screen||"homeScreen",page:page||""}, last=t[t.length-1];
-    if(last && last.search===v.search && last.screen===v.screen && (last.page||"")===v.page) return;
+    if(last && nhViewKey(last)===nhViewKey(v)){ last.search=v.search; return; }   /* the same view: keep the newer address */
     /* stepping onto the view behind us IS a back — unwind rather than grow */
-    var prev=t[t.length-2]; if(prev && prev.search===v.search && prev.screen===v.screen && (prev.page||"")===v.page){ t.pop(); return; }
+    var prev=t[t.length-2]; if(prev && nhViewKey(prev)===nhViewKey(v)){ t.pop(); return; }
     t.push(v); if(t.length>60) t.shift();
   }
   W.nhBackPath=function(){
