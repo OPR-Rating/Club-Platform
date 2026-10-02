@@ -3750,7 +3750,7 @@ const CLUB_NAME = _club.name;  // shown in the logo as "OPR · <name>"
     link.setAttribute('href', href);
   }catch(e){ /* install stays on the static manifest — no functional impact */ }
 })();
-const OPR_VERSION = "OPR-DOUBLES v2026.09.03-56 · NAT fork n322 (no voice) (of PLAT p117)";  // MANUAL PAIR CREATION REMOVED FROM ADMIN: Create a pair, Bulk create pairs and Re-derive all pairs are gone (they only made match-less ghost pairs, and Re-derive rewrote every stored initial club-wide). Pairs are born automatically at match entry. Current pairs list untouched; the underlying JS is left in place unreferenced, so no other code path changes. Includes v47 (set-score fix + double-tap guard) and all prior.
+const OPR_VERSION = "OPR-DOUBLES v2026.09.03-56 · NAT fork n323 (no voice) (of PLAT p117)";  // MANUAL PAIR CREATION REMOVED FROM ADMIN: Create a pair, Bulk create pairs and Re-derive all pairs are gone (they only made match-less ghost pairs, and Re-derive rewrote every stored initial club-wide). Pairs are born automatically at match entry. Current pairs list untouched; the underlying JS is left in place unreferenced, so no other code path changes. Includes v47 (set-score fix + double-tap guard) and all prior.
 // Explanation shown above the individual ladder. Open on load so it's read; collapsible
 // (state kept for the session) and scrolls away. Mechanics only — no outcome framing, so
 // members aren't nudged away from playing stronger opponents. Every clause maps to a real
@@ -11854,8 +11854,8 @@ W.mePair=function(name,col){
     var kids=doorPickOrder(kidsOf(C).sort(function(a,b){ return String(a.name).localeCompare(String(b.name)); }));
     var back=PAGE+"?club="+C;
     var tile=function(gr){
-      var r=clubRaw(gr.id), href=PAGE+"?club="+gr.id+"&go=entry&back="+encodeURIComponent("?club="+C);
-      return '<button onclick="window.nhNav(\''+href+'\')" style="display:flex;flex-direction:column;justify-content:flex-end;min-height:92px;text-align:left;color:#fff;'
+      var r=clubRaw(gr.id), href=(PAGE+"?club="+gr.id+"&go=entry&back="+encodeURIComponent("?club="+C)).replace(/'/g,"%27");
+      return '<button onclick="window.nhNav(\''+nhSafeHref(href)+'\')" style="display:flex;flex-direction:column;justify-content:flex-end;min-height:92px;text-align:left;color:#fff;'
         +'border:2px solid '+cardEdge(r)+';background:'+cardSkin(r)+';background-blend-mode:luminosity,normal;background-origin:border-box;background-clip:border-box;background-repeat:no-repeat;'
         +'border-radius:16px;padding:12px 13px;font:inherit;cursor:pointer;overflow:hidden">'
         +'<span style="display:block;font-size:10px;letter-spacing:.1em;text-transform:uppercase;opacity:.85;font-weight:800">Group</span>'
@@ -11881,8 +11881,12 @@ W.mePair=function(name,col){
         var seen={}; rows=rows.filter(function(r){ if(seen[r.name+"|"+r.club_id]) return false; seen[r.name+"|"+r.club_id]=1; return true; });
         var row=function(r){
           var gr=(W.PLAT.clubs||[]).filter(function(c){ return Number(c.id)===Number(r.club_id); })[0]; var gname=gr?gr.name:"", col=clubPal(r.club_id)[0];
-          var href=PAGE+"?club="+r.club_id+"&go=entry&tn="+encodeURIComponent(r.name)+"&back="+encodeURIComponent("?club="+C);
-          return '<button onclick="window.nhNav(\''+href+'\')" style="display:flex;align-items:center;gap:10px;width:100%;text-align:left;background:#fff;border:1.5px solid #e2dbe8;'
+          /* a tournament of the region's own board opens the region's sheet (&board=1); a group's opens the group's.
+             Apostrophes (Round Robin 8's Men's) are encoded — a bare ' inside the tap's quotes broke the address, which is
+             why some rows filled the sheet and others did not (Andre, 2 Oct). */
+          var onDoor=Number(r.club_id)===Number(C);
+          var href=(PAGE+"?club="+r.club_id+(onDoor?"&board=1":"")+"&go=entry&tn="+encodeURIComponent(r.name)+"&back="+encodeURIComponent("?club="+C)).replace(/'/g,"%27");
+          return '<button onclick="window.nhNav(\''+nhSafeHref(href)+'\')" style="display:flex;align-items:center;gap:10px;width:100%;text-align:left;background:#fff;border:1.5px solid #e2dbe8;'
             +'border-radius:14px;padding:12px 13px;margin:0 0 8px;font:inherit;cursor:pointer">'
             +'<span style="flex:1;min-width:0;font-size:14.5px;font-weight:800;color:#241d33">'+esc(r.name)+'</span>'
             +(gname?'<span style="flex:none;padding:3px 9px;border-radius:999px;font-size:11px;font-weight:800;color:#fff;background:'+col+'">'+esc(gname)+'</span>':'')
@@ -13692,7 +13696,7 @@ W.nhOpenPair=function(name){
        middle while the pill sat above its caption, so nothing lined up. They now share one line and the
        caption sits beneath, indented to the pill. */
     var row=function(name,col,sub,href,pulse){
-      return '<button class="row" style="flex-wrap:wrap;align-items:center;row-gap:3px" onclick="window.nhNav(\''+href+'\')">'
+      return '<button class="row" style="flex-wrap:wrap;align-items:center;row-gap:3px" onclick="window.nhNav(\''+nhSafeHref(href)+'\')">'
         +'<span class="av" style="'+avRing(col)+'">'+esc(inits(name))+'</span>'
         +'<span style="flex:1;min-width:0;display:block;background:'+col+';color:#fff;font-weight:800;font-size:14px;'
         +'border-radius:99px;padding:7px 14px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+esc(name)+'</span>'
@@ -13740,7 +13744,7 @@ W.nhOpenPair=function(name){
         } else {
           lastLine='<div style="margin-top:9px;padding-top:9px;border-top:1px solid #e9e4f0;font-size:12px;color:#5f5770">Nothing played here yet.</div>';
         }
-        return '<button onclick="window.nhNav(\''+href+'\')" style="display:block;width:calc(100% - 24px);text-align:left;background:#fff;'
+        return '<button onclick="window.nhNav(\''+nhSafeHref(href)+'\')" style="display:block;width:calc(100% - 24px);text-align:left;background:#fff;'
           /* n63: an even border in the board's own colour — a thickened left edge alone looked unbalanced.
              The disc, the pill and the count share one line; the caption sits under, indented to the pill. */
           /* n154: an 8% wash of the group's own colour — the card reads as that group's, and it costs no height */
@@ -15045,7 +15049,12 @@ W.nhOpenPair=function(name){
       +(function(){
         var here=cs.filter(function(c){ return Number(c.id)===Number(W.PLAT.cid); })[0];
         var onRegion = !here || !!here.is_general || isClubWithKids(W.PLAT.cid);
-        return '<option value="0"'+(onRegion?' selected':'')+'>\u2014 Select group \u2014</option>'
+        /* n323: a TOURNAMENT RUN BY THE REGION ITSELF (its matches live on the region's board) — reached with &tn= on the
+           region's sheet — stands on the region: the region is offered and chosen for it, and only then */
+        var tnq=""; try{ tnq=new URLSearchParams(location.search).get("tn")||""; }catch(e){}
+        var regionTour = onRegion && !!tnq && !!here;
+        return '<option value="0"'+((onRegion&&!regionTour)?' selected':'')+'>\u2014 Select group \u2014</option>'
+          +(regionTour ? '<option value="'+here.id+'" selected>'+esc(here.name)+'</option>' : '')
           +cs.filter(function(c){ return !c.is_general && !isClubWithKids(c.id); })
              .map(function(c){ return '<option value="'+c.id+'"'+((!onRegion && Number(c.id)===Number(W.PLAT.cid))?' selected':'')+'>'+esc(c.name)+'</option>'; }).join("");
       })()+'</select>';
@@ -15144,7 +15153,7 @@ W.nhOpenPair=function(name){
     box.style.cssText="text-align:center;margin:34px auto 18px;max-width:1000px;padding-top:4px";   /* n6: clear of the header */
     try{ if(W.PLAT.nat){ sessionStorage.setItem("nat_last_club_"+W.PLAT.pool, String(W.PLAT.nat)+"|"+(W.PLAT.natName||"")); } }catch(e){}
     var isNat=!W.PLAT.nat;
-    var btn=function(label,active,href){ return '<button onclick="window.nhNav(\''+href+'\')" style="display:inline-block;margin:0 4px;background:'+(active?"#1a1a1a":"transparent")+';color:'+(active?"#fff":"#1a1a1a")+';border:1.5px solid #1a1a1a;border-radius:99px;padding:8px 18px;font-size:13px;font-weight:800;cursor:pointer">'+esc(label)+'</button>'; };
+    var btn=function(label,active,href){ return '<button onclick="window.nhNav(\''+nhSafeHref(href)+'\')" style="display:inline-block;margin:0 4px;background:'+(active?"#1a1a1a":"transparent")+';color:'+(active?"#fff":"#1a1a1a")+';border:1.5px solid #1a1a1a;border-radius:99px;padding:8px 18px;font-size:13px;font-weight:800;cursor:pointer">'+esc(label)+'</button>'; };
     // n3: two buttons only — this club, or every club. Naming the other clubs here would show Monday who
     // North Coast is, which is the one thing a club must never see from inside its own ledger.
     var h="";
@@ -16393,6 +16402,9 @@ W.nhOpenPair=function(name){
     if(q.has("board")) return "place";
     return row.parent_id ? "place" : "door";   /* n81: a club always has a door; a group is a board */
   }
+  /* n323: a name inside a tap. An apostrophe in a name (Round Robin 8's Men's, O'Neil) broke the single-quoted address
+     inside an onclick, so the tap did nothing. Every address built into a tap passes through here. */
+  function nhSafeHref(h){ return String(h||"").replace(/'/g,"%27").replace(/"/g,"%22"); }
   function nhSamePage(path){ if(!path) return true; return path.split("/").pop()===PAGE; }
   /* is the page standing on one of the fork's own pages right now? */
   function nhOnShellPage(){
