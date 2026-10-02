@@ -3750,7 +3750,7 @@ const CLUB_NAME = _club.name;  // shown in the logo as "OPR · <name>"
     link.setAttribute('href', href);
   }catch(e){ /* install stays on the static manifest — no functional impact */ }
 })();
-const OPR_VERSION = "OPR-DOUBLES v2026.09.03-56 · NAT fork n327 (no voice) (of PLAT p117)";  // MANUAL PAIR CREATION REMOVED FROM ADMIN: Create a pair, Bulk create pairs and Re-derive all pairs are gone (they only made match-less ghost pairs, and Re-derive rewrote every stored initial club-wide). Pairs are born automatically at match entry. Current pairs list untouched; the underlying JS is left in place unreferenced, so no other code path changes. Includes v47 (set-score fix + double-tap guard) and all prior.
+const OPR_VERSION = "OPR-DOUBLES v2026.09.03-56 · NAT fork n328 (no voice) (of PLAT p117)";  // MANUAL PAIR CREATION REMOVED FROM ADMIN: Create a pair, Bulk create pairs and Re-derive all pairs are gone (they only made match-less ghost pairs, and Re-derive rewrote every stored initial club-wide). Pairs are born automatically at match entry. Current pairs list untouched; the underlying JS is left in place unreferenced, so no other code path changes. Includes v47 (set-score fix + double-tap guard) and all prior.
 // Explanation shown above the individual ladder. Open on load so it's read; collapsible
 // (state kept for the session) and scrolls away. Mechanics only — no outcome framing, so
 // members aren't nudged away from playing stronger opponents. Every clause maps to a real
@@ -16531,7 +16531,7 @@ W.nhOpenPair=function(name){
       /* an address that names a parent screen: the board's page is drawn beneath, then the screen opens on it —
          in the same tick, so no frame shows the page underneath */
       try{ var goq=(new URLSearchParams(location.search).get("go")||"").toLowerCase();
-           if(goq && NAT3_PARENT_GO[goq]){ if(Number(W.PLAT.cid)>0) nhParentSync(); nhScreenSettle(goq); goWhere(); if(goq==="entry") nhEntryEvent(); }
+           if(goq && NAT3_PARENT_GO[goq]){ if(Number(W.PLAT.cid)>0) nhParentSync(); if(!W.__nhSkipGo){ nhScreenSettle(goq); goWhere(); } W.__nhSkipGo=false; if(goq==="entry") nhEntryEvent(); }
            else if(location.hash==="#enter" && Number(W.PLAT.cid)>0){ nhParentSync(); W.showScreen("entryScreen"); } }catch(e){}
       try{ if(W.__nhAfterNav){ var f=W.__nhAfterNav; W.__nhAfterNav=null; f(); } }catch(e){}
       /* the staging ends the moment the home screen is no longer the one showing (or after 2 s, whatever happened) */
@@ -16685,14 +16685,18 @@ W.nhOpenPair=function(name){
      every tap that opened the parent's group profile opens the MEMBER PROFILE instead, the same page My page and the
      records open. Nothing is drawn: the tap is re-pointed to `?club=C&go=me&who=<name>`, with the way back kept. */
   function nhToMember(name){
-    /* a PAIR ("A & B") is not a person — it keeps the parent's pair profile; only an individual goes to the Member Profile */
-    if(/\s&\s/.test(String(name||""))) return false;
     var C=(W.PLAT.parentId||W.PLAT.cid||W.PLAT.nat||0); if(!C || !name) return false;
+    /* n328: ONE PAGE PER PERSON, ONE PER PAIR (Andre). A PAIR ("A & B") opens the pair page in the new format (the
+       app's own, with THE PAIR box and the match rows); a person opens the Member Profile. */
+    if(/\s&\s/.test(String(name||""))){
+      var col=inkSafe(W.PLAT.colour||"#6c3483");
+      W.nhNav(PAGE+"?club="+C+"&go=pair&pair="+encodeURIComponent(name)+"&col="+encodeURIComponent(col)+"&back="+encodeURIComponent(location.search||"")); return true;
+    }
     W.nhNav(PAGE+"?club="+C+"&go=me&who="+encodeURIComponent(name)+"&back="+encodeURIComponent(location.search||"")); return true;
   }
   /* n326: WITHDRAWN for now. On Andre's phone (n325) the name tap in Group members did nothing and the list was slow; the
      harness cannot reproduce it. The parent's own path (snapshot → group profile) stands until the re-point is proven. */
-  W.__nhOneProfile=false;
+  W.__nhOneProfile=true;   /* n328: on — Andre, 2 Oct */
   (function(){
     if(!W.__nhOneProfile) return;
     /* Group members → a member: the parent opened its "member snapshot" (partnershipsScreen) — the card Andre showed */
@@ -16708,6 +16712,8 @@ W.nhOpenPair=function(name){
       return _lp.apply(this,arguments);
     };
   })();
+  /* n328: remember which ladder table is open, so a back can draw it again */
+  (function(){ var _ll=W.loadLadder; if(typeof _ll!=="function") return; W.loadLadder=function(){ W.__nhLadderArgs=Array.prototype.slice.call(arguments); return _ll.apply(this,arguments); }; })();
   /* n306: THE PATH YOU CAME. Every view — an address and the screen open on it — is written to one trail as you move,
      and every back arrow steps back along it: the group's sheet back to the region's sheet, that back to the door;
      Men's Pairs back to the ladders menu, that back to the group's page. No rules about doors and parents. */
@@ -16734,12 +16740,18 @@ W.nhOpenPair=function(name){
     var t=W.__nhTrail; if(t.length<2){ try{ goHome(); }catch(e){} return; }
     t.pop(); var prev=t[t.length-1];
     W.__nhTrailHold=true;
-    var open=function(){ try{ if(prev.screen==="homeScreen"){ goHome(); if(prev.page==="admin" && !document.querySelector("#nh .band") ) W.nhAdminPage(); } else W.showScreen(prev.screen); }catch(e){} W.__nhTrailHold=false; };
+    var open=function(){ try{
+        if(prev.screen==="homeScreen"){ goHome(); if(prev.page==="admin" && !document.querySelector("#nh .band") ) W.nhAdminPage(); }
+        else if(prev.screen==="ladderScreen" && W.__nhLadderArgs && typeof loadLadder==="function"){ loadLadder.apply(null, W.__nhLadderArgs); }   /* n328: the TABLE you were on, not the menu */
+        else W.showScreen(prev.screen);
+      }catch(e){} W.__nhTrailHold=false; };
     if(prev.search!==String(location.search||"")){
       W.__nhAfterNav=open;
       /* the shell keeps the screen up while the previous board is drawn beneath, then opens the previous screen */
       var q=new URLSearchParams(prev.search.replace(/^\?/,"")); var goq=(q.get("go")||"").toLowerCase();
       if(prev.screen!=="homeScreen" && !(goq && NAT3_PARENT_GO[goq])){ /* the view had a screen but no go=: name it so nothing flips home */ q.set("go", NAT3_SCREEN_GO2[prev.screen]||"ladders"); }
+      /* n328: a ladder TABLE is drawn by open() itself (loadLadder); goWhere's delayed "ladders" would land on the menu over it */
+      W.__nhSkipGo = (prev.screen==="ladderScreen");
       W.nhNav(PAGE+"?"+q.toString(),{replace:true,force:true,page:prev.page||""});
     } else { open(); }
   };
