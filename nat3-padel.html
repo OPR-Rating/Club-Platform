@@ -3750,7 +3750,7 @@ const CLUB_NAME = _club.name;  // shown in the logo as "OPR · <name>"
     link.setAttribute('href', href);
   }catch(e){ /* install stays on the static manifest — no functional impact */ }
 })();
-const OPR_VERSION = "OPR-DOUBLES v2026.09.03-56 · NAT fork n317 (no voice) (of PLAT p117)";  // MANUAL PAIR CREATION REMOVED FROM ADMIN: Create a pair, Bulk create pairs and Re-derive all pairs are gone (they only made match-less ghost pairs, and Re-derive rewrote every stored initial club-wide). Pairs are born automatically at match entry. Current pairs list untouched; the underlying JS is left in place unreferenced, so no other code path changes. Includes v47 (set-score fix + double-tap guard) and all prior.
+const OPR_VERSION = "OPR-DOUBLES v2026.09.03-56 · NAT fork n319 (no voice) (of PLAT p117)";  // MANUAL PAIR CREATION REMOVED FROM ADMIN: Create a pair, Bulk create pairs and Re-derive all pairs are gone (they only made match-less ghost pairs, and Re-derive rewrote every stored initial club-wide). Pairs are born automatically at match entry. Current pairs list untouched; the underlying JS is left in place unreferenced, so no other code path changes. Includes v47 (set-score fix + double-tap guard) and all prior.
 // Explanation shown above the individual ladder. Open on load so it's read; collapsible
 // (state kept for the session) and scrolls away. Mechanics only — no outcome framing, so
 // members aren't nudged away from playing stronger opponents. Every clause maps to a real
@@ -10389,6 +10389,7 @@ async function clRemove(id, label){
          var n=document.getElementById("nh"); if(n && n.style.display==="none" && W.__nhStage) n.style.display=""; }catch(e){}
     try{ if(W.__nhStageFinish){ var f=W.__nhStageFinish; W.__nhStageFinish=null; f(); } }catch(e){}
     W.__nhStage=false;
+    try{ if(W.__nhWatchAttach) W.__nhWatchAttach(); }catch(e){}   /* n319 */
   }
   function nhBoardName(id){ var c=(W.PLAT.clubs||[]).find(function(x){ return Number(x.id)===Number(id); }); return c?c.name:""; }
   function nhInk(hex){
@@ -13517,12 +13518,14 @@ W.nhOpenPair=function(name){
       try{ new MutationObserver(function(){ nhJumpStrip(); nhLaptop(); try{ doorRailDots(); }catch(e){} }).observe(nh,{childList:true}); }catch(e){}
       nhJumpStrip();
     };
-    var nh0=document.getElementById("nh");
-    if(nh0) watchNh(nh0);
-    else try{
-      var mo=new MutationObserver(function(){ var n=document.getElementById("nh"); if(n){ mo.disconnect(); watchNh(n); } });
-      mo.observe(document.documentElement,{childList:true,subtree:true});
-    }catch(e){}
+    /* n319: THE WATCHER FOLLOWS THE PAGE. It was attached to #nh once at boot; the shell's staged door tap builds a NEW
+       #nh, which had no watcher — so the rail's one-card sizing and dots never ran on it and a single group's card sat
+       at the two-card width (Andre, Eswatini, 1 Oct). Whenever a different #nh element is current, it is watched. */
+    var watched=null;
+    var attach=function(){ var n=document.getElementById("nh"); if(n && n!==watched){ watched=n; watchNh(n); try{ doorRailDots(); }catch(e){} } };
+    attach();
+    try{ new MutationObserver(attach).observe(document.getElementById("homeScreen")||document.body,{childList:true}); }catch(e){}
+    W.__nhWatchAttach=attach;
   })();
   setInterval(function(){ nhJumpStrip(); nhLaptop(); }, 2000);
   function nhBarMount(){
@@ -14225,6 +14228,9 @@ W.nhOpenPair=function(name){
     return acall({action:"list_register",pool_id:W.PLAT.pool,discipline:"padel",admin_pin:REG.pin}).then(function(r){
       if(!r||!r.ok){ document.getElementById("platRegBody").innerHTML='<div style="color:#c00;padding:12px">'+esc((r&&r.error)||"Could not load the register.")+'</div>'; return; }
       REG.players=r.players||[]; REG.clubs=r.clubs||[]; regRender(); try{ directoryLoad(); }catch(e){}   /* n15 */
+      /* n318: who has claimed their page — so the room can release a claim made by the wrong person */
+      try{ fetch(SBREST()+"nat_v_member_claim?pool_id=eq."+W.PLAT.pool+"&select=individual_id,claimed_at").then(J).then(function(cl){
+        REG.claims={}; (cl||[]).forEach(function(c){ REG.claims[Number(c.individual_id)]=c.claimed_at||true; }); regRender(); }).catch(function(){}); }catch(e){}
     });
   }
   W.platRegRender=function(){ regRender(); };
@@ -14281,7 +14287,9 @@ W.nhOpenPair=function(name){
             return '<span style="font-size:11px;color:#999">no club yet</span>';
           })()+'</div></div>'
         +'<div style="text-align:right"><div style="font-weight:800;font-size:18px;color:#6c3483">'+(p.current_rating!=null?Math.round(p.current_rating):"–")+'</div><div style="font-size:10px;color:#999">seed '+(p.seed!=null?Math.round(p.seed):"–")+'</div></div>'
-        +(REG.role?'<div style="display:flex;flex-direction:column;gap:4px"><button class="menu-btn" style="min-height:30px;padding:4px 10px;font-size:12px" onclick="window.platRegEdit('+p.id+')">Edit</button><button style="min-height:30px;padding:4px 10px;font-size:12px;border:1px solid #c62828;color:#c62828;background:#fff;border-radius:8px;cursor:pointer" onclick="window.platRegDelete('+p.id+')">Delete</button></div>':'')+'</div>';
+        +(REG.role?'<div style="display:flex;flex-direction:column;gap:4px"><button class="menu-btn" style="min-height:30px;padding:4px 10px;font-size:12px" onclick="window.platRegEdit('+p.id+')">Edit</button>'
+           +((REG.claims&&REG.claims[Number(p.id)])?'<button class="menu-btn" style="min-height:30px;padding:4px 10px;font-size:12px;border-color:#6c3483;color:#6c3483" onclick="window.platRegRelease('+p.id+')">Release claim</button>':'')
+           +'<button style="min-height:30px;padding:4px 10px;font-size:12px;border:1px solid #c62828;color:#c62828;background:#fff;border-radius:8px;cursor:pointer" onclick="window.platRegDelete('+p.id+')">Delete</button></div>':'')+'</div>';
     });
     b.innerHTML=h;
   }
@@ -14888,6 +14896,18 @@ W.nhOpenPair=function(name){
     function next(){ if(i>=clubIds.length||err){ if(err) alert(err); regLoad(); return; }
       acall({action:"delete_member",club_id:clubIds[i++],admin_pin:REG.pin,individual_id:id}).then(function(r){ if(!r||!r.ok) err=(r&&r.error)||"Delete failed."; next(); }); }
     next();
+  };
+  /* n318: RELEASE A CLAIM. The wrong person claimed a page, or a PIN is forgotten: the admin releases the claim here
+     and the right member claims it again from My page. Server: nat_admin action "release_claim" (register code, or the
+     code of a club this member belongs to). Nothing else about the member changes. */
+  W.platRegRelease=function(id){
+    var p=REG.players.find(function(x){return x.id===id;}); if(!p) return;
+    if(!W.confirm("Release the claim on \u201c"+p.full_name+"\u201d?\n\nTheir page becomes unclaimed; the right person can claim it again from My page with a new PIN. Ratings and matches are untouched.")) return;
+    acall({action:"release_claim",admin_pin:REG.pin,pool_id:W.PLAT.pool,individual_id:id}).then(function(r){
+      if(!r||r.ok===false){ W.alert("Could not release: "+((r&&r.error)||"no answer")); return; }
+      try{ if(REG.claims) delete REG.claims[Number(id)]; }catch(e){}
+      regRender();
+    }).catch(function(e){ W.alert("Could not release: "+e); });
   };
   W.platRegEdit=function(id){
     var p=REG.players.find(function(x){return x.id===id;}); if(!p) return;
@@ -16564,7 +16584,15 @@ W.nhOpenPair=function(name){
      and every back arrow steps back along it: the group's sheet back to the region's sheet, that back to the door;
      Men's Pairs back to the ladders menu, that back to the group's page. No rules about doors and parents. */
   W.__nhTrail=[{search:String(location.search||""),screen:"homeScreen"}];
-  (function(){ var _gh=W.goHome; if(typeof _gh!=="function") return; W.goHome=function(){ var r=_gh.apply(this,arguments); try{ nhTrailPush("homeScreen"); }catch(e){} return r; }; })();
+  (function(){ var _gh=W.goHome; if(typeof _gh!=="function") return; W.goHome=function(){ var r=_gh.apply(this,arguments); try{ nhTrailPush("homeScreen"); }catch(e){} try{ nhRowsHome(); }catch(e){} return r; }; })();
+  /* n319: THE BRACKET ROW COMES BACK WHERE IT WAS. The row of brackets scrolls sideways (five, four fit). The tapped
+     bracket — Tournaments, the last — stays the focused element, and when the page shows again the browser scrolls the
+     row to bring it into view: the row sat 190 px to the right with the first bracket cut off ("the brackets got
+     smaller"). On return the focus is dropped and every sideways row is put back to its start. */
+  function nhRowsHome(){
+    try{ if(document.activeElement && document.activeElement.blur && document.activeElement!==document.body) document.activeElement.blur(); }catch(e){}
+    try{ document.querySelectorAll("#nh .doit, #nh .doorRail, #nh [data-nh-row]").forEach(function(r){ if(r.scrollLeft) r.scrollLeft=0; }); }catch(e){}
+  }
   W.__nhTrailHold=false;
   function nhTrailPush(screen, page){
     if(W.__nhTrailHold) return;
@@ -16667,7 +16695,10 @@ W.nhOpenPair=function(name){
        On a board change the tournament screen's body, the chosen tournament and its archive flag are cleared, as they
        are on a fresh load. */
     try{ TOURNAMENT_EVENT=""; }catch(e){} try{ TOURNAMENT_ARCHIVED=false; }catch(e){}
-    try{ ["tournamentInternal","tournamentBody","tournamentPicker"].forEach(function(id){ var el=document.getElementById(id); if(el) el.innerHTML=""; }); }catch(e){}
+    /* n319: NOT tournamentBody — the stats and form button boxes (#tStatsButtons, #tFormButtons) are static HTML inside
+       it; blanking it left the Stats view with nowhere to draw on any board after the first (Andre: "it shows an
+       unrelated message"). The boot-HTML restore above already resets the body properly. */
+    try{ ["tournamentInternal","tournamentPicker"].forEach(function(id){ var el=document.getElementById(id); if(el) el.innerHTML=""; }); }catch(e){}
     try{ W._tourInternalView="draw"; }catch(e){}
     try{ var ink=(W.PLAT.cid && W.PLAT.colour) ? W.PLAT.colour : "#6c3483"; nhInk(ink); nhHeaderSkin(ink, nhDeep(ink)); }catch(e){}
   }
@@ -16676,6 +16707,7 @@ W.nhOpenPair=function(name){
     W.showScreen=function(id){
       try{ if(id==="platSessScreen"){ var cur=document.querySelector(".screen.active"); W.__nhSessFrom=(cur&&cur.id)||"homeScreen"; } }catch(e){}
       try{ nhTrailPush(id); }catch(e){}
+      if(id==="homeScreen"){ try{ setTimeout(nhRowsHome,0); }catch(e){} }
       try{
         /* n305: EVERY screen, not a list. `ladderScreen` (a ladder's table) was not on the list, so Men's Pairs fell
            through to the reload below and came back to an empty table — the "slow ratings" on the phone. */
