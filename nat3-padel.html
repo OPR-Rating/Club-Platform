@@ -3750,7 +3750,7 @@ const CLUB_NAME = _club.name;  // shown in the logo as "OPR · <name>"
     link.setAttribute('href', href);
   }catch(e){ /* install stays on the static manifest — no functional impact */ }
 })();
-const OPR_VERSION = "OPR-DOUBLES v2026.09.03-56 · NAT fork n331 (no voice) (of PLAT p117)";  // MANUAL PAIR CREATION REMOVED FROM ADMIN: Create a pair, Bulk create pairs and Re-derive all pairs are gone (they only made match-less ghost pairs, and Re-derive rewrote every stored initial club-wide). Pairs are born automatically at match entry. Current pairs list untouched; the underlying JS is left in place unreferenced, so no other code path changes. Includes v47 (set-score fix + double-tap guard) and all prior.
+const OPR_VERSION = "OPR-DOUBLES v2026.09.03-56 · NAT fork n332 (no voice) (of PLAT p117)";  // MANUAL PAIR CREATION REMOVED FROM ADMIN: Create a pair, Bulk create pairs and Re-derive all pairs are gone (they only made match-less ghost pairs, and Re-derive rewrote every stored initial club-wide). Pairs are born automatically at match entry. Current pairs list untouched; the underlying JS is left in place unreferenced, so no other code path changes. Includes v47 (set-score fix + double-tap guard) and all prior.
 // Explanation shown above the individual ladder. Open on load so it's read; collapsible
 // (state kept for the session) and scrolls away. Mechanics only — no outcome framing, so
 // members aren't nudged away from playing stronger opponents. Every clause maps to a real
@@ -11557,8 +11557,8 @@ async function clRemove(id, label){
     newMePage();
   };
 W.mePair=function(name,col){
-    /* n88: the fresh pair page, back to this profile */
-    var C=(W.PLAT.parentId||W.PLAT.cid||W.PLAT.nat||0);
+    /* n88: the fresh pair page, back to this profile (n332: on the board you stand on) */
+    var C=nhHereBoard();
     W.nhNav(PAGE+"?club="+C+"&go=pair&pair="+encodeURIComponent(name)+(col?("&col="+encodeURIComponent(col)):"")
       +"&back="+encodeURIComponent(location.search||""));
   };
@@ -11662,7 +11662,7 @@ W.mePair=function(name,col){
     p.style.display=open?"none":"block";
     /* n202: the same round arrow as the other bands, turned when it is open */
     b.innerHTML=(open?"\u25B8":"\u25BE")+" Chart Snapshot"
-      +'<span style="float:right;width:22px;height:22px;border-radius:50%;border:1.5px solid currentColor;display:inline-grid;place-items:center;font-size:11px;line-height:1;transform:rotate('+(open?180:0)+'deg)">\u25be</span>';
+      +'<span style="float:right;width:22px;height:22px;border-radius:50%;border:1.5px solid currentColor;background:#fff;display:inline-grid;place-items:center;font-size:11px;line-height:1;transform:rotate('+(open?180:0)+'deg)">\u25be</span>';
   };
   /* n70: SIX AXES THAT SAY SOMETHING ABOUT HOW SOMEBODY PLAYS.
      Out: "Active" (a count of turning up, and its "club average" is meaningless once a club has groups that
@@ -11774,7 +11774,7 @@ W.mePair=function(name,col){
     if(!st.matches.length){
       return '<div style="margin:12px 12px 0">'
         +'<button type="button" disabled style="width:100%;text-align:left;background:#f6f0fa;border:1.5px solid #e6ddec;border-radius:10px;'
-        +'padding:11px 14px;font-size:14px;font-weight:800;color:#a79ab5;font-family:inherit">\u25B8 Chart Snapshot<span style="float:right;width:22px;height:22px;border-radius:50%;border:1.5px solid currentColor;display:inline-grid;place-items:center;font-size:11px;line-height:1">\u25be</span></button>'
+        +'padding:11px 14px;font-size:14px;font-weight:800;color:#a79ab5;font-family:inherit">\u25B8 Chart Snapshot<span style="float:right;width:22px;height:22px;border-radius:50%;border:1.5px solid currentColor;background:#fff;display:inline-grid;place-items:center;font-size:11px;line-height:1">\u25be</span></button>'
         + meEmpty("Your chart is drawn from the matches you play \u2014 win rate, the close ones, who you play against, "
           +"how steady you are and which way you are going. It appears with your first result.")
         +'</div>';
@@ -11787,7 +11787,7 @@ W.mePair=function(name,col){
       +'background:color-mix(in srgb,var(--nhc,#6c3483) 38%,#fff);'
       +'border:1.5px solid color-mix(in srgb,var(--nhc,#6c3483) 50%,#fff);border-radius:10px;padding:11px 14px;font-size:14px;font-weight:800;'
       +'color:color-mix(in srgb,var(--nhc,#6c3483) 82%,#000);'
-      +'cursor:pointer;font-family:inherit">\u25B8 Chart Snapshot<span style="float:right;width:22px;height:22px;border-radius:50%;border:1.5px solid currentColor;display:inline-grid;place-items:center;font-size:11px;line-height:1">\u25be</span></button>'
+      +'cursor:pointer;font-family:inherit">\u25B8 Chart Snapshot<span style="float:right;width:22px;height:22px;border-radius:50%;border:1.5px solid currentColor;background:#fff;display:inline-grid;place-items:center;font-size:11px;line-height:1">\u25be</span></button>'
       +'<div id="meChartSnap" style="display:none;background:#f6f0fa;border-radius:12px;padding:14px;margin-top:10px">'
       +'<div style="font-weight:800;color:var(--nhc,#6c3483);font-size:15px;text-align:center;margin-bottom:2px">Overall Performance</div>'
       +'<div style="font-size:10px;color:#6b5a78;text-align:center;margin-bottom:10px;line-height:1.5">'
@@ -11840,6 +11840,19 @@ W.mePair=function(name,col){
       var people=Object.keys(best).map(function(n){ return best[n]; });
       return { matches:Array.isArray(r[0])?r[0]:[], pairs:Array.isArray(r[1])?r[1]:[], pills:pills, people:people };
     });
+  }
+  function nhPairChart(names, ms, gid, all){
+    var me=names[0]||"";
+    var st={matches:ms||[], setsW:0, setsL:0, gd:0, gdn:0, boards:{}};
+    (ms||[]).forEach(function(m){
+      var t1=halves(m.t1p1).concat(halves(m.t1p2)), mine=(t1.indexOf(me)>=0);
+      var sf=mine?(+m.t1_sets||0):(+m.t2_sets||0), sa=mine?(+m.t2_sets||0):(+m.t1_sets||0);
+      var gf=mine?(+m.t1_games||0):(+m.t2_games||0), ga=mine?(+m.t2_games||0):(+m.t1_games||0);
+      st.setsW+=sf; st.setsL+=sa; if(sf+sa>0){ st.gd+=(gf-ga); st.gdn+=(sf+sa); }
+      if(m.club_id!=null) st.boards[m.club_id]=1;
+    });
+    if(gid) st.boards[gid]=1;
+    return meChartBlock(me, st, all||{people:[]});
   }
   /* n88: THE PAIR PAGE, BUILT FRESH. Opened from a member's partnerships, from a ladder, from anywhere: the
      pair's own page on the new skin, in the colour of the group the pair belongs to, with plat's figures
@@ -11981,6 +11994,9 @@ W.mePair=function(name,col){
         + [[ms.length,"Matches"],[sets,"Sets played"],[won,"Sets won"],[pct!=null?(pct+"%"):"\u2014","Win %"],[gd!=null?((+gd>0?"+":"")+gd):"\u2014","Game diff/set"]]
             .map(function(x){ return '<div class="fig"><b>'+esc(String(x[0]))+'</b><span>'+esc(x[1])+'</span></div>'; }).join("")
         +'</div>';
+      /* n332: THE PAIR'S CHART SNAPSHOT (Andre) — the same chart as a member's, in the same place, drawn from this
+         pair's matches: win %, clutch, margin, opposition, consistency, momentum, and the clear/close donut. */
+      h+='<div id="nhPairChart">'+nhPairChart(names, ms, gid, {people:[]})+'</div>';
       /* the two people, each a way to their own page */
       h+='<div class="brk"><h2>The pair</h2><div class="rows">'
         + names.map(function(n){ return '<button class="row" onclick="window.nhOpenProfile(\''+n.replace(/'/g,"\\'")+'\')">'+nhFace(n,col,34)
@@ -11995,6 +12011,14 @@ W.mePair=function(name,col){
         ? nhMatchesBrk({matches:ms},500,"board",(names[0]+" & "+names[1]),false)
         : '<div class="brk">'+nhLimeBar("Matches")+meEmpty("This pair has not played yet.")+'</div>';
       w.innerHTML=h+homeBar();
+      /* n332: the opposition axis needs the people's ratings — read once, then the chart is redrawn with them (closed,
+         so nothing moves under the reader) */
+      if(ms.length) fetch(B+"plat_padel_v_individuals?pool_id=eq."+P+"&select=full_name,club_id,current_rating,seed_rating&limit=4000").then(J).then(function(people){
+        var box=document.getElementById("nhPairChart"); if(!box || !people || !people.length) return;
+        var wasOpen=(document.getElementById("meChartSnap")||{style:{}}).style.display==="block";
+        box.innerHTML=nhPairChart(names, ms, gid, {people:people});
+        if(wasOpen){ var b=box.querySelector("button"); if(b) W.meChartToggle(b); }
+      }).catch(function(){});
     });
     });
   }
@@ -13249,8 +13273,8 @@ W.nhOpenPair=function(name){
   /* open a member's profile from the list — the app's own profile screen, so it is the same page they would
      reach from anywhere else, with cross-region play included */
   W.nhOpenProfile=function(name){
-    /* n78: one profile page for everybody — the app's own, not the parent's */
-    var C=(W.PLAT.parentId||W.PLAT.cid||W.PLAT.nat||nhLastDoor()||0);
+    /* n78: one profile page for everybody — the app's own, not the parent's (n332: on the board you stand on) */
+    var C=nhHereBoard();
     var back=encodeURIComponent(location.search||"");
     W.nhNav(PAGE+"?club="+C+"&go=me&who="+encodeURIComponent(name)+"&back="+back);
     return;
@@ -16710,8 +16734,13 @@ W.nhOpenPair=function(name){
   /* n325: ONE PROFILE (Andre). Group members → a member, a name on a ladder, a partnership inside the old group profile —
      every tap that opened the parent's group profile opens the MEMBER PROFILE instead, the same page My page and the
      records open. Nothing is drawn: the tap is re-pointed to `?club=C&go=me&who=<name>`, with the way back kept. */
+  /* n332: A PROFILE OPENS ON THE BOARD YOU STAND ON. It used to open on the REGION's address — a board change: the
+     region's purple painted over the list while the page loaded, and the way back was a second board change that reset
+     every screen and fetched the members list again (slow, and the back had to wait for it). The page reads the whole
+     register either way, so nothing on it differs; only the board under it stays put. */
+  function nhHereBoard(){ return (Number(W.PLAT.cid)>0 ? W.PLAT.cid : (W.PLAT.parentId||W.PLAT.nat||nhLastDoor()||0)); }
   function nhToMember(name){
-    var C=(W.PLAT.parentId||W.PLAT.cid||W.PLAT.nat||0); if(!C || !name) return false;
+    var C=nhHereBoard(); if(!C || !name) return false;
     /* n328: ONE PAGE PER PERSON, ONE PER PAIR (Andre). A PAIR ("A & B") opens the pair page in the new format (the
        app's own, with THE PAIR box and the match rows); a person opens the Member Profile. */
     if(/\s&\s/.test(String(name||""))){
