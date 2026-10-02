@@ -3750,7 +3750,7 @@ const CLUB_NAME = _club.name;  // shown in the logo as "OPR · <name>"
     link.setAttribute('href', href);
   }catch(e){ /* install stays on the static manifest — no functional impact */ }
 })();
-const OPR_VERSION = "OPR-DOUBLES v2026.09.03-56 · NAT fork n323 (no voice) (of PLAT p117)";  // MANUAL PAIR CREATION REMOVED FROM ADMIN: Create a pair, Bulk create pairs and Re-derive all pairs are gone (they only made match-less ghost pairs, and Re-derive rewrote every stored initial club-wide). Pairs are born automatically at match entry. Current pairs list untouched; the underlying JS is left in place unreferenced, so no other code path changes. Includes v47 (set-score fix + double-tap guard) and all prior.
+const OPR_VERSION = "OPR-DOUBLES v2026.09.03-56 · NAT fork n325 (no voice) (of PLAT p117)";  // MANUAL PAIR CREATION REMOVED FROM ADMIN: Create a pair, Bulk create pairs and Re-derive all pairs are gone (they only made match-less ghost pairs, and Re-derive rewrote every stored initial club-wide). Pairs are born automatically at match entry. Current pairs list untouched; the underlying JS is left in place unreferenced, so no other code path changes. Includes v47 (set-score fix + double-tap guard) and all prior.
 // Explanation shown above the individual ladder. Open on load so it's read; collapsible
 // (state kept for the session) and scrolls away. Mechanics only — no outcome framing, so
 // members aren't nudged away from playing stronger opponents. Every clause maps to a real
@@ -10657,7 +10657,7 @@ async function clRemove(id, label){
     var mvCol=(d==null)?"#6b6585":((d<0)?"#c0392b":"#1e8449");
     var opp = onT1 ? m.t2_rating_at : m.t1_rating_at;
     var oppTag = (opp!=null && isFinite(+opp))
-      ? ('<span style="color:'+col+';font-weight:800;font-size:13.5px">('+Math.round(+opp)+' \u00b7 L '+((+opp)/200).toFixed(1)+')</span>')
+      ? ('<span style="color:'+col+';font-weight:700;font-size:12px">('+Math.round(+opp)+' \u00b7 L '+((+opp)/200).toFixed(1)+')</span>')
       : '';
     W.__nhRowN=(W.__nhRowN||0)+1;
     var id="p"+W.__nhRowN+"_"+(m.id||0);
@@ -10666,25 +10666,27 @@ async function clRemove(id, label){
     return '<div style="padding:10px 2px 8px;border-bottom:1px solid #eee9f2">'
       + '<div onclick="window.nhSets(\''+id+'\')" style="cursor:pointer;display:flex;align-items:flex-start;gap:10px">'
       /* n228: the W/L square sized against the text beside it, not against the card */
-      +   '<span style="flex:0 0 24px;height:24px;margin-top:15px;border-radius:6px;background:'+badge+';color:#fff;'
-      +     'display:grid;place-items:center;font-weight:800;font-size:11.5px">'+letter+'</span>'
+      /* n324: the SAME sizes as Group members → a member → match history (.match-row 12px, badge 10px, date 10px) —
+         this card was 14–16px and read as a different page (Andre) */
+      +   '<span style="flex:0 0 20px;height:20px;margin-top:12px;border-radius:4px;background:'+badge+';color:#fff;'
+      +     'display:grid;place-items:center;font-weight:700;font-size:10px">'+letter+'</span>'
       +   '<span style="flex:1;min-width:0">'
-      +     '<span style="display:block;font-weight:700;font-size:14px;color:#241d33">'+esc(m.match_type||"")+'</span>'
-      +     '<span style="display:block;font-size:14.5px;color:#5f5770;margin:1px 0 2px">'
+      +     '<span style="display:block;font-weight:600;font-size:12px;color:#333">'+esc(m.match_type||"")+'</span>'
+      +     '<span style="display:block;font-size:12px;color:#666;margin:1px 0 2px;line-height:1.35">'
       +       '<span style="color:#8a8196">vs </span>'+esc(theirs)+'</span>'
-      +     '<span style="display:block;font-size:13.5px">'+oppTag
-      +       (d==null?'':'<span style="color:'+mvCol+';font-weight:800;margin-left:14px">('+(d>0?"+":"")+d.toFixed(1)+')</span>')
+      +     '<span style="display:block;font-size:12px">'+oppTag
+      +       (d==null?'':'<span style="color:'+mvCol+';font-weight:700;margin-left:5px;white-space:nowrap">('+(d>0?"+":"")+d.toFixed(1)+')</span>')
       +     '</span>'
       +   '</span>'
-      +   '<span style="flex:0 0 auto;text-align:right">'
-      +     '<span style="display:block;font-weight:800;font-size:16px;color:'+col+'">'+s1+'-'+s2+'</span>'
-      +     '<span style="display:block;font-size:13px;color:#8a8196">'+esc(m.match_type||"")
-      +       ' <span id="nht'+id+'" style="font-size:16px">\u25be</span></span>'
+      +   '<span style="flex:0 0 auto;text-align:right;min-width:72px">'
+      +     '<span style="display:block;font-weight:700;font-size:12px;color:'+col+'">'+s1+'-'+s2+'</span>'
+      +     '<span style="display:block;font-size:12px;color:#8a8196">'+esc(m.match_type||"")
+      +       ' <span id="nht'+id+'" style="font-size:12px">\u25be</span></span>'
       +   '</span>'
       + '</div>'
       + '<div id="nhs'+id+'" style="display:none;background:#c5cddb;border-radius:10px;padding:9px;margin:7px 0 2px;text-align:center">'
       +   nhPairSetPills(m, onT1)
-      +   '<div style="font-size:12px;color:#6b6585;margin-top:6px">'+esc(String(m.match_date||"").slice(0,10))
+      +   '<div style="font-size:10px;color:#aaa;margin-top:6px">'+esc(String(m.match_date||"").slice(0,10))
       +     ' \u00b7 '+esc(m.match_type||"")+'</div>'
       + '</div>'
       + '</div>';
@@ -12159,7 +12161,9 @@ W.mePair=function(name,col){
                 +'border-radius:12px;padding:12px 14px;margin-bottom:10px;box-shadow:0 1px 3px rgba(0,0,0,.05)">'
                 +'<div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">'
                 +'<span style="font-weight:700;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+esc(x.name)+'</span>'
-                +'<span style="display:inline-block;padding:2px 8px;border-radius:99px;font-size:11px;font-weight:700;background:'+cat[1]+';color:'+cat[2]+'">'+cat[0]+'</span></div>'
+                +'<span style="display:inline-block;padding:2px 8px;border-radius:99px;font-size:11px;font-weight:700;background:'+cat[1]+';color:'+cat[2]+'">'+cat[0]+'</span>'
+                /* n324: a circle with an arrow — the card opens the pair's page, and should say so (Andre) */
+                +'<span style="flex:none;display:inline-grid;place-items:center;width:24px;height:24px;border-radius:50%;background:'+gc+';color:#fff;font-weight:800;font-size:14px;line-height:1">\u203a</span></div>'
                 +'<div style="display:flex;gap:16px;font-size:13px;color:#5b3a6e">'
                 +'<span>Rating <b style="color:'+gc+'">'+esc(String(x.rating))+'</b></span>'
                 +'<span>Matches <b>'+esc(String(x.matches!=null?x.matches:x.played))+'</b></span>'
@@ -16663,6 +16667,27 @@ W.nhOpenPair=function(name){
       if(Date.now()-t0>4000) clearInterval(tk);
     },60);
   }
+  /* n325: ONE PROFILE (Andre). Group members → a member, a name on a ladder, a partnership inside the old group profile —
+     every tap that opened the parent's group profile opens the MEMBER PROFILE instead, the same page My page and the
+     records open. Nothing is drawn: the tap is re-pointed to `?club=C&go=me&who=<name>`, with the way back kept. */
+  function nhToMember(name){
+    var C=(W.PLAT.parentId||W.PLAT.cid||W.PLAT.nat||0); if(!C || !name) return false;
+    W.nhNav(PAGE+"?club="+C+"&go=me&who="+encodeURIComponent(name)+"&back="+encodeURIComponent(location.search||"")); return true;
+  }
+  (function(){
+    /* Group members → a member: the parent opened its "member snapshot" (partnershipsScreen) — the card Andre showed */
+    var _sp=W.showPartnerships;
+    if(typeof _sp==="function") W.showPartnerships=function(indivId){
+      if(W.NEWAPP){ var ind=(W._profileIndivs||[]).find(function(x){ return x.id===indivId; }); if(ind && nhToMember(ind.full_name)) return; }
+      return _sp.apply(this,arguments);
+    };
+    /* a name on a ladder, a partnership inside the old profile, a deep link: the parent's group profile */
+    var _lp=W.loadProfile;
+    if(typeof _lp==="function") W.loadProfile=function(name, gender){
+      if(W.NEWAPP && name && nhToMember(name)) return;
+      return _lp.apply(this,arguments);
+    };
+  })();
   /* n306: THE PATH YOU CAME. Every view — an address and the screen open on it — is written to one trail as you move,
      and every back arrow steps back along it: the group's sheet back to the region's sheet, that back to the door;
      Men's Pairs back to the ladders menu, that back to the group's page. No rules about doors and parents. */
