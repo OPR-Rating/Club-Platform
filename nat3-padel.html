@@ -3750,7 +3750,7 @@ const CLUB_NAME = _club.name;  // shown in the logo as "OPR · <name>"
     link.setAttribute('href', href);
   }catch(e){ /* install stays on the static manifest — no functional impact */ }
 })();
-const OPR_VERSION = "OPR-DOUBLES v2026.09.03-56 · NAT fork n338 (no voice) (of PLAT p117)";  // MANUAL PAIR CREATION REMOVED FROM ADMIN: Create a pair, Bulk create pairs and Re-derive all pairs are gone (they only made match-less ghost pairs, and Re-derive rewrote every stored initial club-wide). Pairs are born automatically at match entry. Current pairs list untouched; the underlying JS is left in place unreferenced, so no other code path changes. Includes v47 (set-score fix + double-tap guard) and all prior.
+const OPR_VERSION = "OPR-DOUBLES v2026.09.03-56 · NAT fork n339 (no voice) (of PLAT p117)";  // MANUAL PAIR CREATION REMOVED FROM ADMIN: Create a pair, Bulk create pairs and Re-derive all pairs are gone (they only made match-less ghost pairs, and Re-derive rewrote every stored initial club-wide). Pairs are born automatically at match entry. Current pairs list untouched; the underlying JS is left in place unreferenced, so no other code path changes. Includes v47 (set-score fix + double-tap guard) and all prior.
 // Explanation shown above the individual ladder. Open on load so it's read; collapsible
 // (state kept for the session) and scrolls away. Mechanics only — no outcome framing, so
 // members aren't nudged away from playing stronger opponents. Every clause maps to a real
@@ -10748,7 +10748,8 @@ async function clRemove(id, label){
     var id="m"+W.__nhRowN+"_"+(m.id||0);
     var pillHTML=(scope!=="one"&&bd)?('<span style="display:inline-block;background:'+col+';color:#fff;border-radius:99px;'
       +'padding:2px 9px;font-size:10px;font-weight:800;margin-right:6px;vertical-align:middle">'+esc(bd.name)+'</span>'):'';
-    return '<div style="border:1px solid #e9e4f0;border-radius:12px;padding:8px 6px;margin:5px 0;background:#fff">'
+    /* n339: NO BOX INSIDE A BOX (Andre): a match row sits flat in its bracket — a hairline between rows, no card */
+    return '<div style="border:0;border-top:1px solid #f0ecf6;border-radius:0;padding:9px 6px;margin:0;background:#fff">'
       +'<div style="display:flex;align-items:center;gap:6px;font-size:11.5px;color:#8a8196;justify-content:center;flex-wrap:wrap">'
       + pillHTML
       +'<span>'+esc(String(m.match_date||"").slice(0,10))+'</span>'
