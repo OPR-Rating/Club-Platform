@@ -3750,7 +3750,7 @@ const CLUB_NAME = _club.name;  // shown in the logo as "OPR · <name>"
     link.setAttribute('href', href);
   }catch(e){ /* install stays on the static manifest — no functional impact */ }
 })();
-const OPR_VERSION = "OPR-DOUBLES v2026.09.03-56 · NAT fork n342 (no voice) (of PLAT p117)";  // MANUAL PAIR CREATION REMOVED FROM ADMIN: Create a pair, Bulk create pairs and Re-derive all pairs are gone (they only made match-less ghost pairs, and Re-derive rewrote every stored initial club-wide). Pairs are born automatically at match entry. Current pairs list untouched; the underlying JS is left in place unreferenced, so no other code path changes. Includes v47 (set-score fix + double-tap guard) and all prior.
+const OPR_VERSION = "OPR-DOUBLES v2026.09.03-56 · NAT fork n343 (no voice) (of PLAT p117)";  // MANUAL PAIR CREATION REMOVED FROM ADMIN: Create a pair, Bulk create pairs and Re-derive all pairs are gone (they only made match-less ghost pairs, and Re-derive rewrote every stored initial club-wide). Pairs are born automatically at match entry. Current pairs list untouched; the underlying JS is left in place unreferenced, so no other code path changes. Includes v47 (set-score fix + double-tap guard) and all prior.
 // Explanation shown above the individual ladder. Open on load so it's read; collapsible
 // (state kept for the session) and scrolls away. Mechanics only — no outcome framing, so
 // members aren't nudged away from playing stronger opponents. Every clause maps to a real
@@ -4815,8 +4815,8 @@ async function profileShowPartner(partner){
     if(va!=null && vb!=null){
       const sameGender = (ra.gender===rb.gender);
       let val;
-      if(sameGender){ val = (va+vb)/2; }
-      else { const hi=Math.max(va,vb), lo=Math.min(va,vb); val = hi*0.6 + lo*0.4; }
+      if(false && sameGender){ val = (va+vb)/2; }   /* n343: 60/40 for every pairing, as the system rates them */
+      { const hi=Math.max(va,vb), lo=Math.min(va,vb); val = hi*0.6 + lo*0.4; }
       pairRating = Math.round(val);
       pairLevel = (val/200).toFixed(1);
     }
