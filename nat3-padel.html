@@ -828,7 +828,7 @@
   // unrewritten and 404'd against the platform, and whatever boot chain it sat in stopped — which is how a
   // name picker ends up empty with no obvious error.
   var DISC_TABLES={players:1,matches:1,player_results:1,doubles_results:1,live_matches:1};
-  var LANDING=(!q.has("club") && POOLQ>0);   // PLAT p3: the door — pick your club
+  var LANDING=((!q.has("club") || (window.NEWAPP && CID===0 && !q.get("go") && !q.get("nat"))) && POOLQ>0);   // PLAT p3: the door — pick your club; n344 (new app only): club 0 with no task too
   var BOARDQ=q.has("board");                             // NAT: open a club's own board, not its door
   var NATQ=parseInt(q.get("nat")||"0",10)||0;             // NAT: the ledger scoped to this club and its groups
   var W=window; W.PLAT={cid:CID,pool:POOLQ,clubs:[],poolName:"",name:"",ready:null,landing:LANDING,
@@ -1166,7 +1166,7 @@ st0.textContent += "html{overflow-y:scroll}";   // p98: the scrollbar's space is
     if(raw && !/^\d+$/.test(raw)){ var kn=null; try{ kn=localStorage.getItem("nat_slug_"+raw.toLowerCase()); }catch(e){} if(kn && /^\d+$/.test(kn)) raw=kn; }
     CID=parseInt(raw||"0",10)||0;
     POOLQ=parseInt(qq.get("pool")||"0",10)||0;
-    LANDING=(!qq.has("club") && POOLQ>0);
+    LANDING=((!qq.has("club") || (window.NEWAPP && CID===0 && !qq.get("go") && !qq.get("nat"))) && POOLQ>0);   /* n344 (new app only) */
     BOARDQ=qq.has("board");
     NATQ=parseInt(qq.get("nat")||"0",10)||0;
     var keepClubs=W.PLAT.clubs, keepPool=W.PLAT.pool, keepPoolName=W.PLAT.poolName, keepOrg=W.PLAT.orgId;
@@ -3750,7 +3750,7 @@ const CLUB_NAME = _club.name;  // shown in the logo as "OPR · <name>"
     link.setAttribute('href', href);
   }catch(e){ /* install stays on the static manifest — no functional impact */ }
 })();
-const OPR_VERSION = "OPR-DOUBLES v2026.09.03-56 · NAT fork n343 (no voice) (of PLAT p117)";  // MANUAL PAIR CREATION REMOVED FROM ADMIN: Create a pair, Bulk create pairs and Re-derive all pairs are gone (they only made match-less ghost pairs, and Re-derive rewrote every stored initial club-wide). Pairs are born automatically at match entry. Current pairs list untouched; the underlying JS is left in place unreferenced, so no other code path changes. Includes v47 (set-score fix + double-tap guard) and all prior.
+const OPR_VERSION = "OPR-DOUBLES v2026.09.03-56 · NAT fork n344 (no voice) (of PLAT p117)";  // MANUAL PAIR CREATION REMOVED FROM ADMIN: Create a pair, Bulk create pairs and Re-derive all pairs are gone (they only made match-less ghost pairs, and Re-derive rewrote every stored initial club-wide). Pairs are born automatically at match entry. Current pairs list untouched; the underlying JS is left in place unreferenced, so no other code path changes. Includes v47 (set-score fix + double-tap guard) and all prior.
 // Explanation shown above the individual ladder. Open on load so it's read; collapsible
 // (state kept for the session) and scrolls away. Mechanics only — no outcome framing, so
 // members aren't nudged away from playing stronger opponents. Every clause maps to a real
@@ -16509,6 +16509,10 @@ W.nhOpenPair=function(name){
   }
   W.nhNav=function(url,opts){
     opts=opts||{};
+    /* n344: "?club=0&pool=P" with nothing asked of it IS the register page — go to its own address, never the parent's
+       old ledger home ("Club Overview"). */
+    try{ var _u=String(url||""), _i=_u.indexOf("?"); if(_i>=0){ var _q=new URLSearchParams(_u.slice(_i+1));
+      if(_q.get("club")==="0" && _q.get("pool") && !_q.get("go") && !_q.get("nat")) url=_u.slice(0,_i)+"?pool="+_q.get("pool"); } }catch(e){}
     var p=null, shape=null;
     try{ p=nhParseUrl(url); shape=nhShape(p.q); }catch(e){ shape=null; }
     if(!shape || !nhSamePage(p.path) || !nhOnShellPage()){
