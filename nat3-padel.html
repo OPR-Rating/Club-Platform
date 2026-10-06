@@ -3750,7 +3750,7 @@ const CLUB_NAME = _club.name;  // shown in the logo as "OPR · <name>"
     link.setAttribute('href', href);
   }catch(e){ /* install stays on the static manifest — no functional impact */ }
 })();
-const OPR_VERSION = "OPR-DOUBLES v2026.09.03-56 · NAT fork n344 (no voice) (of PLAT p117)";  // MANUAL PAIR CREATION REMOVED FROM ADMIN: Create a pair, Bulk create pairs and Re-derive all pairs are gone (they only made match-less ghost pairs, and Re-derive rewrote every stored initial club-wide). Pairs are born automatically at match entry. Current pairs list untouched; the underlying JS is left in place unreferenced, so no other code path changes. Includes v47 (set-score fix + double-tap guard) and all prior.
+const OPR_VERSION = "OPR-DOUBLES v2026.09.03-56 · NAT fork n345 (no voice) (of PLAT p117)";  // MANUAL PAIR CREATION REMOVED FROM ADMIN: Create a pair, Bulk create pairs and Re-derive all pairs are gone (they only made match-less ghost pairs, and Re-derive rewrote every stored initial club-wide). Pairs are born automatically at match entry. Current pairs list untouched; the underlying JS is left in place unreferenced, so no other code path changes. Includes v47 (set-score fix + double-tap guard) and all prior.
 // Explanation shown above the individual ladder. Open on load so it's read; collapsible
 // (state kept for the session) and scrolls away. Mechanics only — no outcome framing, so
 // members aren't nudged away from playing stronger opponents. Every clause maps to a real
@@ -16515,6 +16515,12 @@ W.nhOpenPair=function(name){
       if(_q.get("club")==="0" && _q.get("pool") && !_q.get("go") && !_q.get("nat")) url=_u.slice(0,_i)+"?pool="+_q.get("pool"); } }catch(e){}
     var p=null, shape=null;
     try{ p=nhParseUrl(url); shape=nhShape(p.q); }catch(e){ shape=null; }
+    /* n345: A BOARD-LESS START CANNOT BE RE-POINTED. The parent's own screens (member lists, ladders, its colours) are
+       re-pointed to the board you move to by swapping "the board I booted on" in their requests — impossible when the app
+       booted on the national page or the Global Ledger (no board). Leaving such a start for a real board is ONE proper
+       page load onto that board; moves between boards after that stay instant. */
+    try{ var _tq=new URLSearchParams(String(url).split("?")[1]||""), _tc=Number(_tq.get("club")||0);
+      if(W.NEWAPP && Number(W.PLAT&&W.PLAT.bootCid||0)===0 && _tc>0){ location.href=String(url); return; } }catch(e){}
     if(!shape || !nhSamePage(p.path) || !nhOnShellPage()){
       if(opts.replace) location.replace(url); else location.href=url;
       return false;
