@@ -3750,7 +3750,7 @@ const CLUB_NAME = _club.name;  // shown in the logo as "OPR · <name>"
     link.setAttribute('href', href);
   }catch(e){ /* install stays on the static manifest — no functional impact */ }
 })();
-const OPR_VERSION = "OPR-DOUBLES v2026.09.03-56 · NAT fork n345 (no voice) (of PLAT p117)";  // MANUAL PAIR CREATION REMOVED FROM ADMIN: Create a pair, Bulk create pairs and Re-derive all pairs are gone (they only made match-less ghost pairs, and Re-derive rewrote every stored initial club-wide). Pairs are born automatically at match entry. Current pairs list untouched; the underlying JS is left in place unreferenced, so no other code path changes. Includes v47 (set-score fix + double-tap guard) and all prior.
+const OPR_VERSION = "OPR-DOUBLES v2026.09.03-56 · NAT fork n347 (no voice) (of PLAT p117)";  // MANUAL PAIR CREATION REMOVED FROM ADMIN: Create a pair, Bulk create pairs and Re-derive all pairs are gone (they only made match-less ghost pairs, and Re-derive rewrote every stored initial club-wide). Pairs are born automatically at match entry. Current pairs list untouched; the underlying JS is left in place unreferenced, so no other code path changes. Includes v47 (set-score fix + double-tap guard) and all prior.
 // Explanation shown above the individual ladder. Open on load so it's read; collapsible
 // (state kept for the session) and scrolls away. Mechanics only — no outcome framing, so
 // members aren't nudged away from playing stronger opponents. Every clause maps to a real
@@ -9489,7 +9489,7 @@ async function clRemove(id, label){
         h/=6;
       }
       var L=Math.min(l, 0.38);                    /* the cap — OPR purple (0.359) is left exactly as it is */
-      if(sat<0.25 && l>0.5) sat=Math.min(0.45, sat+0.12);   /* a pale grey would go flat; give it a little back */
+      if(mx!==mn && sat<0.25 && l>0.5) sat=Math.min(0.45, sat+0.12);   /* n347: a true grey has no hue — it stays grey */
       var hue=function(p,q,t){ if(t<0)t+=1; if(t>1)t-=1; if(t<1/6) return p+(q-p)*6*t; if(t<1/2) return q; if(t<2/3) return p+(q-p)*(2/3-t)*6; return p; };
       var q=(L<0.5)?(L*(1+sat)):(L+sat-L*sat), pp=2*L-q;
       var hx=function(v){ var x=Math.round(Math.max(0,Math.min(1,v))*255).toString(16); return x.length<2?("0"+x):x; };
@@ -10573,7 +10573,7 @@ async function clRemove(id, label){
          centred on the row, the same place every time — never wrapped into the name */
       +'<span class="nm" style="flex:1;min-width:0"><b style="font-size:15.5px">'+esc(mv.name)+'</b><span>'+esc(mv.club?nhBoardName(mv.club):"")+'</span></span>'
       +(seedOf!=null?'<span style="flex:none;align-self:center;white-space:nowrap;padding:3px 9px;border-radius:999px;font-size:11px;line-height:1.2;font-weight:800;letter-spacing:.02em;color:#fff;background:'+col+'">Initial '+seedOf+'</span>':'')
-      +'<span class="val" style="flex:none"><b class="'+(up?"up":"dn")+'" style="font-size:18px">'+(up?"\u25b2 +":"\u25bc ")+Math.round(mv.move)+'</b><span>this week</span></span></div>'
+      +'<span class="val" style="flex:none"><b class="'+(up?"up":"dn")+'" style="font-size:18px">'+(up?"\u25b2 +":"\u25bc ")+Math.round(mv.move)+'</b><span>'+nhWhen()+'</span></span></div>'
       +body+'</div></div>';
   }
   var NH_LINE_SEQ=0;
