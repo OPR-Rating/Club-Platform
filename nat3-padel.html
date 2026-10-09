@@ -3750,7 +3750,7 @@ const CLUB_NAME = _club.name;  // shown in the logo as "OPR · <name>"
     link.setAttribute('href', href);
   }catch(e){ /* install stays on the static manifest — no functional impact */ }
 })();
-const OPR_VERSION = "OPR-DOUBLES v2026.09.03-56 · NAT fork n349 (no voice) (of PLAT p117)";  // MANUAL PAIR CREATION REMOVED FROM ADMIN: Create a pair, Bulk create pairs and Re-derive all pairs are gone (they only made match-less ghost pairs, and Re-derive rewrote every stored initial club-wide). Pairs are born automatically at match entry. Current pairs list untouched; the underlying JS is left in place unreferenced, so no other code path changes. Includes v47 (set-score fix + double-tap guard) and all prior.
+const OPR_VERSION = "OPR-DOUBLES v2026.09.03-56 · NAT fork n350 (no voice) (of PLAT p117)";  // MANUAL PAIR CREATION REMOVED FROM ADMIN: Create a pair, Bulk create pairs and Re-derive all pairs are gone (they only made match-less ghost pairs, and Re-derive rewrote every stored initial club-wide). Pairs are born automatically at match entry. Current pairs list untouched; the underlying JS is left in place unreferenced, so no other code path changes. Includes v47 (set-score fix + double-tap guard) and all prior.
 // Explanation shown above the individual ladder. Open on load so it's read; collapsible
 // (state kept for the session) and scrolls away. Mechanics only — no outcome framing, so
 // members aren't nudged away from playing stronger opponents. Every clause maps to a real
@@ -13568,6 +13568,49 @@ W.nhOpenPair=function(name){
       try{ var h=document.querySelector("#profileSearchScreen .header h1"); if(h && h.textContent!=="Group Members") h.textContent="Group Members"; }catch(e){}
     },400);
   })();
+  /* n350: COLUMN NAMES THAT STAY PUT. Group Members gets Name · Rating · Level · Move · Rank in the frozen block with
+     its search box (each name measured onto the pill beneath it); on Member profiles and List all members the names
+     freeze under the search box instead of scrolling away. */
+  (function(){
+    if(!W.NEWAPP) return;
+    var LBL=["Rating","Level","Move","Rank"];
+    var lab=function(t,l,w){ return '<span style="position:absolute;left:'+l+'px;width:'+w+'px;top:0;text-align:center;font-size:9.5px;font-weight:800;letter-spacing:.03em;color:#7a6658;text-transform:uppercase;white-space:nowrap">'+t+'</span>'; };
+    setInterval(function(){
+      try{
+        var sc=document.getElementById("profileSearchScreen");
+        if(sc && sc.offsetParent!==null){
+          var stick=sc.querySelector(".screen-content > div"), li=sc.querySelector("#playerList > li.player-item");
+          var pw=li && li.children[2], nm=li && li.querySelector(".player-name");
+          var hd=stick && stick.querySelector(".nhGmHead");
+          if(stick && li && pw && nm && pw.children.length>=4 && li.offsetWidth>0){
+            var sr=stick.getBoundingClientRect(), parts=[], nr=nm.getBoundingClientRect();
+            for(var i=0;i<4;i++){ var r=pw.children[i].getBoundingClientRect(); parts.push([Math.round(r.left-sr.left),Math.round(r.width)]); }
+            var key=JSON.stringify(parts)+"|"+Math.round(nr.left-sr.left);
+            if(!hd){ hd=document.createElement("div"); hd.className="nhGmHead"; stick.appendChild(hd); }
+            if(hd.dataset.k!==key){
+              hd.dataset.k=key;
+              hd.style.cssText="position:relative;height:22px;margin-top:6px;border-bottom:1px solid #f0ecf6";
+              var h='<span style="position:absolute;left:'+Math.round(nr.left-sr.left)+'px;top:0;font-size:9.5px;font-weight:800;letter-spacing:.03em;color:#7a6658;text-transform:uppercase">Name</span>';
+              for(var j=0;j<4;j++) h+=lab(LBL[j],parts[j][0],parts[j][1]);
+              hd.innerHTML=h;
+            }
+          }
+        }
+        var nh=document.getElementById("nh");
+        if(nh){
+          Array.prototype.forEach.call(nh.querySelectorAll(".nhColHead"),function(c){
+            var f=[document.getElementById("recFindWrap"),document.getElementById("recFindWrapM")].filter(function(x){ return x && x.offsetHeight>0; })[0];
+            if(!f) return;
+            var top=(parseFloat(getComputedStyle(f).top)||0)+f.offsetHeight;
+            /* a box with overflow:hidden between the names and the page would hold them inside it; clip keeps its
+               rounded corners and lets the names stay put against the page */
+            for(var a=c.parentElement; a && a!==nh; a=a.parentElement){ if(getComputedStyle(a).overflowY==="hidden") a.style.overflow="clip"; }
+            if(c.style.position!=="sticky" || c.style.top!==top+"px"){ c.style.position="sticky"; c.style.top=top+"px"; c.style.zIndex="3"; }
+          });
+        }
+      }catch(e){}
+    },400);
+  })();
   /* n113: JUMP, DON'T SWAP. One row of pills under the band — Form · Climb · Fall · Move · Recent · Card (a group) or
      Form · Move · Recent · Tournaments (the door). Tapping one scrolls that bracket into view; nothing is hidden.
      Only brackets actually on the page get a pill, so a quiet week never shows a pill that goes nowhere. */
@@ -16658,7 +16701,7 @@ W.nhOpenPair=function(name){
       else if(shape==="records"){ newRecordsPage(); }
       else if(shape==="pick"){ newPickPage(); }
       else if(shape==="pair"){ newPairPage(); }
-      else if(shape==="me"){ nhInk("#6c3483"); nhHeaderSkin("#6c3483", nhDeep("#6c3483")); newMePage(); }   /* the claim screen has no colour of its own: the app's, as on a fresh load */
+      else if(shape==="me"){ var _whoQ=""; try{ _whoQ=new URLSearchParams(location.search).get("who")||""; }catch(e){} if(!_whoQ){ nhInk("#6c3483"); nhHeaderSkin("#6c3483", nhDeep("#6c3483")); } newMePage(); }   /* n350: viewing someone keeps the colours you came from until theirs is known — no purple flash */   /* the claim screen has no colour of its own: the app's, as on a fresh load */
       else if(shape==="door"){ var t3="OPR \u00b7 "+(W.PLAT.name||"Club"); if(ht) ht.textContent=t3; document.title=t3; newClubDoor(); }
       else if(shape==="ledger"){
         var t2="OPR \u00b7 "+(W.PLAT.nat?(W.PLAT.natName||"Club"):(W.PLAT.poolName||"Overall"))+" \u00b7 Ledger"; if(ht) ht.textContent=t2; document.title=t2;
