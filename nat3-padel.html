@@ -3750,7 +3750,7 @@ const CLUB_NAME = _club.name;  // shown in the logo as "OPR · <name>"
     link.setAttribute('href', href);
   }catch(e){ /* install stays on the static manifest — no functional impact */ }
 })();
-const OPR_VERSION = "OPR-DOUBLES v2026.09.03-56 · NAT fork n350 (no voice) (of PLAT p117)";  // MANUAL PAIR CREATION REMOVED FROM ADMIN: Create a pair, Bulk create pairs and Re-derive all pairs are gone (they only made match-less ghost pairs, and Re-derive rewrote every stored initial club-wide). Pairs are born automatically at match entry. Current pairs list untouched; the underlying JS is left in place unreferenced, so no other code path changes. Includes v47 (set-score fix + double-tap guard) and all prior.
+const OPR_VERSION = "OPR-DOUBLES v2026.09.03-56 · NAT fork n352 (no voice) (of PLAT p117)";  // MANUAL PAIR CREATION REMOVED FROM ADMIN: Create a pair, Bulk create pairs and Re-derive all pairs are gone (they only made match-less ghost pairs, and Re-derive rewrote every stored initial club-wide). Pairs are born automatically at match entry. Current pairs list untouched; the underlying JS is left in place unreferenced, so no other code path changes. Includes v47 (set-score fix + double-tap guard) and all prior.
 // Explanation shown above the individual ladder. Open on load so it's read; collapsible
 // (state kept for the session) and scrolls away. Mechanics only — no outcome framing, so
 // members aren't nudged away from playing stronger opponents. Every clause maps to a real
@@ -13233,7 +13233,7 @@ W.mePair=function(name,col){
     }).join("") : '<div style="padding:14px;font-size:13px;color:#5f5770">No one by that name has played here.</div>';
   };
   /* n348: the pair tables (Men's / Ladies' / Mixed / All Sorts / Universal pairs) in the Records pills */
-  setInterval(function(){ try{
+  W.__nhPairPills=function(){ try{
     var scr=document.getElementById("ladderScreen"); if(!scr || !scr.classList.contains("active")) return;
     var t=scr.querySelector("#ladderContent table"); if(!t || !t.tHead || !t.tBodies[0]) return;
     var ths=t.tHead.rows[0]?t.tHead.rows[0].cells:[]; if(ths.length!==5) return;
@@ -13260,7 +13260,8 @@ W.mePair=function(name,col){
       tr.cells[1].style.cssText+=";white-space:normal;padding-left:8px;padding-right:6px";   /* a long pair wraps, so Move stays on screen */
       tr.setAttribute("data-nh-std","1");
     });
-  }catch(e){} }, 400);
+  }catch(e){} };
+  setInterval(W.__nhPairPills, 400);
   W.recFilterM=function(){
     var v=String((document.getElementById("recFindM")||{}).value||"").trim().toLowerCase();
     var list=(W.__recMembers||[]).filter(function(x){ return !v || String(x.p.full_name).toLowerCase().indexOf(v)>=0; });
@@ -13478,7 +13479,7 @@ W.nhOpenPair=function(name){
         var _pk=function(s){ var q=new URLSearchParams(String(s||"").split("?")[1]||""); return [Number(q.get("club")||0),q.get("go")||"",q.get("view")||"",q.get("who")||"",q.get("pair")||"",q.get("all")||"",Number(q.get("club")||0)===0?(q.get("pool")||""):""].join("|"); };
         var _cl=function(s){ var q=new URLSearchParams(String(s||"").split("?")[1]||""); return [Number(q.get("club")||0), q.get("go")||""]; };
         var _pv=W.__nhTrail[W.__nhTrail.length-2]||{}, _h=_cl(href), _p=_cl(_pv.search);
-        var _list=(_pv.screen && _pv.screen!=="homeScreen" && _h[0]===_p[0] && !_h[1]);
+        var _list=(_pv.screen && _pv.screen!=="homeScreen" && _h[0]===_p[0] && (!_h[1] || _h[1]===_p[1]));   /* n351: same board, same page = the way back (no pair<->ladders loop) */
         if(_pk(_pv.search)===_pk(href) || _list){ W.nhBackPath(); return false; }        /* n348: the step behind IS the named place */
         W.nhNav(href); return false; } }catch(e){}                               /* else go to the place the chip names */
     try{
@@ -16940,7 +16941,73 @@ W.nhOpenPair=function(name){
     };
   })();
   /* n328: remember which ladder table is open, so a back can draw it again */
-  (function(){ var _ll=W.loadLadder; if(typeof _ll!=="function") return; W.loadLadder=function(){ W.__nhLadderArgs=Array.prototype.slice.call(arguments); return _ll.apply(this,arguments); }; })();
+  (function(){ var _ll=W.loadLadder; if(typeof _ll!=="function") return; W.loadLadder=function(){ W.__nhLadderArgs=Array.prototype.slice.call(arguments); var _r=_ll.apply(this,arguments); try{ if(_r && _r.then) _r.then(function(){ if(W.__nhPairPills) W.__nhPairPills(); }); }catch(e){} return _r;   /* n351: pills the moment the table is drawn */ }; })();
+  /* n351: KEEP THE TABLE YOU LEFT. Tapping a row keeps the drawn table (and the rows its taps read); coming back to
+     the same table shows it at once at the same scroll instead of "Loading…"; the fresh read replaces it when it lands. */
+  (function(){
+    var _lp=W.ladProfile; if(typeof _lp!=="function") return;
+    var scrollers=function(){ var out=[], e=document.getElementById("ladderContent"); while(e){ if(e.scrollTop>0) out.push([e,e.scrollTop]); e=e.parentElement; } var se=document.scrollingElement; if(se && se.scrollTop>0) out.push([se,se.scrollTop]); return out; };
+    W.ladProfile=function(i){
+      try{ if(W.__nhFreeze) W.__nhFreeze(); }catch(e){}   /* n352 */
+      try{ var c=document.getElementById("ladderContent");
+        if(c && c.querySelector("table") && W.__nhLadderArgs) W.__nhLadSnap={ key:JSON.stringify(W.__nhLadderArgs), html:c.innerHTML, rows:W._singlesRows, g:W._singlesGender, sc:scrollers() };
+      }catch(e){}
+      return _lp.apply(this,arguments);
+    };
+    /* n352: HOLD THE TABLE UNTIL THE PAGE IS READY */
+    W.__nhFreeze=function(){
+      try{
+        if(W.__nhFrozen) return;
+        var scr=document.querySelector(".screen.active"); if(!scr || scr.offsetParent===null) return;
+        var r=scr.getBoundingClientRect();
+        var orig=scr.querySelectorAll("*"), sc=[]; for(var k=0;k<orig.length;k++){ if(orig[k].scrollTop>0) sc.push([k,orig[k].scrollTop]); }
+        var cl=scr.cloneNode(true); cl.removeAttribute("id");
+        Array.prototype.forEach.call(cl.querySelectorAll("[id]"),function(e){ e.removeAttribute("id"); });
+        Array.prototype.forEach.call(cl.querySelectorAll("[onclick]"),function(e){ e.removeAttribute("onclick"); });
+        var wrap=document.createElement("div"); wrap.className="nhFreeze";
+        /* the bottom bar stays live and uncovered: the copy stops at its top edge */
+        var barTop=window.innerHeight;
+        try{ var be=document.elementFromPoint(window.innerWidth/2, window.innerHeight-6);
+          while(be && be!==document.body){ if(getComputedStyle(be).position==="fixed"){ barTop=Math.round(be.getBoundingClientRect().top); break; } be=be.parentElement; } }catch(e){}
+        wrap.style.cssText="position:fixed;left:0;top:0;right:0;height:"+barTop+"px;z-index:2147483000;overflow:hidden;background:"+getComputedStyle(document.body).backgroundColor;
+        /* the colours of THIS moment: the page underneath may repaint the app's colour while it builds */
+        var rs=getComputedStyle(document.documentElement);
+        for(var i=0;i<rs.length;i++){ var n=rs[i]; if(n.indexOf("--")===0) wrap.style.setProperty(n, rs.getPropertyValue(n)); }
+        cl.style.position="absolute"; cl.style.left=r.left+"px"; cl.style.top=r.top+"px"; cl.style.width=r.width+"px"; cl.style.margin="0";
+        wrap.appendChild(cl); document.body.appendChild(wrap);
+        /* the app hides every .screen when the new page switches on — the copy is not the app's to hide */
+        var clCls=cl.className, clSty=cl.getAttribute("style")||"";
+        try{ new MutationObserver(function(){ if(cl.className!==clCls) cl.className=clCls; if((cl.getAttribute("style")||"")!==clSty) cl.setAttribute("style",clSty); })
+               .observe(cl,{attributes:true,attributeFilter:["class","style"]}); }catch(e){}
+        var all=cl.querySelectorAll("*"); sc.forEach(function(p){ if(all[p[0]]) all[p[0]].scrollTop=p[1]; });
+        var t0=Date.now(), from=String(location.search||""), ok=0;
+        W.__nhFrozen=wrap;
+        var lift=function(){ try{ clearInterval(iv); if(wrap.parentNode) wrap.parentNode.removeChild(wrap); }catch(e){} if(W.__nhFrozen===wrap) W.__nhFrozen=null; };
+        var iv=setInterval(function(){
+          try{
+            if(Date.now()-t0>6000) return lift();                              /* never stuck */
+            var s=String(location.search||""); if(s===from) { if(Date.now()-t0>1500) lift(); return; }   /* nothing opened */
+            var q=new URLSearchParams(s), want=(q.get("pair")||q.get("who")||"").trim();
+            var nh=document.getElementById("nh"); if(!nh || nh.offsetParent===null) { if(!want) lift(); return; }
+            var h1=nh.querySelector(".band h1"), txt=(h1&&h1.textContent||"").trim();
+            if(/Reading the record/.test(nh.textContent||"")) { ok=0; return; }
+            if(want && txt.indexOf(want)<0) { ok=0; return; }
+            var e=nh, shown=true; while(e && e!==document.documentElement){ var cs=getComputedStyle(e); if(cs.display==="none"||cs.visibility!=="visible"||parseFloat(cs.opacity)<0.99){ shown=false; break; } e=e.parentElement; }
+            if(!shown){ ok=0; return; }
+            if(++ok===4){ clearInterval(iv); requestAnimationFrame(function(){ requestAnimationFrame(function(){ setTimeout(lift,60); }); }); }   /* shown, steady, painted: one clean switch */
+          }catch(e){ lift(); }
+        },40);
+      }catch(e){}
+    };
+    W.__nhLadRestore=function(){
+      var s=W.__nhLadSnap, c=document.getElementById("ladderContent");
+      if(!s || !c || s.key!==JSON.stringify(W.__nhLadderArgs||[])) return;
+      if(!c.querySelector(".loading")) return;          /* the fresh table is already there */
+      c.innerHTML=s.html; W._singlesRows=s.rows; W._singlesGender=s.g;
+      var put=function(){ (s.sc||[]).forEach(function(p){ try{ p[0].scrollTop=p[1]; }catch(e){} }); };
+      put(); setTimeout(put,0); setTimeout(put,120);
+    };
+  })();
   /* n335: A TOURNAMENT LEAVES THE PHONE (Andre, 3 Oct). Print and WhatsApp for every tournament: on the tournament
      screen (Draw & Rounds, Tournament Stats) and on the full draw sheet, a bar with 🖨 Print and 💬 WhatsApp acting on
      what the tournament is showing. Print sends just that content to the phone's printer / PDF; WhatsApp sends it as
@@ -17104,7 +17171,7 @@ W.nhOpenPair=function(name){
     W.__nhTrailHold=true;
     var open=function(){ try{
         if(prev.screen==="homeScreen"){ goHome(); if(prev.page==="admin" && !document.querySelector("#nh .band") ) W.nhAdminPage(); }
-        else if(prev.screen==="ladderScreen" && W.__nhLadderArgs && typeof loadLadder==="function"){ loadLadder.apply(null, W.__nhLadderArgs); }   /* n328: the TABLE you were on, not the menu */
+        else if(prev.screen==="ladderScreen" && W.__nhLadderArgs && typeof loadLadder==="function"){ loadLadder.apply(null, W.__nhLadderArgs); try{ if(W.__nhLadRestore) W.__nhLadRestore(); }catch(e){} }   /* n351: the table you left, at once */   /* n328: the TABLE you were on, not the menu */
         else W.showScreen(prev.screen);
       }catch(e){} W.__nhTrailHold=false; };
     if(prev.search!==String(location.search||"")){
