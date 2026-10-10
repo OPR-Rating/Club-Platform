@@ -3750,7 +3750,7 @@ const CLUB_NAME = _club.name;  // shown in the logo as "OPR · <name>"
     link.setAttribute('href', href);
   }catch(e){ /* install stays on the static manifest — no functional impact */ }
 })();
-const OPR_VERSION = "OPR-DOUBLES v2026.09.03-56 · NAT fork n352 (no voice) (of PLAT p117)";  // MANUAL PAIR CREATION REMOVED FROM ADMIN: Create a pair, Bulk create pairs and Re-derive all pairs are gone (they only made match-less ghost pairs, and Re-derive rewrote every stored initial club-wide). Pairs are born automatically at match entry. Current pairs list untouched; the underlying JS is left in place unreferenced, so no other code path changes. Includes v47 (set-score fix + double-tap guard) and all prior.
+const OPR_VERSION = "OPR-DOUBLES v2026.09.03-56 · NAT fork n353 (no voice) (of PLAT p117)";  // MANUAL PAIR CREATION REMOVED FROM ADMIN: Create a pair, Bulk create pairs and Re-derive all pairs are gone (they only made match-less ghost pairs, and Re-derive rewrote every stored initial club-wide). Pairs are born automatically at match entry. Current pairs list untouched; the underlying JS is left in place unreferenced, so no other code path changes. Includes v47 (set-score fix + double-tap guard) and all prior.
 // Explanation shown above the individual ladder. Open on load so it's read; collapsible
 // (state kept for the session) and scrolls away. Mechanics only — no outcome framing, so
 // members aren't nudged away from playing stronger opponents. Every clause maps to a real
@@ -16627,7 +16627,8 @@ W.nhOpenPair=function(name){
        booted on the national page or the Global Ledger (no board). Leaving such a start for a real board is ONE proper
        page load onto that board; moves between boards after that stay instant. */
     try{ var _tq=new URLSearchParams(String(url).split("?")[1]||""), _tc=Number(_tq.get("club")||0);
-      if(W.NEWAPP && Number(W.PLAT&&W.PLAT.bootCid||0)===0 && _tc>0){ location.href=String(url); return; } }catch(e){}
+      var _tg=String(_tq.get("go")||"").toLowerCase();
+      if(W.NEWAPP && Number(W.PLAT&&W.PLAT.bootCid||0)===0 && _tc>0 && _tg!=="pair" && _tg!=="me"){ location.href=String(url); return; } }catch(e){}   /* n353: a pair or a person opens in-app (no reload) */
     if(!shape || !nhSamePage(p.path) || !nhOnShellPage()){
       if(opts.replace) location.replace(url); else location.href=url;
       return false;
@@ -17138,6 +17139,7 @@ W.nhOpenPair=function(name){
      and every back arrow steps back along it: the group's sheet back to the region's sheet, that back to the door;
      Men's Pairs back to the ladders menu, that back to the group's page. No rules about doors and parents. */
   W.__nhTrail=[{search:String(location.search||""),screen:"homeScreen"}];
+  try{ if(/^(ladders|ladder|profiles|tournaments|tsheet)$/i.test(new URLSearchParams(location.search).get("go")||"")) W.__nhTrail=[]; }catch(e){}   /* n353: no phantom home behind a screen you opened on */
   (function(){ var _gh=W.goHome; if(typeof _gh!=="function") return; W.goHome=function(){ var r=_gh.apply(this,arguments); try{ nhTrailPush("homeScreen"); }catch(e){} try{ nhRowsHome(); }catch(e){} return r; }; })();
   /* n319: THE BRACKET ROW COMES BACK WHERE IT WAS. The row of brackets scrolls sideways (five, four fit). The tapped
      bracket — Tournaments, the last — stays the focused element, and when the page shows again the browser scrolls the
