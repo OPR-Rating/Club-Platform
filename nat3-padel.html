@@ -3750,7 +3750,7 @@ const CLUB_NAME = _club.name;  // shown in the logo as "OPR · <name>"
     link.setAttribute('href', href);
   }catch(e){ /* install stays on the static manifest — no functional impact */ }
 })();
-const OPR_VERSION = "OPR-DOUBLES v2026.09.03-56 · NAT fork n353 (no voice) (of PLAT p117)";  // MANUAL PAIR CREATION REMOVED FROM ADMIN: Create a pair, Bulk create pairs and Re-derive all pairs are gone (they only made match-less ghost pairs, and Re-derive rewrote every stored initial club-wide). Pairs are born automatically at match entry. Current pairs list untouched; the underlying JS is left in place unreferenced, so no other code path changes. Includes v47 (set-score fix + double-tap guard) and all prior.
+const OPR_VERSION = "OPR-DOUBLES v2026.09.03-56 · NAT fork n354 (no voice) (of PLAT p117)";  // MANUAL PAIR CREATION REMOVED FROM ADMIN: Create a pair, Bulk create pairs and Re-derive all pairs are gone (they only made match-less ghost pairs, and Re-derive rewrote every stored initial club-wide). Pairs are born automatically at match entry. Current pairs list untouched; the underlying JS is left in place unreferenced, so no other code path changes. Includes v47 (set-score fix + double-tap guard) and all prior.
 // Explanation shown above the individual ladder. Open on load so it's read; collapsible
 // (state kept for the session) and scrolls away. Mechanics only — no outcome framing, so
 // members aren't nudged away from playing stronger opponents. Every clause maps to a real
@@ -13478,6 +13478,8 @@ W.nhOpenPair=function(name){
            page named, so a stale step behind (a profile) can never be re-opened in a loop. */
         var _pk=function(s){ var q=new URLSearchParams(String(s||"").split("?")[1]||""); return [Number(q.get("club")||0),q.get("go")||"",q.get("view")||"",q.get("who")||"",q.get("pair")||"",q.get("all")||"",Number(q.get("club")||0)===0?(q.get("pool")||""):""].join("|"); };
         var _cl=function(s){ var q=new URLSearchParams(String(s||"").split("?")[1]||""); return [Number(q.get("club")||0), q.get("go")||""]; };
+        try{ var _gq=(new URLSearchParams(location.search).get("go")||"").toLowerCase();
+          if((_gq==="pair"||_gq==="me") && W.__nhTrail && W.__nhTrail.length>1){ W.nhBackPath(); return false; } }catch(e){}   /* n354: a pair/person "‹ back" is plain back */
         var _pv=W.__nhTrail[W.__nhTrail.length-2]||{}, _h=_cl(href), _p=_cl(_pv.search);
         var _list=(_pv.screen && _pv.screen!=="homeScreen" && _h[0]===_p[0] && (!_h[1] || _h[1]===_p[1]));   /* n351: same board, same page = the way back (no pair<->ladders loop) */
         if(_pk(_pv.search)===_pk(href) || _list){ W.nhBackPath(); return false; }        /* n348: the step behind IS the named place */
