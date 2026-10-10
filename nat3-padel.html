@@ -13651,7 +13651,7 @@ W.nhOpenPair=function(name){
         /* squash: opened from a CLUB's door it reads every division of that club together */
         var ids=[cid]; if(W.__nhLfClubWide){ (W.PLAT.clubs||[]).forEach(function(c){ if(Number(c.parent_id)===cid) ids.push(Number(c.id)); }); }
         var where=ids.length>1 ? ("club_id=in.("+ids.join(",")+")") : ("club_id=eq."+cid);
-        return Promise.resolve(sbGet("matches?select=id,match_date,match_type,t1p1,t1p2,t2p1,t2p2,t1_sets,t2_sets,t1_games,t2_games&"+where+"&order=match_date.asc,id.asc&limit=1000&offset="+off))
+        return Promise.resolve(sbGet("matches?select=id,match_date,match_type,t1p1,t1p2,t2p1,t2p2,t1_sets,t2_sets,t1_games,t2_games,t1_rating_at,t2_rating_at,rating_delta&"+where+"&order=match_date.asc,id.asc&limit=1000&offset="+off))
           .then(function(r){ r=Array.isArray(r)?r:[]; out=out.concat(r); return r.length<1000?out:page(off+1000); });
       };
       return page(0).then(function(rows){ CACHE={cid:cid, at:Date.now(), rows:rows}; return rows; });
@@ -13666,6 +13666,22 @@ W.nhOpenPair=function(name){
     var build=function(rows, cat, asOf){
       var lad=[], info={};
       var pos=function(k){ return lad.indexOf(k); };
+      /* THE STARTING LOG (Andre): the pair-ratings table as it stood on START. Each pair that had played here before START
+         is placed by its rating after its last match before START (the rating it carried into that match, plus or minus
+         that match's move), highest first. Its 60-day clock starts on START. */
+      var rat={};
+      rows.slice().sort(function(a,b){ return (a.match_date<b.match_date?-1:a.match_date>b.match_date?1:0) || ((+a.id||0)-(+b.id||0)); })
+        .forEach(function(m){
+          if(String(m.match_type||"")!==cat || String(m.match_date||"")>=START) return;
+          var A=side(m.t1p1,m.t1p2), B=side(m.t2p1,m.t2p2); if(A.length<2 || B.length<2) return;
+          var ka=keyOf(A), kb=keyOf(B); if(ka===kb) return;
+          var d=+m.rating_delta||0, ra=+m.t1_rating_at, rb=+m.t2_rating_at;
+          [[ka,m.t1p2?A.join(" & "):String(m.t1p1).trim(), ra?ra+d:null],[kb,m.t2p2?B.join(" & "):String(m.t2p1).trim(), rb?rb-d:null]].forEach(function(x){
+            var i=info[x[0]]||(info[x[0]]={name:x[1],p:0,w:0,l:0,last:null}); i.name=x[1];
+            if(x[2]!=null) rat[x[0]]=x[2]; else if(rat[x[0]]==null) rat[x[0]]=0; });
+        });
+      lad=Object.keys(rat).sort(function(a,b){ return (rat[b]-rat[a]) || (info[a].name<info[b].name?-1:1); });
+      lad.forEach(function(k){ info[k].last={d:START, ch:null, isNew:false, seed:true}; info[k].seedR=Math.round(rat[k]); });
       var flush=function(dn){ lad=lad.filter(function(k){ var l=info[k]&&info[k].last; var keep=l && (dn-dayN(l.d))<=KEEP; if(!keep && info[k]){ info[k].w=0; info[k].l=0; } return keep; }); };
       rows.slice().sort(function(a,b){ return (a.match_date<b.match_date?-1:a.match_date>b.match_date?1:0) || ((+a.id||0)-(+b.id||0)); })
         .forEach(function(m){
@@ -13711,7 +13727,7 @@ W.nhOpenPair=function(name){
           h+='<button type="button" data-cat="'+esc(c[0])+'" style="flex:1;min-width:70px;padding:8px 6px;border-radius:9px;font:inherit;font-size:13px;font-weight:700;border:1.5px solid var(--nhc,#6c3483);'
             +(a?'background:var(--nhc,#6c3483);color:#fff':'background:#fff;color:var(--nhc,#6c3483)')+'">'+esc(c[1])+'</button>'; });
         h+='</div><input id="nhTsFind" type="search" placeholder="Find a name…" value="'+esc(state.q)+'" autocomplete="off" style="width:100%;box-sizing:border-box;padding:9px 12px;border:1.5px solid #d9cfe6;border-radius:10px;font:inherit;font-size:14px;margin:0 0 8px">';
-        h+='<div style="font-size:11px;color:#888;margin:0 0 6px">'+L.length+' pairs · '+esc(state.cat)+' · the last 60 days (counting from 15 Sep 2026)</div>'
+        h+='<div style="font-size:11px;color:#888;margin:0 0 6px">'+L.length+' pairs · '+esc(state.cat)+' · started from the ratings on 15 Sep 2026 · 60-day rule</div>'
           +'<div style="display:flex;font-size:10px;font-weight:700;color:#777;text-transform:uppercase;letter-spacing:.4px;border-bottom:1px solid #eee;padding:0 0 4px">'
           +'<span style="width:34px;text-align:right;padding:0 6px 0 0">#</span><span style="flex:1;padding:0 6px">Pair</span><span style="width:48px;text-align:center">W\u2013L</span><span style="width:96px;text-align:right;padding:0 6px">Last match</span></div></div>';
         h+='<table style="width:100%;border-collapse:collapse;font-size:13px;table-layout:fixed"><colgroup><col style="width:34px"><col><col style="width:48px"><col style="width:96px"></colgroup><tbody>';
@@ -13719,7 +13735,8 @@ W.nhOpenPair=function(name){
         L.forEach(function(r){
           var hide=q && !starts(r.i.name,q); if(!hide) shown++;
           var ls=r.i.last, mv='';
-          if(ls){ var tag=ls.isNew?(ls.won?'new':'new'):(ls.ch>0?('↑'+ls.ch):(ls.ch<0?('↓'+(-ls.ch)):'–'));
+          if(ls && ls.seed){ mv='<span style="color:#999">start'+(r.i.seedR?(' \u00b7 '+r.i.seedR):'')+'</span>'; }
+          else if(ls){ var tag=ls.isNew?(ls.won?'new':'new'):(ls.ch>0?('↑'+ls.ch):(ls.ch<0?('↓'+(-ls.ch)):'–'));
             var col=ls.isNew?'#8e7aa6':(ls.ch>0?'#1e8449':(ls.ch<0?'#c0392b':'#999'));
             mv='<span style="font-weight:800;color:'+col+'">'+tag+'</span> <span style="color:#999">'+esc(fmtD(ls.d))+'</span>'; }
           h+='<tr data-n="'+esc(r.i.name.toLowerCase())+'" style="border-top:1px solid #eee'+(hide?';display:none':'')+'"><td style="text-align:right;padding:7px 6px;font-weight:800;color:var(--nhc,#6c3483)">'+r.pos+'</td>'
@@ -13742,7 +13759,7 @@ W.nhOpenPair=function(name){
       +'A new pair\u2019s first match: win and it takes the loser\u2019s place; lose and it starts at the bottom. Each partnership has its own place.<br><br>'
       +'<b>The last 60 days.</b> A pair that has not played for 60 days drops off the log, and everyone below moves up. '
       +'Play again and you come back as a new pair: win and you take the loser\u2019s place, lose and you start at the bottom. '
-      +'Matches count from 15 September 2026. To stay on the log, keep playing.';
+      +'The log started on 15 September 2026 in the order of the pair ratings that day; every match since moves it. To stay on the log, keep playing.';
     var ensure=function(){
       var scr=document.getElementById("nhLfScreen"); if(scr) return scr;
       var lad=document.getElementById("laddersScreen"); if(!lad || !lad.parentNode) return null;
