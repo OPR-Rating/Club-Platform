@@ -3750,7 +3750,7 @@ const CLUB_NAME = _club.name;  // shown in the logo as "OPR · <name>"
     link.setAttribute('href', href);
   }catch(e){ /* install stays on the static manifest — no functional impact */ }
 })();
-const OPR_VERSION = "OPR-DOUBLES v2026.09.03-56 · NAT fork n355 (no voice) (of PLAT p117)";  // MANUAL PAIR CREATION REMOVED FROM ADMIN: Create a pair, Bulk create pairs and Re-derive all pairs are gone (they only made match-less ghost pairs, and Re-derive rewrote every stored initial club-wide). Pairs are born automatically at match entry. Current pairs list untouched; the underlying JS is left in place unreferenced, so no other code path changes. Includes v47 (set-score fix + double-tap guard) and all prior.
+const OPR_VERSION = "OPR-DOUBLES v2026.09.03-56 · NAT fork n357 (no voice) (of PLAT p117)";  // MANUAL PAIR CREATION REMOVED FROM ADMIN: Create a pair, Bulk create pairs and Re-derive all pairs are gone (they only made match-less ghost pairs, and Re-derive rewrote every stored initial club-wide). Pairs are born automatically at match entry. Current pairs list untouched; the underlying JS is left in place unreferenced, so no other code path changes. Includes v47 (set-score fix + double-tap guard) and all prior.
 // Explanation shown above the individual ladder. Open on load so it's read; collapsible
 // (state kept for the session) and scrolls away. Mechanics only — no outcome framing, so
 // members aren't nudged away from playing stronger opponents. Every clause maps to a real
@@ -12266,7 +12266,7 @@ W.mePair=function(name,col){
                 /* n223: this member's own page, so the row says who they played WITH and what the match was
                    worth to them. The stored delta belongs to the first-named pair, so it turns over when they
                    were the second. */
-                +'<span class="nm"><b>'+esc(us)+'</b><span>v '+esc(them)+' \u00b7 '+esc(nhBoardName(m.club_id))
+                +'<span class="nm"><b>'+esc(us)+'</b><span>v '+esc(them)+' \u00b7 '+esc(nhBoardName(m.club_id))+(m.match_date?(' \u00b7 <i style="font-style:normal;white-space:nowrap">'+esc(String(m.match_date).slice(0,10))+'</i>'):'')
                 + (function(){
                     var d=(m.rating_delta!=null)?(+m.rating_delta):null;
                     if(d==null || !isFinite(d)) return "";
@@ -13570,6 +13570,26 @@ W.nhOpenPair=function(name){
     setInterval(function(){
       try{ var h=document.querySelector("#profileSearchScreen .header h1"); if(h && h.textContent!=="Group Members") h.textContent="Group Members"; }catch(e){}
     },400);
+  })();
+  /* n357: GROUP MEMBERS WEAR THEIR PHOTOS — the same faces as Member profiles; a letter where there is no photo */
+  (function(){
+    if(!W.NEWAPP) return;
+    var asking=false;
+    setInterval(function(){
+      try{
+        var sc=document.getElementById("profileSearchScreen"); if(!sc || sc.offsetParent===null) return;
+        if(!FACES){ if(!asking){ asking=true; nhFaces().then(function(){ asking=false; },function(){ asking=false; }); } return; }
+        Array.prototype.forEach.call(sc.querySelectorAll("#playerList > li.player-item"),function(li){
+          var av=li.querySelector(".player-avatar"), nm=li.querySelector(".player-name"); if(!av || !nm) return;
+          var img=FACES[(nm.textContent||"").trim()]||"";
+          if(av.getAttribute("data-nh-face")===img) return;
+          av.setAttribute("data-nh-face",img);
+          if(av.getAttribute("data-nh-letter")==null) av.setAttribute("data-nh-letter", av.textContent||"");
+          if(img){ av.innerHTML='<img alt="" src="'+String(img).replace(/"/g,"&quot;")+'" style="display:block;width:100%;height:100%;object-fit:cover;border-radius:50%">'; av.style.overflow="hidden"; av.style.padding="0"; }
+          else { av.textContent=av.getAttribute("data-nh-letter")||""; }
+        });
+      }catch(e){}
+    },500);
   })();
   /* n350: COLUMN NAMES THAT STAY PUT. Group Members gets Name · Rating · Level · Move · Rank in the frozen block with
      its search box (each name measured onto the pill beneath it); on Member profiles and List all members the names
