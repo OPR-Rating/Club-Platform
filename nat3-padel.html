@@ -3750,7 +3750,7 @@ const CLUB_NAME = _club.name;  // shown in the logo as "OPR · <name>"
     link.setAttribute('href', href);
   }catch(e){ /* install stays on the static manifest — no functional impact */ }
 })();
-const OPR_VERSION = "OPR-DOUBLES v2026.09.03-56 · NAT fork n361 (no voice) (of PLAT p117)";  // MANUAL PAIR CREATION REMOVED FROM ADMIN: Create a pair, Bulk create pairs and Re-derive all pairs are gone (they only made match-less ghost pairs, and Re-derive rewrote every stored initial club-wide). Pairs are born automatically at match entry. Current pairs list untouched; the underlying JS is left in place unreferenced, so no other code path changes. Includes v47 (set-score fix + double-tap guard) and all prior.
+const OPR_VERSION = "OPR-DOUBLES v2026.09.03-56 · NAT fork n362 (no voice) (of PLAT p117)";  // MANUAL PAIR CREATION REMOVED FROM ADMIN: Create a pair, Bulk create pairs and Re-derive all pairs are gone (they only made match-less ghost pairs, and Re-derive rewrote every stored initial club-wide). Pairs are born automatically at match entry. Current pairs list untouched; the underlying JS is left in place unreferenced, so no other code path changes. Includes v47 (set-score fix + double-tap guard) and all prior.
 // Explanation shown above the individual ladder. Open on load so it's read; collapsible
 // (state kept for the session) and scrolls away. Mechanics only — no outcome framing, so
 // members aren't nudged away from playing stronger opponents. Every clause maps to a real
@@ -11101,7 +11101,7 @@ async function clRemove(id, label){
          so the Ledgers button is gone from it; the records are reached from the door. */
       +'<button onclick="window.nhGo(\'profiles\')">'+ic.per+'Group members</button>'
       +'<button onclick="window.nhGo(\'card\')">'+ic.card+'Court card</button>'
-      +'<button onclick="window.nhLeapfrog()"><svg viewBox="0 0 24 24"><path d="M6 13l6-6 6 6M6 19l6-6 6 6"/></svg>Leapfrog Log</button>'   /* n360 */
+      +'<button onclick="window.nhLeapfrog()"><svg viewBox="0 0 24 24"><path d="M6 13l6-6 6 6M6 19l6-6 6 6"/></svg>Leapfrog Index</button>'   /* n360 */
       +'<button onclick="window.nhGo(\'tournaments\')">'+ic.cup+'Tournaments</button>'
       +'</div>';
   }
@@ -13626,7 +13626,7 @@ W.nhOpenPair=function(name){
       return _pa.apply(this,arguments);
     };
   })();
-  /* LEAPFROG LOG (Andre, 10 Oct; first called the Challenge Ladder) — "take the spot". A second ladder on Ratings and Ladders, beside the official ones
+  /* LEAPFROG INDEX (Andre, 10 Oct; first called the Challenge Ladder) — "take the spot". A second ladder on Ratings and Ladders, beside the official ones
      (Pair Ratings, Universal, the Good 'ol Club Ladder — all untouched). Read only: it is worked out on the phone from the
      board's own match log, every time it is opened; nothing is written anywhere.
      Rules: every match since the first one, in date order, per category. Beat a pair ABOVE you and you take its place
@@ -13663,38 +13663,42 @@ W.nhOpenPair=function(name){
     var dayN=function(d){ var t=Date.parse(String(d||"").slice(0,10)+"T00:00:00Z"); return isNaN(t)?0:Math.floor(t/86400000); };
     var todayN=function(){ var n=new Date(); return Math.floor(Date.UTC(n.getFullYear(),n.getMonth(),n.getDate())/86400000); };
     W.__nhLfRules={start:START, keep:KEEP};
-    var build=function(rows, cat, asOf){
+    var MINP=12;   /* Andre (11 Oct): a category with no history starts when 12 pairs have played */
+    var nmOf=function(m,t){ var A=t===1?side(m.t1p1,m.t1p2):side(m.t2p1,m.t2p2); return (t===1?m.t1p2:m.t2p2)?A.join(" & "):String(t===1?m.t1p1:m.t2p1).trim(); };
+    var build=function(rows, cat, asOf, leaps){
       var lad=[], info={};
       var pos=function(k){ return lad.indexOf(k); };
-      /* THE STARTING LOG (Andre): the pair-ratings table as it stood on START. Each pair that had played here before START
-         is placed by its rating after its last match before START (the rating it carried into that match, plus or minus
-         that match's move), highest first. Its 60-day clock starts on START. */
+      var ms=rows.filter(function(m){ return String(m.match_type||"")===cat; })
+        .sort(function(a,b){ return (a.match_date<b.match_date?-1:a.match_date>b.match_date?1:0) || ((+a.id||0)-(+b.id||0)); })
+        .map(function(m){ var A=side(m.t1p1,m.t1p2), B=side(m.t2p1,m.t2p2); if(A.length<2||B.length<2) return null;
+          var ka=keyOf(A), kb=keyOf(B); if(ka===kb) return null; return {m:m, ka:ka, kb:kb, d:String(m.match_date||"").slice(0,10)}; })
+        .filter(Boolean);
+      /* WHEN IT STARTS. Normally on START, in the order of the pair ratings that day. A category with fewer than 12 pairs
+         before START starts on the day its 12th pair plays (on or after START), in the order of the ratings that day. */
+      var seen={}, before=0; ms.forEach(function(x){ if(x.d<START){ seen[x.ka]=1; seen[x.kb]=1; } }); before=Object.keys(seen).length;
+      var D=null;
+      if(before>=MINP) D=START;
+      else{ for(var i=0;i<ms.length;i++){ var x=ms[i]; seen[x.ka]=1; seen[x.kb]=1; if(Object.keys(seen).length>=MINP){ D=(x.d<START?START:x.d); break; } } }
+      if(!D) return {notYet:true, count:Object.keys(seen).length, need:MINP, rows:[]};
+      var inSeed=function(x){ return D===START ? x.d<START : x.d<=D; };
+      /* THE STARTING ORDER: each pair's rating after its last match in the seed period (the rating it carried into that
+         match, plus or minus that match's move), highest first. Its 60-day clock starts on the start day. */
       var rat={};
-      rows.slice().sort(function(a,b){ return (a.match_date<b.match_date?-1:a.match_date>b.match_date?1:0) || ((+a.id||0)-(+b.id||0)); })
-        .forEach(function(m){
-          if(String(m.match_type||"")!==cat || String(m.match_date||"")>=START) return;
-          var A=side(m.t1p1,m.t1p2), B=side(m.t2p1,m.t2p2); if(A.length<2 || B.length<2) return;
-          var ka=keyOf(A), kb=keyOf(B); if(ka===kb) return;
-          var d=+m.rating_delta||0, ra=+m.t1_rating_at, rb=+m.t2_rating_at;
-          [[ka,m.t1p2?A.join(" & "):String(m.t1p1).trim(), ra?ra+d:null],[kb,m.t2p2?B.join(" & "):String(m.t2p1).trim(), rb?rb-d:null]].forEach(function(x){
-            var i=info[x[0]]||(info[x[0]]={name:x[1],p:0,w:0,l:0,last:null}); i.name=x[1];
-            if(x[2]!=null) rat[x[0]]=x[2]; else if(rat[x[0]]==null) rat[x[0]]=0; });
-        });
+      ms.forEach(function(x){ if(!inSeed(x)) return; var m=x.m, d=+m.rating_delta||0, ra=+m.t1_rating_at, rb=+m.t2_rating_at;
+        [[x.ka,nmOf(m,1),ra?ra+d:null],[x.kb,nmOf(m,2),rb?rb-d:null]].forEach(function(y){
+          var i=info[y[0]]||(info[y[0]]={name:y[1],p:0,w:0,l:0,last:null}); i.name=y[1];
+          if(y[2]!=null) rat[y[0]]=y[2]; else if(rat[y[0]]==null) rat[y[0]]=0; }); });
       lad=Object.keys(rat).sort(function(a,b){ return (rat[b]-rat[a]) || (info[a].name<info[b].name?-1:1); });
-      lad.forEach(function(k){ info[k].last={d:START, ch:null, isNew:false, seed:true}; info[k].seedR=Math.round(rat[k]); });
+      lad.forEach(function(k){ info[k].last={d:D, ch:null, isNew:false, seed:true}; info[k].seedR=Math.round(rat[k]); });
       var flush=function(dn){ lad=lad.filter(function(k){ var l=info[k]&&info[k].last; var keep=l && (dn-dayN(l.d))<=KEEP; if(!keep && info[k]){ info[k].w=0; info[k].l=0; } return keep; }); };
-      rows.slice().sort(function(a,b){ return (a.match_date<b.match_date?-1:a.match_date>b.match_date?1:0) || ((+a.id||0)-(+b.id||0)); })
-        .forEach(function(m){
-          if(String(m.match_type||"")!==cat) return;
-          if(String(m.match_date||"")<START) return;
+      ms.forEach(function(x){
+          if(inSeed(x)) return;
+          var m=x.m, ka=x.ka, kb=x.kb;
           flush(dayN(m.match_date));
-          var A=side(m.t1p1,m.t1p2), B=side(m.t2p1,m.t2p2); if(A.length<2 || B.length<2) return;
-          var ka=keyOf(A), kb=keyOf(B); if(ka===kb) return;
-          [[ka,m.t1p2?A.join(" & "):String(m.t1p1).trim()],[kb,m.t2p2?B.join(" & "):String(m.t2p1).trim()]].forEach(function(x){
-            var i=info[x[0]]||(info[x[0]]={name:x[1],p:0,w:0,l:0,last:null}); i.name=x[1]; i.p++; });
+          [[ka,nmOf(m,1)],[kb,nmOf(m,2)]].forEach(function(y){ var i=info[y[0]]||(info[y[0]]={name:y[1],p:0,w:0,l:0,last:null}); i.name=y[1]; i.p++; });
           var s1=+m.t1_sets||0, s2=+m.t2_sets||0, g1=+m.t1_games||0, g2=+m.t2_games||0;
           var win=s1>s2?1:s2>s1?2:(g1>g2?1:g2>g1?2:0);
-          var before={}; before[ka]=pos(ka); before[kb]=pos(kb);
+          var bf={}; bf[ka]=pos(ka); bf[kb]=pos(kb); var size=lad.length;
           if(!win){ [ka,kb].forEach(function(k){ if(pos(k)<0) lad.push(k); }); }
           else{
             var W_=win===1?ka:kb, L_=win===1?kb:ka; info[W_].w++; info[L_].l++;
@@ -13703,11 +13707,14 @@ W.nhOpenPair=function(name){
             else if(pw<0){ lad.splice(pl,0,W_); }
             else if(pl<0){ lad.push(L_); }
             else if(pw>pl){ lad.splice(pw,1); lad.splice(pl,0,W_); }
+            /* the leap: places climbed in this one match (a new pair climbs from just below the bottom) */
+            if(leaps){ var from=(bf[W_]<0?size:bf[W_]), to=pos(W_); if(from>to) leaps.push({name:info[W_].name, over:info[L_].name, up:from-to, to:to+1, d:x.d, isNew:bf[W_]<0}); }
           }
-          [ka,kb].forEach(function(k){ var b=before[k], a=pos(k); info[k].last={d:m.match_date, ch:(b<0?null:b-a), isNew:b<0, won:(win===1&&k===ka)||(win===2&&k===kb)}; });
+          [ka,kb].forEach(function(k){ var b=bf[k], a=pos(k); info[k].last={d:m.match_date, ch:(b<0?null:b-a), isNew:b<0, won:(win===1&&k===ka)||(win===2&&k===kb)}; });
         });
       flush(asOf!=null?asOf:todayN());
-      return lad.map(function(k,i){ return {pos:i+1, key:k, i:info[k], left:KEEP-((asOf!=null?asOf:todayN())-dayN(info[k].last.d))}; });
+      var out=lad.map(function(k,i){ return {pos:i+1, key:k, i:info[k]}; });
+      out.started=D; return out;
     };
     var state={cat:"Men's", q:""};
     /* a search finds a PLAYER by the start of their name: "j" gives Jeff and James, not Peter Johnson */
@@ -13715,7 +13722,7 @@ W.nhOpenPair=function(name){
       return String(pairName||"").toLowerCase().split(" & ").some(function(n){ return n.trim().indexOf(q)===0; }); };
     var draw=function(){
       var box=document.getElementById("nhTsBody"); if(!box) return;
-      box.innerHTML='<div style="padding:14px;text-align:center;color:#888;font-size:13px">Working out the Leapfrog Log…</div>';
+      box.innerHTML='<div style="padding:14px;text-align:center;color:#888;font-size:13px">Working out the Leapfrog Index…</div>';
       load().then(function(rows){
         var have={}; rows.forEach(function(m){ have[m.match_type]=1; });
         var cats=CATS.filter(function(c){ return have[c[0]]; });
@@ -13726,8 +13733,15 @@ W.nhOpenPair=function(name){
         cats.forEach(function(c){ var a=c[0]===state.cat;
           h+='<button type="button" data-cat="'+esc(c[0])+'" style="flex:1;min-width:70px;padding:8px 6px;border-radius:9px;font:inherit;font-size:13px;font-weight:700;border:1.5px solid var(--nhc,#6c3483);'
             +(a?'background:var(--nhc,#6c3483);color:#fff':'background:#fff;color:var(--nhc,#6c3483)')+'">'+esc(c[1])+'</button>'; });
+        if(L.notYet){
+          h+='</div></div><div style="padding:16px 14px;margin:6px 0;border:1.5px dashed #d9cfe6;border-radius:12px;text-align:center;font-size:13px;line-height:1.5;color:#4a4256">'
+            +'<b>The '+esc(state.cat)+' Leapfrog Index starts when 12 pairs have played.</b><br>'+L.count+' of 12 so far. Keep entering your scores.</div>';
+          box.innerHTML=h;
+          Array.prototype.forEach.call(box.querySelectorAll("button[data-cat]"),function(b){ b.onclick=function(){ state.cat=b.getAttribute("data-cat"); draw(); }; });
+          return;
+        }
         h+='</div><input id="nhTsFind" type="search" placeholder="Find a name…" value="'+esc(state.q)+'" autocomplete="off" style="width:100%;box-sizing:border-box;padding:9px 12px;border:1.5px solid #d9cfe6;border-radius:10px;font:inherit;font-size:14px;margin:0 0 8px">';
-        h+='<div style="font-size:11px;color:#888;margin:0 0 6px">'+L.length+' pairs · '+esc(state.cat)+' · started from the ratings on 15 Sep 2026 · 60-day rule</div>'
+        h+='<div style="font-size:11px;color:#888;margin:0 0 6px">'+L.length+' pairs · '+esc(state.cat)+' · started from the ratings on '+esc(fmtD(L.started))+' '+String(L.started).slice(0,4)+' · 60-day rule</div>'
           +'<div style="display:flex;font-size:10px;font-weight:700;color:#777;text-transform:uppercase;letter-spacing:.4px;border-bottom:1px solid #eee;padding:0 0 4px">'
           +'<span style="width:34px;text-align:right;padding:0 6px 0 0">#</span><span style="flex:1;padding:0 6px">Pair</span><span style="width:48px;text-align:center">W\u2013L</span><span style="width:96px;text-align:right;padding:0 6px">Last match</span></div></div>';
         h+='<table style="width:100%;border-collapse:collapse;font-size:13px;table-layout:fixed"><colgroup><col style="width:34px"><col><col style="width:48px"><col style="width:96px"></colgroup><tbody>';
@@ -13753,21 +13767,22 @@ W.nhOpenPair=function(name){
       }).catch(function(){ box.innerHTML='<div style="padding:14px;text-align:center;color:#c0392b;font-size:13px">Could not read the matches — try again.</div>'; });
     };
     /* its own page, opened from the group page's row of buttons (beside Ratings & ladders, before Tournaments) */
-    var HOW='<b>What the Leapfrog Log is.</b> It is built from the matches played \u2014 social, ladder or tournament, every match counts. '
+    var HOW='<b>What the Leapfrog Index is.</b> Who has beaten whom, over the last 60 days. It is built from the matches played \u2014 social, ladder or tournament, every match counts. '
       +'Your place is your leapfrog move after your last match. It is not your rank or your rating; it is a live picture of the matches played.<br><br>'
       +'<b>How it moves.</b> Beat a pair <b>above</b> you and you take its place \u2014 it and everyone between move down one. Beat a pair below you and nothing moves. '
       +'A new pair\u2019s first match: win and it takes the loser\u2019s place; lose and it starts at the bottom. Each partnership has its own place.<br><br>'
-      +'<b>The last 60 days.</b> A pair that has not played for 60 days drops off the log, and everyone below moves up. '
+      +'<b>The last 60 days.</b> A pair that has not played for 60 days drops off the index, and everyone below moves up. '
       +'Play again and you come back as a new pair: win and you take the loser\u2019s place, lose and you start at the bottom. '
-      +'The log started on 15 September 2026 in the order of the pair ratings that day; every match since moves it. To stay on the log, keep playing.';
+      +'The index started on 15 September 2026 in the order of the pair ratings that day; every match since moves it. '
+      +'A new group or category starts the day its 12th pair plays, in the order of the ratings that day. To stay on the index, keep playing.';
     var ensure=function(){
       var scr=document.getElementById("nhLfScreen"); if(scr) return scr;
       var lad=document.getElementById("laddersScreen"); if(!lad || !lad.parentNode) return null;
       scr=document.createElement("div"); scr.className="screen hidden"; scr.id="nhLfScreen";
-      scr.innerHTML='<div class="header"><button class="back-btn" onclick="goHome()">&#8592;</button><h1>Leapfrog Log</h1></div>'
+      scr.innerHTML='<div class="header"><button class="back-btn" onclick="goHome()">&#8592;</button><h1>Leapfrog Index</h1></div>'
         +'<div class="screen-content">'
         +'<button type="button" onclick="nhLfHow()" style="width:100%;text-align:left;padding:9px 12px;border-radius:10px;border:1px solid rgba(108,52,131,.22);background:rgba(108,52,131,.06);font:inherit;font-size:13px;font-weight:700;color:#3a2348;margin:0 0 6px">'
-        +'How the Leapfrog Log works <span id="nhLfChev" style="float:right">\u25BC</span></button>'
+        +'How the Leapfrog Index works <span id="nhLfChev" style="float:right">\u25BC</span></button>'
         +'<div id="nhLfHowBox" style="display:none;padding:10px 12px;background:rgba(108,52,131,.06);border:1px solid rgba(108,52,131,.22);border-radius:10px;margin:0 0 10px;font-size:12px;line-height:1.5;color:#3a2348">'+HOW+'</div>'
         +'<div id="nhTsBody"></div></div>';
       lad.parentNode.insertBefore(scr, lad.nextSibling);
@@ -13786,6 +13801,50 @@ W.nhOpenPair=function(name){
     };
     /* a different board while the page is open: read that board's matches */
     setInterval(function(){ try{ var s=document.getElementById("nhLfScreen"); if(s && s.classList.contains("active") && CACHE.cid!=null && CACHE.cid!==Number(CLUB_ID||0)){ CACHE={}; draw(); } }catch(e){} }, 600);
+    /* BIGGEST LEAPS (Andre, 11 Oct): a bracket on the page where the index lives — padel: a group's page, after Movers;
+       squash: a club's front door, after Movers — the three biggest single-match climbs of the last 28 days. Read only. */
+    var leapHere=function(){
+      try{
+        var c=Number(CLUB_ID||0); if(!c) return false;
+        var q=new URLSearchParams(location.search); if(q.get("go")) return false;
+        var cs=W.PLAT.clubs||[], kids=cs.filter(function(x){ return Number(x.parent_id)===c; });
+        if(W.__nhLfClubWide) return kids.length>0 && !kids.some(function(k){ return cs.some(function(x){ return Number(x.parent_id)===Number(k.id); }); });
+        return kids.length===0;
+      }catch(e){ return false; }
+    };
+    var LEAPDAYS=28;
+    var leapBrk=function(){
+      try{
+        var hs=document.getElementById("homeScreen"), nh=document.getElementById("nh");
+        if(!hs || !hs.classList.contains("active") || !nh || !leapHere()) return;
+        var cid=String(Number(CLUB_ID||0)), have=document.getElementById("nhLeapBrk");
+        if(have && have.getAttribute("data-cid")===cid && nh.contains(have)) return;
+        if(have) have.remove();
+        var h2s=Array.prototype.slice.call(nh.querySelectorAll(".brk > h2"));
+        var after=h2s.filter(function(h){ return /^\s*movers/i.test(h.textContent||""); })[0] || h2s.filter(function(h){ return /^\s*in form/i.test(h.textContent||""); })[0];
+        var before=Array.prototype.slice.call(nh.querySelectorAll(".brk")).filter(function(b){ return /recent matches/i.test(b.textContent.slice(0,40)); })[0];
+        var host=document.createElement("div"); host.className="brk"; host.id="nhLeapBrk"; host.setAttribute("data-cid",cid); host.style.display="none";
+        if(after && after.parentNode){ var b=after.parentNode; b.parentNode.insertBefore(host, b.nextSibling); }
+        else if(before && before.parentNode){ before.parentNode.insertBefore(host, before); }
+        else return;
+        load().then(function(rows){
+          if(String(Number(CLUB_ID||0))!==cid || !document.body.contains(host)) return;
+          var today=todayN(), all=[];
+          CATS.forEach(function(c){ var lp=[]; build(rows, c[0], null, lp); lp.forEach(function(x){ if(!x.isNew && today-dayN(x.d)<=LEAPDAYS){ x.cat=c[1]; all.push(x); } });   /* climbs by pairs already on it */ });
+          all.sort(function(a,b){ return (b.up-a.up) || (a.d<b.d?1:-1); });
+          var top=all.slice(0,3); if(!top.length){ host.remove(); return; }
+          host.innerHTML='<h2 style="display:flex;align-items:center;gap:8px">Biggest leaps · last '+LEAPDAYS+' days</h2><div class="rows">'
+            + top.map(function(x){
+                return '<button class="row" onclick="window.nhLeapfrog()">'
+                  +'<span class="av" style="display:grid;place-items:center;width:34px;height:34px;border-radius:50%;background:var(--nhc,#6c3483);color:#fff;font-weight:800;font-size:13px;flex:none">#'+x.to+'</span>'
+                  +'<span class="nm"><b>'+esc(x.name)+'</b><span>'+(x.isNew?'new · ':'')+'beat '+esc(x.over)+' · '+esc(x.cat)+' · '+esc(fmtD(x.d))+'</span></span>'
+                  +'<span class="val"><b class="up">▲ '+x.up+'</b><span>place'+(x.up===1?'':'s')+'</span></span></button>'; }).join("")
+            +'</div><button class="more" onclick="window.nhLeapfrog()">Open the Leapfrog Index →</button>';
+          host.style.display="";
+        }).catch(function(){ try{ host.remove(); }catch(e){} });
+      }catch(e){}
+    };
+    setInterval(leapBrk, 900);
     W.__nhTsBuild=build;   /* for the test */
   })();
   /* n350: COLUMN NAMES THAT STAY PUT. Group Members gets Name · Rating · Level · Move · Rank in the frozen block with
