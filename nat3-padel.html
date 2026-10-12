@@ -3750,7 +3750,7 @@ const CLUB_NAME = _club.name;  // shown in the logo as "OPR · <name>"
     link.setAttribute('href', href);
   }catch(e){ /* install stays on the static manifest — no functional impact */ }
 })();
-const OPR_VERSION = "OPR-DOUBLES v2026.09.03-56 · NAT fork n363 (no voice) (of PLAT p117)";  // MANUAL PAIR CREATION REMOVED FROM ADMIN: Create a pair, Bulk create pairs and Re-derive all pairs are gone (they only made match-less ghost pairs, and Re-derive rewrote every stored initial club-wide). Pairs are born automatically at match entry. Current pairs list untouched; the underlying JS is left in place unreferenced, so no other code path changes. Includes v47 (set-score fix + double-tap guard) and all prior.
+const OPR_VERSION = "OPR-DOUBLES v2026.09.03-56 · NAT fork n365 (no voice) (of PLAT p117)";  // MANUAL PAIR CREATION REMOVED FROM ADMIN: Create a pair, Bulk create pairs and Re-derive all pairs are gone (they only made match-less ghost pairs, and Re-derive rewrote every stored initial club-wide). Pairs are born automatically at match entry. Current pairs list untouched; the underlying JS is left in place unreferenced, so no other code path changes. Includes v47 (set-score fix + double-tap guard) and all prior.
 // Explanation shown above the individual ladder. Open on load so it's read; collapsible
 // (state kept for the session) and scrolls away. Mechanics only — no outcome framing, so
 // members aren't nudged away from playing stronger opponents. Every clause maps to a real
@@ -9798,8 +9798,10 @@ async function clRemove(id, label){
      the group's. So the list is this board's, and a group says separately how many are waiting at the club,
      which answers the original complaint without pretending they are members here. */
   var WAITELSE=0;
+  var WAITCID=null;
   function waitingList(){
-    if(WAITING) return Promise.resolve(WAITING);
+    if(WAITING && WAITCID===W.PLAT.cid) return Promise.resolve(WAITING);   /* n365: per board */
+    WAITING=null; WAITCID=W.PLAT.cid;
     if(!W.PLAT.cid || W.PLAT.cid===0) return Promise.resolve([]);
     var boards=[W.PLAT.cid];
     var B="https://djmbnvikrdgnomjhtkgf.supabase.co/rest/v1/";
@@ -9857,7 +9859,7 @@ async function clRemove(id, label){
         list.style.visibility="visible";
       }).catch(function(){ list.style.visibility="visible"; });
       setTimeout(function(){ list.style.visibility="visible"; }, 4000);   /* never leave it hidden */
-      return;
+      /* n365: and the note above it again — this group's own members still to record a match */
     }
     if(!document.getElementById("playerList")) return;
     waitingList().then(function(names){
@@ -9876,7 +9878,7 @@ async function clRemove(id, label){
         +'<span style="flex:1">'+n+(n===1?" member":" members")+' still to record a match</span>'
         +'<span id="platWaitingCaret" style="font-size:11px;opacity:.8">\u25be</span></button>'
         +'<div id="platWaitingBody" style="display:none;padding:9px 14px 2px;font-size:12.5px;color:#5a5168;line-height:1.9">'
-        +'Each one starts on the rating shown. It becomes a place in the table with their first match.<div id="platWaitElse" style="margin-top:6px;color:#6f6780"></div><div style="margin-top:6px">'
+        +'Each one starts on the rating shown. It becomes a place in the table with their first match.'+(W.NEWAPP?'':'<div id="platWaitElse" style="margin-top:6px;color:#6f6780"></div>')+'<div style="margin-top:6px">'
         /* n33: WITH THEIR STARTING RATING. "What's my number?" is the next question after "where am I?", and
            without it the organiser gets asked twice instead of once. */
         +names.map(function(nm){
@@ -9885,7 +9887,9 @@ async function clRemove(id, label){
               +(r!=null?('<span style="font-weight:600;opacity:.75"> \u00b7 '+esc(String(r))+'</span>'):'')+'</a>';
           }).join('<span style="color:#b9aecb">  \u00b7  </span>')
         +'</div></div>';
-      h.parentNode.insertBefore(d, h);
+      var stk=W.NEWAPP && document.querySelector("#profileSearchScreen .screen-content > div");
+      if(stk && stk!==h && !stk.contains(h)){ d.style.margin="8px 0 6px"; stk.insertBefore(d, stk.querySelector(".nhGmHead")); }   /* n365 */
+      else h.parentNode.insertBefore(d, h);
     });
   }
   W.platWaitingToggle=function(){
@@ -13103,10 +13107,15 @@ W.mePair=function(name,col){
          one of its groups (the per-board rows are one per membership). People added to the register alone appear in
          the Global list only. */
       var BELONG={}; perBoard.forEach(function(x){ if(sc.boards.indexOf(Number(x.club_id))>=0) BELONG[x.full_name]=1; });
+      /* n365: a member of this region's boards is on this region's list, even when their one group is elsewhere */
+      var NAMEOF={}; clubs.forEach(function(c){ NAMEOF[Number(c.id)]=c.name; });
+      var HOMEHERE={}; perBoard.forEach(function(x){ var cid=Number(x.club_id); if(sc.boards.indexOf(cid)>=0 && cid!==Number(sc.C) && HOMEHERE[x.full_name]==null) HOMEHERE[x.full_name]=cid; });
       var mine=people.filter(function(p){
         if(sc.wide) return true;
         var g=G[p.full_name]; if(!g||!g.club_id) return !!BELONG[p.full_name];   /* still to play: only where they are a member */
-        return sc.boards.indexOf(Number(g.club_id))>=0;
+        if(sc.boards.indexOf(Number(g.club_id))>=0) return true;
+        if(BELONG[p.full_name] && HOMEHERE[p.full_name]!=null){ G[p.full_name]={full_name:p.full_name, club_id:HOMEHERE[p.full_name], group_name:NAMEOF[HOMEHERE[p.full_name]]||g.group_name}; return true; }
+        return false;
       });
       var rows=mine.map(function(p){
         var g=G[p.full_name]||{}, none=!g.club_id;
@@ -13636,16 +13645,18 @@ W.nhOpenPair=function(name){
   (function(){
     if(!W.NEWAPP) return;
     var CATS=[["Men's","Men's"],["Ladies","Ladies'"],["Mixed","Mixed"],["All Sorts","All Sorts"]];
-    var on=function(){ try{ var c=Number(CLUB_ID||0); if(!c) return false;
+    var on=function(){ try{ var c=boardNow(); if(!c) return false;
         if((W.PLAT.clubs||[]).some(function(x){ return Number(x.parent_id)===c; })) return false;   /* a group / division board only — a door has no matches of its own */
         var L=W.__nhTsBoards; return W.__nhTsAll===true || !L || L.indexOf(c)>=0; }catch(e){ return false; } };
+    /* the board on screen: the page's own id (W.PLAT.cid) — CLUB_ID can still hold the board you came from */
+    var boardNow=function(){ try{ return Number((W.PLAT&&W.PLAT.cid)||CLUB_ID||0); }catch(e){ return Number((W.PLAT&&W.PLAT.cid)||0); } };
     var esc=function(s){ return String(s==null?"":s).replace(/[&<>"']/g,function(c){ return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]; }); };
     var side=function(a,b){ var n=[]; [a,b].forEach(function(v){ String(v||"").split(" & ").forEach(function(x){ x=x.trim(); if(x) n.push(x); }); }); return n; };
     var keyOf=function(n){ return n.map(function(x){ return x.toLowerCase(); }).sort().join("|"); };
     var fmtD=function(d){ try{ var t=new Date(String(d)+"T12:00:00"); return t.getDate()+" "+["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"][t.getMonth()]; }catch(e){ return d||""; } };
     var CACHE={};
     var load=function(){
-      var cid=0; try{ cid=Number(CLUB_ID||0); }catch(e){}
+      var cid=0; try{ cid=boardNow(); }catch(e){}
       if(CACHE.cid===cid && CACHE.at && Date.now()-CACHE.at<60000) return Promise.resolve(CACHE.rows);
       var out=[], page=function(off){
         /* squash: opened from a CLUB's door it reads every division of that club together */
@@ -13800,12 +13811,12 @@ W.nhOpenPair=function(name){
       try{ if(!ensure()) return; showScreen("nhLfScreen"); try{ W.scrollTo(0,0); }catch(e){} draw(); }catch(e){}
     };
     /* a different board while the page is open: read that board's matches */
-    setInterval(function(){ try{ var s=document.getElementById("nhLfScreen"); if(s && s.classList.contains("active") && CACHE.cid!=null && CACHE.cid!==Number(CLUB_ID||0)){ CACHE={}; draw(); } }catch(e){} }, 600);
+    setInterval(function(){ try{ var s=document.getElementById("nhLfScreen"); if(s && s.classList.contains("active") && CACHE.cid!=null && CACHE.cid!==boardNow()){ CACHE={}; draw(); } }catch(e){} }, 600);
     /* BIGGEST LEAPS (Andre, 11 Oct): a bracket on the page where the index lives — padel: a group's page, after Movers;
        squash: a club's front door, after Movers — the three biggest single-match climbs of the last 28 days. Read only. */
     var leapHere=function(){
       try{
-        var c=Number(CLUB_ID||0); if(!c) return false;
+        var c=boardNow(); if(!c) return false;
         var q=new URLSearchParams(location.search); if(q.get("go")) return false;
         var cs=W.PLAT.clubs||[], kids=cs.filter(function(x){ return Number(x.parent_id)===c; });
         if(W.__nhLfClubWide) return kids.length>0 && !kids.some(function(k){ return cs.some(function(x){ return Number(x.parent_id)===Number(k.id); }); });
@@ -13817,7 +13828,7 @@ W.nhOpenPair=function(name){
       try{
         var hs=document.getElementById("homeScreen"), nh=document.getElementById("nh");
         if(!hs || !hs.classList.contains("active") || !nh || !leapHere()) return;
-        var cid=String(Number(CLUB_ID||0)), have=document.getElementById("nhLeapBrk");
+        var cid=String(boardNow()), have=document.getElementById("nhLeapBrk");
         if(have && have.getAttribute("data-cid")===cid && nh.contains(have)) return;
         if(have) have.remove();
         var h2s=Array.prototype.slice.call(nh.querySelectorAll(".brk > h2"));
@@ -13828,7 +13839,7 @@ W.nhOpenPair=function(name){
         else if(before && before.parentNode){ before.parentNode.insertBefore(host, before); }
         else return;
         load().then(function(rows){
-          if(String(Number(CLUB_ID||0))!==cid || !document.body.contains(host)) return;
+          if(String(boardNow())!==cid || !document.body.contains(host)) return;
           var today=todayN(), all=[];
           CATS.forEach(function(c){ var lp=[]; build(rows, c[0], null, lp); lp.forEach(function(x){ if(!x.isNew && today-dayN(x.d)<=LEAPDAYS){ x.cat=c[1]; all.push(x); } });   /* climbs by pairs already on it */ });
           all.sort(function(a,b){ return (b.up-a.up) || (a.d<b.d?1:-1); });
