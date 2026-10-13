@@ -3750,7 +3750,7 @@ const CLUB_NAME = _club.name;  // shown in the logo as "OPR · <name>"
     link.setAttribute('href', href);
   }catch(e){ /* install stays on the static manifest — no functional impact */ }
 })();
-const OPR_VERSION = "OPR-DOUBLES v2026.09.03-56 · NAT fork n365 (no voice) (of PLAT p117)";  // MANUAL PAIR CREATION REMOVED FROM ADMIN: Create a pair, Bulk create pairs and Re-derive all pairs are gone (they only made match-less ghost pairs, and Re-derive rewrote every stored initial club-wide). Pairs are born automatically at match entry. Current pairs list untouched; the underlying JS is left in place unreferenced, so no other code path changes. Includes v47 (set-score fix + double-tap guard) and all prior.
+const OPR_VERSION = "OPR-DOUBLES v2026.09.03-56 · NAT fork n366 (no voice) (of PLAT p117)";  // MANUAL PAIR CREATION REMOVED FROM ADMIN: Create a pair, Bulk create pairs and Re-derive all pairs are gone (they only made match-less ghost pairs, and Re-derive rewrote every stored initial club-wide). Pairs are born automatically at match entry. Current pairs list untouched; the underlying JS is left in place unreferenced, so no other code path changes. Includes v47 (set-score fix + double-tap guard) and all prior.
 // Explanation shown above the individual ladder. Open on load so it's read; collapsible
 // (state kept for the session) and scrolls away. Mechanics only — no outcome framing, so
 // members aren't nudged away from playing stronger opponents. Every clause maps to a real
@@ -4480,9 +4480,9 @@ async function renderTournamentButtons(){
   };
   statsBox.innerHTML=''; formBox.innerHTML='';
   divs.forEach(d=>{ statsBox.appendChild(mkBtn(label(d), d, label(d), false, false)); });
-  if(anyDoubles){ statsBox.appendChild(mkBtn('Universal','Universal','Universal', false, true)); }
+  /* n366: no tournament Universal — its results are never stored, so it was always empty */
   divs.forEach(d=>{ formBox.appendChild(mkBtn(label(d)+' Form', d, label(d)+' Form', true, false)); });
-  if(anyDoubles){ formBox.appendChild(mkBtn('Universal Form','Universal','Universal Form', true, false)); }
+  /* n366: no tournament Universal Form, for the same reason */
 }
 function setTourView(v){ window._tourInternalView = v; loadTournamentPicker(); }
 // Open the internal tournament module view (it navigates to the sheet screen itself)
