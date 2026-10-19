@@ -3750,7 +3750,7 @@ const CLUB_NAME = _club.name;  // shown in the logo as "OPR · <name>"
     link.setAttribute('href', href);
   }catch(e){ /* install stays on the static manifest — no functional impact */ }
 })();
-const OPR_VERSION = "OPR-DOUBLES v2026.09.03-56 · NAT fork n366 (no voice) (of PLAT p117)";  // MANUAL PAIR CREATION REMOVED FROM ADMIN: Create a pair, Bulk create pairs and Re-derive all pairs are gone (they only made match-less ghost pairs, and Re-derive rewrote every stored initial club-wide). Pairs are born automatically at match entry. Current pairs list untouched; the underlying JS is left in place unreferenced, so no other code path changes. Includes v47 (set-score fix + double-tap guard) and all prior.
+const OPR_VERSION = "OPR-DOUBLES v2026.09.03-56 · NAT fork n367 (no voice) (of PLAT p117)";  // MANUAL PAIR CREATION REMOVED FROM ADMIN: Create a pair, Bulk create pairs and Re-derive all pairs are gone (they only made match-less ghost pairs, and Re-derive rewrote every stored initial club-wide). Pairs are born automatically at match entry. Current pairs list untouched; the underlying JS is left in place unreferenced, so no other code path changes. Includes v47 (set-score fix + double-tap guard) and all prior.
 // Explanation shown above the individual ladder. Open on load so it's read; collapsible
 // (state kept for the session) and scrolls away. Mechanics only — no outcome framing, so
 // members aren't nudged away from playing stronger opponents. Every clause maps to a real
@@ -10686,9 +10686,17 @@ async function clRemove(id, label){
      Left: a W or L square, green or red. Then the category, "vs" and the opposition, and beneath them the
      opposition's rating and level ON THE DAY with the move in brackets. Right: the score, the category and the
      arrow. The spill is a grey band holding the set pills, green won and red lost, with the date under them. */
+  /* n367: the same two people, whatever order they were picked in */
+  function nhSamePair(x, y){ var k=function(s){ return String(s||"").split(" & ").map(function(t){ return t.trim(); }).filter(Boolean).sort().join("|"); };
+    var kx=k(x); return !!kx && kx===k(y); }
+  function nhOnT1(m, a, b, viewer){
+    var st1=m.t1p2?((m.t1p1||"")+" & "+m.t1p2):(m.t1p1||""), st2=m.t2p2?((m.t2p1||"")+" & "+m.t2p2):(m.t2p1||"");
+    if(nhSamePair(st1,viewer) || nhSamePair(a,viewer)) return true;
+    if(nhSamePair(st2,viewer) || nhSamePair(b,viewer)) return false;
+    return null; }
   function nhPairCard(m, viewer){
     var sides=nhSides(m), a=sides[0], b=sides[1];
-    var onT1=(String(a)===String(viewer));
+    var onT1=(nhOnT1(m,a,b,viewer)===true);   /* n367: by the names, not the order picked */
     var theirs = onT1 ? b : a;
     var s1 = onT1 ? (+m.t1_sets||0) : (+m.t2_sets||0);
     var s2 = onT1 ? (+m.t2_sets||0) : (+m.t1_sets||0);
@@ -10789,8 +10797,9 @@ async function clRemove(id, label){
           if(!V) return esc(a)+' <span style="color:'+col+'">'+((m.t1_sets||0)+"-"+(m.t2_sets||0))+'</span> '+esc(b);
           var onT1, mine, theirs, withWho="";
           if(V.indexOf(" & ")>0){
-            onT1=(String(a)===V);
-            if(!onT1 && String(b)!==V) return esc(a)+' <span style="color:'+col+'">'+((m.t1_sets||0)+"-"+(m.t2_sets||0))+'</span> '+esc(b);
+            var _side=nhOnT1(m,a,b,V);   /* n367: by the names, not the order picked */
+            if(_side===null) return esc(a)+' <span style="color:'+col+'">'+((m.t1_sets||0)+"-"+(m.t2_sets||0))+'</span> '+esc(b);
+            onT1=_side;
             theirs = onT1 ? b : a;
           } else {
             var inA=String(a).split(" & ").indexOf(V)>=0, inB=String(b).split(" & ").indexOf(V)>=0;
