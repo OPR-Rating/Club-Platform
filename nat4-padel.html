@@ -3750,7 +3750,7 @@ const CLUB_NAME = _club.name;  // shown in the logo as "OPR · <name>"
     link.setAttribute('href', href);
   }catch(e){ /* install stays on the static manifest — no functional impact */ }
 })();
-const OPR_VERSION = "OPR-DOUBLES v2026.09.03-56 · NAT4 booking test b1 (nat3 n368) (no voice) (of PLAT p117)";  // MANUAL PAIR CREATION REMOVED FROM ADMIN: Create a pair, Bulk create pairs and Re-derive all pairs are gone (they only made match-less ghost pairs, and Re-derive rewrote every stored initial club-wide). Pairs are born automatically at match entry. Current pairs list untouched; the underlying JS is left in place unreferenced, so no other code path changes. Includes v47 (set-score fix + double-tap guard) and all prior.
+const OPR_VERSION = "OPR-DOUBLES v2026.09.03-56 · NAT4 booking test b2 (nat3 n368) (no voice) (of PLAT p117)";  // MANUAL PAIR CREATION REMOVED FROM ADMIN: Create a pair, Bulk create pairs and Re-derive all pairs are gone (they only made match-less ghost pairs, and Re-derive rewrote every stored initial club-wide). Pairs are born automatically at match entry. Current pairs list untouched; the underlying JS is left in place unreferenced, so no other code path changes. Includes v47 (set-score fix + double-tap guard) and all prior.
 // Explanation shown above the individual ladder. Open on load so it's read; collapsible
 // (state kept for the session) and scrolls away. Mechanics only — no outcome framing, so
 // members aren't nudged away from playing stronger opponents. Every clause maps to a real
@@ -13960,12 +13960,13 @@ W.nhOpenPair=function(name){
        +"#nhBkScreen table.bkG{width:100%;border-collapse:separate;border-spacing:4px 3px;table-layout:fixed}"
        +"#nhBkScreen table.bkG th{font-size:12px;color:#5a5f7a;font-weight:800;padding:4px 0}"
        +"#nhBkScreen table.bkG td.t{width:52px;font-size:11.5px;color:#6b6f88;font-weight:700;text-align:right;padding-right:4px}"
-       +"#nhBkScreen .bkC{height:30px;border-radius:8px;font-size:11.5px;font-weight:700;padding:0 8px;display:flex;align-items:center;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;cursor:pointer;box-sizing:border-box}"
-       +"#nhBkScreen .bkC.free{background:#eef7ee;border:1.5px dashed #9cc89c;color:#2e7d32}"
-       +"#nhBkScreen .bkC.past{background:#f3f3f5;color:#b4b6c3;cursor:default}"
-       +"#nhBkScreen .bkC.bk{color:#fff}#nhBkScreen .bkC.bk.cont{opacity:.55}"
-       +"#nhBkScreen .bkC.blk{background:#5f6372;color:#fff}#nhBkScreen .bkC.blk.cont{opacity:.5}"
-       +"#nhBkScreen .bkC.mine{outline:2.5px solid #f2b705}"
+       +"#nhBkScreen .bkC{min-height:44px;border-radius:10px;font-size:15px;font-weight:800;padding:4px 2px;display:flex;align-items:center;justify-content:center;text-align:center;line-height:1.1;overflow:hidden;cursor:pointer;box-sizing:border-box}"
+       +"#nhBkScreen .bkC small{font-size:10px;font-weight:700;opacity:.9}"
+       +"#nhBkScreen .bkC.free{background:#fff;border:1.5px solid}"
+       +"#nhBkScreen .bkC.past{background:#f3f3f5;color:#c4c6d0;cursor:default;text-decoration:line-through}"
+       +"#nhBkScreen .bkC.bk{background:#e4e6ee;color:#8b8fa3}"
+       +"#nhBkScreen .bkC.blk{background:#d9dbe3;color:#6b6f88}"
+       +"#nhBkScreen .bkC.mine{background:#fff4cc;color:#7a5a00;outline:2px solid #f2b705}"
        +"#nhBkSheet{position:fixed;left:0;right:0;bottom:0;z-index:999;background:#fff;border-radius:18px 18px 0 0;box-shadow:0 -8px 30px rgba(0,0,0,.25);padding:16px 16px 96px;max-height:86vh;overflow-y:auto}"
        +"#nhBkSheet h3{margin:0 0 4px;font-size:17px}#nhBkSheet .sub{font-size:13px;color:#5a5f7a;margin-bottom:12px}"
        +"#nhBkSheet button.b{font:inherit;font-weight:800;font-size:14px;border-radius:12px;padding:11px 14px;border:none;cursor:pointer;margin:4px 6px 4px 0}"
@@ -14013,7 +14014,10 @@ W.nhOpenPair=function(name){
       var g=cfg(); if(!g) return; var today=ymd(localNow());
       if(DAY<today) DAY=today;
       var days=""; for(var i=0;i<=g.days_ahead;i++){ var d=addDays(today,i);
-        days+='<button class="bkDay'+(d===DAY?' on':'')+'" '+(d===DAY?'style="background:'+col()+'"':'')+' onclick="nhBkDay(\''+d+'\')">'+(i===0?"Today":(i===1?"Tomorrow":dayLabel(d)))+'</button>'; }
+        var dd=new Date(d+"T00:00:00Z");
+        days+='<button class="bkDay'+(d===DAY?' on':'')+'" style="min-width:58px;padding:6px 4px;line-height:1.15;'+(d===DAY?'background:'+col():'')+'" onclick="nhBkDay(\''+d+'\')">'
+          +'<span style="font-size:11px">'+["SUN","MON","TUE","WED","THU","FRI","SAT"][dd.getUTCDay()]+'</span><br><span style="font-size:17px">'+dd.getUTCDate()+'</span><br><span style="font-size:11px">'
+          +["JAN","FEB","MAR","APR","MAY","JUN","JUL","AUG","SEP","OCT","NOV","DEC"][dd.getUTCMonth()]+'</span></button>'; }
       document.getElementById("nhBkDays").innerHTML=days;
       var m=me(); var foot='<div style="font-size:12.5px;color:#6b6f88;margin-bottom:10px">'+(m.id?("Booking as <b>"+esc(m.name)+"</b>"):"To book, claim your <b>My page</b> first — bookings are made in your name.")+'</div>';
       foot+=ADMIN?'<button class="bkDay" onclick="nhBkAdminOff()">Leave club admin</button>':'<button class="bkDay" onclick="nhBkAdmin()">Club admin</button>';
@@ -14028,23 +14032,23 @@ W.nhOpenPair=function(name){
     W.nhBkDay=function(d){ DAY=d; draw(); };
     var at=function(court,min){ for(var i=0;i<ROWS.length;i++){ var b=ROWS[i]; if(Number(b.court)!==court) continue;
       if(locDay(b.starts_at)!==DAY) continue; var s=locMin(b.starts_at), e=locMin(b.ends_at); if(e===0) e=1440; if(min>=s&&min<e) return {b:b,first:min===s}; } return null; };
+    /* Andre (26 Oct, like Padel Mates): every court on the page, each under its own heading, the times four to a row.
+       Free times are tappable; a booked or blocked time is shown muted (tap it to see who has it). */
     var grid=function(){
       var g=cfg(), o=toMin(g.open_time), c=toMin(g.close_time), step=g.step_min||30, m=me();
-      var nowMin=(DAY===ymd(localNow()))?(localNow().getUTCHours()*60+localNow().getUTCMinutes()):-1;
-      var h='<table class="bkG"><tr><th></th>'; for(var k=1;k<=g.courts;k++) h+='<th>'+esc(courtName(k))+'</th>'; h+='</tr>';
-      for(var t=o;t<c;t+=step){
-        h+='<tr><td class="t">'+hm(t)+'</td>';
-        for(var k2=1;k2<=g.courts;k2++){
-          var a=at(k2,t);
-          if(a){ var b=a.b, blk=b.kind==="block", mineB=m.id&&(Number(b.booked_by)===m.id||(b.players||[]).map(Number).indexOf(m.id)>=0);
-            var txt=a.first?(blk?("Blocked · "+esc(b.note||"")):esc(nm(b.booked_by))):"";
-            h+='<td><div class="bkC '+(blk?'blk':'bk')+(a.first?'':' cont')+(mineB?' mine':'')+'" '+(blk?'':'style="background:'+col()+'"')+' onclick="nhBkCard('+b.id+')">'+txt+'</div></td>'; }
-          else if(nowMin>=0 && t<nowMin) h+='<td><div class="bkC past"></div></td>';
-          else h+='<td><div class="bkC free" onclick="nhBkFree('+k2+','+t+')">'+hm(t)+'</div></td>';
+      var nowMin=(DAY===ymd(localNow()))?(localNow().getUTCHours()*60+localNow().getUTCMinutes()):-1, h="";
+      for(var k=1;k<=g.courts;k++){
+        h+='<div style="font-size:16px;font-weight:800;color:'+col()+';margin:14px 2px 8px">'+esc(courtName(k))+'</div><div style="display:grid;grid-template-columns:repeat(4,1fr);gap:7px">';
+        for(var t=o;t<c;t+=step){
+          var a=at(k,t);
+          if(a){ var bb=a.b, blk=bb.kind==="block", mineB=m.id&&(Number(bb.booked_by)===m.id||(bb.players||[]).map(Number).indexOf(m.id)>=0);
+            h+='<div class="bkC '+(blk?'blk':'bk')+(mineB?' mine':'')+'" onclick="nhBkCard('+bb.id+')"><span>'+hm(t)+'<br><small>'+esc(blk?(bb.note||"Blocked"):(mineB?"yours":"booked"))+'</small></span></div>'; }
+          else if(nowMin>=0 && t<nowMin) h+='<div class="bkC past">'+hm(t)+'</div>';
+          else h+='<div class="bkC free" style="border-color:'+col()+';color:'+col()+'" onclick="nhBkFree('+k+','+t+')">'+hm(t)+'</div>';
         }
-        h+='</tr>';
+        h+='</div>';
       }
-      document.getElementById("nhBkGrid").innerHTML=h+'</table>';
+      document.getElementById("nhBkGrid").innerHTML=h+'<div style="font-size:12px;color:#6b6f88;margin-top:12px;text-align:center">Tap a free time to book</div>';
     };
 
     /* ---- book a free slot ---- */
@@ -14056,17 +14060,19 @@ W.nhOpenPair=function(name){
       var h='<h3>'+esc(courtName(court))+' · '+esc(dayLabel(DAY))+' · '+hm(start)+'</h3><div class="sub">How long?</div><div id="nhBkLens">';
       lens.forEach(function(x){ h+='<button class="b lt" '+(x.ok?'':'disabled')+' data-len="'+x.L+'" onclick="nhBkLen(this)">'+x.L+' min</button>'; });
       h+='</div>';
-      if(ADMIN && FORP){ h+='<div class="sub" style="margin-top:10px">Booking for (club admin):</div><input id="nhBkFor" list="nhBkNames" placeholder="Start typing a name…" autocomplete="off">'+datalist(); }
+      if(ADMIN && FORP){ h+='<div class="sub" style="margin-top:10px">Booking for (club admin):</div>'+pick("nhBkForSel","",null); }
       h+='<div style="margin-top:12px"><button class="b" id="nhBkGo" '+btnStyle()+' disabled onclick="nhBkGo('+court+','+start+')">Book</button><button class="b lt" onclick="nhBkClose()">Cancel</button></div><div id="nhBkErr" style="color:#c0392b;font-size:13px;margin-top:6px"></div>';
       sheet(h);
     };
     W.nhBkLen=function(el){ Array.prototype.forEach.call(document.querySelectorAll("#nhBkLens button"),function(b){ b.style.outline=""; b.removeAttribute("data-on"); });
       el.style.outline="3px solid "+col(); el.setAttribute("data-on","1"); var go=document.getElementById("nhBkGo"); if(go) go.disabled=false; };
-    var datalist=function(){ if(document.getElementById("nhBkNames")) return ""; return '<datalist id="nhBkNames">'+(NAMES?NAMES.list:[]).map(function(n){ return '<option value="'+esc(n)+'">'; }).join("")+'</datalist>'; };
+    /* the app's normal name dropdown (Andre, 26 Oct): a plain list of the register's names */
+    var pick=function(cls,sel,skip){ return '<select class="'+cls+'"><option value="">Select player...</option>'+(NAMES?NAMES.list:[]).filter(function(n){ return n!==skip; })
+      .map(function(n){ return '<option'+(n===sel?' selected':'')+'>'+esc(n)+'</option>'; }).join("")+'</select>'; };
     W.nhBkGo=function(court,start){
       var on=document.querySelector("#nhBkLens button[data-on]"); if(!on) return; var L=Number(on.getAttribute("data-len")), m=me(), go=document.getElementById("nhBkGo");
       var args={p_club:board(),p_court:court,p_date:DAY,p_start:hm(start),p_len:L};
-      if(ADMIN && FORP){ var f=(document.getElementById("nhBkFor")||{}).value||""; var fid=NAMES.id[f.trim()];
+      if(ADMIN && FORP){ var f=(document.querySelector(".nhBkForSel")||{}).value||""; var fid=NAMES.id[f.trim()];
         if(fid==null){ document.getElementById("nhBkErr").textContent="Choose the player from the list."; return; }
         args.p_admin_code=ADMIN.code; args.p_for=fid; }
       else { args.p_iid=m.id; args.p_pin=m.pin; }
@@ -14106,15 +14112,17 @@ W.nhOpenPair=function(name){
       var t="Padel booked \u2014 "+courtName(Number(b.court),b.club_id)+", "+whenTxt(b)+(club?(" at "+club):"")+". Players: "+[nm(b.booked_by)].concat((b.players||[]).map(nm)).join(", ");
       W.open("https://wa.me/?text="+encodeURIComponent(t),"_blank"); };
     W.nhBkPlayers=function(id){
-      var b=byId(id); var cur=b?(b.players||[]).map(nm):[];
-      var h='<h3>The other players</h3><div class="sub">Pick them from the list — up to three. Leave a box empty if you don’t know yet.</div>'+datalist();
-      for(var i=0;i<3;i++) h+='<input class="nhBkP" list="nhBkNames" placeholder="Player '+(i+2)+'" autocomplete="off" value="'+esc(cur[i]||"")+'">';
+      var b=byId(id); var cur=b?(b.players||[]).map(nm):[], p1=b?nm(b.booked_by):(me().name||"");
+      var h='<h3>The players</h3><div class="sub">Player 1 is the person who booked. Add the others from the list \u2014 leave a box empty if you don\u2019t know yet.</div>'
+        +'<div class="sub" style="margin:6px 0 0">Player 1</div><select disabled style="background:#f3f4f8;color:#2b2f45;font-weight:700"><option>'+esc(p1)+'</option></select>';
+      for(var i=0;i<3;i++) h+='<div class="sub" style="margin:6px 0 0">Player '+(i+2)+'</div>'+pick("nhBkP",cur[i]||"",p1);
       h+='<div style="margin-top:10px"><button class="b" '+btnStyle()+' onclick="nhBkSavePl('+id+')">Save</button><button class="b lt" onclick="nhBkClose()">Later</button></div><div id="nhBkErr" style="color:#c0392b;font-size:13px;margin-top:6px"></div>';
       sheet(h);
     };
     W.nhBkSavePl=function(id){ var m=me(), ids=[], bad=null;
       Array.prototype.forEach.call(document.querySelectorAll(".nhBkP"),function(inp){ var v=inp.value.trim(); if(!v) return; var x=NAMES.id[v]; if(x==null) bad=v; else ids.push(x); });
-      if(bad){ document.getElementById("nhBkErr").textContent="“"+bad+"” is not on the list — pick the name from the list."; return; }
+      if(bad){ document.getElementById("nhBkErr").textContent="Pick each player from the list."; return; }
+      if(ids.filter(function(x,i){ return ids.indexOf(x)!==i; }).length){ document.getElementById("nhBkErr").textContent="The same player is chosen twice."; return; }
       rpc("bk_set_players",{p_id:id,p_iid:m.id,p_pin:m.pin,p_players:ids}).then(function(r){
         if(!r||!r.ok){ document.getElementById("nhBkErr").textContent=(r&&r.error)||"Could not save."; return; }
         sheetClose(); refresh(); }); };
