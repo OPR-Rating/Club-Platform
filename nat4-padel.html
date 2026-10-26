@@ -3750,7 +3750,7 @@ const CLUB_NAME = _club.name;  // shown in the logo as "OPR · <name>"
     link.setAttribute('href', href);
   }catch(e){ /* install stays on the static manifest — no functional impact */ }
 })();
-const OPR_VERSION = "OPR-DOUBLES v2026.09.03-56 · NAT4 booking test b2 (nat3 n368) (no voice) (of PLAT p117)";  // MANUAL PAIR CREATION REMOVED FROM ADMIN: Create a pair, Bulk create pairs and Re-derive all pairs are gone (they only made match-less ghost pairs, and Re-derive rewrote every stored initial club-wide). Pairs are born automatically at match entry. Current pairs list untouched; the underlying JS is left in place unreferenced, so no other code path changes. Includes v47 (set-score fix + double-tap guard) and all prior.
+const OPR_VERSION = "OPR-DOUBLES v2026.09.03-56 · NAT4 booking test b4 (nat3 n368) (no voice) (of PLAT p117)";  // MANUAL PAIR CREATION REMOVED FROM ADMIN: Create a pair, Bulk create pairs and Re-derive all pairs are gone (they only made match-less ghost pairs, and Re-derive rewrote every stored initial club-wide). Pairs are born automatically at match entry. Current pairs list untouched; the underlying JS is left in place unreferenced, so no other code path changes. Includes v47 (set-score fix + double-tap guard) and all prior.
 // Explanation shown above the individual ladder. Open on load so it's read; collapsible
 // (state kept for the session) and scrolls away. Mechanics only — no outcome framing, so
 // members aren't nudged away from playing stronger opponents. Every clause maps to a real
@@ -11075,7 +11075,8 @@ async function clRemove(id, label){
           }).join("");
     });
   };
-  W.meAct=function(what){
+  W.meAct=function(what, _orig){
+    if(!_orig && typeof W.nhMeRoute==="function" && W.nhMeRoute(what, function(){ W.meAct(what, true); })) return;   /* nat4: your own groups */
     if(what==="tournaments") return W.meTournaments();
     /* n171: MEMBER PROFILES, not a group's member list — the region's profiles open straight away, with no
        "which group?" step, and a name there opens that member's profile page. */
@@ -13895,7 +13896,7 @@ W.nhOpenPair=function(name){
     setInterval(leapBrk, 900);
     W.__nhTsBuild=build;   /* for the test */
   })();
-  window.__nhBkAnon="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRqbWJudmlrcmRnbm9tamh0a2dmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODUzOTE0MzEsImV4cCI6MjEwMDk2NzQzMX0.vR8xlVFjV6jXW-pAclGjM74HqmWSKVpsacFjM-dCIJI";
+  window.__nhBkAnon="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRqbWJudmlrcmRnbm9tamh0a2dmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODUzOTE0MzEsImV4cCI6MjEwMDk2NzQzMX0.vR8xlVFjV6jXW-pAclGjM74HqmWSKVpsacFjM-dCIJI"; window.__nhBkBuild="nat4 b4";
   /* ===================================================================================================
      COURT BOOKING (nat4 test copy, Manzini pilot, Andre 26 Oct). Started ONLY from the player's own My page: its
      "Court card" button becomes "Book a court", which asks "Where do you want to play?" — one tile per venue; a venue
@@ -14001,7 +14002,7 @@ W.nhOpenPair=function(name){
           +'<div style="font-size:11px;font-weight:700;margin-top:4px;opacity:.9">'+(on?'Book here':'Not yet')+'</div></button>'; });
       h+='</div></div>';
       document.getElementById("nhBkMine").innerHTML=""; document.getElementById("nhBkAdminBar").innerHTML=""; document.getElementById("nhBkDays").innerHTML="";
-      document.getElementById("nhBkFoot").innerHTML=""; document.getElementById("nhBkGrid").innerHTML=h; mine(true);
+      document.getElementById("nhBkFoot").innerHTML='<div style="font-size:11px;color:#9aa0b4;margin-top:6px">Build '+esc(W.__nhBkBuild||"")+'</div>'; document.getElementById("nhBkGrid").innerHTML=h; mine(true);
       var t=document.querySelector("#nhBkScreen .header h1"); if(t) t.textContent="Book a court";
     };
     W.nhBkVenue=function(c){ if(!(CFG&&CFG[c])) return; BK=c; ADMIN=null; FORP=false; DAY=ymd(localNow());
@@ -14021,7 +14022,7 @@ W.nhOpenPair=function(name){
       document.getElementById("nhBkDays").innerHTML=days;
       var m=me(); var foot='<div style="font-size:12.5px;color:#6b6f88;margin-bottom:10px">'+(m.id?("Booking as <b>"+esc(m.name)+"</b>"):"To book, claim your <b>My page</b> first — bookings are made in your name.")+'</div>';
       foot+=ADMIN?'<button class="bkDay" onclick="nhBkAdminOff()">Leave club admin</button>':'<button class="bkDay" onclick="nhBkAdmin()">Club admin</button>';
-      document.getElementById("nhBkFoot").innerHTML=foot;
+      document.getElementById("nhBkFoot").innerHTML=foot+'<div style="font-size:11px;color:#9aa0b4;margin-top:12px">Build '+esc(W.__nhBkBuild||"")+'</div>';
       drawAdminBar();
       document.getElementById("nhBkGrid").innerHTML='<div style="padding:16px;text-align:center;color:#888;font-size:13px">Reading the courts…</div>';
       var from=encodeURIComponent(DAY+"T00:00:00+02:00"), to=encodeURIComponent(addDays(DAY,1)+"T00:00:00+02:00");
@@ -14067,12 +14068,34 @@ W.nhOpenPair=function(name){
     W.nhBkLen=function(el){ Array.prototype.forEach.call(document.querySelectorAll("#nhBkLens button"),function(b){ b.style.outline=""; b.removeAttribute("data-on"); });
       el.style.outline="3px solid "+col(); el.setAttribute("data-on","1"); var go=document.getElementById("nhBkGo"); if(go) go.disabled=false; };
     /* the app's normal name dropdown (Andre, 26 Oct): a plain list of the register's names */
-    var pick=function(cls,sel,skip){ return '<select class="'+cls+'"><option value="">Select player...</option>'+(NAMES?NAMES.list:[]).filter(function(n){ return n!==skip; })
-      .map(function(n){ return '<option'+(n===sel?' selected':'')+'>'+esc(n)+'</option>'; }).join("")+'</select>'; };
+    /* Andre (26 Oct): the same Select Player screen as the score sheet — search on top, names below, one tap picks.
+       A field shows the chosen name; tapping it opens the list (the app's own player-modal look). */
+    var pick=function(cls,sel,skip){ return '<button type="button" class="nhBkPick '+cls+'" data-name="'+esc(sel||"")+'" data-skip="'+esc(skip||"")+'" onclick="nhBkPickOpen(this)" '
+      +'style="display:flex;width:100%;box-sizing:border-box;align-items:center;justify-content:space-between;font:inherit;font-size:15px;text-align:left;padding:11px 12px;margin:4px 0;border:1.5px solid #cfd3e6;border-radius:10px;background:#fff;color:'+(sel?'#2b2f45':'#8b8fa3')+';cursor:pointer">'
+      +'<span>'+esc(sel||"Select player...")+'</span><span style="color:#8b8fa3">\u25be</span></button>'; };
+    var PICKING=null;
+    W.nhBkPickOpen=function(el){ PICKING=el; var skip=el.getAttribute("data-skip")||"";
+      var taken=Array.prototype.map.call(document.querySelectorAll("#nhBkSheet .nhBkP"),function(b){ return b!==el?b.getAttribute("data-name"):""; }).filter(Boolean);
+      var list=(NAMES?NAMES.list:[]).filter(function(n){ return n!==skip && taken.indexOf(n)<0; });
+      var ov=document.createElement("div"); ov.className="modal-overlay"; ov.id="nhBkPmOv"; ov.style.cssText="display:block;z-index:1001"; ov.onclick=W.nhBkPickClose;
+      var md=document.createElement("div"); md.className="player-modal"; md.id="nhBkPm"; md.style.cssText="display:flex;z-index:1002";
+      md.innerHTML='<div class="player-modal-header"><div class="player-modal-title">Select Player</div>'
+        +'<input type="text" class="player-modal-search" id="nhBkPmQ" placeholder="Type to search..." autocomplete="off" oninput="nhBkPickFilter()"></div>'
+        +'<div class="player-modal-list" id="nhBkPmList"></div>'
+        +'<div style="padding:10px 14px;border-top:1px solid #eee;display:flex;gap:8px"><button type="button" onclick="nhBkPickSet(\'\')" style="flex:1;padding:10px;border:1px solid #ddd;border-radius:9px;background:#fff;font:inherit;font-size:13px;cursor:pointer">Leave empty</button>'
+        +'<button type="button" onclick="nhBkPickClose()" style="flex:1;padding:10px;border:1px solid #ddd;border-radius:9px;background:#fff;font:inherit;font-size:13px;cursor:pointer">Close</button></div>';
+      document.body.appendChild(ov); document.body.appendChild(md); md.__list=list; W.nhBkPickFilter();
+      try{ document.getElementById("nhBkPmQ").focus(); }catch(e){} };
+    W.nhBkPickFilter=function(){ var md=document.getElementById("nhBkPm"); if(!md) return; var q=(document.getElementById("nhBkPmQ").value||"").toLowerCase().trim();
+      var l=(md.__list||[]).filter(function(n){ if(!q) return true; return String(n).toLowerCase().split(/\s+/).some(function(w){ return w.indexOf(q)===0; }) || String(n).toLowerCase().indexOf(q)===0; });
+      document.getElementById("nhBkPmList").innerHTML=l.map(function(n){ return '<div class="player-modal-item" data-n="'+esc(n)+'" onclick="nhBkPickSet(this.getAttribute(\'data-n\'))">'+esc(n)+'</div>'; }).join("")
+        ||'<div class="player-modal-item" style="color:#999">No one by that name</div>'; };
+    W.nhBkPickSet=function(n){ if(PICKING){ PICKING.setAttribute("data-name",n||""); PICKING.firstChild.textContent=n||"Select player..."; PICKING.style.color=n?"#2b2f45":"#8b8fa3"; } W.nhBkPickClose(); };
+    W.nhBkPickClose=function(){ ["nhBkPm","nhBkPmOv"].forEach(function(id){ var e=document.getElementById(id); if(e) e.remove(); }); PICKING=null; };
     W.nhBkGo=function(court,start){
       var on=document.querySelector("#nhBkLens button[data-on]"); if(!on) return; var L=Number(on.getAttribute("data-len")), m=me(), go=document.getElementById("nhBkGo");
       var args={p_club:board(),p_court:court,p_date:DAY,p_start:hm(start),p_len:L};
-      if(ADMIN && FORP){ var f=(document.querySelector(".nhBkForSel")||{}).value||""; var fid=NAMES.id[f.trim()];
+      if(ADMIN && FORP){ var f=(document.querySelector(".nhBkForSel")||{getAttribute:function(){ return ""; }}).getAttribute("data-name")||""; var fid=NAMES.id[f.trim()];
         if(fid==null){ document.getElementById("nhBkErr").textContent="Choose the player from the list."; return; }
         args.p_admin_code=ADMIN.code; args.p_for=fid; }
       else { args.p_iid=m.id; args.p_pin=m.pin; }
@@ -14114,13 +14137,13 @@ W.nhOpenPair=function(name){
     W.nhBkPlayers=function(id){
       var b=byId(id); var cur=b?(b.players||[]).map(nm):[], p1=b?nm(b.booked_by):(me().name||"");
       var h='<h3>The players</h3><div class="sub">Player 1 is the person who booked. Add the others from the list \u2014 leave a box empty if you don\u2019t know yet.</div>'
-        +'<div class="sub" style="margin:6px 0 0">Player 1</div><select disabled style="background:#f3f4f8;color:#2b2f45;font-weight:700"><option>'+esc(p1)+'</option></select>';
+        +'<div class="sub" style="margin:6px 0 0">Player 1</div><div style="padding:11px 12px;margin:4px 0;border:1.5px solid #cfd3e6;border-radius:10px;background:#f3f4f8;color:#2b2f45;font-weight:700;font-size:15px">'+esc(p1)+'</div>';
       for(var i=0;i<3;i++) h+='<div class="sub" style="margin:6px 0 0">Player '+(i+2)+'</div>'+pick("nhBkP",cur[i]||"",p1);
       h+='<div style="margin-top:10px"><button class="b" '+btnStyle()+' onclick="nhBkSavePl('+id+')">Save</button><button class="b lt" onclick="nhBkClose()">Later</button></div><div id="nhBkErr" style="color:#c0392b;font-size:13px;margin-top:6px"></div>';
       sheet(h);
     };
     W.nhBkSavePl=function(id){ var m=me(), ids=[], bad=null;
-      Array.prototype.forEach.call(document.querySelectorAll(".nhBkP"),function(inp){ var v=inp.value.trim(); if(!v) return; var x=NAMES.id[v]; if(x==null) bad=v; else ids.push(x); });
+      Array.prototype.forEach.call(document.querySelectorAll(".nhBkP"),function(inp){ var v=(inp.getAttribute("data-name")||"").trim(); if(!v) return; var x=NAMES.id[v]; if(x==null) bad=v; else ids.push(x); });
       if(bad){ document.getElementById("nhBkErr").textContent="Pick each player from the list."; return; }
       if(ids.filter(function(x,i){ return ids.indexOf(x)!==i; }).length){ document.getElementById("nhBkErr").textContent="The same player is chosen twice."; return; }
       rpc("bk_set_players",{p_id:id,p_iid:m.id,p_pin:m.pin,p_players:ids}).then(function(r){
@@ -14138,18 +14161,23 @@ W.nhOpenPair=function(name){
           return mine && (b.status==="booked" || (b.status==="cancelled" && b.cancelled_by==="club")); }); return MINE; }).catch(function(){ return []; }); };
     var mineHtml=function(list){ if(!list.length) return "";
       return list.map(function(b){ var c=b.status==="cancelled";
-        return '<div class="bkMine" onclick="'+(c?'':'nhBkCard('+b.id+')')+'"><span style="flex:1"><b>'+esc(whenTxt(b))+'</b><br><span style="color:#6b6f88;font-size:12.5px">'
+        return '<div class="bkMine" style="background:#fff;border-radius:12px;margin:0 0 6px;border:1px solid #f0e2a8" onclick="'+(c?'':'nhBkCard('+b.id+')')+'"><span style="flex:1"><b>'+esc(whenTxt(b))+'</b><br><span style="color:#6b6f88;font-size:12.5px">'
           +esc(courtName(Number(b.court),b.club_id))+(c?' · <span style="color:#c0392b;font-weight:700">'+esc(b.cancel_reason||"Cancelled by the club")+'</span>':(' · booked by '+esc(nm(b.booked_by))))+'</span></span>'+(c?'':'<span style="color:#9aa">›</span>')+'</div>'; }).join(""); };
     var mine=function(all){ var box=document.getElementById("nhBkMine"); if(!box) return; mineLoad().then(function(list){
       if(!all) list=list.filter(function(b){ return Number(b.club_id)===BK; });
-      box.innerHTML=list.length?('<div class="brk"><h2>Your bookings</h2>'+mineHtml(list)+'</div>'):""; }); };
+      box.innerHTML=list.length?bookBox("Your bookings",list):""; }); };
+    /* Andre (26 Oct): your bookings stand out from the court times — their own yellow box, a count pill, each booking a card */
+    var bookBox=function(title,list){
+      return '<div style="background:#fff8db;border:2px solid #f2b705;border-radius:16px;padding:10px 10px 6px;margin:0 0 14px">'
+        +'<div style="display:flex;align-items:center;gap:8px;margin:0 2px 8px"><span style="font-size:15px;font-weight:800;color:#5a4300;flex:1">\ud83c\udfbe '+esc(title)+'</span>'
+        +'<span style="background:#f2b705;color:#fff;border-radius:99px;padding:2px 10px;font-size:12px;font-weight:800">'+list.length+'</span></div>'+mineHtml(list)+'</div>'; };
     var myPage=function(force){ try{
       var mm=document.getElementById("meMatches"); if(!mm) return; var q=new URLSearchParams(location.search); if(q.get("who")) return;
       if(!force && mm.getAttribute("data-bk")) return; mm.setAttribute("data-bk","1");   /* once per drawing of My page */
       cfgLoad().then(namesLoad).then(mineLoad).then(function(list){ var ex2=document.getElementById("nhBkMyBox"); if(ex2) ex2.remove();
         if(!list.length) return; var mm2=document.getElementById("meMatches"); if(!mm2) return;
         var d=document.createElement("div"); d.className="brk nhBkMy"; d.id="nhBkMyBox"; d.setAttribute("data-plat-keep","1");
-        d.innerHTML='<h2>Upcoming court bookings</h2>'+mineHtml(list); mm2.parentNode.insertBefore(d, mm2); }); }catch(e){} };
+        d.className="nhBkMy"; d.innerHTML=bookBox("Upcoming court bookings",list); mm2.parentNode.insertBefore(d, mm2); }); }catch(e){} };
 
     /* ---- club admin ---- */
     W.nhBkAdmin=function(){ var code=W.prompt("Club admin code for "+(((W.PLAT.clubs||[]).find(function(c){ return Number(c.id)===board(); })||{}).name||"this club")+":",""); if(!code) return;
@@ -14194,6 +14222,79 @@ W.nhOpenPair=function(name){
     setInterval(function(){ try{
       if(CFG && Object.keys(CFG).length) myPage(false);
     }catch(e){} }, 500);
+  })();
+  /* ===================================================================================================
+     NAT4 · MY PAGE GOES STRAIGHT TO YOUR OWN GROUP (Andre, 26 Oct). Navigation only — no rating, membership,
+     match or server change. From a person's own My page:
+       • Enter a score — only the groups YOU belong to are offered: one group opens its score sheet straight away;
+         more than one asks, listing only yours (it was every group in the region).
+       • Ratings & ladders — opens your group's ratings straight away; a row of pills at the top (one per group you
+         belong to) switches between them, the squash way.
+     If your groups cannot be read (no claim, no connection) the old "which group?" chooser is used, unchanged.
+     =================================================================================================== */
+  (function(){
+    var W=window, BASE="https://djmbnvikrdgnomjhtkgf.supabase.co/rest/v1/";
+    var esc=function(s){ return String(s==null?"":s).replace(/[&<>"']/g,function(c){ return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]; }); };
+    var page=function(){ return location.pathname.split("/").pop()||"nat4-padel.html"; };
+    var region=function(){ return Number(W.PLAT.parentId||W.PLAT.cid||0); };
+    var clubOf=function(id){ return (W.PLAT.clubs||[]).find(function(c){ return Number(c.id)===Number(id); }); };
+    /* the groups of THIS region that the claimed person belongs to (main group first) */
+    W.nhMyGroups=function(){
+      var name=null; try{ name=localStorage.getItem("opr_me_"+region()); }catch(e){}
+      if(!name) return Promise.resolve(null);
+      var P=Number(W.PLAT.pool||0), R=region();
+      return fetch(BASE+"plat_padel_v_pool_individuals?pool_id=eq."+P+"&full_name=eq."+encodeURIComponent(name)+"&select=id&limit=1").then(function(r){ return r.json(); })
+        .then(function(r){ var id=r&&r[0]&&r[0].id; if(!id) return null;
+          return Promise.all([fetch(BASE+"plat_memberships?individual_id=eq."+id+"&select=club_id").then(function(x){ return x.json(); }),
+                              fetch(BASE+"nat_club_parent?club_id=eq."+R+"&select=group_id").then(function(x){ return x.json(); })]); })
+        .then(function(rr){ if(!rr) return null;
+          var kids={}; (Array.isArray(rr[1])?rr[1]:[]).forEach(function(k){ kids[Number(k.group_id)]=1; });
+          var mine=Number(W.__meGroup||0), out=[];
+          (Array.isArray(rr[0])?rr[0]:[]).forEach(function(m){ var c=Number(m.club_id); if(kids[c] && out.indexOf(c)<0) out.push(c); });
+          out.sort(function(a,b){ return (b===mine)-(a===mine) || String((clubOf(a)||{}).name||"").localeCompare(String((clubOf(b)||{}).name||"")); });
+          try{ sessionStorage.setItem("nh_mygroups_"+R, JSON.stringify(out)); }catch(e){}
+          return out; })
+        .catch(function(){ return null; });
+    };
+    var url=function(id,what){ return page()+"?club="+id+"&go="+what+(what==="ladders"?"&from=me":"")+"&back="+encodeURIComponent(location.search||""); };
+    /* called first thing by My page's meAct; true = handled here */
+    W.nhMeRoute=function(what, fallback){
+      if(what!=="entry" && what!=="ladders") return false;
+      var box=document.getElementById("meWhere");
+      if(box && box.style.display==="block" && box.dataset.what===what){ box.style.display="none"; box.dataset.what=""; return true; }
+      W.nhMyGroups().then(function(gs){
+        if(!gs || !gs.length){ fallback(); return; }
+        if(gs.length===1 || what==="ladders"){ W.nhNav(url(gs[0],what)); return; }
+        if(!box){ fallback(); return; }
+        box.dataset.what=what;
+        box.innerHTML='<div style="font-size:12.5px;color:#5f5770;margin:2px 2px 8px">Enter a score — which of your groups?</div>'
+          + gs.map(function(id,i){ var c=(typeof clubPal==="function")?clubPal(id)[0]:"#6c3483", g=clubOf(id)||{name:""};
+              return '<a href="'+url(id,what)+'" style="display:flex;align-items:center;gap:10px;text-decoration:none;background:#fff;border:1.5px solid '+c+';border-radius:12px;padding:11px 13px;margin-bottom:8px">'
+                +'<span style="width:11px;height:11px;border-radius:50%;background:'+c+'"></span><b style="flex:1;color:#241d33;font-size:14px">'+esc(g.name)+'</b>'
+                +(i===0?'<span style="font-size:11px;font-weight:800;color:'+c+'">your group</span>':'')+'</a>'; }).join("");
+        box.style.display="block"; try{ box.scrollIntoView({behavior:"smooth",block:"nearest"}); }catch(e){}
+      });
+      return true;
+    };
+    /* Ratings & ladders opened from My page: pills for your groups at the top */
+    setInterval(function(){ try{
+      var q=new URLSearchParams(location.search); if(q.get("from")!=="me"){ var o=document.getElementById("nhMyPills"); if(o) o.remove(); return; }
+      var scr=document.getElementById("laddersScreen"); if(!scr || !scr.classList.contains("active")) return;
+      var gs=null; try{ gs=JSON.parse(sessionStorage.getItem("nh_mygroups_"+region())||"null"); }catch(e){}
+      if(!gs || gs.length<2) return;
+      var cur=Number(W.PLAT.cid||0), ex=document.getElementById("nhMyPills");
+      if(ex && ex.getAttribute("data-cur")===String(cur)) return; if(ex) ex.remove();
+      var host=scr.querySelector(".screen-content"); if(!host) return;
+      var d=document.createElement("div"); d.id="nhMyPills"; d.setAttribute("data-cur",String(cur)); d.setAttribute("data-plat-keep","1");
+      d.style.cssText="gap:8px;flex-wrap:wrap;margin:4px 0 12px";
+      if(!document.getElementById("nhMyPillsCss")){ var st=document.createElement("style"); st.id="nhMyPillsCss"; st.textContent="#nhMyPills{display:flex!important}"; document.head.appendChild(st); }   /* the page hides extra rows; this one stays */
+      var back=q.get("back")||"";
+      d.innerHTML=gs.map(function(id){ var c=(typeof clubPal==="function")?clubPal(id)[0]:"#6c3483", on=(id===cur), g=clubOf(id)||{name:""};
+        return '<a href="'+page()+'?club='+id+'&go=ladders&from=me&back='+encodeURIComponent(back)+'" onclick="return window.nhNav?(window.nhNav(this.getAttribute(\'href\')),false):true" '
+          +'style="text-decoration:none;font-size:13px;font-weight:800;border-radius:99px;padding:8px 14px;border:1.5px solid '+c+';'+(on?('background:'+c+';color:#fff'):('background:#fff;color:'+c))+'">'+esc(g.name)+'</a>'; }).join("");
+      /* below the page's own heading line (the app writes its "GROUP · …" label into the first element) */
+      var head=host.querySelector("[data-nh-scope]"); host.insertBefore(d, head?head.nextSibling:host.firstChild);
+    }catch(e){} }, 400);
   })();
   /* n350: COLUMN NAMES THAT STAY PUT. Group Members gets Name · Rating · Level · Move · Rank in the frozen block with
      its search box (each name measured onto the pill beneath it); on Member profiles and List all members the names
