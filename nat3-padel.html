@@ -3750,7 +3750,7 @@ const CLUB_NAME = _club.name;  // shown in the logo as "OPR · <name>"
     link.setAttribute('href', href);
   }catch(e){ /* install stays on the static manifest — no functional impact */ }
 })();
-const OPR_VERSION = "OPR-DOUBLES v2026.09.03-56 · NAT fork n367 (no voice) (of PLAT p117)";  // MANUAL PAIR CREATION REMOVED FROM ADMIN: Create a pair, Bulk create pairs and Re-derive all pairs are gone (they only made match-less ghost pairs, and Re-derive rewrote every stored initial club-wide). Pairs are born automatically at match entry. Current pairs list untouched; the underlying JS is left in place unreferenced, so no other code path changes. Includes v47 (set-score fix + double-tap guard) and all prior.
+const OPR_VERSION = "OPR-DOUBLES v2026.09.03-56 · NAT fork n368 (no voice) (of PLAT p117)";  // MANUAL PAIR CREATION REMOVED FROM ADMIN: Create a pair, Bulk create pairs and Re-derive all pairs are gone (they only made match-less ghost pairs, and Re-derive rewrote every stored initial club-wide). Pairs are born automatically at match entry. Current pairs list untouched; the underlying JS is left in place unreferenced, so no other code path changes. Includes v47 (set-score fix + double-tap guard) and all prior.
 // Explanation shown above the individual ladder. Open on load so it's read; collapsible
 // (state kept for the session) and scrolls away. Mechanics only — no outcome framing, so
 // members aren't nudged away from playing stronger opponents. Every clause maps to a real
@@ -7459,6 +7459,24 @@ async function loadTournamentSheet(tournament, division) {
         if(f.seed_b===0) return { a:f.seed_a, b:0, fx:{seed_a:f.seed_a, seed_b:0, sets_a:1, sets_b:0} };
         return { a:f.seed_a, b:f.seed_b, fx:f };
       });
+      /* n368: within each pair of boxes (they meet in the next round) the better group finisher's box goes on top */
+      try{
+        const _full = standings(maxPlayed), _g = {}, _n = {}, _key = {};
+        entries.forEach(e=>{ _g[e.seed] = e.grp || ''; });
+        _full.forEach(r=>{ const g=_g[r.seed]||''; _n[g]=(_n[g]||0)+1; _key[r.seed] = _n[g]*100 + (g ? g.charCodeAt(0) : 0); });
+        const bk = (m)=> Math.min(_key[m.a]!=null?_key[m.a]:99999, _key[m.b]!=null?_key[m.b]:99999);
+        for(let i=0;i+1<r1.length;i+=2){ if(bk(r1[i+1]) < bk(r1[i])){ const t=r1[i]; r1[i]=r1[i+1]; r1[i+1]=t; } }
+      }catch(e){}
+      /* n368: within each pair of boxes (they meet in the next round) order by the group winner: 1, 4, 3, 2 */
+      try{
+        const _full = standings(maxPlayed), _g = {}, _n = {}, _win = {};
+        entries.forEach(e=>{ _g[e.seed] = e.grp || ''; });
+        const _gl = [...new Set(entries.map(e=>e.grp).filter(Boolean))].sort(), G = _gl.length;
+        _full.forEach(r=>{ const g=_g[r.seed]||''; _n[g]=(_n[g]||0)+1; if(_n[g]===1 && g) _win[r.seed]=_gl.indexOf(g); });
+        const pos = (gi)=> gi===0 ? 0 : (G - gi);                     /* A → 0, last → 1, … B → G-1 */
+        const bk = (m)=> Math.min(_win[m.a]!=null?pos(_win[m.a]):999, _win[m.b]!=null?pos(_win[m.b]):999);
+        if(G>1) for(let i=0;i+1<r1.length;i+=2){ if(bk(r1[i+1]) < bk(r1[i])){ const t=r1[i]; r1[i]=r1[i+1]; r1[i+1]=t; } }
+      }catch(e){}
       rounds.push(r1);
       let prev=r1, rno=PBASE+1;
       while(prev.length>1){
@@ -7567,6 +7585,16 @@ async function loadTournamentSheet(tournament, division) {
   }
   // One match box. Shows names (or an empty slot), score if played, and is tappable
   // to enter a score ONLY when both players are known and it hasn't been played.
+  /* n368: in a group playoff the badge says where the team finished in its group ("A1", "B2"); display only */
+  function koTag(s){
+    try{
+      if(s==null || s===0 || !fixtures.some(f=> f.round_type==='rr')) return s;
+      const full = standings(maxPlayed), grp = {}, n = {}, tag = {};
+      entries.forEach(e=>{ grp[e.seed] = e.grp || ''; });
+      full.forEach(r=>{ const g = grp[r.seed] || ''; n[g] = (n[g]||0) + 1; tag[r.seed] = g + n[g]; });
+      return (tag[s]!=null) ? tag[s] : s;
+    }catch(e){ return s; }
+  }
   function koBox(m, isPlate){
     const known = (s)=> (s===0) ? 'BYE' : (s!=null ? tName(s) : '');
     const aName = known(m.a), bName = known(m.b);
@@ -7603,10 +7631,10 @@ async function loadTournamentSheet(tournament, division) {
     const click = ready ? (' onclick="tmEnterFixtureResult('+m.fx.id+')" title="Tap to enter score" style="cursor:pointer;"') : '';
     return '<div class="bkt-match'+(bye?' bkt-bye':'')+(ready?' bkt-ready':'')+'"'+click+'>'
       + '<div class="bkt-team'+(aWin?' bkt-win':'')+(emptyA?' bkt-empty':'')+'">'
-        + (m.a!=null?'<span class="bkt-sd">'+m.a+'</span>':'<span class="bkt-sd bkt-sd-e"></span>')
+        + (m.a!=null?'<span class="bkt-sd">'+koTag(m.a)+'</span>':'<span class="bkt-sd bkt-sd-e"></span>')
         + '<span class="bkt-nm">'+(aName||'&nbsp;')+hcA+'</span><span class="bkt-sc">'+scoreA+'</span></div>'
       + '<div class="bkt-team'+(bWin?' bkt-win':'')+((emptyB)?' bkt-empty':'')+'">'
-        + (m.b===0?'<span class="bkt-sd">–</span>':(m.b!=null?'<span class="bkt-sd">'+m.b+'</span>':'<span class="bkt-sd bkt-sd-e"></span>'))
+        + (m.b===0?'<span class="bkt-sd">–</span>':(m.b!=null?'<span class="bkt-sd">'+koTag(m.b)+'</span>':'<span class="bkt-sd bkt-sd-e"></span>'))
         + '<span class="bkt-nm">'+(bName||'&nbsp;')+hcB+'</span><span class="bkt-sc">'+scoreB+'</span></div>'
       + '</div>';
   }
