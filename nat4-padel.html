@@ -3750,7 +3750,7 @@ const CLUB_NAME = _club.name;  // shown in the logo as "OPR · <name>"
     link.setAttribute('href', href);
   }catch(e){ /* install stays on the static manifest — no functional impact */ }
 })();
-const OPR_VERSION = "OPR-DOUBLES v2026.09.03-56 · NAT4 booking test b5 (nat3 n368) (no voice) (of PLAT p117)";  // MANUAL PAIR CREATION REMOVED FROM ADMIN: Create a pair, Bulk create pairs and Re-derive all pairs are gone (they only made match-less ghost pairs, and Re-derive rewrote every stored initial club-wide). Pairs are born automatically at match entry. Current pairs list untouched; the underlying JS is left in place unreferenced, so no other code path changes. Includes v47 (set-score fix + double-tap guard) and all prior.
+const OPR_VERSION = "OPR-DOUBLES v2026.09.03-56 · NAT4 booking test b6 (nat3 n368) (no voice) (of PLAT p117)";  // MANUAL PAIR CREATION REMOVED FROM ADMIN: Create a pair, Bulk create pairs and Re-derive all pairs are gone (they only made match-less ghost pairs, and Re-derive rewrote every stored initial club-wide). Pairs are born automatically at match entry. Current pairs list untouched; the underlying JS is left in place unreferenced, so no other code path changes. Includes v47 (set-score fix + double-tap guard) and all prior.
 // Explanation shown above the individual ladder. Open on load so it's read; collapsible
 // (state kept for the session) and scrolls away. Mechanics only — no outcome framing, so
 // members aren't nudged away from playing stronger opponents. Every clause maps to a real
@@ -13896,7 +13896,7 @@ W.nhOpenPair=function(name){
     setInterval(leapBrk, 900);
     W.__nhTsBuild=build;   /* for the test */
   })();
-  window.__nhBkAnon="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRqbWJudmlrcmRnbm9tamh0a2dmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODUzOTE0MzEsImV4cCI6MjEwMDk2NzQzMX0.vR8xlVFjV6jXW-pAclGjM74HqmWSKVpsacFjM-dCIJI"; window.__nhBkBuild="nat4 b5";
+  window.__nhBkAnon="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRqbWJudmlrcmRnbm9tamh0a2dmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODUzOTE0MzEsImV4cCI6MjEwMDk2NzQzMX0.vR8xlVFjV6jXW-pAclGjM74HqmWSKVpsacFjM-dCIJI"; window.__nhBkBuild="nat4 b6";
   /* ===================================================================================================
      COURT BOOKING (nat4 test copy, Manzini pilot, Andre 26 Oct). Started ONLY from the player's own My page: its
      "Court card" button becomes "Book a court", which asks "Where do you want to play?" — one tile per venue; a venue
@@ -13993,7 +13993,8 @@ W.nhOpenPair=function(name){
     var venues=function(){
       var P=Number((W.PLAT&&W.PLAT.pool)||0), list=VENUES[P]||Object.keys(CFG||{}).map(function(k){ var c=(W.PLAT.clubs||[]).find(function(x){ return Number(x.id)===Number(k); }); return {n:(c&&c.name)||("Club "+k),c:Number(k)}; });
       var m=me(), h='<div class="brk" style="padding:14px 12px"><h2 style="margin:0 0 4px">Where do you want to play?</h2>'
-        +'<div style="font-size:12.5px;color:#6b6f88;margin-bottom:12px">'+(m.id?("Booking as <b>"+esc(m.name)+"</b>"):"Claim your My page first \u2014 bookings are made in your name.")+'</div>'
+        +'<div style="font-size:12.5px;color:#6b6f88;margin-bottom:12px">'+(m.id?("Booking as <b>"+esc(m.name)+"</b>"):("Claim your My page first \u2014 bookings are made in your name."
+          +((W.nhNmOpen&&W.nhNmOpen())?' <div style="margin-top:8px"><button type="button" onclick="nhNewMember()" style="font:inherit;font-size:13.5px;font-weight:800;border:none;border-radius:10px;padding:9px 13px;color:#fff;background:'+col()+';cursor:pointer">New here? Register as a member</button></div>':'')))+'</div>'
         +'<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">';
       list.forEach(function(v){ var on=!!(v.c&&CFG&&CFG[v.c]);
         var cc=on?(((W.PLAT.clubs||[]).find(function(x){ return Number(x.id)===v.c; })||{}).colour||"#2b3a8f"):"#c9ccd8";
@@ -14328,6 +14329,170 @@ W.nhOpenPair=function(name){
       /* below the page's own heading line (the app writes its "GROUP · …" label into the first element) */
       var head=host.querySelector("[data-nh-scope]"); host.insertBefore(d, head?head.nextSibling:host.firstChild);
     }catch(e){} }, 400);
+  })();
+  /* ===================================================================================================
+     NAT4 · NEW MEMBER — a visitor registers HIMSELF (Andre, 27 Oct). Name and surname, man or lady, how strong a
+     player he is (Seasoned · Intermediate · Played before · or his Playtomic level) and a 4-digit PIN. The database
+     (sr_register, selfreg_v1.sql) checks the name against the whole register, works out the starting rating from the
+     register's own players, puts him on the register and claims his My page in one step — so he can book a court at
+     once. His first match puts him in that group (the existing rule). The phone never sends a rating.
+     Open only where a club of this register takes court bookings (the pilot). The club admin sees who registered
+     themselves in the Control Room (Individuals), and can change the starting rating or remove them until they play.
+     =================================================================================================== */
+  (function(){
+    var W=window, BASE="https://djmbnvikrdgnomjhtkgf.supabase.co/rest/v1/";
+    var RPCB="https://DJMBNVIKRDGNOMJHTKGF.supabase.co/rest/v1/rpc/", AK=W.__nhBkAnon||"";   /* as the booking add-on */
+    var J=function(r){ return r.json(); };
+    var rpc=function(fn,args){ return fetch(RPCB+fn,{method:"POST",headers:{"Content-Type":"application/json",apikey:AK,Authorization:"Bearer "+AK},body:JSON.stringify(args)}).then(J)
+      .catch(function(){ return {ok:false,error:"No connection — try again."}; }); };
+    var esc=function(s){ return String(s==null?"":s).replace(/[&<>"']/g,function(c){ return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]; }); };
+    var region=function(){ return W.PLAT.parentId||W.PLAT.cid; };
+    var page=function(){ return location.pathname.split("/").pop()||"nat4-padel.html"; };
+    var col=function(){ try{ var c=(W.PLAT.clubs||[]).find(function(x){ return Number(x.id)===Number(region()); }); return (c&&c.colour)||"#6c3483"; }catch(e){ return "#6c3483"; } };
+    /* open here? — a club of this register takes court bookings */
+    var BKC=null, bkcP=null;
+    var bkcLoad=function(){ if(BKC) return Promise.resolve(BKC); if(bkcP) return bkcP;
+      bkcP=fetch(BASE+"plat_booking_config?active=eq.true&select=club_id").then(J).then(function(r){ BKC=(Array.isArray(r)?r:[]).map(function(x){ return Number(x.club_id); }); return BKC; })
+        .catch(function(){ bkcP=null; return []; }); return bkcP; };
+    var openHere=function(){ return !!(BKC && BKC.some(function(id){ return (W.PLAT.clubs||[]).some(function(c){ return Number(c.id)===id; }); })); };
+    W.nhNmOpen=function(){ return openHere(); };
+
+    var ST={g:"",s:""};
+    var ensure=function(){
+      var scr=document.getElementById("nhNmScreen"); if(scr) return scr;
+      var lad=document.getElementById("laddersScreen"); if(!lad||!lad.parentNode) return null;
+      scr=document.createElement("div"); scr.className="screen hidden"; scr.id="nhNmScreen";
+      scr.innerHTML='<div class="header"><button class="back-btn" onclick="nhNmBack()">&#8592;</button><h1>New member</h1></div><div class="screen-content" id="nhNmBody"></div>';
+      lad.parentNode.insertBefore(scr, lad.nextSibling);
+      var st=document.createElement("style"); st.textContent=
+        "#nhNmScreen .nmIn{width:100%;box-sizing:border-box;font:inherit;font-size:16px;padding:12px;border:1.5px solid #d6d2e0;border-radius:12px;margin:4px 0}"
+       +"#nhNmScreen .nmOpt{display:flex;gap:12px;align-items:center;width:100%;text-align:left;font:inherit;background:#fff;border:1.5px solid #e2deea;border-radius:14px;padding:12px 14px;margin:0 0 8px;cursor:pointer}"
+       +"#nhNmScreen .nmOpt b{display:block;font-size:15px;color:#241d33}#nhNmScreen .nmOpt span.d{display:block;font-size:12.5px;color:#6b6480;margin-top:2px}"
+       +"#nhNmScreen .nmOpt i{flex:0 0 20px;height:20px;border-radius:50%;border:2px solid #c9c3d6;box-sizing:border-box}"
+       +"#nhNmScreen .nmOpt.on{border-color:var(--nmc)}#nhNmScreen .nmOpt.on i{border:6px solid var(--nmc)}"
+       +"#nhNmScreen .nmG{flex:1;font:inherit;font-size:15px;font-weight:800;padding:12px;border-radius:12px;border:1.5px solid #e2deea;background:#fff;color:#241d33;cursor:pointer}"
+       +"#nhNmScreen .nmG.on{background:var(--nmc);border-color:var(--nmc);color:#fff}"
+       +"#nhNmScreen .nmGo{width:100%;font:inherit;font-size:16px;font-weight:800;padding:14px;border:none;border-radius:14px;color:#fff;background:var(--nmc);cursor:pointer}"
+       +"#nhNmScreen .nmLt{font:inherit;font-size:14px;font-weight:800;padding:11px 14px;border-radius:12px;border:1.5px solid var(--nmc);background:#fff;color:var(--nmc);cursor:pointer;margin:6px 6px 0 0}"
+       +"#nhNmScreen .nmNote{font-size:12.5px;color:#6b6480;line-height:1.5}";
+      document.head.appendChild(st);
+      return scr;
+    };
+    var OPTS=[["seasoned","Seasoned","You play regularly and hold your own against good players."],
+              ["intermediate","Intermediate","You play often and enjoy a good game."],
+              ["played","Played before","You have played a few times."],
+              ["playtomic","I have a Playtomic level","Enter it and we start you at the matching OPR level."]];
+    var form=function(){
+      var b=document.getElementById("nhNmBody"); if(!b) return;
+      b.style.setProperty("--nmc", col());
+      b.innerHTML=
+         '<div class="brk" style="padding:14px"><h2 style="margin:0 0 4px">Join the register</h2>'
+        +'<div class="nmNote">Register once and you get your own <b>My page</b>: book courts, and your rating follows every match you play. '
+        +'Your first match puts you in that group.</div></div>'
+        +'<div class="brk" style="padding:14px"><h2 style="margin:0 0 8px">Your name</h2>'
+        +'<input id="nhNmName" class="nmIn" placeholder="Name and surname" autocomplete="name">'
+        +'<div style="display:flex;gap:8px;margin-top:8px"><button type="button" class="nmG" data-g="M" onclick="nhNmG(\'M\')">Man</button><button type="button" class="nmG" data-g="F" onclick="nhNmG(\'F\')">Lady</button></div></div>'
+        +'<div class="brk" style="padding:14px"><h2 style="margin:0 0 8px">How strong a player are you?</h2>'
+        + OPTS.map(function(o){ return '<button type="button" class="nmOpt" data-s="'+o[0]+'" onclick="nhNmS(\''+o[0]+'\')"><i></i><span><b>'+esc(o[1])+'</b><span class="d">'+esc(o[2])+'</span></span></button>'; }).join("")
+        +'<div id="nhNmPtBox" style="display:none;margin:2px 0 8px"><input id="nhNmPt" class="nmIn" inputmode="decimal" placeholder="Your Playtomic level, e.g. 3.25"></div>'
+        +'<div class="nmNote">This is only where you start — your rating moves with every match you play.</div></div>'
+        +'<div class="brk" style="padding:14px"><h2 style="margin:0 0 8px">Your PIN</h2>'
+        +'<div style="display:flex;gap:8px"><input id="nhNmPin" class="nmIn" inputmode="numeric" maxlength="4" placeholder="4 digits" type="password"><input id="nhNmPin2" class="nmIn" inputmode="numeric" maxlength="4" placeholder="Repeat it" type="password"></div>'
+        +'<div class="nmNote">It opens your My page on another phone. Keep it to yourself.</div></div>'
+        +'<div id="nhNmMsg" style="margin:4px 2px 10px;font-size:13.5px;color:#c0392b;line-height:1.5"></div>'
+        +'<button type="button" class="nmGo" id="nhNmGo" onclick="nhNmGo(false)">Register</button>'
+        +'<div style="height:96px"></div>';
+      ST={g:"",s:""};
+    };
+    W.nhNmG=function(g){ ST.g=g; Array.prototype.forEach.call(document.querySelectorAll("#nhNmScreen .nmG"),function(x){ x.classList.toggle("on", x.getAttribute("data-g")===g); }); };
+    W.nhNmS=function(s){ ST.s=s; Array.prototype.forEach.call(document.querySelectorAll("#nhNmScreen .nmOpt"),function(x){ x.classList.toggle("on", x.getAttribute("data-s")===s); });
+      var pb=document.getElementById("nhNmPtBox"); if(pb) pb.style.display=(s==="playtomic")?"block":"none"; if(s==="playtomic"){ var pi=document.getElementById("nhNmPt"); if(pi) pi.focus(); } };
+    W.nhNewMember=function(){ bkcLoad().then(function(){
+      if(!ensure()) return; form(); showScreen("nhNmScreen"); try{ W.scrollTo(0,0); }catch(e){} }); };
+    W.nhNmBack=function(){ goHome(); };
+    var msg=function(h,ok){ var m=document.getElementById("nhNmMsg"); if(m){ m.style.color=ok?"#2e7d32":"#c0392b"; m.innerHTML=h; try{ m.scrollIntoView({behavior:"smooth",block:"center"}); }catch(e){} } };
+    var myPage=function(){ return page()+"?club="+region()+"&go=me"; };
+    W.nhNmGo=function(confirmNew){
+      var name=String((document.getElementById("nhNmName")||{}).value||"").replace(/\s+/g," ").trim();
+      var pin=String((document.getElementById("nhNmPin")||{}).value||"").trim(), pin2=String((document.getElementById("nhNmPin2")||{}).value||"").trim();
+      var pt=String((document.getElementById("nhNmPt")||{}).value||"").replace(",",".").trim();
+      if(name.split(" ").length<2){ msg("Please give your name <b>and</b> surname."); return; }
+      if(!ST.g){ msg("Choose man or lady."); return; }
+      if(!ST.s){ msg("Choose how strong a player you are."); return; }
+      if(ST.s==="playtomic" && !(pt!=="" && !isNaN(Number(pt)) && Number(pt)>=0 && Number(pt)<=7)){ msg("Enter your Playtomic level — a number from 0 to 7, e.g. 3.25."); return; }
+      if(!/^[0-9]{4}$/.test(pin)){ msg("Choose a PIN of four digits."); return; }
+      if(pin!==pin2){ msg("The two PINs are not the same."); return; }
+      var go=document.getElementById("nhNmGo"); if(go){ go.disabled=true; go.textContent="Registering…"; }
+      rpc("sr_register",{p_pool:Number(W.PLAT.pool),p_name:name,p_gender:ST.g,p_pin:pin,p_strength:ST.s,p_playtomic:(ST.s==="playtomic"?Number(pt):null),p_confirm_new:!!confirmNew}).then(function(r){
+        if(go){ go.disabled=false; go.textContent="Register"; }
+        if(r&&r.ok){
+          try{ localStorage.setItem("opr_me_"+region(), r.name); localStorage.setItem("opr_mepin_"+region(), pin); }catch(e){}
+          var b=document.getElementById("nhNmBody");
+          b.innerHTML='<div class="brk" style="padding:18px 16px;text-align:center"><div style="font-size:40px">🎾</div>'
+            +'<h2 style="margin:6px 0 6px">Welcome, '+esc(String(r.name).split(" ")[0])+'!</h2>'
+            +'<div class="nmNote" style="font-size:14px">You are on the register as <b>'+esc(r.name)+'</b>, and this phone now opens your own My page. '
+            +'You can book a court from there. Your first match puts you in that group.</div>'
+            +'<div style="margin-top:16px"><button type="button" class="nmGo" onclick="location.href=\''+myPage()+'\'">Open my page</button></div></div>';
+          return; }
+        if(r&&r.needs_confirm){
+          msg(esc(r.error)+'<div style="margin-top:6px;color:#5f5770">If it is you, you are already registered — claim your name on My page.</div>'
+            +'<div><button type="button" class="nmLt" onclick="location.href=\''+myPage()+'\'">It’s me — go to My page</button>'
+            +'<button type="button" class="nmLt" onclick="nhNmGo(true)">No, I’m someone new</button></div>'); return; }
+        if(r&&r.exact){
+          msg(esc(r.error)+'<div><button type="button" class="nmLt" onclick="location.href=\''+myPage()+'\'">Go to My page</button></div>'); return; }
+        msg(esc((r&&r.error)||"Could not register — try again."));
+      }); };
+
+    /* My page's "Which one is you?" — the "Name not on the list?" card offers registering (here only) */
+    var claimCard=function(){
+      var c=document.getElementById("meContact"); if(!c || !openHere()) return;
+      var card=c.parentNode; if(!card || card.getAttribute("data-nm")) return; card.setAttribute("data-nm","1");
+      var lead=document.createElement("div");
+      lead.innerHTML='<div style="font-size:13.5px;color:#241d33;margin-bottom:10px">New here? Register yourself — it takes a minute, and then you can book a court.</div>'
+        +'<button type="button" onclick="nhNewMember()" style="font:inherit;font-size:15px;font-weight:800;border:none;border-radius:12px;padding:12px 16px;color:#fff;background:'+col()+';cursor:pointer;width:100%">Register as a new member</button>'
+        +'<div style="margin:12px 0 4px">Or ask the club:</div>';
+      Array.prototype.slice.call(card.childNodes).forEach(function(n){ if(n!==c) card.removeChild(n); });   /* the old "your organiser adds you" words */
+      card.insertBefore(lead, c);
+    };
+
+    /* ---- Control Room · Individuals: who registered themselves (clubs that take bookings) ---- */
+    var LBL={seasoned:"Seasoned",intermediate:"Intermediate",played:"Played before",playtomic:"Playtomic"};
+    var admCid=function(){ var s=document.getElementById("adminClubSelect"); return s?Number(s.value)||0:0; };
+    var admCode=function(){ try{ return (typeof ADMIN_PIN!=="undefined"&&ADMIN_PIN)?String(ADMIN_PIN).trim():""; }catch(e){ return ""; } };
+    var LAST="";
+    var admDraw=function(force){
+      var room=document.getElementById("acRoomMembers"); if(!room) return;
+      var cid=admCid(), on=!!(BKC && BKC.indexOf(cid)>=0), key=cid+"|"+admCode();
+      var box=document.getElementById("nhNmAdm");
+      if(!on){ if(box) box.remove(); LAST=""; return; }
+      if(!box){ box=document.createElement("div"); box.id="nhNmAdm"; box.className="ac-card"; box.setAttribute("data-plat-keep","1"); room.insertBefore(box, room.firstChild); LAST=""; }
+      if(!force && LAST===key) return; LAST=key;
+      box.innerHTML='<h4>Registered themselves</h4><div style="font-size:13px;color:#888">Reading…</div>';
+      rpc("sr_admin_list",{p_club:cid,p_code:admCode()}).then(function(r){
+        if(!r||!r.ok){ box.innerHTML='<h4>Registered themselves</h4><div style="font-size:13px;color:#888">'+esc((r&&r.error)||"Could not read.")+'</div>'; return; }
+        var rows=r.rows||[];
+        box.innerHTML='<h4>Registered themselves</h4>'
+          +'<div style="font-size:12.5px;color:#6b6480;margin:2px 0 8px;line-height:1.45">People who joined the register from the app. Until their first match you can change the starting rating, or remove someone who is not real.</div>'
+          +(rows.length?rows.map(function(x){
+              var d=new Date(x.at), when=d.getDate()+" "+["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"][d.getMonth()];
+              return '<div style="border-top:1px solid #eee;padding:9px 0;font-size:13.5px"><div style="display:flex;gap:8px;align-items:baseline"><b style="flex:1">'+esc(x.name)+'</b><span style="color:#888;font-size:12px">'+when+'</span></div>'
+                +'<div style="color:#6b6480;font-size:12.5px;margin-top:2px">'+(x.gender==="F"?"Lady":"Man")+' · '+esc(LBL[x.strength]||x.strength)+(x.playtomic!=null?(" "+x.playtomic):"")+' · starts at <b>'+Math.round(x.seed)+'</b>'+(x.played?' · <span style="color:#2e7d32;font-weight:700">has played</span>':'')+'</div>'
+                +(x.played?'':('<div style="margin-top:6px"><button class="ac-btn ac-btn-ghost" style="padding:7px 11px;font-size:12.5px;margin-right:6px" onclick="nhNmAdmSeed('+x.id+','+Math.round(x.seed)+')">Change rating</button>'
+                  +'<button class="ac-btn ac-btn-danger" style="padding:7px 11px;font-size:12.5px" onclick="nhNmAdmDel('+x.id+',&quot;'+esc(String(x.name).replace(/"/g,""))+'&quot;)">Remove</button></div>'))
+                +'</div>'; }).join("")
+            :'<div style="font-size:13px;color:#888">Nobody yet.</div>');
+      }); };
+    W.nhNmAdmSeed=function(id,cur){ var v=W.prompt("Starting rating (they have not played yet):", String(cur)); if(v===null) return; v=Math.round(Number(String(v).trim()));
+      rpc("sr_admin_seed",{p_club:admCid(),p_code:admCode(),p_iid:id,p_seed:v}).then(function(r){ if(!r||!r.ok){ alert((r&&r.error)||"Could not change it."); return; } admDraw(true); }); };
+    W.nhNmAdmDel=function(id,name){ if(!W.confirm("Remove "+name+" from the register?\n\nTheir My page and any court bookings go too. They have not played, so no rating or match changes.")) return;
+      rpc("sr_admin_remove",{p_club:admCid(),p_code:admCode(),p_iid:id}).then(function(r){ if(!r||!r.ok){ alert((r&&r.error)||"Could not remove."); return; } admDraw(true); }); };
+
+    bkcLoad();
+    setInterval(function(){ try{
+      if(!BKC) return;
+      claimCard();
+      var adm=document.getElementById("adminScreen"); if(adm && adm.classList.contains("active")) admDraw(false);
+    }catch(e){} }, 500);
   })();
   /* n350: COLUMN NAMES THAT STAY PUT. Group Members gets Name · Rating · Level · Move · Rank in the frozen block with
      its search box (each name measured onto the pill beneath it); on Member profiles and List all members the names
