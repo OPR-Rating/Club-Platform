@@ -3750,7 +3750,7 @@ const CLUB_NAME = _club.name;  // shown in the logo as "OPR · <name>"
     link.setAttribute('href', href);
   }catch(e){ /* install stays on the static manifest — no functional impact */ }
 })();
-const OPR_VERSION = "OPR-DOUBLES v2026.09.03-56 · NAT4 booking test b7 (nat3 n368) (no voice) (of PLAT p117)";  // MANUAL PAIR CREATION REMOVED FROM ADMIN: Create a pair, Bulk create pairs and Re-derive all pairs are gone (they only made match-less ghost pairs, and Re-derive rewrote every stored initial club-wide). Pairs are born automatically at match entry. Current pairs list untouched; the underlying JS is left in place unreferenced, so no other code path changes. Includes v47 (set-score fix + double-tap guard) and all prior.
+const OPR_VERSION = "OPR-DOUBLES v2026.09.03-56 · NAT4 booking test b8 (nat3 n368) (no voice) (of PLAT p117)";  // MANUAL PAIR CREATION REMOVED FROM ADMIN: Create a pair, Bulk create pairs and Re-derive all pairs are gone (they only made match-less ghost pairs, and Re-derive rewrote every stored initial club-wide). Pairs are born automatically at match entry. Current pairs list untouched; the underlying JS is left in place unreferenced, so no other code path changes. Includes v47 (set-score fix + double-tap guard) and all prior.
 // Explanation shown above the individual ladder. Open on load so it's read; collapsible
 // (state kept for the session) and scrolls away. Mechanics only — no outcome framing, so
 // members aren't nudged away from playing stronger opponents. Every clause maps to a real
@@ -11120,10 +11120,10 @@ async function clRemove(id, label){
       var mb=function(what,cls,style,icon,label){ return '<button'+(cls?' class="'+cls+'"':'')+(style?' style="'+style+'"':'')+' onclick="window.meAct(\''+what+'\')">'+icon+label+'</button>'; };
       var I=nhActions.icons;
       return '<div class="doit">'
+        + '<button onclick="window.nhBook()">'+I.card+'Book a court</button>'   /* nat4: booking starts on My page, first */
         + mb("entry","primary","background:linear-gradient(135deg,"+ink+","+deep+")",I.score,"Enter a score")
         + mb("ladders","","",I.lad,"Ratings &amp; ladders")
         + mb("profiles","","",I.per,"Member profiles")   /* n171 */
-        + '<button onclick="window.nhBook()">'+I.card+'Book a court</button>'   /* nat4: booking starts on My page */
         + mb("tournaments","","",I.cup,"Tournaments")
         + '</div><div id="meWhere" style="display:none;padding:10px 12px 0"></div>';
     }
@@ -13896,7 +13896,7 @@ W.nhOpenPair=function(name){
     setInterval(leapBrk, 900);
     W.__nhTsBuild=build;   /* for the test */
   })();
-  window.__nhBkAnon="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRqbWJudmlrcmRnbm9tamh0a2dmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODUzOTE0MzEsImV4cCI6MjEwMDk2NzQzMX0.vR8xlVFjV6jXW-pAclGjM74HqmWSKVpsacFjM-dCIJI"; window.__nhBkBuild="nat4 b7";
+  window.__nhBkAnon="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRqbWJudmlrcmRnbm9tamh0a2dmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODUzOTE0MzEsImV4cCI6MjEwMDk2NzQzMX0.vR8xlVFjV6jXW-pAclGjM74HqmWSKVpsacFjM-dCIJI"; window.__nhBkBuild="nat4 b8";
   /* ===================================================================================================
      COURT BOOKING (nat4 test copy, Manzini pilot, Andre 26 Oct). Started ONLY from the player's own My page: its
      "Court card" button becomes "Book a court", which asks "Where do you want to play?" — one tile per venue; a venue
@@ -13920,7 +13920,12 @@ W.nhOpenPair=function(name){
     var BK=0;   /* the venue (club) being booked — chosen on the tiles, not the page we stand on */
     var board=function(){ return BK; };
     /* the tiles, per register (Andre: Eswatini shows all four; only those with booking settings can be tapped) */
-    var VENUES=W.__nhBkVenues||{8:[{n:"Manzini",c:50},{n:"LIV",c:null},{n:"MCC",c:null},{n:"Mbabane",c:70}]};
+    /* b8 (Andre 27 Oct): five places in Eswatini. A VENUE is a place with its own courts and bookings; it is either a group
+       (Manzini 50, Mbabane 70) or a venue under a group (LIV, MCC and Brackenhill under 01 - OPR MCC & LIV, 39) — so the
+       live door gains no new group cards. The venue's name, group, courts and price live in plat_booking_config. */
+    var VENUES=W.__nhBkVenues||{8:[{n:"Manzini",c:50},{n:"LIV",c:900001},{n:"MCC",c:900002},{n:"Mbabane Club",c:70},{n:"Brackenhill",c:null}]};
+    /* a tile with no number yet (Brackenhill, a new group) finds its place by the name in plat_booking_config */
+    var tileId=function(v){ if(v.c) return v.c; var k=Object.keys(CFG||{}).filter(function(x){ return String(CFG[x].name||"").toLowerCase()===String(v.n).toLowerCase(); })[0]; return k?Number(k):null; };
     var cfgLoad=function(){ if(CFG) return Promise.resolve(CFG); if(CFGP) return CFGP;
       CFGP=get("plat_booking_config?active=eq.true&select=*").then(function(r){ CFG={}; (Array.isArray(r)?r:[]).forEach(function(c){ CFG[Number(c.club_id)]=c; }); return CFG; })
         .catch(function(){ CFGP=null; return {}; }); return CFGP; };
@@ -13945,7 +13950,14 @@ W.nhOpenPair=function(name){
     var whenTxt=function(b){ return dayLabel(locDay(b.starts_at))+" · "+hm(locMin(b.starts_at))+"–"+hm(locMin(b.ends_at)); };
     var courtName=function(c,club){ var g=(CFG&&CFG[Number(club||BK)])||cfg(); return (g&&g.court_names&&g.court_names[c-1])||("Court "+c); };
     var nm=function(id){ return (NAMES&&NAMES.by[Number(id)])||"a player"; };
-    var col=function(){ try{ var c=(W.PLAT.clubs||[]).find(function(x){ return Number(x.id)===board(); }); return (c&&c.colour)||"#2b3a8f"; }catch(e){ return "#2b3a8f"; } };
+    var grpOf=function(v){ v=Number(v); return Number((CFG&&CFG[v]&&CFG[v].group_id)||v); };
+    var clubCol=function(v){ try{ var c=(W.PLAT.clubs||[]).find(function(x){ return Number(x.id)===grpOf(v); }); return (c&&c.colour)||"#2b3a8f"; }catch(e){ return "#2b3a8f"; } };
+    var col=function(){ return clubCol(board()); };
+    var vName=function(v){ v=Number(v); var g=CFG&&CFG[v]; if(g&&g.name) return g.name;
+      var t=(VENUES[Number(W.PLAT.pool)]||[]).filter(function(x){ return x.c===v; })[0]; if(t) return t.n;
+      var c=(W.PLAT.clubs||[]).find(function(x){ return Number(x.id)===v; }); return (c&&c.name)||""; };
+    var many=function(){ return CFG && Object.keys(CFG).length>1; };
+    var price=function(v,L){ var g=CFG&&CFG[Number(v)]; return (g&&g.price_hour!=null&&Number(g.price_hour)>0)?("R"+Math.round(Number(g.price_hour)*L/60)):""; };
 
     var ensure=function(){
       var scr=document.getElementById("nhBkScreen"); if(scr) return scr;
@@ -13988,6 +14000,9 @@ W.nhOpenPair=function(name){
       v.style.cssText="position:fixed;inset:0;background:rgba(0,0,0,.35);z-index:998"; v.onclick=sheetClose; document.body.appendChild(v);
       var s=document.createElement("div"); s.id="nhBkSheet"; s.innerHTML=html; document.body.appendChild(s); return s; };
     W.nhBkClose=sheetClose;
+    /* b8: no pop-up boxes anywhere (some browsers block them, and then nothing happened) — every question and every
+       answer is shown in the card itself */
+    var note=function(title,text){ sheet('<h3>'+esc(title)+'</h3>'+(text?'<div class="sub">'+text+'</div>':'')+'<button class="b lt" onclick="nhBkClose()">Close</button>'); };
     W.nhBkMe=function(){ var u=(location.pathname.split("/").pop()||"nat4-padel.html")+"?club="+(W.PLAT.parentId||W.PLAT.cid)+"&go=me"; if(typeof W.nhNav==="function") W.nhNav(u); else location.href=u; };
     var btnStyle=function(){ return 'style="background:'+col()+';color:#fff"'; };
 
@@ -14001,8 +14016,8 @@ W.nhOpenPair=function(name){
         +'<div style="font-size:12.5px;color:#6b6f88;margin-bottom:12px">'+(m.id?("Booking as <b>"+esc(m.name)+"</b>"):("Claim your My page first \u2014 bookings are made in your name."
           +((W.nhNmOpen&&W.nhNmOpen())?' <div style="margin-top:8px"><button type="button" onclick="nhNewMember()" style="font:inherit;font-size:13.5px;font-weight:800;border:none;border-radius:10px;padding:9px 13px;color:#fff;background:'+col()+';cursor:pointer">New here? Register as a member</button></div>':'')))+'</div>'
         +'<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">';
-      list.forEach(function(v){ var on=!!(v.c&&CFG&&CFG[v.c]);
-        var cc=on?(((W.PLAT.clubs||[]).find(function(x){ return Number(x.id)===v.c; })||{}).colour||"#2b3a8f"):"#c9ccd8";
+      list.forEach(function(v){ v={n:v.n,c:tileId(v)}; var on=!!(v.c&&CFG&&CFG[v.c]);
+        var cc=on?clubCol(v.c):"#c9ccd8";
         h+='<button type="button" class="nhBkVen" '+(on?('onclick="nhBkVenue('+v.c+')"'):'disabled')+' style="font:inherit;font-size:16px;font-weight:800;border:none;border-radius:16px;padding:22px 10px;'
           +'color:#fff;background:'+cc+';'+(on?'cursor:pointer;box-shadow:0 4px 12px rgba(0,0,0,.15)':'cursor:default;opacity:.75')+'">'+esc(v.n)
           +'<div style="font-size:11px;font-weight:700;margin-top:4px;opacity:.9">'+(on?'Book here':'Not yet')+'</div></button>'; });
@@ -14013,7 +14028,7 @@ W.nhOpenPair=function(name){
     };
     W.nhBkVenue=function(c){ if(!(CFG&&CFG[c])) return; BK=c; ADMIN=null; FORP=false; DAY=ymd(localNow());
       var t=document.querySelector("#nhBkScreen .header h1"), cl=(W.PLAT.clubs||[]).find(function(x){ return Number(x.id)===c; });
-      if(t) t.textContent="Book a court \u00b7 "+((VENUES[Number(W.PLAT.pool)]||[]).filter(function(v){ return v.c===c; }).map(function(v){ return v.n; })[0]||(cl&&cl.name)||"");
+      if(t) t.textContent="Book a court \u00b7 "+vName(c);
       draw(); };
     /* back: from a venue's courts to the tiles; from the tiles to where you came from */
     W.nhBkBack=function(){ sheetClose();
@@ -14067,8 +14082,8 @@ W.nhOpenPair=function(name){
         +'<button class="b" '+btnStyle()+' onclick="nhBkClose();nhBkMe()">Go to My page</button><button class="b lt" onclick="nhBkClose()">Close</button>'); return; }
       var lens=(g.lengths||[60,90,120]).map(function(L){ var ok=(start+L<=close); for(var t=start;ok&&t<start+L;t+=step){ if(at(court,t)) ok=false; } return {L:L,ok:ok}; });
       var h='<h3>'+esc(courtName(court))+' · '+esc(dayLabel(DAY))+' · '+hm(start)+'</h3><div class="sub">How long?</div><div id="nhBkLens">';
-      lens.forEach(function(x){ h+='<button class="b lt" '+(x.ok?'':'disabled')+' data-len="'+x.L+'" onclick="nhBkLen(this)">'+x.L+' min</button>'; });
-      h+='</div>';
+      lens.forEach(function(x){ var pr=price(board(),x.L); h+='<button class="b lt" '+(x.ok?'':'disabled')+' data-len="'+x.L+'" onclick="nhBkLen(this)">'+x.L+' min'+(pr?('<br><span style="font-weight:600;font-size:12.5px">'+pr+'</span>'):'')+'</button>'; });
+      h+='</div>'+(price(board(),60)?'<div class="sub" style="margin-top:6px">Pay at the club.</div>':'');
       if(ADMIN && FORP){ h+='<div class="sub" style="margin-top:10px">Booking for (club admin):</div>'+pick("nhBkForSel","",null); }
       h+='<div style="margin-top:12px"><button class="b" id="nhBkGo" '+btnStyle()+' disabled onclick="nhBkGo('+court+','+start+')">Book</button><button class="b lt" onclick="nhBkClose()">Cancel</button></div><div id="nhBkErr" style="color:#c0392b;font-size:13px;margin-top:6px"></div>';
       sheet(h);
@@ -14112,7 +14127,7 @@ W.nhOpenPair=function(name){
         if(!r||!r.ok){ document.getElementById("nhBkErr").textContent=(r&&r.error)||"Could not book."; if(go) go.disabled=false; if(r&&r.taken) draw(); return; }
         sheetClose(); DAY=DAY; draw();
         if(ADMIN && FORP){ return; }
-        sheet('<h3>'+esc(courtName(court))+' is yours</h3><div class="sub">'+esc(dayLabel(DAY))+' · '+hm(start)+'–'+hm(start+L)+'</div>'
+        sheet('<h3>'+esc(courtName(court))+' is yours</h3><div class="sub">'+esc(vName(board()))+' \u00b7 '+esc(dayLabel(DAY))+' · '+hm(start)+'–'+hm(start+L)+(price(board(),L)?(' \u00b7 '+price(board(),L)+', pay at the club'):'')+'</div>'
           +'<div style="font-size:14.5px;font-weight:700;margin:6px 0 10px">Do you want to enter the other players?</div>'
           +'<button class="b" '+btnStyle()+' onclick="nhBkPlayers('+r.id+')">Yes</button><button class="b lt" onclick="nhBkClose()">Later</button>'
           +'<div class="sub" style="margin-top:10px">You can add them any time from the booking.</div>');
@@ -14129,7 +14144,9 @@ W.nhOpenPair=function(name){
         sheet(h0+'<button class="b lt" onclick="nhBkClose()">Close</button>'); return; }
       var pl=(b.players||[]).map(nm), isB=m.id&&Number(b.booked_by)===m.id, open=b.status==="booked";
       var hrs=(new Date(b.starts_at).getTime()-Date.now())/3600e3, canCancel=isB&&open&&g&&hrs>=Number(g.cancel_hours);
+      var L0=Math.round((new Date(b.ends_at)-new Date(b.starts_at))/60000), pr0=price(b.club_id,L0);
       var h='<h3>'+esc(courtName(Number(b.court),b.club_id))+' \u00b7 '+esc(whenTxt(b))+'</h3>'
+        +'<div class="sub">'+esc(vName(b.club_id))+(pr0?(' \u00b7 '+pr0+', pay at the club'):'')+'</div>'
         +'<div class="sub">Booked by <b>'+esc(nm(b.booked_by))+'</b>'+(b.created_by==="admin"?' (by the club)':'')+'</div>'
         +'<div style="font-size:14px;margin:4px 0 12px"><b>Player 1:</b> '+esc(nm(b.booked_by))+'<br><b>Other players:</b> '+esc(pl.join(", "))+(pl.length?'':' <span style="color:#888">— the others not added yet</span>')+'</div>';
       if(isB&&open) h+='<button class="b" '+btnStyle()+' onclick="nhBkPlayers('+b.id+')">'+(pl.length?'Change players':'Add players')+'</button>';
@@ -14139,7 +14156,7 @@ W.nhOpenPair=function(name){
       if(open) h+='<button class="b lt" onclick="nhBkShare('+b.id+')">Share on WhatsApp</button>';
       sheet(h+'<button class="b lt" onclick="nhBkClose()">Close</button>');
     };
-    W.nhBkShare=function(id){ var b=byId(id); if(!b) return; var club=((W.PLAT.clubs||[]).find(function(c){ return Number(c.id)===Number(b.club_id); })||{}).name||"";
+    W.nhBkShare=function(id){ var b=byId(id); if(!b) return; var club=vName(b.club_id);
       var t="Padel booked \u2014 "+courtName(Number(b.court),b.club_id)+", "+whenTxt(b)+(club?(" at "+club):"")+". Players: "+[nm(b.booked_by)].concat((b.players||[]).map(nm)).join(", ");
       W.open("https://wa.me/?text="+encodeURIComponent(t),"_blank"); };
     W.nhBkPlayers=function(id){
@@ -14161,7 +14178,7 @@ W.nhOpenPair=function(name){
       if(!sure){ sheet('<h3>Cancel this booking?</h3><div class="sub">'+(b?esc(courtName(Number(b.court),b.club_id))+' \u00b7 '+esc(whenTxt(b)):'')+'</div>'
         +'<button class="b red" onclick="nhBkCancel('+id+',true)">Yes, cancel it</button><button class="b lt" onclick="nhBkCard('+id+')">No, keep it</button>'); return; }
       var m=me();
-      rpc("bk_cancel",{p_id:id,p_iid:m.id,p_pin:m.pin}).then(function(r){ if(!r||!r.ok){ alert((r&&r.error)||"Could not cancel."); return; } sheetClose(); refresh(); }); };
+      rpc("bk_cancel",{p_id:id,p_iid:m.id,p_pin:m.pin}).then(function(r){ if(!r||!r.ok){ note("Could not cancel", esc((r&&r.error)||"Try again.")); return; } sheetClose(); refresh(); }); };
     var refresh=function(){ if(document.getElementById("nhBkScreen")&&document.getElementById("nhBkScreen").classList.contains("active")) draw(); myPage(true); };
 
     /* ---- your bookings (on this page and on My page) ---- */
@@ -14173,7 +14190,7 @@ W.nhOpenPair=function(name){
     var mineHtml=function(list){ if(!list.length) return "";
       return list.map(function(b){ var c=b.status==="cancelled";
         return '<div class="bkMine" style="background:#fff;border-radius:12px;margin:0 0 6px;border:1px solid #f0e2a8" onclick="'+(c?'':'nhBkCard('+b.id+')')+'"><span style="flex:1"><b>'+esc(whenTxt(b))+'</b><br><span style="color:#6b6f88;font-size:12.5px">'
-          +esc(courtName(Number(b.court),b.club_id))+(c?' · <span style="color:#c0392b;font-weight:700">'+esc(b.cancel_reason||"Cancelled by the club")+'</span>':(' · booked by '+esc(nm(b.booked_by))))+'</span></span>'+(c?'':'<span style="color:#9aa">›</span>')+'</div>'; }).join(""); };
+          +(many()?esc(vName(b.club_id))+' \u00b7 ':'')+esc(courtName(Number(b.court),b.club_id))+(c?' · <span style="color:#c0392b;font-weight:700">'+esc(b.cancel_reason||"Cancelled by the club")+'</span>':(' · booked by '+esc(nm(b.booked_by))))+'</span></span>'+(c?'':'<span style="color:#9aa">›</span>')+'</div>'; }).join(""); };
     var mine=function(all){ var box=document.getElementById("nhBkMine"); if(!box) return; mineLoad().then(function(list){
       if(!all) list=list.filter(function(b){ return Number(b.club_id)===BK; });
       box.innerHTML=list.length?bookBox("Your bookings",list):""; }); };
@@ -14213,33 +14230,50 @@ W.nhOpenPair=function(name){
              p_to:document.getElementById("nhBkBT").value,p_reason:document.getElementById("nhBkBR").value,p_weeks:Number(document.getElementById("nhBkBW").value),p_confirm:!!confirmed};
       rpc("bk_admin_block",a).then(function(r){
         if(r&&r.needs_confirm){ var list=(r.conflicts||[]).map(function(x){ return "• "+courtName(Number(x.court))+", "+whenTxt(x)+" — "+nm(x.booked_by); }).join("\n");
-          if(W.confirm((r.conflicts||[]).length+" booking(s) are in the way:\n\n"+list+"\n\nCancel them (the players will see “Cancelled by the club: "+a.p_reason+"”) and place the block?")) W.nhBkBlockGo(true);
+          var bx=document.getElementById("nhBkErr"); if(bx){ bx.style.color="#2b2f45";
+            bx.innerHTML='<div style="background:#fff4e5;border:1.5px solid #f0b46b;border-radius:12px;padding:10px 12px;margin-top:8px"><b>'+(r.conflicts||[]).length+' booking(s) are in the way:</b><br>'
+              +esc(list).replace(/\n/g,"<br>")+'<br><span style="color:#6b6f88">The players will see \u201cCancelled by the club: '+esc(a.p_reason)+'\u201d.</span>'
+              +'<div><button class="b red" onclick="nhBkBlockGo(true)">Cancel them and block</button><button class="b lt" onclick="nhBkClose()">Leave it</button></div></div>'; }
           return; }
         if(!r||!r.ok){ document.getElementById("nhBkErr").textContent=(r&&r.error)||"Could not block."; return; }
-        sheetClose(); draw(); alert("Blocked: "+r.blocks+(r.cancelled?(" · "+r.cancelled+" booking(s) cancelled"):"")+(r.skipped?(" · "+r.skipped+" already blocked"):"")); }); };
-    W.nhBkAdmCancel=function(id,series){ var b=byId(id); var why=(b&&b.kind==="block")?"":W.prompt("Reason (the player will see “Cancelled by the club: …”):","");
-      if(why===null) return; if(b&&b.kind==="block"&&!W.confirm(series?"Remove every week of this block?":"Remove this block?")) return;
-      rpc("bk_admin_cancel",{p_id:id,p_code:ADMIN.code,p_reason:why||null,p_series:!!series}).then(function(r){ if(!r||!r.ok){ alert((r&&r.error)||"Could not cancel."); return; } sheetClose(); draw(); }); };
-    W.nhBkPrint=function(){ var g=cfg(), club=((W.PLAT.clubs||[]).find(function(c){ return Number(c.id)===board(); })||{}).name||"";
+        draw(); note("Blocked", "Blocked: "+r.blocks+(r.cancelled?(" \u00b7 "+r.cancelled+" booking(s) cancelled"):"")+(r.skipped?(" \u00b7 "+r.skipped+" already blocked"):"")); }); };
+    W.nhBkAdmCancel=function(id,series,sure){ var b=byId(id), blk=!!(b&&b.kind==="block");
+      if(!sure){
+        if(blk) sheet('<h3>'+(series?'Remove every week of this block?':'Remove this block?')+'</h3><div class="sub">'+esc(courtName(Number(b.court)))+' \u00b7 '+esc(whenTxt(b))+' \u00b7 '+esc(b.note||"")+'</div>'
+          +'<button class="b red" onclick="nhBkAdmCancel('+id+','+(!!series)+',true)">Yes, remove</button><button class="b lt" onclick="nhBkCard('+id+')">Back</button><div id="nhBkErr" style="color:#c0392b;font-size:13px;margin-top:6px"></div>');
+        else sheet('<h3>Cancel this booking (club)</h3><div class="sub">'+(b?esc(courtName(Number(b.court)))+' \u00b7 '+esc(whenTxt(b))+' \u00b7 '+esc(nm(b.booked_by)):'')+'</div>'
+          +'<div class="sub" style="margin:0">Reason \u2014 the player sees \u201cCancelled by the club: \u2026\u201d</div><input id="nhBkWhy" placeholder="e.g. court maintenance">'
+          +'<button class="b red" onclick="nhBkAdmCancel('+id+',false,true)">Cancel the booking</button><button class="b lt" onclick="nhBkCard('+id+')">Back</button><div id="nhBkErr" style="color:#c0392b;font-size:13px;margin-top:6px"></div>');
+        return; }
+      var why=blk?"":String((document.getElementById("nhBkWhy")||{}).value||"").trim();
+      rpc("bk_admin_cancel",{p_id:id,p_code:ADMIN.code,p_reason:why||null,p_series:!!series}).then(function(r){
+        if(!r||!r.ok){ var e=document.getElementById("nhBkErr"); if(e) e.textContent=(r&&r.error)||"Could not cancel."; return; } sheetClose(); draw(); }); };
+    W.nhBkPrint=function(){ var g=cfg(), club=vName(board());
       var rows=ROWS.slice().sort(function(a,b){ return (a.court-b.court)||(new Date(a.starts_at)-new Date(b.starts_at)); }).map(function(b){
         return '<tr><td>'+esc(courtName(Number(b.court)))+'</td><td>'+hm(locMin(b.starts_at))+'–'+hm(locMin(b.ends_at))+'</td><td>'+(b.kind==="block"?("Blocked · "+esc(b.note||"")):esc([nm(b.booked_by)].concat((b.players||[]).map(nm)).join(", ")))+'</td></tr>'; }).join("");
-      var w=W.open("","_blank"); if(!w) return; w.document.write('<html><head><title>'+esc(club)+' · '+esc(dayLabel(DAY))+'</title><style>body{font-family:sans-serif;padding:20px}td,th{border:1px solid #ccc;padding:6px 10px;text-align:left}table{border-collapse:collapse;width:100%}</style></head><body><h2>'+esc(club)+' · court bookings · '+esc(dayLabel(DAY))+'</h2><table><tr><th>Court</th><th>Time</th><th>Who</th></tr>'+(rows||'<tr><td colspan=3>No bookings</td></tr>')+'</table></body></html>'); w.document.close(); try{ w.print(); }catch(e){} };
+      var w=W.open("","_blank"); if(!w){ note("Print the day", "This browser blocked the print window \u2014 open the court sheet in Chrome or Edge to print."); return; } w.document.write('<html><head><title>'+esc(club)+' · '+esc(dayLabel(DAY))+'</title><style>body{font-family:sans-serif;padding:20px}td,th{border:1px solid #ccc;padding:6px 10px;text-align:left}table{border-collapse:collapse;width:100%}</style></head><body><h2>'+esc(club)+' · court bookings · '+esc(dayLabel(DAY))+'</h2><table><tr><th>Court</th><th>Time</th><th>Who</th></tr>'+(rows||'<tr><td colspan=3>No bookings</td></tr>')+'</table></body></html>'); w.document.close(); try{ w.print(); }catch(e){} };
 
     /* ---- b5 (Andre 27 Oct): ONE central admin control. The Control Room gets a "Bookings" tab, shown only for a club that
        takes bookings (a row in plat_booking_config). It opens the court sheet already in club-admin mode, with the code typed
        at the Control Room door (the database checks it again on every action). Back returns to the Control Room. ---- */
     var admCid=function(){ var s=document.getElementById("adminClubSelect"); return s?Number(s.value)||0:0; };
     var admCode=function(){ try{ return (typeof ADMIN_PIN!=="undefined"&&ADMIN_PIN)?String(ADMIN_PIN).trim():""; }catch(e){ return ""; } };
-    W.nhBkAdminOpen=function(){ var cid=admCid(); if(!cid) return;
+    var venuesOf=function(gid){ gid=Number(gid); return Object.keys(CFG||{}).map(Number).filter(function(v){ return v===gid || Number(CFG[v].group_id)===gid; })
+      .sort(function(a,b){ return String(vName(a)).localeCompare(String(vName(b))); }); };
+    W.nhBkAdminOpen=function(venue){ var cid=Number(venue)||admCid(); if(!cid) return;
       cfgLoad().then(function(){ return namesLoad(); }).then(function(){
-        if(!(CFG&&CFG[cid])){ alert("This club does not take court bookings."); return; }
+        var rm=function(h){ var x=document.getElementById("nhBkAdmMsg"); if(x) x.innerHTML=h; };
+        if(!(CFG&&CFG[cid])){ rm("This club does not take court bookings."); return; }
         var go=function(code){ rpc("bk_admin_check",{p_club:cid,p_code:code}).then(function(r){
-          if(!(r&&r.ok)){ var c2=W.prompt("Admin code for court bookings at this club:",""); if(c2&&c2.trim()&&c2.trim()!==code) go(c2.trim()); else if(c2!==null) alert("That admin code is not right."); return; }
+          if(!(r&&r.ok)){ rm((code?'<div style="color:#c0392b;margin-bottom:6px">That code does not open court bookings here.</div>':'')+'Admin code for court bookings at this club:'
+              +'<div style="display:flex;gap:6px;margin-top:6px"><input id="nhBkAdmCode" class="ac-field" inputmode="numeric" style="flex:1;margin:0"><button class="ac-btn ac-btn-primary" onclick="nhBkAdminCode()">Open</button></div>'); return; }
+          rm("");
           if(!ensure()) return; sheetClose(); showScreen("nhBkScreen"); try{ W.scrollTo(0,0); }catch(e){}
           BK=cid; ADMIN={cid:cid,code:code}; FORP=true; FROMADM=true; DAY=ymd(localNow());
           var t=document.querySelector("#nhBkScreen .header h1"), cl=(W.PLAT.clubs||[]).find(function(x){ return Number(x.id)===cid; });
-          if(t) t.textContent="Court bookings · "+((VENUES[Number(W.PLAT.pool)]||[]).filter(function(v){ return v.c===cid; }).map(function(v){ return v.n; })[0]||(cl&&cl.name)||"")+" (admin)";
+          if(t) t.textContent="Court bookings · "+vName(cid)+" (admin)";
           draw(); }); };
+        W.nhBkAdminCode=function(){ /* the code typed in the room opens this venue */ go(String((document.getElementById("nhBkAdmCode")||{}).value||"").trim()); };
         go(admCode()); }); };
     var admRoom=function(){ var tabs=document.getElementById("acTabClub"), roomC=document.getElementById("acRoomClub"); if(!tabs||!roomC) return;
       if(!document.getElementById("acTabBook")){
@@ -14249,13 +14283,17 @@ W.nhOpenPair=function(name){
         var r=document.createElement("div"); r.className="ac-room"; r.id="acRoomBook";
         r.innerHTML='<div class="ac-card"><h4>Court bookings</h4>'
           +'<div style="font-size:13px;color:#5a5f7a;margin:4px 0 12px;line-height:1.45">The court sheet for this club, in club-admin mode:<br>• <b>Block courts</b> — coaching, maintenance, a tournament or a closed day; once or every week<br>• <b>Cancel any booking</b> — the player sees “Cancelled by the club: …”<br>• <b>Book for a player</b><br>• <b>Print the day</b></div>'
-          +'<button class="ac-btn ac-btn-primary" style="width:100%" onclick="nhBkAdminOpen()">Open the court sheet</button></div>';
+          +'<div id="nhBkAdmVen"></div><div id="nhBkAdmMsg" style="font-size:13px;margin-top:10px"></div></div>';
         roomC.parentNode.insertBefore(r, roomC.nextSibling);
         if(typeof acRoom==="function" && !acRoom.__bk){ var o=acRoom; W.acRoom=function(w){ var rb=document.getElementById("acRoomBook"), tb=document.getElementById("acTabBook");
             if(w==="book"){ o("__none"); if(rb) rb.classList.add("active"); if(tb) tb.classList.add("active"); return; }
             if(rb) rb.classList.remove("active"); if(tb) tb.classList.remove("active"); return o(w); }; W.acRoom.__bk=1; try{ acRoom=W.acRoom; }catch(e){} }
       }
-      var on=!!(CFG&&CFG[admCid()]), tb2=document.getElementById("acTabBook");
+      var vs=venuesOf(admCid()), on=vs.length>0, tb2=document.getElementById("acTabBook"), vb=document.getElementById("nhBkAdmVen"), key=vs.join(",");
+      /* b8: one button per place this group runs (MCC & LIV runs LIV, MCC and Brackenhill) */
+      if(vb && vb.getAttribute("data-k")!==key){ vb.setAttribute("data-k",key); var mm=document.getElementById("nhBkAdmMsg"); if(mm) mm.innerHTML="";
+        vb.innerHTML=vs.map(function(v){ var g=CFG[v]; return '<button class="ac-btn ac-btn-primary" style="width:100%;margin-bottom:8px" onclick="nhBkAdminOpen('+v+')">'
+          +(vs.length>1?('Open '+esc(vName(v))+' \u00b7 '+g.courts+(g.courts===1?' court':' courts')):'Open the court sheet')+'</button>'; }).join(""); }
       if(tb2 && tb2.style.display!==(on?"":"none")){ tb2.style.display=on?"":"none"; if(!on && tb2.classList.contains("active")) W.acRoom("members"); } };
 
     /* My page shows your upcoming bookings */
@@ -14360,7 +14398,7 @@ W.nhOpenPair=function(name){
     /* open here? — a club of this register takes court bookings */
     var BKC=null, bkcP=null;
     var bkcLoad=function(){ if(BKC) return Promise.resolve(BKC); if(bkcP) return bkcP;
-      bkcP=fetch(BASE+"plat_booking_config?active=eq.true&select=club_id").then(J).then(function(r){ BKC=(Array.isArray(r)?r:[]).map(function(x){ return Number(x.club_id); }); return BKC; })
+      bkcP=fetch(BASE+"plat_booking_config?active=eq.true&select=club_id,group_id").then(J).then(function(r){ BKC=[]; (Array.isArray(r)?r:[]).forEach(function(x){ BKC.push(Number(x.club_id)); if(x.group_id!=null) BKC.push(Number(x.group_id)); }); return BKC; })
         .catch(function(){ bkcP=null; return []; }); return bkcP; };
     var openHere=function(){ return !!(BKC && BKC.some(function(id){ return (W.PLAT.clubs||[]).some(function(c){ return Number(c.id)===id; }); })); };
     W.nhNmOpen=function(){ return openHere(); };
@@ -14393,6 +14431,13 @@ W.nhOpenPair=function(name){
     var form=function(){
       var b=document.getElementById("nhNmBody"); if(!b) return;
       b.style.setProperty("--nmc", col());
+      /* b8: a phone that is already somebody's My page stays theirs — a new member registers on their OWN phone, so the
+         page, the bookings and the PIN are theirs (a claimed name cannot be opened again from the name list) */
+      var mine=null; try{ mine=localStorage.getItem("opr_me_"+region()); }catch(e){}
+      if(mine){ b.innerHTML='<div class="brk" style="padding:16px"><h2 style="margin:0 0 6px">New member</h2>'
+        +'<div class="nmNote" style="font-size:14px">This phone is <b>'+esc(mine)+'</b>\u2019s My page. A new member registers on <b>their own phone</b> \u2014 '
+        +'open this app there and tap <b>New member</b>. Then their page, their bookings and their PIN are theirs.</div>'
+        +'<div style="margin-top:14px"><button type="button" class="nmLt" onclick="nhNmBack()">Back</button></div></div>'; return; }
       b.innerHTML=
          '<div class="brk" style="padding:14px"><h2 style="margin:0 0 4px">Join the register</h2>'
         +'<div class="nmNote">Register once and you get your own <b>My page</b>: book courts, and your rating follows every match you play. '
@@ -14434,8 +14479,8 @@ W.nhOpenPair=function(name){
       rpc("sr_register",{p_pool:Number(W.PLAT.pool),p_name:name,p_gender:ST.g,p_pin:pin,p_strength:ST.s,p_playtomic:(ST.s==="playtomic"?Number(pt):null),p_confirm_new:!!confirmNew}).then(function(r){
         if(go){ go.disabled=false; go.textContent="Register"; }
         if(r&&r.ok){
-          try{ localStorage.setItem("opr_me_"+region(), r.name); localStorage.setItem("opr_mepin_"+region(), pin); }catch(e){}
           var b=document.getElementById("nhNmBody");
+          try{ localStorage.setItem("opr_me_"+region(), r.name); localStorage.setItem("opr_mepin_"+region(), pin); }catch(e){}
           b.innerHTML='<div class="brk" style="padding:18px 16px;text-align:center">'
             +'<h2 style="margin:6px 0 6px">Welcome, '+esc(String(r.name).split(" ")[0])+'!</h2>'
             +'<div class="nmNote" style="font-size:14px">You are on the register as <b>'+esc(r.name)+'</b>, and this phone now opens your own My page. '
@@ -14485,15 +14530,23 @@ W.nhOpenPair=function(name){
               var d=new Date(x.at), when=d.getDate()+" "+["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"][d.getMonth()];
               return '<div style="border-top:1px solid #eee;padding:9px 0;font-size:13.5px"><div style="display:flex;gap:8px;align-items:baseline"><b style="flex:1">'+esc(x.name)+'</b><span style="color:#888;font-size:12px">'+when+'</span></div>'
                 +'<div style="color:#6b6480;font-size:12.5px;margin-top:2px">'+(x.gender==="F"?"Lady":"Man")+' · '+esc(LBL[x.strength]||x.strength)+(x.playtomic!=null?(" "+x.playtomic):"")+' · starts at <b>'+Math.round(x.seed)+'</b>'+(x.played?' · <span style="color:#2e7d32;font-weight:700">has played</span>':'')+'</div>'
-                +(x.played?'':('<div style="margin-top:6px"><button class="ac-btn ac-btn-ghost" style="padding:7px 11px;font-size:12.5px;margin-right:6px" onclick="nhNmAdmSeed('+x.id+','+Math.round(x.seed)+')">Change rating</button>'
+                +(x.played?'':('<div id="nhNmRow'+x.id+'" style="margin-top:6px"><button class="ac-btn ac-btn-ghost" style="padding:7px 11px;font-size:12.5px;margin-right:6px" onclick="nhNmAdmSeed('+x.id+','+Math.round(x.seed)+')">Change rating</button>'
                   +'<button class="ac-btn ac-btn-danger" style="padding:7px 11px;font-size:12.5px" onclick="nhNmAdmDel('+x.id+',&quot;'+esc(String(x.name).replace(/"/g,""))+'&quot;)">Remove</button></div>'))
                 +'</div>'; }).join("")
             :'<div style="font-size:13px;color:#888">Nobody yet.</div>');
       }); };
-    W.nhNmAdmSeed=function(id,cur){ var v=W.prompt("Starting rating (they have not played yet):", String(cur)); if(v===null) return; v=Math.round(Number(String(v).trim()));
-      rpc("sr_admin_seed",{p_club:admCid(),p_code:admCode(),p_iid:id,p_seed:v}).then(function(r){ if(!r||!r.ok){ alert((r&&r.error)||"Could not change it."); return; } admDraw(true); }); };
-    W.nhNmAdmDel=function(id,name){ if(!W.confirm("Remove "+name+" from the register?\n\nTheir My page and any court bookings go too. They have not played, so no rating or match changes.")) return;
-      rpc("sr_admin_remove",{p_club:admCid(),p_code:admCode(),p_iid:id}).then(function(r){ if(!r||!r.ok){ alert((r&&r.error)||"Could not remove."); return; } admDraw(true); }); };
+    /* b8: no pop-up boxes — the question opens under the person's row */
+    var rowBox=function(id){ return document.getElementById("nhNmRow"+id); };
+    W.nhNmAdmSeed=function(id,cur){ var x=rowBox(id); if(!x) return;
+      x.innerHTML='<div style="display:flex;gap:6px;align-items:center;margin-top:6px"><span style="font-size:12.5px">Starting rating</span><input id="nhNmSeedIn'+id+'" class="ac-field" inputmode="numeric" value="'+cur+'" style="width:90px;margin:0">'
+        +'<button class="ac-btn ac-btn-primary" style="padding:7px 11px;font-size:12.5px" onclick="nhNmAdmSeedGo('+id+')">Save</button><button class="ac-btn ac-btn-ghost" style="padding:7px 11px;font-size:12.5px" onclick="nhNmAdmRedraw()">Back</button></div><div class="nmErr" style="color:#c0392b;font-size:12.5px"></div>'; };
+    W.nhNmAdmSeedGo=function(id){ var v=Math.round(Number(String((document.getElementById("nhNmSeedIn"+id)||{}).value||"").trim()));
+      rpc("sr_admin_seed",{p_club:admCid(),p_code:admCode(),p_iid:id,p_seed:v}).then(function(r){ if(!r||!r.ok){ var e=(rowBox(id)||document).querySelector(".nmErr"); if(e) e.textContent=(r&&r.error)||"Could not change it."; return; } admDraw(true); }); };
+    W.nhNmAdmDel=function(id,name){ var x=rowBox(id); if(!x) return;
+      x.innerHTML='<div style="background:#fdecea;border-radius:10px;padding:8px 10px;margin-top:6px;font-size:12.5px">Remove <b>'+esc(name)+'</b> from the register? Their My page and any court bookings go too. They have not played, so no rating or match changes.'
+        +'<div style="margin-top:6px"><button class="ac-btn ac-btn-danger" style="padding:7px 11px;font-size:12.5px;margin-right:6px" onclick="nhNmAdmDelGo('+id+')">Yes, remove</button><button class="ac-btn ac-btn-ghost" style="padding:7px 11px;font-size:12.5px" onclick="nhNmAdmRedraw()">Back</button></div><div class="nmErr" style="color:#c0392b"></div></div>'; };
+    W.nhNmAdmDelGo=function(id){ rpc("sr_admin_remove",{p_club:admCid(),p_code:admCode(),p_iid:id}).then(function(r){ if(!r||!r.ok){ var e=(rowBox(id)||document).querySelector(".nmErr"); if(e) e.textContent=(r&&r.error)||"Could not remove."; return; } admDraw(true); }); };
+    W.nhNmAdmRedraw=function(){ admDraw(true); };
 
     bkcLoad();
     setInterval(function(){ try{
@@ -14501,6 +14554,59 @@ W.nhOpenPair=function(name){
       claimCard();
       var adm=document.getElementById("adminScreen"); if(adm && adm.classList.contains("active")) admDraw(false);
     }catch(e){} }, 500);
+  })();
+  /* ===================================================================================================
+     NAT4 · A CALMER FRONT DOOR (Andre's sketch, 27 Oct). The region's door keeps its banner, the two big squares
+     (Enter your match score · Select your active group) and the group cards. Under them: Book a court and New member.
+     Then clear space, then four tiles — Recent matches · In form · Movers · Tournaments — each opening its own page
+     (inside the door, so it keeps the door's look; the arrow brings you back). "Everything else" stays at the foot.
+     Nothing here reads or writes ratings or matches: the four pages are the door's own sections, moved off the door.
+     =================================================================================================== */
+  (function(){
+    var W=window;
+    var esc=function(s){ return String(s==null?"":s).replace(/[&<>"']/g,function(c){ return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]; }); };
+    var IC={
+      book:'<svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/></svg>',
+      member:'<svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="10" cy="8" r="4"/><path d="M3 21c0-4 3.1-6.5 7-6.5s7 2.5 7 6.5M19 8v6M16 11h6"/></svg>',
+      m:'<svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M8 6h13M8 12h13M8 18h13"/><circle cx="3.5" cy="6" r="1"/><circle cx="3.5" cy="12" r="1"/><circle cx="3.5" cy="18" r="1"/></svg>',
+      f:'<svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 17l6-6 4 4 8-8"/><path d="M15 7h6v6"/></svg>',
+      v:'<svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 20V5M3 9l4-4 4 4M17 4v15M13 15l4 4 4-4"/></svg>',
+      t:'<svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 21h8M12 17v4M7 4h10v5a5 5 0 0 1-10 0V4z"/><path d="M7 6H4a3 3 0 0 0 3 4M17 6h3a3 3 0 0 1-3 4"/></svg>'
+    };
+    var TILES=[["m","Recent matches"],["f","In form"],["v","Movers"],["t","Tournaments"]];
+    /* Book a court · New member — under the group cards */
+    W.nhDoorActs=function(col){
+      var b=function(onclick,icon,label){ return '<button onclick="'+onclick+'" style="flex:1;display:flex;flex-direction:column;align-items:center;gap:5px;background:#fff;'
+        +'border:2px solid '+col+';border-radius:16px;padding:13px 8px;font:inherit;font-weight:800;font-size:14.5px;color:'+col+';cursor:pointer">'+icon+label+'</button>'; };
+      /* the region's records (ratings, ladders, profiles and the Global Ledger) — the door's strip used to carry it */
+      return '<div data-plat-keep="1" style="margin:12px 12px 0"><button onclick="window.nhJumpTo(\'__records\')" style="width:100%;background:#fff;border:1.5px solid '+col+';border-radius:99px;'
+        +'padding:9px 12px;font:inherit;font-weight:800;font-size:13.5px;color:'+col+';cursor:pointer">Ratings \u00b7 Ladders \u00b7 Profiles</button></div>'
+        +'<div data-plat-keep="1" style="display:flex;gap:10px;margin:14px 12px 0">'
+        + b("window.nhBook()",IC.book,"Book a court")
+        + b("window.nhNewMember()",IC.member,"New member")
+        + '</div>';
+    };
+    /* the four tiles, after some clear space */
+    W.nhDoorTiles=function(col){
+      return '<div style="height:34px"></div><div data-plat-keep="1" style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin:0 12px">'
+        + TILES.map(function(t){ return '<button onclick="window.nhDoorSec(\''+t[0]+'\')" style="display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;'
+            +'min-height:78px;background:#fff;border:1px solid #cfc5e0;border-radius:14px;padding:8px 4px;font:inherit;font-size:12px;font-weight:800;line-height:1.2;color:#241d33;cursor:pointer">'
+            +'<span style="color:'+col+'">'+IC[t[0]]+'</span>'+esc(t[1])+'</button>'; }).join("")
+        + '</div>';
+    };
+    /* a tile's page: drawn inside the door (#nh), so it wears the door's own look */
+    W.nhDoorSec=function(k){
+      var main=document.getElementById("nhDoorMain"), sub=document.getElementById("nhDoorSub"); if(!main||!sub) return;
+      var t=TILES.filter(function(x){ return x[0]===k; })[0]||["",""], html=(W.__doorSecs||{})[k]||"";
+      sub.innerHTML='<div style="display:flex;align-items:center;gap:10px;padding:14px 12px 4px">'
+        + '<button onclick="window.nhDoorBack()" style="background:#fff;border:1px solid #cfc5e0;border-radius:99px;padding:8px 14px;font:inherit;font-weight:800;font-size:13px;color:#241d33;cursor:pointer">‹ '+esc(W.PLAT.name||"Back")+'</button>'
+        + '<h2 style="margin:0;font-size:19px;color:#241d33">'+esc(t[1])+'</h2></div>'
+        + (String(html).replace(/\s/g,"")?html:'<div style="padding:22px 16px;color:#6b6480;font-size:14px">Nothing here yet.</div>')
+        + '<div style="height:90px"></div>';
+      main.style.display="none"; sub.style.display="block"; try{ W.scrollTo(0,0); }catch(e){}
+    };
+    W.nhDoorBack=function(){ var main=document.getElementById("nhDoorMain"), sub=document.getElementById("nhDoorSub");
+      if(sub){ sub.style.display="none"; sub.innerHTML=""; } if(main) main.style.display=""; try{ W.scrollTo(0,0); }catch(e){} };
   })();
   /* n350: COLUMN NAMES THAT STAY PUT. Group Members gets Name · Rating · Level · Move · Rank in the frozen block with
      its search box (each name measured onto the pill beneath it); on Member profiles and List all members the names
@@ -14910,7 +15016,7 @@ W.nhOpenPair=function(name){
           +'padding:10px 6px;font:inherit;font-size:12px;font-weight:700;color:#241d33;cursor:pointer">'+esc(label)+'</button>';
       };
 
-      w.innerHTML =
+      w.innerHTML = '<div id="nhDoorMain">' +   /* nat4: the door's own page; #nhDoorSub shows a tile's page */
         '<div class="band opr doorband"'+regBandStyle(RC)+'>'+nhMark()+''
         /* n150: A SHORT HERO THAT SAYS WHAT THIS IS, and the member's own page on the right — the first question
            everyone asks is "where do I see my rating". The week's count moved to Recent matches. */
@@ -14952,12 +15058,10 @@ W.nhOpenPair=function(name){
         /* n166: RECENT MATCHES COMES FIRST, THE RECORDS SIT UNDER THEM. The three things people come for are the
            score, their own page and who played whom; the records are a place you go to afterwards. The strip under
            the header carries a "Records" pill again, so it is one tap from the top. */
-        + nhMatchesBrk(d,12,"club")
-        /* n168: no records band on the door — "Ratings · Ladders · Profiles" in the strip opens the records page, where the
-           region's three lists sit open and the Global Ledger folds out beneath them. */
-        + lastMatchRibbon(d)
-        + '<div class="cols">'+nhFormBrk(d,RC,"club") + nhMoversBrk(d,RC,"club") + nhTourBrk(d)+'</div>'
-        /* everything else, small */
+        /* nat4: Book a court and New member under the group cards; the door's sections move to tiles, each its own page */
+        + W.nhDoorActs(RC)
+        + (function(){ W.__doorSecs={ m: lastMatchRibbon(d) + nhMatchesBrk(d,12,"club"), f: nhFormBrk(d,RC,"club"), v: nhMoversBrk(d,RC,"club"), t: nhTourBrk(d) }; return ""; })()
+        + W.nhDoorTiles(RC)
         + heading("Everything else")
         + '<div style="display:flex;gap:8px;margin:10px 12px 0;flex-wrap:wrap">'
         /* n63: these were opening the chooser panel that lives further up the page, so from the foot they
@@ -14970,6 +15074,7 @@ W.nhOpenPair=function(name){
         + '</div>'
         /* n84: the build, where you can always find it */
         + '<div style="text-align:center;font-size:10.5px;color:#a79ab5;margin:14px 0 4px">'+esc(nhBuildLabel())+'</div>'
+        + '</div><div id="nhDoorSub" style="display:none"></div>'   /* nat4: a tile's page */
         + homeBar();
     });
   }
