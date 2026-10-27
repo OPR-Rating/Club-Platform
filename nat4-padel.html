@@ -3750,7 +3750,7 @@ const CLUB_NAME = _club.name;  // shown in the logo as "OPR · <name>"
     link.setAttribute('href', href);
   }catch(e){ /* install stays on the static manifest — no functional impact */ }
 })();
-const OPR_VERSION = "OPR-DOUBLES v2026.09.03-56 · NAT4 booking test b10 (nat3 n368) (no voice) (of PLAT p117)";  // MANUAL PAIR CREATION REMOVED FROM ADMIN: Create a pair, Bulk create pairs and Re-derive all pairs are gone (they only made match-less ghost pairs, and Re-derive rewrote every stored initial club-wide). Pairs are born automatically at match entry. Current pairs list untouched; the underlying JS is left in place unreferenced, so no other code path changes. Includes v47 (set-score fix + double-tap guard) and all prior.
+const OPR_VERSION = "OPR-DOUBLES v2026.09.03-56 · NAT4 booking test b11 (nat3 n368) (no voice) (of PLAT p117)";  // MANUAL PAIR CREATION REMOVED FROM ADMIN: Create a pair, Bulk create pairs and Re-derive all pairs are gone (they only made match-less ghost pairs, and Re-derive rewrote every stored initial club-wide). Pairs are born automatically at match entry. Current pairs list untouched; the underlying JS is left in place unreferenced, so no other code path changes. Includes v47 (set-score fix + double-tap guard) and all prior.
 // Explanation shown above the individual ladder. Open on load so it's read; collapsible
 // (state kept for the session) and scrolls away. Mechanics only — no outcome framing, so
 // members aren't nudged away from playing stronger opponents. Every clause maps to a real
@@ -13900,7 +13900,7 @@ W.nhOpenPair=function(name){
     setInterval(leapBrk, 900);
     W.__nhTsBuild=build;   /* for the test */
   })();
-  window.__nhBkAnon="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRqbWJudmlrcmRnbm9tamh0a2dmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODUzOTE0MzEsImV4cCI6MjEwMDk2NzQzMX0.vR8xlVFjV6jXW-pAclGjM74HqmWSKVpsacFjM-dCIJI"; window.__nhBkBuild="nat4 b10";
+  window.__nhBkAnon="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRqbWJudmlrcmRnbm9tamh0a2dmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODUzOTE0MzEsImV4cCI6MjEwMDk2NzQzMX0.vR8xlVFjV6jXW-pAclGjM74HqmWSKVpsacFjM-dCIJI"; window.__nhBkBuild="nat4 b11";
   /* ===================================================================================================
      COURT BOOKING (nat4 test copy, Manzini pilot, Andre 26 Oct). Started ONLY from the player's own My page: its
      "Court card" button becomes "Book a court", which asks "Where do you want to play?" — one tile per venue; a venue
@@ -14139,7 +14139,8 @@ W.nhOpenPair=function(name){
     };
 
     /* ---- the court card ---- */
-    var byId=function(id){ for(var i=0;i<ROWS.length;i++) if(Number(ROWS[i].id)===Number(id)) return ROWS[i]; for(var j=0;j<MINE.length;j++) if(Number(MINE[j].id)===Number(id)) return MINE[j]; return null; };
+    var byId=function(id){ for(var i=0;i<ROWS.length;i++) if(Number(ROWS[i].id)===Number(id)) return ROWS[i]; for(var j=0;j<MINE.length;j++) if(Number(MINE[j].id)===Number(id)) return MINE[j];
+      for(var k=0;k<(TOSCORE||[]).length;k++) if(Number(TOSCORE[k].id)===Number(id)) return TOSCORE[k]; return null; };
     W.nhBkCard=function(id){
       var b=byId(id); if(!b) return; var m=me(), g=CFG&&CFG[Number(b.club_id)];
       if(b.kind==="block"){
@@ -14153,6 +14154,11 @@ W.nhOpenPair=function(name){
         +'<div class="sub">'+esc(vName(b.club_id))+(pr0?(' \u00b7 '+pr0+', pay at the club'):'')+'</div>'
         +'<div class="sub">Booked by <b>'+esc(nm(b.booked_by))+'</b>'+(b.created_by==="admin"?' (by the club)':'')+'</div>'
         +'<div style="font-size:14px;margin:4px 0 12px"><b>Player 1:</b> '+esc(nm(b.booked_by))+'<br><b>Other players:</b> '+esc(pl.join(", "))+(pl.length?'':' <span style="color:#888">— the others not added yet</span>')+'</div>';
+      var started=new Date(b.starts_at)<=new Date(), onB=m.id&&(isB||(b.players||[]).map(Number).indexOf(m.id)>=0), live=(b.status==="booked"||b.status==="scoring");
+      if(started && onB && live && !ADMIN){
+        h+='<button class="b" '+btnStyle()+' onclick="nhBkScore('+b.id+')">Enter score</button><button class="b lt" onclick="nhBkNoPlay('+b.id+')">Didn\u2019t play</button>';
+        sheet(h+'<button class="b lt" onclick="nhBkClose()">Close</button>'); return; }
+      if(b.status==="played"){ sheet(h+'<div class="sub">Played \u2014 the score is in.</div><button class="b lt" onclick="nhBkClose()">Close</button>'); return; }
       if(isB&&open) h+='<button class="b" '+btnStyle()+' onclick="nhBkPlayers('+b.id+')">'+(pl.length?'Change players':'Add players')+'</button>';
       if(canCancel) h+='<button class="b red" onclick="nhBkCancel('+b.id+')">Cancel booking</button>';
       else if(isB&&open&&g) h+='<div class="sub">Less than '+g.cancel_hours+' hours to go — to cancel now, ask the club.</div>';
@@ -14195,6 +14201,39 @@ W.nhOpenPair=function(name){
       return list.map(function(b){ var c=b.status==="cancelled";
         return '<div class="bkMine" style="background:#fff;border-radius:12px;margin:0 0 6px;border:1px solid #f0e2a8" onclick="'+(c?'':'nhBkCard('+b.id+')')+'"><span style="flex:1"><b>'+esc(whenTxt(b))+'</b><br><span style="color:#6b6f88;font-size:12.5px">'
           +(many()?esc(vName(b.club_id))+' \u00b7 ':'')+esc(courtName(Number(b.court),b.club_id))+(c?' · <span style="color:#c0392b;font-weight:700">'+esc(b.cancel_reason||"Cancelled by the club")+'</span>':(' · booked by '+esc(nm(b.booked_by))))+'</span></span>'+(c?'':'<span style="color:#9aa">›</span>')+'</div>'; }).join(""); };
+    /* b11 (Phase 2): bookings that have started, are mine (booker or a named player) and have no score yet — up to
+       7 days after the match. Each offers Enter score and Didn't play. */
+    var TOSCORE=[];
+    var scoreLoad=function(){ var m=me(); if(!m.id||!CFG) return Promise.resolve([]); var ids=Object.keys(CFG); if(!ids.length) return Promise.resolve([]);
+      var now=new Date(), wk=new Date(Date.now()-7*864e5);
+      return get("plat_bookings?club_id=in.("+ids.join(",")+")&kind=eq.booking&status=in.(booked,scoring)&starts_at=lte."+encodeURIComponent(now.toISOString())
+          +"&ends_at=gt."+encodeURIComponent(wk.toISOString())+"&select=*&order=starts_at.desc")
+        .then(function(r){ TOSCORE=(Array.isArray(r)?r:[]).filter(function(b){ return Number(b.booked_by)===m.id||(b.players||[]).map(Number).indexOf(m.id)>=0; }); return TOSCORE; })
+        .catch(function(){ return []; }); };
+    var scoreBox=function(list){ var m=me();
+      return '<div style="background:#f3fbd6;border:2px solid #8fb500;border-radius:16px;padding:10px 10px 6px;margin:0 0 14px">'
+        +'<div style="display:flex;align-items:center;gap:8px;margin:0 2px 8px"><span style="font-size:15px;font-weight:800;color:#3d5200;flex:1">Matches to score</span>'
+        +'<span style="background:#8fb500;color:#fff;border-radius:99px;padding:2px 10px;font-size:12px;font-weight:800">'+list.length+'</span></div>'
+        + list.map(function(b){ var busy=b.status==="scoring"&&b.scoring_until&&new Date(b.scoring_until)>new Date()&&Number(b.scoring_by)!==m.id;
+            var who=[nm(b.booked_by)].concat((b.players||[]).map(nm)).join(", ");
+            return '<div style="background:#fff;border-radius:12px;margin:0 0 6px;border:1px solid #d9eaa0;padding:10px 12px;font-size:13.5px">'
+              +'<b>'+esc(whenTxt(b))+'</b><br><span style="color:#6b6f88;font-size:12.5px">'+esc(vName(b.club_id))+' \u00b7 '+esc(courtName(Number(b.court),b.club_id))+' \u00b7 '+esc(who)+'</span>'
+              +(busy?'<div style="margin-top:6px;color:#8a6d3b;font-size:12.5px;font-weight:700">'+esc(nm(b.scoring_by))+' is entering this score now.</div>'
+                :'<div style="margin-top:8px"><button onclick="nhBkScore('+b.id+')" style="font:inherit;font-size:13.5px;font-weight:800;border:none;border-radius:10px;padding:9px 14px;background:#4f6b00;color:#fff;cursor:pointer;margin-right:6px">Enter score</button>'
+                 +'<button onclick="nhBkNoPlay('+b.id+')" style="font:inherit;font-size:13.5px;font-weight:800;border:1.5px solid #c9d6a0;border-radius:10px;padding:8px 12px;background:#fff;color:#4f6b00;cursor:pointer">Didn\u2019t play</button></div>')
+              +'</div>'; }).join("")+'</div>'; };
+    W.nhBkScore=function(id){ var m=me();
+      rpc("bk_start_scoring",{p_id:id,p_iid:m.id,p_pin:m.pin}).then(function(r){
+        if(!r||!r.ok){ note("Enter score", esc((r&&r.error)||"Try again.")); myPage(true); return; }
+        try{ sessionStorage.setItem("nh_bkscore", JSON.stringify({id:r.id,group:r.group,date:r.date,time:r.time,venue:r.venue,court:r.court,names:r.names||[],iid:m.id,pin:m.pin,at:Date.now()})); }catch(e){}
+        var u=(location.pathname.split("/").pop()||"nat4-padel.html")+"?club="+r.group+"&go=entry&back="+encodeURIComponent(location.search||"");
+        sheetClose(); if(typeof W.nhNav==="function") W.nhNav(u); else location.href=u; }); };
+    W.nhBkNoPlay=function(id,sure){ var b=byId(id)||TOSCORE.filter(function(x){ return Number(x.id)===Number(id); })[0];
+      if(!sure){ sheet('<h3>Didn\u2019t play?</h3><div class="sub">'+(b?esc(vName(b.club_id))+' \u00b7 '+esc(courtName(Number(b.court),b.club_id))+' \u00b7 '+esc(whenTxt(b)):'')+'</div>'
+        +'<div class="sub">The booking closes with no score \u2014 rain, a no-show, anything.</div>'
+        +'<button class="b red" onclick="nhBkNoPlay('+id+',true)">Yes, we didn\u2019t play</button><button class="b lt" onclick="nhBkClose()">Back</button><div id="nhBkErr" style="color:#c0392b;font-size:13px;margin-top:6px"></div>'); return; }
+      var m=me(); rpc("bk_not_played",{p_id:id,p_iid:m.id,p_pin:m.pin}).then(function(r){
+        if(!r||!r.ok){ var e=document.getElementById("nhBkErr"); if(e) e.textContent=(r&&r.error)||"Try again."; return; } sheetClose(); refresh(); }); };
     var mine=function(all){ var box=document.getElementById("nhBkMine"); if(!box) return; mineLoad().then(function(list){
       if(!all) list=list.filter(function(b){ return Number(b.club_id)===BK; });
       box.innerHTML=list.length?bookBox("Your bookings",list):""; }); };
@@ -14206,10 +14245,11 @@ W.nhOpenPair=function(name){
     var myPage=function(force){ try{
       var mm=document.getElementById("meMatches"); if(!mm) return; var q=new URLSearchParams(location.search); if(q.get("who")) return;
       if(!force && mm.getAttribute("data-bk")) return; mm.setAttribute("data-bk","1");   /* once per drawing of My page */
-      cfgLoad().then(namesLoad).then(mineLoad).then(function(list){ var ex2=document.getElementById("nhBkMyBox"); if(ex2) ex2.remove();
-        if(!list.length) return; var mm2=document.getElementById("meMatches"); if(!mm2) return;
-        var d=document.createElement("div"); d.className="brk nhBkMy"; d.id="nhBkMyBox"; d.setAttribute("data-plat-keep","1");
-        d.className="nhBkMy"; d.innerHTML=bookBox("Upcoming court bookings",list); mm2.parentNode.insertBefore(d, mm2); }); }catch(e){} };
+      cfgLoad().then(namesLoad).then(function(){ return Promise.all([scoreLoad(), mineLoad()]); }).then(function(rr){ var ex2=document.getElementById("nhBkMyBox"); if(ex2) ex2.remove();
+        var sc=rr[0]||[], list=rr[1]||[];
+        if(!list.length && !sc.length) return; var mm2=document.getElementById("meMatches"); if(!mm2) return;
+        var d=document.createElement("div"); d.id="nhBkMyBox"; d.setAttribute("data-plat-keep","1");
+        d.className="nhBkMy"; d.innerHTML=(sc.length?scoreBox(sc):"")+(list.length?bookBox("Upcoming court bookings",list):""); mm2.parentNode.insertBefore(d, mm2); }); }catch(e){} };
 
     /* ---- club admin ---- */
     var drawAdminBar=function(){ var bar=document.getElementById("nhBkAdminBar"); if(!bar) return; if(ADMIN&&ADMIN.cid!==board()){ ADMIN=null; FORP=false; }
@@ -14611,6 +14651,77 @@ W.nhOpenPair=function(name){
     };
     W.nhDoorBack=function(){ var main=document.getElementById("nhDoorMain"), sub=document.getElementById("nhDoorSub");
       if(sub){ sub.style.display="none"; sub.innerHTML=""; } if(main) main.style.display=""; try{ W.scrollTo(0,0); }catch(e){} };
+  })();
+  /* ===================================================================================================
+     NAT4 · ENTER THE SCORE FROM A BOOKING (Phase 2, Andre 27 Oct). "Enter score" on a booking holds it (bk_start_scoring)
+     and opens the NORMAL score sheet on the venue's group. The sequence stays the app's own:
+       page 1 — Event, Date (filled in from the booking), Type, Sets: all chosen as usual;
+       page 2 — the names, filled in from the booking in order (Team 1: Player 1 = the booker, Player 2; Team 2: Player 3,
+                Player 4) with their ratings, exactly as the court card does it — every box can still be tapped and changed;
+       page 3 — the set scores, as normal.
+     When the match is saved, the booking is linked to it (bk_finish_scoring) — one booking, one score. Nothing in the
+     score sheet's saving is changed: this only fills boxes and listens for the save's answer.
+     =================================================================================================== */
+  (function(){
+    var W=window;
+    var RPCB="https://DJMBNVIKRDGNOMJHTKGF.supabase.co/rest/v1/rpc/", AK=W.__nhBkAnon||"";
+    var rpc=function(fn,args){ return _origFetch(RPCB+fn,{method:"POST",headers:{"Content-Type":"application/json",apikey:AK,Authorization:"Bearer "+AK},body:JSON.stringify(args)})
+      .then(function(r){ return r.json(); }).catch(function(){ return {ok:false}; }); };
+    var _origFetch=W.fetch.bind(W);
+    var esc=function(s){ return String(s==null?"":s).replace(/[&<>"']/g,function(c){ return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]; }); };
+    var KEY="nh_bkscore";
+    /* the booking being scored here — only on its own group's score sheet, and only for an hour */
+    var BKS=function(){ var o=null; try{ o=JSON.parse(sessionStorage.getItem(KEY)||"null"); }catch(e){}
+      if(!o) return null; if(Date.now()-Number(o.at||0)>3600e3){ try{ sessionStorage.removeItem(KEY); }catch(e){} return null; }
+      return (Number(o.group)===Number((W.PLAT||{}).cid))?o:null; };
+    var dayTxt=function(s){ var d=new Date(s+"T00:00:00Z"); return ["Sun","Mon","Tue","Wed","Thu","Fri","Sat"][d.getUTCDay()]+" "+d.getUTCDate()+" "+["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"][d.getUTCMonth()]; };
+    var banner=function(o,line){ var host=document.getElementById("entryContent"); if(!host) return; var ex=document.getElementById("nhBkScoreBar"); if(ex) ex.remove();
+      var d=document.createElement("div"); d.id="nhBkScoreBar"; d.setAttribute("data-plat-keep","1");
+      d.style.cssText="background:#f3fbd6;border:2px solid #8fb500;border-radius:14px;padding:10px 12px;margin:0 0 14px;font-size:13px;color:#3d5200;line-height:1.45";
+      d.innerHTML='<b>Score for your booking</b> · '+esc(o.venue)+' · Court '+esc(o.court)+' · '+esc(dayTxt(o.date))+' '+esc(o.time)
+        +'<div style="color:#5b6b2e;margin-top:2px">'+line+'</div>'
+        +'<button type="button" onclick="nhBkScoreDrop()" style="margin-top:6px;font:inherit;font-size:12px;font-weight:800;border:1px solid #c9d6a0;background:#fff;color:#4f6b00;border-radius:99px;padding:5px 11px;cursor:pointer">Not this booking</button>';
+      host.insertBefore(d, host.firstChild); };
+    W.nhBkScoreDrop=function(){ var o=BKS(); try{ sessionStorage.removeItem(KEY); }catch(e){}
+      if(o) rpc("bk_release",{p_id:o.id,p_iid:o.iid,p_pin:o.pin});
+      var ex=document.getElementById("nhBkScoreBar"); if(ex) ex.remove(); };
+    /* page 1: the booking's date */
+    var after1=function(){ var o=BKS(); if(!o) return;
+      var dt=document.getElementById("matchDate"); if(dt){ dt.value=o.date; try{ dt.dispatchEvent(new Event("change",{bubbles:true})); }catch(e){} }
+      banner(o,"The date is the booking’s. Choose the event, type and sets as usual — the names are filled in on the next page."); };
+    /* page 2: the names, in order — the same way the app's court card fills them */
+    var after2=function(){ var o=BKS(); if(!o) return;
+      if(((W.entryData||{}).event||(typeof entryData!=="undefined"?entryData.event:""))==="Ladder Match") return;   /* ladder matches pick ladder teams instead */
+      var n=o.names||[], single=!document.getElementById("t1p2_val");
+      var slots=single?[["t1p1",n[0]],["t2p1",n[1]]]:[["t1p1",n[0]],["t1p2",n[1]],["t2p1",n[2]],["t2p2",n[3]]];
+      var any=false;
+      slots.forEach(function(p){ if(!p[1]) return; var v=document.getElementById(p[0]+"_val"), l=document.getElementById(p[0]+"_lbl"), bt=document.getElementById(p[0]+"_btn");
+        if(!v || v.value) return; v.value=p[1]; if(l) l.textContent=p[1]; if(bt) bt.classList.add("selected"); any=true; });
+      try{ if(any && typeof odrUpdateCombined==="function") odrUpdateCombined(); }catch(e){}
+      banner(o,"The names are from the booking — tap any name to change it (someone couldn’t make it?)."); };
+    /* wrap the two pages — again whenever something re-wraps them later */
+    var hook=function(){
+      if(typeof W.renderStep1==="function" && !W.renderStep1.__bkS){ var r1=W.renderStep1;
+        W.renderStep1=function(){ var r=r1.apply(this,arguments); Promise.resolve(r).then(function(){ setTimeout(after1,0); }); return r; }; W.renderStep1.__bkS=1; }
+      if(typeof W.renderStep2==="function" && !W.renderStep2.__bkS){ var r2=W.renderStep2;
+        W.renderStep2=function(){ var r=r2.apply(this,arguments); setTimeout(after2,0); return r; }; W.renderStep2.__bkS=1; }
+    };
+    /* the save: when the score sheet's own save answers OK, link the booking to that match */
+    var cur=W.fetch;
+    W.fetch=function(u,init){
+      var p=cur.apply(this,arguments);
+      try{ var url=String((u&&u.url)||u||""), o=BKS();
+        if(o && /\/functions\/v1\/(plat_)?submit_match\b/.test(url) && init && String(init.method||"").toUpperCase()==="POST"){
+          p.then(function(resp){ return resp.clone().json().then(function(j){
+            if(j && j.ok){ rpc("bk_finish_scoring",{p_id:o.id,p_iid:o.iid,p_pin:o.pin,p_match_id:(j.match_id!=null?Number(j.match_id):null)}).then(function(){
+              try{ sessionStorage.removeItem(KEY); }catch(e){} var ex=document.getElementById("nhBkScoreBar"); if(ex) ex.remove(); }); }
+          }); }).catch(function(){});
+        }
+      }catch(e){}
+      return p; };
+    hook(); setInterval(function(){ try{ hook(); }catch(e){} }, 700);
+    /* arriving on the score sheet straight from a booking: page 1 may already be drawn */
+    setTimeout(function(){ try{ if(BKS() && document.getElementById("matchDate") && !document.getElementById("nhBkScoreBar")) after1(); }catch(e){} }, 1500);
   })();
   /* n350: COLUMN NAMES THAT STAY PUT. Group Members gets Name · Rating · Level · Move · Rank in the frozen block with
      its search box (each name measured onto the pill beneath it); on Member profiles and List all members the names
