@@ -3750,7 +3750,7 @@ const CLUB_NAME = _club.name;  // shown in the logo as "OPR · <name>"
     link.setAttribute('href', href);
   }catch(e){ /* install stays on the static manifest — no functional impact */ }
 })();
-const OPR_VERSION = "OPR-DOUBLES v2026.09.03-56 · NAT4 booking test b8 (nat3 n368) (no voice) (of PLAT p117)";  // MANUAL PAIR CREATION REMOVED FROM ADMIN: Create a pair, Bulk create pairs and Re-derive all pairs are gone (they only made match-less ghost pairs, and Re-derive rewrote every stored initial club-wide). Pairs are born automatically at match entry. Current pairs list untouched; the underlying JS is left in place unreferenced, so no other code path changes. Includes v47 (set-score fix + double-tap guard) and all prior.
+const OPR_VERSION = "OPR-DOUBLES v2026.09.03-56 · NAT4 booking test b10 (nat3 n368) (no voice) (of PLAT p117)";  // MANUAL PAIR CREATION REMOVED FROM ADMIN: Create a pair, Bulk create pairs and Re-derive all pairs are gone (they only made match-less ghost pairs, and Re-derive rewrote every stored initial club-wide). Pairs are born automatically at match entry. Current pairs list untouched; the underlying JS is left in place unreferenced, so no other code path changes. Includes v47 (set-score fix + double-tap guard) and all prior.
 // Explanation shown above the individual ladder. Open on load so it's read; collapsible
 // (state kept for the session) and scrolls away. Mechanics only — no outcome framing, so
 // members aren't nudged away from playing stronger opponents. Every clause maps to a real
@@ -11997,9 +11997,13 @@ W.mePair=function(name,col){
             +(gname?'<span style="flex:none;padding:3px 9px;border-radius:999px;font-size:11px;font-weight:800;color:#fff;background:'+col+'">'+esc(gname)+'</span>':'')
             +'<span style="flex:none;display:inline-grid;place-items:center;width:26px;height:26px;border-radius:50%;background:'+first+';color:#fff;font-weight:800">\u203a</span></button>';
         };
-        box.innerHTML='<div style="display:flex;align-items:center;gap:12px;margin:18px 12px 10px;color:#8a8196;font-size:11px;font-weight:800;letter-spacing:.12em;text-transform:uppercase">'
-          +'<span style="flex:1;height:1px;background:#e2dbe8"></span>or<span style="flex:1;height:1px;background:#e2dbe8"></span></div>'
-          +'<div style="margin:0 12px 10px;font-size:15px;font-weight:800;color:#241d33">Enter which tournament you played in</div>'
+        box.innerHTML='<div style="display:flex;align-items:center;gap:10px;margin:22px 12px 14px">'
+          +'<span style="flex:1;height:2px;background:#e2dbe8"></span>'
+          +'<span style="flex:none;display:inline-grid;place-items:center;width:40px;height:40px;border-radius:50%;background:#241d33;color:#fff;font-size:12px;font-weight:800;letter-spacing:.08em">OR</span>'
+          +'<span style="flex:1;height:2px;background:#e2dbe8"></span></div>'
+          +'<div style="display:flex;align-items:center;justify-content:center;gap:9px;margin:0 12px 12px;padding:12px 14px;border-radius:99px;background:#d4f425;color:#241d33;font-size:15px;font-weight:800">'
+          +'<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 21h8M12 17v4M7 4h10v5a5 5 0 0 1-10 0V4z"/><path d="M7 6H4a3 3 0 0 0 3 4M17 6h3a3 3 0 0 1-3 4"/></svg>'
+          +'Enter which tournament you played in</div>'
           +'<div style="padding:0 12px">'+rows.map(row).join("")+'</div>';
       }).catch(function(){});
     }catch(e){}
@@ -13896,7 +13900,7 @@ W.nhOpenPair=function(name){
     setInterval(leapBrk, 900);
     W.__nhTsBuild=build;   /* for the test */
   })();
-  window.__nhBkAnon="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRqbWJudmlrcmRnbm9tamh0a2dmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODUzOTE0MzEsImV4cCI6MjEwMDk2NzQzMX0.vR8xlVFjV6jXW-pAclGjM74HqmWSKVpsacFjM-dCIJI"; window.__nhBkBuild="nat4 b8";
+  window.__nhBkAnon="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRqbWJudmlrcmRnbm9tamh0a2dmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODUzOTE0MzEsImV4cCI6MjEwMDk2NzQzMX0.vR8xlVFjV6jXW-pAclGjM74HqmWSKVpsacFjM-dCIJI"; window.__nhBkBuild="nat4 b10";
   /* ===================================================================================================
      COURT BOOKING (nat4 test copy, Manzini pilot, Andre 26 Oct). Started ONLY from the player's own My page: its
      "Court card" button becomes "Book a court", which asks "Where do you want to play?" — one tile per venue; a venue
@@ -14476,7 +14480,7 @@ W.nhOpenPair=function(name){
       if(!/^[0-9]{4}$/.test(pin)){ msg("Choose a PIN of four digits."); return; }
       if(pin!==pin2){ msg("The two PINs are not the same."); return; }
       var go=document.getElementById("nhNmGo"); if(go){ go.disabled=true; go.textContent="Registering…"; }
-      rpc("sr_register",{p_pool:Number(W.PLAT.pool),p_name:name,p_gender:ST.g,p_pin:pin,p_strength:ST.s,p_playtomic:(ST.s==="playtomic"?Number(pt):null),p_confirm_new:!!confirmNew}).then(function(r){
+      rpc("sr_register",{p_pool:Number(W.PLAT.pool),p_name:name,p_gender:ST.g,p_pin:pin,p_strength:ST.s,p_playtomic:(ST.s==="playtomic"?Number(pt):null),p_confirm_new:!!confirmNew,p_region:Number(region())}).then(function(r){
         if(go){ go.disabled=false; go.textContent="Register"; }
         if(r&&r.ok){
           var b=document.getElementById("nhNmBody");
@@ -14588,7 +14592,7 @@ W.nhOpenPair=function(name){
     };
     /* the four tiles, after some clear space */
     W.nhDoorTiles=function(col){
-      return '<div style="height:34px"></div><div data-plat-keep="1" style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin:0 12px">'
+      return '<div style="height:96px"></div><div data-plat-keep="1" style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin:0 12px">'
         + TILES.map(function(t){ return '<button onclick="window.nhDoorSec(\''+t[0]+'\')" style="display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;'
             +'min-height:78px;background:#fff;border:1px solid #cfc5e0;border-radius:14px;padding:8px 4px;font:inherit;font-size:12px;font-weight:800;line-height:1.2;color:#241d33;cursor:pointer">'
             +'<span style="color:'+col+'">'+IC[t[0]]+'</span>'+esc(t[1])+'</button>'; }).join("")
