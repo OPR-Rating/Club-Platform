@@ -3750,7 +3750,7 @@ const CLUB_NAME = _club.name;  // shown in the logo as "OPR · <name>"
     link.setAttribute('href', href);
   }catch(e){ /* install stays on the static manifest — no functional impact */ }
 })();
-const OPR_VERSION = "OPR-DOUBLES v2026.09.03-56 · NAT4 booking test b6 (nat3 n368) (no voice) (of PLAT p117)";  // MANUAL PAIR CREATION REMOVED FROM ADMIN: Create a pair, Bulk create pairs and Re-derive all pairs are gone (they only made match-less ghost pairs, and Re-derive rewrote every stored initial club-wide). Pairs are born automatically at match entry. Current pairs list untouched; the underlying JS is left in place unreferenced, so no other code path changes. Includes v47 (set-score fix + double-tap guard) and all prior.
+const OPR_VERSION = "OPR-DOUBLES v2026.09.03-56 · NAT4 booking test b7 (nat3 n368) (no voice) (of PLAT p117)";  // MANUAL PAIR CREATION REMOVED FROM ADMIN: Create a pair, Bulk create pairs and Re-derive all pairs are gone (they only made match-less ghost pairs, and Re-derive rewrote every stored initial club-wide). Pairs are born automatically at match entry. Current pairs list untouched; the underlying JS is left in place unreferenced, so no other code path changes. Includes v47 (set-score fix + double-tap guard) and all prior.
 // Explanation shown above the individual ladder. Open on load so it's read; collapsible
 // (state kept for the session) and scrolls away. Mechanics only — no outcome framing, so
 // members aren't nudged away from playing stronger opponents. Every clause maps to a real
@@ -13896,7 +13896,7 @@ W.nhOpenPair=function(name){
     setInterval(leapBrk, 900);
     W.__nhTsBuild=build;   /* for the test */
   })();
-  window.__nhBkAnon="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRqbWJudmlrcmRnbm9tamh0a2dmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODUzOTE0MzEsImV4cCI6MjEwMDk2NzQzMX0.vR8xlVFjV6jXW-pAclGjM74HqmWSKVpsacFjM-dCIJI"; window.__nhBkBuild="nat4 b6";
+  window.__nhBkAnon="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRqbWJudmlrcmRnbm9tamh0a2dmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODUzOTE0MzEsImV4cCI6MjEwMDk2NzQzMX0.vR8xlVFjV6jXW-pAclGjM74HqmWSKVpsacFjM-dCIJI"; window.__nhBkBuild="nat4 b7";
   /* ===================================================================================================
      COURT BOOKING (nat4 test copy, Manzini pilot, Andre 26 Oct). Started ONLY from the player's own My page: its
      "Court card" button becomes "Book a court", which asks "Where do you want to play?" — one tile per venue; a venue
@@ -13955,7 +13955,13 @@ W.nhOpenPair=function(name){
         +'<div class="screen-content"><div id="nhBkMine"></div><div id="nhBkAdminBar"></div><div id="nhBkDays" style="display:flex;gap:6px;overflow-x:auto;padding:2px 0 10px"></div>'
         +'<div id="nhBkGrid"></div><div id="nhBkFoot" style="text-align:center;margin:18px 0 8px"></div></div>';
       lad.parentNode.insertBefore(scr, lad.nextSibling);
-      var st=document.createElement("style"); st.textContent=
+      css();
+      return scr;
+    };
+    /* b7: the look loads by itself — My page opens a booking card without ever opening the booking page, and the card
+       landed unstyled below the bottom of the screen */
+    var css=function(){ if(document.getElementById("nhBkCss")) return;
+      var st=document.createElement("style"); st.id="nhBkCss"; st.textContent=
         "#nhBkScreen .bkDay{flex:0 0 auto;border:1.5px solid #cfd3e6;background:#fff;border-radius:12px;padding:7px 10px;font:inherit;font-size:12.5px;font-weight:700;color:#2b2f45;cursor:pointer}"
        +"#nhBkScreen .bkDay.on{color:#fff;border-color:transparent}"
        +"#nhBkScreen table.bkG{width:100%;border-collapse:separate;border-spacing:4px 3px;table-layout:fixed}"
@@ -13976,10 +13982,9 @@ W.nhOpenPair=function(name){
        +"#nhBkSheet input,#nhBkSheet select{font:inherit;font-size:15px;padding:10px;border:1.5px solid #cfd3e6;border-radius:10px;width:100%;box-sizing:border-box;margin:4px 0}"
        +"#nhBkMine .bkMine,.nhBkMy .bkMine{display:flex;gap:10px;align-items:center;padding:10px 12px;border-top:1px solid #eef0f7;cursor:pointer;font-size:13.5px}";
       document.head.appendChild(st);
-      return scr;
     };
     var sheetClose=function(){ var s=document.getElementById("nhBkSheet"); if(s) s.remove(); var b=document.getElementById("nhBkVeil"); if(b) b.remove(); };
-    var sheet=function(html){ sheetClose(); var v=document.createElement("div"); v.id="nhBkVeil";
+    var sheet=function(html){ css(); sheetClose(); var v=document.createElement("div"); v.id="nhBkVeil";
       v.style.cssText="position:fixed;inset:0;background:rgba(0,0,0,.35);z-index:998"; v.onclick=sheetClose; document.body.appendChild(v);
       var s=document.createElement("div"); s.id="nhBkSheet"; s.innerHTML=html; document.body.appendChild(s); return s; };
     W.nhBkClose=sheetClose;
@@ -14152,7 +14157,10 @@ W.nhOpenPair=function(name){
       rpc("bk_set_players",{p_id:id,p_iid:m.id,p_pin:m.pin,p_players:ids}).then(function(r){
         if(!r||!r.ok){ document.getElementById("nhBkErr").textContent=(r&&r.error)||"Could not save."; return; }
         sheetClose(); refresh(); }); };
-    W.nhBkCancel=function(id){ if(!W.confirm("Cancel this booking?")) return; var m=me();
+    W.nhBkCancel=function(id,sure){ var b=byId(id);
+      if(!sure){ sheet('<h3>Cancel this booking?</h3><div class="sub">'+(b?esc(courtName(Number(b.court),b.club_id))+' \u00b7 '+esc(whenTxt(b)):'')+'</div>'
+        +'<button class="b red" onclick="nhBkCancel('+id+',true)">Yes, cancel it</button><button class="b lt" onclick="nhBkCard('+id+')">No, keep it</button>'); return; }
+      var m=me();
       rpc("bk_cancel",{p_id:id,p_iid:m.id,p_pin:m.pin}).then(function(r){ if(!r||!r.ok){ alert((r&&r.error)||"Could not cancel."); return; } sheetClose(); refresh(); }); };
     var refresh=function(){ if(document.getElementById("nhBkScreen")&&document.getElementById("nhBkScreen").classList.contains("active")) draw(); myPage(true); };
 
@@ -14172,7 +14180,7 @@ W.nhOpenPair=function(name){
     /* Andre (26 Oct): your bookings stand out from the court times — their own yellow box, a count pill, each booking a card */
     var bookBox=function(title,list){
       return '<div style="background:#fff8db;border:2px solid #f2b705;border-radius:16px;padding:10px 10px 6px;margin:0 0 14px">'
-        +'<div style="display:flex;align-items:center;gap:8px;margin:0 2px 8px"><span style="font-size:15px;font-weight:800;color:#5a4300;flex:1">\ud83c\udfbe '+esc(title)+'</span>'
+        +'<div style="display:flex;align-items:center;gap:8px;margin:0 2px 8px"><span style="font-size:15px;font-weight:800;color:#5a4300;flex:1">'+esc(title)+'</span>'
         +'<span style="background:#f2b705;color:#fff;border-radius:99px;padding:2px 10px;font-size:12px;font-weight:800">'+list.length+'</span></div>'+mineHtml(list)+'</div>'; };
     var myPage=function(force){ try{
       var mm=document.getElementById("meMatches"); if(!mm) return; var q=new URLSearchParams(location.search); if(q.get("who")) return;
@@ -14428,7 +14436,7 @@ W.nhOpenPair=function(name){
         if(r&&r.ok){
           try{ localStorage.setItem("opr_me_"+region(), r.name); localStorage.setItem("opr_mepin_"+region(), pin); }catch(e){}
           var b=document.getElementById("nhNmBody");
-          b.innerHTML='<div class="brk" style="padding:18px 16px;text-align:center"><div style="font-size:40px">🎾</div>'
+          b.innerHTML='<div class="brk" style="padding:18px 16px;text-align:center">'
             +'<h2 style="margin:6px 0 6px">Welcome, '+esc(String(r.name).split(" ")[0])+'!</h2>'
             +'<div class="nmNote" style="font-size:14px">You are on the register as <b>'+esc(r.name)+'</b>, and this phone now opens your own My page. '
             +'You can book a court from there. Your first match puts you in that group.</div>'
