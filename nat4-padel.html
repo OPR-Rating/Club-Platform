@@ -3750,7 +3750,7 @@ const CLUB_NAME = _club.name;  // shown in the logo as "OPR · <name>"
     link.setAttribute('href', href);
   }catch(e){ /* install stays on the static manifest — no functional impact */ }
 })();
-const OPR_VERSION = "OPR-DOUBLES v2026.09.03-56 · NAT4 booking test b11 (nat3 n368) (no voice) (of PLAT p117)";  // MANUAL PAIR CREATION REMOVED FROM ADMIN: Create a pair, Bulk create pairs and Re-derive all pairs are gone (they only made match-less ghost pairs, and Re-derive rewrote every stored initial club-wide). Pairs are born automatically at match entry. Current pairs list untouched; the underlying JS is left in place unreferenced, so no other code path changes. Includes v47 (set-score fix + double-tap guard) and all prior.
+const OPR_VERSION = "OPR-DOUBLES v2026.09.03-56 · NAT4 booking test b12 (nat3 n368) (no voice) (of PLAT p117)";  // MANUAL PAIR CREATION REMOVED FROM ADMIN: Create a pair, Bulk create pairs and Re-derive all pairs are gone (they only made match-less ghost pairs, and Re-derive rewrote every stored initial club-wide). Pairs are born automatically at match entry. Current pairs list untouched; the underlying JS is left in place unreferenced, so no other code path changes. Includes v47 (set-score fix + double-tap guard) and all prior.
 // Explanation shown above the individual ladder. Open on load so it's read; collapsible
 // (state kept for the session) and scrolls away. Mechanics only — no outcome framing, so
 // members aren't nudged away from playing stronger opponents. Every clause maps to a real
@@ -13900,7 +13900,7 @@ W.nhOpenPair=function(name){
     setInterval(leapBrk, 900);
     W.__nhTsBuild=build;   /* for the test */
   })();
-  window.__nhBkAnon="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRqbWJudmlrcmRnbm9tamh0a2dmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODUzOTE0MzEsImV4cCI6MjEwMDk2NzQzMX0.vR8xlVFjV6jXW-pAclGjM74HqmWSKVpsacFjM-dCIJI"; window.__nhBkBuild="nat4 b11";
+  window.__nhBkAnon="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRqbWJudmlrcmRnbm9tamh0a2dmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODUzOTE0MzEsImV4cCI6MjEwMDk2NzQzMX0.vR8xlVFjV6jXW-pAclGjM74HqmWSKVpsacFjM-dCIJI"; window.__nhBkBuild="nat4 b12";
   /* ===================================================================================================
      COURT BOOKING (nat4 test copy, Manzini pilot, Andre 26 Oct). Started ONLY from the player's own My page: its
      "Court card" button becomes "Book a court", which asks "Where do you want to play?" — one tile per venue; a venue
@@ -14711,6 +14711,13 @@ W.nhOpenPair=function(name){
     W.fetch=function(u,init){
       var p=cur.apply(this,arguments);
       try{ var url=String((u&&u.url)||u||""), o=BKS();
+        if(!o && /\/functions\/v1\/(plat_)?submit_match\b/.test(url) && init && String(init.method||"").toUpperCase()==="POST"){
+          /* b12: a score entered the ORDINARY way — does an open booking fit it? (same group, same day, its players) */
+          p.then(function(resp){ return resp.clone().json().then(function(j){
+            if(j && j.ok && j.match_id!=null) rpc("bk_match_candidates",{p_match_id:Number(j.match_id)}).then(function(c){
+              if(c && c.ok && c.rows && c.rows.length) ask(Number(j.match_id), c.rows); });
+          }); }).catch(function(){});
+        }
         if(o && /\/functions\/v1\/(plat_)?submit_match\b/.test(url) && init && String(init.method||"").toUpperCase()==="POST"){
           p.then(function(resp){ return resp.clone().json().then(function(j){
             if(j && j.ok){ rpc("bk_finish_scoring",{p_id:o.id,p_iid:o.iid,p_pin:o.pin,p_match_id:(j.match_id!=null?Number(j.match_id):null)}).then(function(){
@@ -14719,6 +14726,26 @@ W.nhOpenPair=function(name){
         }
       }catch(e){}
       return p; };
+    /* "Is this your booked match?" — asked on the page, no pop-up box */
+    var askClose=function(){ var x=document.getElementById("nhBkAsk"); if(x) x.remove(); var v=document.getElementById("nhBkAskVeil"); if(v) v.remove(); };
+    var ask=function(mid, rows){ askClose();
+      var v=document.createElement("div"); v.id="nhBkAskVeil"; v.style.cssText="position:fixed;inset:0;background:rgba(0,0,0,.35);z-index:1002"; document.body.appendChild(v);
+      var d=document.createElement("div"); d.id="nhBkAsk";
+      d.style.cssText="position:fixed;left:0;right:0;bottom:0;z-index:1003;background:#fff;border-radius:18px 18px 0 0;box-shadow:0 -8px 30px rgba(0,0,0,.25);padding:16px 16px 96px;max-height:86vh;overflow-y:auto;font-size:14px;color:#241d33";
+      d.innerHTML='<h3 style="margin:0 0 4px;font-size:17px">Is this your booked match?</h3>'
+        +'<div style="font-size:13px;color:#5a5f7a;margin-bottom:10px">'+(rows.length===1?'A court booking':'Court bookings')+' on this day fit'+(rows.length===1?'s':'')+' the score you just saved. Linking it closes the booking, so it cannot be scored twice.</div>'
+        + rows.map(function(r){ return '<div style="border:1.5px solid #c9d6a0;background:#f3fbd6;border-radius:12px;padding:10px 12px;margin-bottom:8px">'
+            +'<b>'+esc(r.venue)+' \u00b7 Court '+esc(r.court)+' \u00b7 '+esc(dayTxt(r.date))+' '+esc(r.time)+'</b><br><span style="color:#5b6b2e;font-size:12.5px">'+esc((r.names||[]).join(", "))+'</span>'
+            +'<div style="margin-top:8px"><button type="button" onclick="nhBkAskYes('+mid+','+r.id+')" style="font:inherit;font-weight:800;font-size:13.5px;border:none;border-radius:10px;padding:9px 14px;background:#4f6b00;color:#fff;cursor:pointer">Yes, this one</button></div></div>'; }).join("")
+        +'<button type="button" onclick="nhBkAskNo()" style="font:inherit;font-weight:800;font-size:14px;border:none;border-radius:12px;padding:11px 14px;background:#eef0f7;color:#2b2f45;cursor:pointer">No, a different match</button>'
+        +'<div id="nhBkAskMsg" style="color:#c0392b;font-size:13px;margin-top:8px"></div>';
+      document.body.appendChild(d); };
+    W.nhBkAskNo=function(){ askClose(); };
+    W.nhBkAskYes=function(mid,id){ rpc("bk_link_match",{p_id:id,p_match_id:mid}).then(function(r){
+      var d=document.getElementById("nhBkAsk"); if(!d) return;
+      if(!r||!r.ok){ var e=document.getElementById("nhBkAskMsg"); if(e) e.textContent=(r&&r.error)||"Could not link it \u2014 try again."; return; }
+      d.innerHTML='<h3 style="margin:0 0 6px;font-size:17px">Linked</h3><div style="font-size:13.5px;color:#5a5f7a;margin-bottom:12px">The booking is closed with this score.</div>'
+        +'<button type="button" onclick="nhBkAskNo()" style="font:inherit;font-weight:800;font-size:14px;border:none;border-radius:12px;padding:11px 14px;background:#eef0f7;color:#2b2f45;cursor:pointer">Close</button>'; }); };
     hook(); setInterval(function(){ try{ hook(); }catch(e){} }, 700);
     /* arriving on the score sheet straight from a booking: page 1 may already be drawn */
     setTimeout(function(){ try{ if(BKS() && document.getElementById("matchDate") && !document.getElementById("nhBkScoreBar")) after1(); }catch(e){} }, 1500);
