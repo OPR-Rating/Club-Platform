@@ -3750,7 +3750,7 @@ const CLUB_NAME = _club.name;  // shown in the logo as "OPR · <name>"
     link.setAttribute('href', href);
   }catch(e){ /* install stays on the static manifest — no functional impact */ }
 })();
-const OPR_VERSION = "OPR-DOUBLES v2026.09.03-56 · NAT4 booking test b13 (nat3 n368) (no voice) (of PLAT p117)";  // MANUAL PAIR CREATION REMOVED FROM ADMIN: Create a pair, Bulk create pairs and Re-derive all pairs are gone (they only made match-less ghost pairs, and Re-derive rewrote every stored initial club-wide). Pairs are born automatically at match entry. Current pairs list untouched; the underlying JS is left in place unreferenced, so no other code path changes. Includes v47 (set-score fix + double-tap guard) and all prior.
+const OPR_VERSION = "OPR-DOUBLES v2026.09.03-56 · NAT4 booking test b14 (nat3 n368) (no voice) (of PLAT p117)";  // MANUAL PAIR CREATION REMOVED FROM ADMIN: Create a pair, Bulk create pairs and Re-derive all pairs are gone (they only made match-less ghost pairs, and Re-derive rewrote every stored initial club-wide). Pairs are born automatically at match entry. Current pairs list untouched; the underlying JS is left in place unreferenced, so no other code path changes. Includes v47 (set-score fix + double-tap guard) and all prior.
 // Explanation shown above the individual ladder. Open on load so it's read; collapsible
 // (state kept for the session) and scrolls away. Mechanics only — no outcome framing, so
 // members aren't nudged away from playing stronger opponents. Every clause maps to a real
@@ -13900,7 +13900,7 @@ W.nhOpenPair=function(name){
     setInterval(leapBrk, 900);
     W.__nhTsBuild=build;   /* for the test */
   })();
-  window.__nhBkAnon="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRqbWJudmlrcmRnbm9tamh0a2dmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODUzOTE0MzEsImV4cCI6MjEwMDk2NzQzMX0.vR8xlVFjV6jXW-pAclGjM74HqmWSKVpsacFjM-dCIJI"; window.__nhBkBuild="nat4 b13";
+  window.__nhBkAnon="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRqbWJudmlrcmRnbm9tamh0a2dmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODUzOTE0MzEsImV4cCI6MjEwMDk2NzQzMX0.vR8xlVFjV6jXW-pAclGjM74HqmWSKVpsacFjM-dCIJI"; window.__nhBkBuild="nat4 b14";
   /* ===================================================================================================
      COURT BOOKING (nat4 test copy, Manzini pilot, Andre 26 Oct). Started ONLY from the player's own My page: its
      "Court card" button becomes "Book a court", which asks "Where do you want to play?" — one tile per venue; a venue
@@ -14675,6 +14675,11 @@ W.nhOpenPair=function(name){
      =================================================================================================== */
   (function(){
     var W=window;
+    /* b14 (Andre, 28 Oct): on the door the banner scrolls away WITH the page — pinned, the two big squares (which sit into
+       its foot) slid over it and the group card slid under it. And no tall empty strip under the last row. */
+    if(!document.getElementById("nhDoorCss")){ var st=document.createElement("style"); st.id="nhDoorCss";
+      st.textContent="#nhDoorMain .band{position:relative!important;top:auto!important}#nh:has(> #nhDoorMain){padding-bottom:8px!important}";
+      (document.head||document.documentElement).appendChild(st); }
     var esc=function(s){ return String(s==null?"":s).replace(/[&<>"']/g,function(c){ return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]; }); };
     var IC={
       book:'<svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/></svg>',
@@ -14688,10 +14693,10 @@ W.nhOpenPair=function(name){
     /* Book a court · New member — under the group cards */
     W.nhDoorActs=function(col){
       var b=function(onclick,icon,label){ return '<button onclick="'+onclick+'" style="flex:1;display:flex;flex-direction:column;align-items:center;gap:5px;background:#fff;'
-        +'border:2px solid '+col+';border-radius:16px;padding:13px 8px;font:inherit;font-weight:800;font-size:14.5px;color:'+col+';cursor:pointer">'+icon+label+'</button>'; };
+        +'border:1px solid #cfc5e0;border-radius:16px;padding:14px 9px;font:inherit;font-weight:800;font-size:14.5px;color:#241d33;cursor:pointer"><span style="color:'+col+'">'+icon+'</span>'+label+'</button>'; };   /* b14: the tiles' look — light border, black text */
       /* the region's records (ratings, ladders, profiles and the Global Ledger) — the door's strip used to carry it */
-      return '<div data-plat-keep="1" style="margin:12px 12px 0"><button onclick="window.nhJumpTo(\'__records\')" style="width:100%;background:#fff;border:1.5px solid '+col+';border-radius:99px;'
-        +'padding:9px 12px;font:inherit;font-weight:800;font-size:13.5px;color:'+col+';cursor:pointer">Ratings \u00b7 Ladders \u00b7 Profiles</button></div>'
+      return '<div data-plat-keep="1" style="margin:12px 12px 0"><button onclick="window.nhJumpTo(\'__records\')" style="width:100%;background:#fff;border:1px solid #cfc5e0;border-radius:99px;'
+        +'padding:9.5px 12.5px;font:inherit;font-weight:800;font-size:13.5px;color:#241d33;cursor:pointer">Ratings \u00b7 Ladders \u00b7 Profiles</button></div>'
         +'<div data-plat-keep="1" style="display:flex;gap:10px;margin:14px 12px 0">'
         + b("window.nhBook()",IC.book,"Book a court")
         + b("window.nhNewMember()",IC.member,"New member")
