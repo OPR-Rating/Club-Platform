@@ -3750,7 +3750,7 @@ const CLUB_NAME = _club.name;  // shown in the logo as "OPR · <name>"
     link.setAttribute('href', href);
   }catch(e){ /* install stays on the static manifest — no functional impact */ }
 })();
-const OPR_VERSION = "OPR-DOUBLES v2026.09.03-56 · NAT4 booking test b14 (nat3 n368) (no voice) (of PLAT p117)";  // MANUAL PAIR CREATION REMOVED FROM ADMIN: Create a pair, Bulk create pairs and Re-derive all pairs are gone (they only made match-less ghost pairs, and Re-derive rewrote every stored initial club-wide). Pairs are born automatically at match entry. Current pairs list untouched; the underlying JS is left in place unreferenced, so no other code path changes. Includes v47 (set-score fix + double-tap guard) and all prior.
+const OPR_VERSION = "OPR-DOUBLES v2026.09.03-56 · NAT4 booking test b15 (nat3 n368) (no voice) (of PLAT p117)";  // MANUAL PAIR CREATION REMOVED FROM ADMIN: Create a pair, Bulk create pairs and Re-derive all pairs are gone (they only made match-less ghost pairs, and Re-derive rewrote every stored initial club-wide). Pairs are born automatically at match entry. Current pairs list untouched; the underlying JS is left in place unreferenced, so no other code path changes. Includes v47 (set-score fix + double-tap guard) and all prior.
 // Explanation shown above the individual ladder. Open on load so it's read; collapsible
 // (state kept for the session) and scrolls away. Mechanics only — no outcome framing, so
 // members aren't nudged away from playing stronger opponents. Every clause maps to a real
@@ -9801,7 +9801,7 @@ async function clRemove(id, label){
       /* n316: TYPE "S", SEE THE S's FIRST. A name matched when ANY of its words began with what was typed, and the
          list kept its A→Z order — so "Alan Sutton" led the S's. Now the names whose FIRST name begins with the letters
          come first (A→Z), then those matched on a later word (A→Z). */
-      var hit=function(n){ return String(n).toLowerCase().split(" ").some(function(w){ return w.indexOf(q)===0; }); };
+      var hit=function(n){ return String(n).toLowerCase().indexOf(q)===0; };
       var firstHit=function(n){ return String(n).toLowerCase().indexOf(q)===0; };
       var rank=function(list){ return list.filter(firstHit).concat(list.filter(function(n){ return !firstHit(n); })); };
       var near=q?rank(mine.filter(hit)):mine;
@@ -12413,7 +12413,7 @@ W.mePair=function(name,col){
       var pp=(W.__mePeopleFull||[]).filter(function(x){ return x.full_name===n; })[0];
       var pid=pp?Number(pp.id||pp.individual_id||0):0;
       if(pid && taken[pid]) return false;
-      return !v || n.toLowerCase().indexOf(v)>=0;
+      return !v || n.toLowerCase().indexOf(v)===0;
     });   /* n151: every name — the list stopped at 40, so a register of 146 ran out at F */
     hits.innerHTML=names.map(function(n){
       var p=(W.__mePeopleFull||[]).filter(function(x){ return x.full_name===n; })[0];
@@ -13316,7 +13316,7 @@ W.mePair=function(name,col){
   setInterval(W.__nhPairPills, 400);
   W.recFilterM=function(){
     var v=String((document.getElementById("recFindM")||{}).value||"").trim().toLowerCase();
-    var list=(W.__recMembers||[]).filter(function(x){ return !v || String(x.p.full_name).toLowerCase().indexOf(v)>=0; });
+    var list=(W.__recMembers||[]).filter(function(x){ return !v || String(x.p.full_name).toLowerCase().indexOf(v)===0; });
     var box=document.getElementById("recMembers"), cnt=document.getElementById("recCountM"); if(cnt) cnt.textContent=list.length;
     if(!box) return;
     var col=W.__recCol||"#6c3483";
@@ -13660,7 +13660,7 @@ W.nhOpenPair=function(name){
         var inp=wrap.querySelector("input"), cnt=wrap.querySelector("#nhAmCount");
         inp.addEventListener("input",function(){
           var q=String(inp.value||"").trim().toLowerCase(), all=rowsOf(box), shown=0;
-          all.forEach(function(r){ var hit=!q || String(r.textContent||"").toLowerCase().indexOf(q)>=0; r.style.display=hit?"":"none"; if(hit) shown++; });
+          all.forEach(function(r){ var hit=!q || window.nhStartsIn(r.textContent, q); r.style.display=hit?"":"none"; if(hit) shown++; });
           cnt.textContent = q ? (shown+" of "+all.length+" shown") : (all.length+" matches");
         });
       }catch(e){}
@@ -13900,7 +13900,7 @@ W.nhOpenPair=function(name){
     setInterval(leapBrk, 900);
     W.__nhTsBuild=build;   /* for the test */
   })();
-  window.__nhBkAnon="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRqbWJudmlrcmRnbm9tamh0a2dmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODUzOTE0MzEsImV4cCI6MjEwMDk2NzQzMX0.vR8xlVFjV6jXW-pAclGjM74HqmWSKVpsacFjM-dCIJI"; window.__nhBkBuild="nat4 b14";
+  window.__nhBkAnon="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRqbWJudmlrcmRnbm9tamh0a2dmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODUzOTE0MzEsImV4cCI6MjEwMDk2NzQzMX0.vR8xlVFjV6jXW-pAclGjM74HqmWSKVpsacFjM-dCIJI"; window.__nhBkBuild="nat4 b15";
   /* ===================================================================================================
      COURT BOOKING (nat4 test copy, Manzini pilot, Andre 26 Oct). Started ONLY from the player's own My page: its
      "Court card" button becomes "Book a court", which asks "Where do you want to play?" — one tile per venue; a venue
@@ -14065,7 +14065,7 @@ W.nhOpenPair=function(name){
         if(!ROWS.length) h+='<div style="padding:14px 4px;color:#6b6f88;font-size:14px">Nothing booked \u2014 every court is free from '+esc(String(g.open_time).slice(0,5))+' to '+esc(String(g.close_time).slice(0,5))+'.</div>';
         ROWS.forEach(function(b){ var L=Math.round((new Date(b.ends_at)-new Date(b.starts_at))/60000), pr=price(board(),L), blk=b.kind==="block";
           var pl=(b.players||[]).map(nm);
-          h+='<div onclick="nhBkCard('+b.id+')" style="cursor:pointer;background:#fff;border:1.5px solid '+(blk?'#d9dbe3':'#dfe2ee')+';border-left:5px solid '+(blk?'#9aa0b4':col())+';border-radius:12px;padding:10px 12px;margin:0 0 8px">'
+          h+='<div onclick="nhBkCard('+b.id+')" style="cursor:pointer;background:#fff;border:1px solid '+(blk?'#d9dbe3':'#dfe2ee')+';border-radius:12px;padding:10px 12px;margin:0 0 8px">'
             +'<div style="display:flex;gap:8px;align-items:baseline"><b style="flex:1;font-size:15px">'+hm(locMin(b.starts_at))+'\u2013'+hm(locMin(b.ends_at))+' \u00b7 '+esc(courtName(Number(b.court)))+'</b>'
             +'<span style="font-size:12.5px;color:#6b6f88">'+L+' min'+(pr&&!blk?(' \u00b7 '+pr):'')+'</span></div>'
             +(blk?'<div style="font-size:13.5px;color:#6b6f88;margin-top:3px">Blocked \u00b7 '+esc(b.note||"")+'</div>'
@@ -14175,7 +14175,7 @@ W.nhOpenPair=function(name){
       document.body.appendChild(ov); document.body.appendChild(md); md.__list=list; W.nhBkPickFilter();
       try{ document.getElementById("nhBkPmQ").focus(); }catch(e){} };
     W.nhBkPickFilter=function(){ var md=document.getElementById("nhBkPm"); if(!md) return; var q=(document.getElementById("nhBkPmQ").value||"").toLowerCase().trim();
-      var l=(md.__list||[]).filter(function(n){ if(!q) return true; return String(n).toLowerCase().split(/\s+/).some(function(w){ return w.indexOf(q)===0; }) || String(n).toLowerCase().indexOf(q)===0; });
+      var l=(md.__list||[]).filter(function(n){ if(!q) return true; return String(n).toLowerCase().indexOf(q)===0; });   /* b15: the first letters only */
       document.getElementById("nhBkPmList").innerHTML=l.map(function(n){ var v=rOf(n); return '<div class="player-modal-item" data-n="'+esc(n)+'" onclick="nhBkPickSet(this.getAttribute(\'data-n\'))" style="display:flex;justify-content:space-between"><span>'+esc(n)+'</span><span style="color:#8b8fa3;font-size:13px">'+(v!=null?v:"")+'</span></div>'; }).join("")
         ||'<div class="player-modal-item" style="color:#999">No one by that name</div>'; };
     W.nhBkPickSet=function(n){ if(PICKING){ PICKING.setAttribute("data-name",n||""); PICKING.firstChild.textContent=n||"Select player..."; PICKING.style.color=n?"#2b2f45":"#8b8fa3"; } W.nhBkPickClose(); plRefresh(); };
@@ -14822,6 +14822,40 @@ W.nhOpenPair=function(name){
     /* arriving on the score sheet straight from a booking: page 1 may already be drawn */
     setTimeout(function(){ try{ if(BKS() && document.getElementById("matchDate") && !document.getElementById("nhBkScoreBar")) after1(); }catch(e){} }, 1500);
   })();
+  /* ===================================================================================================
+     NAT4 · PLAIN BORDERS (Andre, 28 Oct: "I like balance — a plain simple border"). Cards across the app were drawn with
+     a thick coloured edge on the LEFT only (the ledger's rows, the ladder note, the tournament cards …). Every such box
+     now gets one even border all round: its own thin border on all four sides, or — where it had no other border — a
+     thin light one. Only boxes with a left edge of 3px or more are touched; thin dividers stay as they are.
+     =================================================================================================== */
+  (function(){
+    var W=window, busy=false;
+    var fix=function(){ busy=false;
+      try{ Array.prototype.forEach.call(document.querySelectorAll('[style*="border-left"]'),function(el){
+        var cs=getComputedStyle(el), lw=parseFloat(cs.borderLeftWidth)||0; if(lw<3) return;
+        var tw=parseFloat(cs.borderTopWidth)||0;
+        if(tw>0){ var v=tw+"px "+cs.borderTopStyle+" "+cs.borderTopColor;
+          el.style.setProperty("border-left",v,"important");
+          if((parseFloat(cs.borderRightWidth)||0)>tw) el.style.setProperty("border-right",v,"important"); }
+        else { el.style.setProperty("border","1px solid #e2dbe8","important"); }
+      }); }catch(e){} };
+    var later=function(){ if(busy) return; busy=true; setTimeout(fix,80); };
+    var start=function(){ try{ new MutationObserver(later).observe(document.body,{childList:true,subtree:true,attributes:true,attributeFilter:["style"]}); }catch(e){} later(); };
+    if(document.body) start(); else document.addEventListener("DOMContentLoaded", start);
+  })();
+
+  /* NAT4 b15: does any name / event / date in this text START with q? (a row's text split at its separators) */
+  window.nhStartsIn=function(text,q){ q=String(q||"").trim().toLowerCase(); if(!q) return true;
+    return String(text||"").toLowerCase().split(/\s*(?:&|\bvs?\b|·|\||,|\n|\t|\s{2,}|\d+–\d+|\d+-\d+(?!-))\s*/).some(function(s){ s=s.trim(); return s && s.indexOf(q)===0; }); };
+  /* the ladder tables' "Search name…" (the parent's own odrFilterTable): a row stays when a player in it starts with q */
+  window.odrFilterTable=function(inp){
+    var q=(inp.value||"").toLowerCase().trim();
+    var root=inp.closest("#ladderContent")||inp.closest(".screen-content")||document;
+    if(root===document || !root.querySelector("table")){ var lc=document.getElementById("ladderContent"); if(lc) root=lc; }
+    Array.prototype.forEach.call(root.querySelectorAll("table tbody tr"),function(tr){
+      if(tr.querySelector("td[colspan]")) return;
+      var hit=!q || Array.prototype.some.call(tr.querySelectorAll("td"),function(td){ return window.nhStartsIn(td.textContent,q); });
+      tr.style.display=hit?"":"none"; }); };
   /* n350: COLUMN NAMES THAT STAY PUT. Group Members gets Name · Rating · Level · Move · Rank in the frozen block with
      its search box (each name measured onto the pill beneath it); on Member profiles and List all members the names
      freeze under the search box instead of scrolling away. */
@@ -15747,7 +15781,7 @@ W.nhOpenPair=function(name){
     }catch(e){}
     var b=document.getElementById("platRegBody"); if(!b) return;
     var q=(REG.q||"").toLowerCase();
-    var rows=REG.players.filter(function(p){ return !q || p.full_name.toLowerCase().indexOf(q)>=0; });
+    var rows=REG.players.filter(function(p){ return !q || p.full_name.toLowerCase().indexOf(q)===0; });
     /* n72: on a CLUB'S OWN ledger the list is that club's people, even before a code is typed. The whole
        register belongs on the register's own ledger — which is where the note below appears instead. */
     if(W.PLAT.nat && REG.role!=="pool" && (W.PLAT.natIds||[]).length){
@@ -17150,7 +17184,7 @@ W.nhOpenPair=function(name){
     SESS.members.filter(function(m){
       if(want && (m.gender||"").toUpperCase().charAt(0)!==want && !SESS.picked[m.full_name]) return false;
       if(pool==="regulars" && !SESS.regulars[m.full_name] && !SESS.picked[m.full_name]) return false;
-      return !q||m.full_name.toLowerCase().split(/\s+/).some(function(w){ return w.indexOf(q)===0; }); }).forEach(function(m){
+      return !q||m.full_name.toLowerCase().indexOf(q)===0; }).forEach(function(m){
       var on=!!SESS.picked[m.full_name], r=SESS.ratings[m.full_name];
       h+='<label style="display:flex;align-items:center;gap:10px;padding:8px 4px;border-bottom:1px solid #f0ecf4;cursor:pointer">'
         +'<input type="checkbox" '+(on?'checked':'')+' onchange="window.platSessPick(\''+esc(m.full_name).replace(/'/g,"\\'")+'\',this.checked)" style="width:18px;height:18px">'
