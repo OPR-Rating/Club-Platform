@@ -3750,7 +3750,7 @@ const CLUB_NAME = _club.name;  // shown in the logo as "OPR · <name>"
     link.setAttribute('href', href);
   }catch(e){ /* install stays on the static manifest — no functional impact */ }
 })();
-const OPR_VERSION = "OPR-DOUBLES v2026.09.03-56 · NAT4 booking test b15 (nat3 n368) (no voice) (of PLAT p117)";  // MANUAL PAIR CREATION REMOVED FROM ADMIN: Create a pair, Bulk create pairs and Re-derive all pairs are gone (they only made match-less ghost pairs, and Re-derive rewrote every stored initial club-wide). Pairs are born automatically at match entry. Current pairs list untouched; the underlying JS is left in place unreferenced, so no other code path changes. Includes v47 (set-score fix + double-tap guard) and all prior.
+const OPR_VERSION = "OPR-DOUBLES v2026.09.03-56 · NAT4 booking test b16 (nat3 n368) (no voice) (of PLAT p117)";  // MANUAL PAIR CREATION REMOVED FROM ADMIN: Create a pair, Bulk create pairs and Re-derive all pairs are gone (they only made match-less ghost pairs, and Re-derive rewrote every stored initial club-wide). Pairs are born automatically at match entry. Current pairs list untouched; the underlying JS is left in place unreferenced, so no other code path changes. Includes v47 (set-score fix + double-tap guard) and all prior.
 // Explanation shown above the individual ladder. Open on load so it's read; collapsible
 // (state kept for the session) and scrolls away. Mechanics only — no outcome framing, so
 // members aren't nudged away from playing stronger opponents. Every clause maps to a real
@@ -12182,6 +12182,16 @@ W.mePair=function(name,col){
         + (function(){ var bq=""; try{ bq=new URLSearchParams(location.search).get("back")||""; }catch(e){}
              return '<div class="pulse"><a href="'+(bq?(PAGE+bq):(PAGE+'?club='+C))+'" onclick="return window.nhBack(this.href)">\u2039 '+esc(bq?"back":club.name)+'</a>'; })()
         + '<span>'+(st.move>0?"+":"")+Math.round(st.move)+' '+nhWhen()+'</span>'
+        + (function(){ try{
+            var ppl=(all.people||[]).filter(function(x){ return x.current_rating!=null; })
+              .sort(function(a,b){ return (b.current_rating||0)-(a.current_rating||0); });
+            var mine=ppl.filter(function(x){ return x.full_name===me; })[0]; if(!mine) return '';
+            var g=String(mine.gender||"").toUpperCase().charAt(0), lady=(g==="F"||g==="L"); if(!lady && g!=="M") return '';
+            var same=ppl.filter(function(x){ var h=String(x.gender||"").toUpperCase().charAt(0); return lady?(h==="F"||h==="L"):(h==="M"); });
+            var n=same.indexOf(mine)+1; if(n<1) return '';
+            var t=n%100, sfx=(t>=11&&t<=13)?"th":({1:"st",2:"nd",3:"rd"}[n%10]||"th");
+            return '<span style="background:'+(lady?"#ffe6f0":"#e3edff")+';color:'+(lady?"#a02166":"#2148a0")+'">'+n+sfx+' of '+same.length+(lady?' ladies':' men')+'</span>';
+          }catch(e){ return ''; } })()
         /* n161: the groups a member plays in are NOT listed here. Somebody in six groups wrapped the header onto
            a second and third line; the same counts are in "Move by group" further down the page. */
         + '</div></div>'
@@ -13900,7 +13910,7 @@ W.nhOpenPair=function(name){
     setInterval(leapBrk, 900);
     W.__nhTsBuild=build;   /* for the test */
   })();
-  window.__nhBkAnon="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRqbWJudmlrcmRnbm9tamh0a2dmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODUzOTE0MzEsImV4cCI6MjEwMDk2NzQzMX0.vR8xlVFjV6jXW-pAclGjM74HqmWSKVpsacFjM-dCIJI"; window.__nhBkBuild="nat4 b15";
+  window.__nhBkAnon="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRqbWJudmlrcmRnbm9tamh0a2dmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODUzOTE0MzEsImV4cCI6MjEwMDk2NzQzMX0.vR8xlVFjV6jXW-pAclGjM74HqmWSKVpsacFjM-dCIJI"; window.__nhBkBuild="nat4 b16";
   /* ===================================================================================================
      COURT BOOKING (nat4 test copy, Manzini pilot, Andre 26 Oct). Started ONLY from the player's own My page: its
      "Court card" button becomes "Book a court", which asks "Where do you want to play?" — one tile per venue; a venue
