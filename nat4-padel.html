@@ -3750,7 +3750,7 @@ const CLUB_NAME = _club.name;  // shown in the logo as "OPR · <name>"
     link.setAttribute('href', href);
   }catch(e){ /* install stays on the static manifest — no functional impact */ }
 })();
-const OPR_VERSION = "OPR-DOUBLES v2026.09.03-56 · NAT4 booking test b16 (nat3 n368) (no voice) (of PLAT p117)";  // MANUAL PAIR CREATION REMOVED FROM ADMIN: Create a pair, Bulk create pairs and Re-derive all pairs are gone (they only made match-less ghost pairs, and Re-derive rewrote every stored initial club-wide). Pairs are born automatically at match entry. Current pairs list untouched; the underlying JS is left in place unreferenced, so no other code path changes. Includes v47 (set-score fix + double-tap guard) and all prior.
+const OPR_VERSION = "OPR-DOUBLES v2026.09.03-56 · NAT4 booking test b17 (nat3 n373) (no voice) (of PLAT p117)";  // MANUAL PAIR CREATION REMOVED FROM ADMIN: Create a pair, Bulk create pairs and Re-derive all pairs are gone (they only made match-less ghost pairs, and Re-derive rewrote every stored initial club-wide). Pairs are born automatically at match entry. Current pairs list untouched; the underlying JS is left in place unreferenced, so no other code path changes. Includes v47 (set-score fix + double-tap guard) and all prior.
 // Explanation shown above the individual ladder. Open on load so it's read; collapsible
 // (state kept for the session) and scrolls away. Mechanics only — no outcome framing, so
 // members aren't nudged away from playing stronger opponents. Every clause maps to a real
@@ -6947,7 +6947,7 @@ async function tmLoadEntries(tournament, division) {
 async function tmLoadFixtures(tournament, division) {
   let q = `tournament_fixtures?select=*&club_id=eq.${CLUB_ID}&tournament=eq.${encodeURIComponent(tournament)}`;
   if (division) q += `&division=eq.${encodeURIComponent(division)}`;
-  q += `&order=round.asc`;
+  q += `&order=round.asc,id.asc`;   // n371: same order every time (the order written)
   return await sbGet(q) || [];
 }
 // Which divisions actually have teams entered in this tournament?
@@ -7454,7 +7454,7 @@ async function loadTournamentSheet(tournament, division) {
       // is (club_id, tournament, round, seed_a, seed_b) with no round_type, so the bands
       // MUST NOT overlap — that collision was rejecting playoff writes.
       const PBASE = 90;
-      const r1fix = koFix.filter(f=> f.round===PBASE);
+      const r1fix = koFix.filter(f=> f.round===PBASE).sort((x,y)=>(Number(x.id)||0)-(Number(y.id)||0));   /* n371: the draw's own order */
       const r1 = r1fix.map(f=>{
         if(f.seed_b===0) return { a:f.seed_a, b:0, fx:{seed_a:f.seed_a, seed_b:0, sets_a:1, sets_b:0} };
         return { a:f.seed_a, b:f.seed_b, fx:f };
@@ -11123,6 +11123,7 @@ async function clRemove(id, label){
         + '<button onclick="window.nhBook()">'+I.card+'Book a court</button>'   /* nat4: booking starts on My page, first */
         + mb("entry","primary","background:linear-gradient(135deg,"+ink+","+deep+")",I.score,"Enter a score")
         + mb("ladders","","",I.lad,"Ratings &amp; ladders")
+        + mb("leapfrog","","",'<svg viewBox="0 0 24 24"><path d="M6 13l6-6 6 6M6 19l6-6 6 6"/></svg>',"Leapfrog Index")   /* n373 */
         + mb("profiles","","",I.per,"Member profiles")   /* n171 */
         + mb("tournaments","","",I.cup,"Tournaments")
         + '</div><div id="meWhere" style="display:none;padding:10px 12px 0"></div>';
@@ -11142,9 +11143,9 @@ async function clRemove(id, label){
          so it says what it is: Group members. And a group is a place you play, not a place you keep records,
          so the Ledgers button is gone from it; the records are reached from the door. */
       +'<button onclick="window.nhGo(\'profiles\')">'+ic.per+'Group members</button>'
-      +'<button onclick="window.nhGo(\'card\')">'+ic.card+'Court card</button>'
-      +'<button onclick="window.nhLeapfrog()"><svg viewBox="0 0 24 24"><path d="M6 13l6-6 6 6M6 19l6-6 6 6"/></svg>Leapfrog Index</button>'   /* n360 */
+      +'<button onclick="window.nhLeapfrog()"><svg viewBox="0 0 24 24"><path d="M6 13l6-6 6 6M6 19l6-6 6 6"/></svg>Leapfrog Index</button>'   /* n360; n370: next to Group members */
       +'<button onclick="window.nhGo(\'tournaments\')">'+ic.cup+'Tournaments</button>'
+      +'<button onclick="window.nhGo(\'card\')">'+ic.card+'Court card</button>'   /* n370: last */
       +'</div>';
   }
   /* n58: these two were wired to screens that do not exist — the tournaments screen is singular, and the
@@ -12768,8 +12769,9 @@ W.mePair=function(name,col){
     var pill='<div data-plat-keep="1" style="display:flex;align-items:center;gap:9px;margin-top:10px;background:#fff7ed;'
       +'border:1.5px solid #f59e0b;border-radius:12px;padding:10px 13px;font-size:13px;line-height:1.45;color:#7c2d12">'
       +'<span data-plat-keep="1" style="flex:0 0 auto;background:#f59e0b;color:#fff;font-weight:800;font-size:11px;letter-spacing:.06em;'
-      +'border-radius:99px;padding:3px 10px">ADMINS ONLY</span>'
-      +'<span>Tapping a fixture here <b>edits</b> a score. <b>All scores are entered on the club page</b>, with <b>Enter a score</b>.</span></div>';
+      +'border-radius:99px;padding:3px 10px">SCORES</span>'
+      +'<span>Tap <b>enter \u25b8</b> on your match to enter its score \u2014 the score sheet opens with the names filled in. '
+      +'A score already in can only be corrected by the organiser.</span></div>';   /* nat4 b17 */
     function fix(){
       try{
         document.querySelectorAll("p.sub").forEach(function(p){
@@ -13910,7 +13912,7 @@ W.nhOpenPair=function(name){
     setInterval(leapBrk, 900);
     W.__nhTsBuild=build;   /* for the test */
   })();
-  window.__nhBkAnon="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRqbWJudmlrcmRnbm9tamh0a2dmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODUzOTE0MzEsImV4cCI6MjEwMDk2NzQzMX0.vR8xlVFjV6jXW-pAclGjM74HqmWSKVpsacFjM-dCIJI"; window.__nhBkBuild="nat4 b16";
+  window.__nhBkAnon="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRqbWJudmlrcmRnbm9tamh0a2dmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODUzOTE0MzEsImV4cCI6MjEwMDk2NzQzMX0.vR8xlVFjV6jXW-pAclGjM74HqmWSKVpsacFjM-dCIJI"; window.__nhBkBuild="nat4 b17";
   /* ===================================================================================================
      COURT BOOKING (nat4 test copy, Manzini pilot, Andre 26 Oct). Started ONLY from the player's own My page: its
      "Court card" button becomes "Book a court", which asks "Where do you want to play?" — one tile per venue; a venue
@@ -14458,21 +14460,37 @@ W.nhOpenPair=function(name){
         .catch(function(){ return null; });
     };
     var url=function(id,what){ return page()+"?club="+id+"&go="+what+(what==="ladders"?"&from=me":"")+"&back="+encodeURIComponent(location.search||""); };
+    /* n373 (Andre, 3 Nov): LEAPFROG FROM MY PAGE — someone who sets the app to open on My page would otherwise never see
+       the Leapfrog tables. The index belongs to a group, so it opens on YOUR group's page (one group: straight there;
+       several: pick from yours). The group page is opened, then its Leapfrog Index; its back arrow lands on the group. */
+    var lfUrl=function(id){ return page()+"?club="+id+"&back="+encodeURIComponent(location.search||""); };
+    W.nhOpenLeapfrog=function(id){ try{ sessionStorage.setItem("nh_open_lf", String(id)); }catch(e){} W.nhNav(lfUrl(id)); };
+    setInterval(function(){ try{
+      var want=sessionStorage.getItem("nh_open_lf"); if(!want) return;
+      if(Number(W.PLAT.cid||0)!==Number(want)) return;
+      var hs=document.getElementById("homeScreen"), nh=document.getElementById("nh");
+      if(!hs || !hs.classList.contains("active") || !nh || !nh.querySelector(".doit") || typeof W.nhLeapfrog!=="function") return;
+      sessionStorage.removeItem("nh_open_lf"); W.nhLeapfrog();
+    }catch(e){} }, 300);
     /* called first thing by My page's meAct; true = handled here */
     W.nhMeRoute=function(what, fallback){
-      if(what!=="entry" && what!=="ladders") return false;
+      if(what!=="entry" && what!=="ladders" && what!=="leapfrog") return false;
       var box=document.getElementById("meWhere");
       if(box && box.style.display==="block" && box.dataset.what===what){ box.style.display="none"; box.dataset.what=""; return true; }
       W.nhMyGroups().then(function(gs){
+        var LF=(what==="leapfrog"), all=false;
+        /* n373: Leapfrog with no claimed groups to go on — offer the region's groups (it lives on each group's page) */
+        if((!gs || !gs.length) && LF){ gs=(W.PLAT.clubs||[]).filter(function(c){ return Number(c.parent_id)===region(); }).map(function(c){ return Number(c.id); }); all=true; }
         if(!gs || !gs.length){ fallback(); return; }
-        if(gs.length===1 || what==="ladders"){ W.nhNav(url(gs[0],what)); return; }
+        if(LF && gs.length===1){ W.nhOpenLeapfrog(gs[0]); return; }
+        if(!LF && (gs.length===1 || what==="ladders")){ W.nhNav(url(gs[0],what)); return; }
         if(!box){ fallback(); return; }
         box.dataset.what=what;
-        box.innerHTML='<div style="font-size:12.5px;color:#5f5770;margin:2px 2px 8px">Enter a score — which of your groups?</div>'
+        box.innerHTML='<div style="font-size:12.5px;color:#5f5770;margin:2px 2px 8px">'+(LF?(all?"Leapfrog Index — which group?":"Leapfrog Index — which of your groups?"):"Enter a score — which of your groups?")+'</div>'
           + gs.map(function(id,i){ var c=(typeof clubPal==="function")?clubPal(id)[0]:"#6c3483", g=clubOf(id)||{name:""};
-              return '<a href="'+url(id,what)+'" style="display:flex;align-items:center;gap:10px;text-decoration:none;background:#fff;border:1.5px solid '+c+';border-radius:12px;padding:11px 13px;margin-bottom:8px">'
+              return '<a href="'+(LF?lfUrl(id):url(id,what))+'"'+(LF?' onclick="try{sessionStorage.setItem(\'nh_open_lf\',\''+id+'\')}catch(e){}"':'')+' style="display:flex;align-items:center;gap:10px;text-decoration:none;background:#fff;border:1.5px solid '+c+';border-radius:12px;padding:11px 13px;margin-bottom:8px">'
                 +'<span style="width:11px;height:11px;border-radius:50%;background:'+c+'"></span><b style="flex:1;color:#241d33;font-size:14px">'+esc(g.name)+'</b>'
-                +(i===0?'<span style="font-size:11px;font-weight:800;color:'+c+'">your group</span>':'')+'</a>'; }).join("");
+                +(i===0&&!all?'<span style="font-size:11px;font-weight:800;color:'+c+'">your group</span>':'')+'</a>'; }).join("");
         box.style.display="block"; try{ box.scrollIntoView({behavior:"smooth",block:"nearest"}); }catch(e){}
       });
       return true;
@@ -14688,7 +14706,11 @@ W.nhOpenPair=function(name){
     /* b14 (Andre, 28 Oct): on the door the banner scrolls away WITH the page — pinned, the two big squares (which sit into
        its foot) slid over it and the group card slid under it. And no tall empty strip under the last row. */
     if(!document.getElementById("nhDoorCss")){ var st=document.createElement("style"); st.id="nhDoorCss";
-      st.textContent="#nhDoorMain .band{position:relative!important;top:auto!important}#nh:has(> #nhDoorMain){padding-bottom:8px!important}";
+      st.textContent="#nhDoorMain .band{position:relative!important;top:auto!important}#nh:has(> #nhDoorMain){padding-bottom:8px!important}"
+        /* n370 (Andre, 3 Nov): the tiles and "Everything else" sit just above the bottom bar — the clear space above the tiles
+           takes whatever room the screen has (never less than 28px), instead of a fixed 96px with a gap left at the bottom */
+        +"#nh:has(> #nhDoorMain){display:flex!important;flex-direction:column!important}#nh > #nhDoorMain{flex:1 0 auto;display:flex;flex-direction:column}"
+        +"#nh > #nhDoorMain > *{flex:0 0 auto}#nh > #nhDoorMain > .nhDoorGap{flex:1 1 96px;min-height:28px}";
       (document.head||document.documentElement).appendChild(st); }
     var esc=function(s){ return String(s==null?"":s).replace(/[&<>"']/g,function(c){ return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]; }); };
     var IC={
@@ -14714,7 +14736,7 @@ W.nhOpenPair=function(name){
     };
     /* the four tiles, after some clear space */
     W.nhDoorTiles=function(col){
-      return '<div style="height:96px"></div><div data-plat-keep="1" style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin:0 12px">'
+      return '<div class="nhDoorGap" style="height:96px"></div><div data-plat-keep="1" style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin:0 12px">'
         + TILES.map(function(t){ return '<button onclick="window.nhDoorSec(\''+t[0]+'\')" style="display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;'
             +'min-height:78px;background:#fff;border:1px solid #cfc5e0;border-radius:14px;padding:8px 4px;font:inherit;font-size:12px;font-weight:800;line-height:1.2;color:#241d33;cursor:pointer">'
             +'<span style="color:'+col+'">'+IC[t[0]]+'</span>'+esc(t[1])+'</button>'; }).join("")
@@ -14866,6 +14888,121 @@ W.nhOpenPair=function(name){
       if(tr.querySelector("td[colspan]")) return;
       var hit=!q || Array.prototype.some.call(tr.querySelectorAll("td"),function(td){ return window.nhStartsIn(td.textContent,q); });
       tr.style.display=hit?"":"none"; }); };
+  /* ===================================================================================================
+     NAT4 · TAP A MATCH ON THE DRAW → THE SCORE SHEET, NAMES FILLED IN (Andre, 3 Nov — "align padel with squash": squash
+     q180/q199). Until now a tap on a padel draw's match opened four pop-up boxes (sets, games, set scores, date) and asked
+     for the ADMIN PIN — players could not score their own tournament match from the draw.
+     Now, for a match NOT YET PLAYED:
+       • the NORMAL score sheet opens on the tournament's own board, with the tournament chosen as the Event, the
+         division as the Type, today's date, and on page 2 the four names in order (Team 1 = the draw's top pair,
+         Team 2 = the other) — a substitute who plays from this round is named instead of the player he replaces;
+       • every box can still be changed; nothing is asked for — no PIN (Andre: players never need a PIN for scores);
+       • the score is saved the app's usual way, which places a tournament result on its match by the names (as every
+         know-no-limits score is placed today); then the page goes back to the draw.
+     A match ALREADY PLAYED, a bye, or anything not understood → the old organiser path, unchanged (correct a result
+     with the admin code). Nothing here writes anything itself.
+     =================================================================================================== */
+  (function(){
+    var W=window, KEY="nh_fxscore";
+    var esc=function(s){ return String(s==null?"":s).replace(/[&<>"']/g,function(c){ return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]; }); };
+    var page=function(){ return location.pathname.split("/").pop()||"nat4-padel.html"; };
+    var FX=function(){ var o=null; try{ o=JSON.parse(sessionStorage.getItem(KEY)||"null"); }catch(e){}
+      if(!o) return null; if(Date.now()-Number(o.at||0)>3600e3){ try{ sessionStorage.removeItem(KEY); }catch(e){} return null; }
+      return (Number(o.cid)===Number((W.PLAT||{}).cid))?o:null; };
+    /* the pair as it plays THIS round: a substitute from his round on */
+    var asPlayed=function(e, round){
+      if(!e) return null;
+      var sub = e.sub_from_round!=null && round!=null && Number(round)>=Number(e.sub_from_round);
+      return [ (sub && e.sub_p1) || e.p1, (sub && e.sub_p2) || e.p2 ];
+    };
+    var hookTap=function(){
+      var orig=W.tmEnterFixtureResult; if(typeof orig!=="function" || orig.__fxS) return;
+      var wrapped=function(fixtureId){
+        try{
+          var f=(W._tmFixturesById||{})[fixtureId], ctx=W._tmCtx||{};
+          var played = !f || f.sets_a!=null || f.sets_b!=null;
+          var bye = f && (Number(f.seed_a)===0 || Number(f.seed_b)===0);
+          if(f && !played && !bye && ctx.tournament && ctx.division){
+            var cid=(typeof CLUB_ID!=="undefined" && CLUB_ID) ? CLUB_ID : (W.PLAT||{}).cid;
+            var q="tournament_entries?select=seed,p1,p2,sub_p1,sub_p2,sub_from_round&club_id=eq."+cid
+                 +"&tournament=eq."+encodeURIComponent(ctx.tournament)+"&category=eq."+encodeURIComponent(ctx.division);
+            return Promise.resolve(typeof sbGet==="function" ? sbGet(q) : null).then(function(ents){
+              ents=ents||[];
+              var A=asPlayed(ents.filter(function(e){ return Number(e.seed)===Number(f.seed_a); })[0], f.round),
+                  B=asPlayed(ents.filter(function(e){ return Number(e.seed)===Number(f.seed_b); })[0], f.round);
+              if(!A || !B || !A[0] || !B[0]) return orig.apply(W,[fixtureId]);   /* not understood: the old path */
+              var o={ cid:Number(cid), tn:ctx.tournament, div:ctx.division, round:f.round, fid:fixtureId,
+                      names:[A[0],A[1]||"",B[0],B[1]||""], at:Date.now(), back:location.search||"" };
+              try{ sessionStorage.setItem(KEY, JSON.stringify(o)); }catch(e){}
+              var url=page()+"?club="+cid+"&go=entry&tn="+encodeURIComponent(ctx.tournament)+"&back="+encodeURIComponent(location.search||"");
+              if(typeof W.nhNav==="function") W.nhNav(url); else location.href=url;
+            }).catch(function(){ return orig.apply(W,[fixtureId]); });
+          }
+        }catch(e){}
+        return orig.apply(W,arguments);
+      };
+      Object.keys(orig).forEach(function(k){ wrapped[k]=orig[k]; });
+      wrapped.__fxS=1; W.tmEnterFixtureResult=wrapped;
+      try{ tmEnterFixtureResult=wrapped; }catch(e){}   /* the draw's rows call the bare name */
+    };
+    var banner=function(o,line){ var host=document.getElementById("entryContent"); if(!host) return; var ex=document.getElementById("nhFxBar"); if(ex) ex.remove();
+      var d=document.createElement("div"); d.id="nhFxBar"; d.setAttribute("data-plat-keep","1");
+      d.style.cssText="background:#f3fbd6;border:1px solid #c9d6a0;border-radius:14px;padding:10px 12px;margin:0 0 14px;font-size:13px;color:#3d5200;line-height:1.45";
+      d.innerHTML='<b>'+esc(o.tn)+'</b> · '+esc(o.div)+'<div style="margin-top:2px;color:#241d33;font-weight:700">'
+        +esc([o.names[0],o.names[1]].filter(Boolean).join(" & "))+' <span style="color:#8a8196;font-weight:600">v</span> '+esc([o.names[2],o.names[3]].filter(Boolean).join(" & "))+'</div>'
+        +'<div style="color:#5b6b2e;margin-top:2px">'+line+'</div>'
+        +'<button type="button" onclick="nhFxDrop()" style="margin-top:6px;font:inherit;font-size:12px;font-weight:800;border:1px solid #c9d6a0;background:#fff;color:#4f6b00;border-radius:99px;padding:5px 11px;cursor:pointer">Not this match</button>';
+      host.insertBefore(d, host.firstChild); };
+    W.nhFxDrop=function(){ try{ sessionStorage.removeItem(KEY); }catch(e){} var ex=document.getElementById("nhFxBar"); if(ex) ex.remove(); };
+    /* page 1: the division as the Type (the tournament itself is chosen by the address, &tn=) */
+    var after1=function(){ var o=FX(); if(!o) return;
+      var t0=Date.now(), tk=setInterval(function(){
+        var ty=document.getElementById("matchType"), ev=document.getElementById("matchEvent");
+        if(ev && ev.value===o.tn && ty && Array.prototype.some.call(ty.options,function(x){ return x.value===o.div; })){
+          if(ty.value!==o.div){ ty.value=o.div; try{ ty.dispatchEvent(new Event("change",{bubbles:true})); }catch(e){} }
+          clearInterval(tk);
+        }
+        if(Date.now()-t0>6000) clearInterval(tk);
+      },120);
+      banner(o,"From the draw. Choose the sets as usual — the names are filled in on the next page."); };
+    /* page 2: the four names, in order, the way the court card fills them */
+    var after2=function(){ var o=FX(); if(!o) return;
+      var n=o.names||[], single=!document.getElementById("t1p2_val");
+      var slots=single?[["t1p1",n[0]],["t2p1",n[2]]]:[["t1p1",n[0]],["t1p2",n[1]],["t2p1",n[2]],["t2p2",n[3]]];
+      var any=false;
+      slots.forEach(function(p){ if(!p[1]) return; var v=document.getElementById(p[0]+"_val"), l=document.getElementById(p[0]+"_lbl"), bt=document.getElementById(p[0]+"_btn");
+        if(!v || v.value) return; v.value=p[1]; if(l) l.textContent=p[1]; if(bt) bt.classList.add("selected"); any=true; });
+      try{ if(any && typeof odrUpdateCombined==="function") odrUpdateCombined(); }catch(e){}
+      banner(o,"The names are from the draw — tap any name to change it (a stand-in?)."); };
+    var hookSheet=function(){
+      var keep=function(nf,of){ Object.keys(of).forEach(function(k){ nf[k]=of[k]; }); };
+      if(typeof W.renderStep1==="function" && !W.renderStep1.__fxS){ var r1=W.renderStep1;
+        var n1=function(){ var r=r1.apply(this,arguments); Promise.resolve(r).then(function(){ setTimeout(after1,0); }); return r; }; keep(n1,r1); n1.__fxS=1; W.renderStep1=n1; }
+      if(typeof W.renderStep2==="function" && !W.renderStep2.__fxS){ var r2=W.renderStep2;
+        var n2=function(){ var r=r2.apply(this,arguments); setTimeout(after2,0); return r; }; keep(n2,r2); n2.__fxS=1; W.renderStep2=n2; }
+    };
+    /* the save: when the score sheet's own save answers OK, back to the draw this match came from */
+    var cur=W.fetch;
+    W.fetch=function(u,init){
+      var p=cur.apply(this,arguments);
+      try{ var url=String((u&&u.url)||u||""), o=FX();
+        if(o && /\/functions\/v1\/(plat_)?submit_match\b/.test(url) && init && String(init.method||"").toUpperCase()==="POST"){
+          p.then(function(resp){ return resp.clone().json().then(function(j){
+            if(j && j.ok){ try{ sessionStorage.removeItem(KEY); }catch(e){}
+              W.__nhFxBack=page()+"?club="+o.cid+"&go=tsheet&tn="+encodeURIComponent(o.tn)+"&div="+encodeURIComponent(o.div); }
+          }); }).catch(function(){});
+        }
+      }catch(e){}
+      return p; };
+    /* after the save's own "done" screen, its Done/Home goes back to the draw instead */
+    setInterval(function(){ try{
+      hookTap(); hookSheet();
+      if(W.__nhFxBack){
+        var btns=Array.prototype.filter.call(document.querySelectorAll("#entryContent button, #entryScreen button"),function(b){ return /back to home|^\s*done\s*$/i.test(b.textContent||"") && !b.__fxBack; });
+        btns.forEach(function(b){ b.__fxBack=1; b.addEventListener("click",function(ev){ var to=W.__nhFxBack; if(!to) return; W.__nhFxBack=null; ev.stopImmediatePropagation(); ev.preventDefault(); if(typeof W.nhNav==="function") W.nhNav(to); else location.href=to; }, true); });
+      }
+    }catch(e){} }, 300);
+  })();
   /* n350: COLUMN NAMES THAT STAY PUT. Group Members gets Name · Rating · Level · Move · Rank in the frozen block with
      its search box (each name measured onto the pill beneath it); on Member profiles and List all members the names
      freeze under the search box instead of scrolling away. */
@@ -15249,7 +15386,7 @@ W.nhOpenPair=function(name){
           +'<span style="display:block;font-size:18px;font-weight:800;color:#fff">'+ms.length+'</span>'
           +'<span style="display:block;font-size:10px;color:rgba(255,255,255,.8)">matches</span></span></div>'
           /* n154: one line in the rail — the card is 84% of the screen there, so the indent and the longer wording wrapped it */
-          +'<div style="font-size:13px;color:rgba(255,255,255,.92);margin:10px 0 0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+esc(sub)+'</div>' 
+          +'<div style="font-size:13.5px;font-weight:800;letter-spacing:.06em;text-align:center;color:#fff;margin:12px 0 0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+esc(sub)+'</div>'   /* n370: centred, bold */ 
           /* n150: no "N today" pill and no last-here block — the same match reads in Recent matches below and
              inside the group itself, and the card stays short enough for the rail */
           +'</button>';
@@ -15267,7 +15404,7 @@ W.nhOpenPair=function(name){
       };
       /* n149: with no groups there is nothing to play on — the door asks for a group instead of offering the region */
       W.__doorKids=kids;
-      W.__doorCard=function(g){ return card(g.name, clubPal(g.id)[0], "Enter here for all group details and stats", PAGE+"?club="+g.id, g.id); };
+      W.__doorCard=function(g){ return card(g.name, clubPal(g.id)[0], "TAP HERE TO ENTER YOUR GROUP", PAGE+"?club="+g.id, g.id); };
       W.__doorC=C;
       var quiet=function(label,onclick){
         return '<button onclick="'+onclick+'" style="flex:1 1 0;min-width:88px;background:#fff;border:1px solid #cfc5e0;border-radius:12px;'
@@ -15362,7 +15499,10 @@ W.nhOpenPair=function(name){
       if(!mine.length){ d=nhExample(); mine=d.matches; }
       d.realCount=realCount;
       nhWindow(mine); var wk=NHEG?0:mine.filter(function(m){ return ago(m.match_date)<=NHWIN; }).length;   /* n86 */
-      var mv=nhMovers(mine), top=(d.pairs||[])[0];
+      var mv=nhMovers(mine), top=(function(){   /* n370: the top pair of the last 30 days */
+        var key=function(a){ return a.reduce(function(o,x){ return o.concat(String(x||"").split(" & ")); },[]).map(function(x){ return x.trim(); }).filter(Boolean).sort().join("|"); };
+        var recent={}; (NHEG?[]:mine).forEach(function(m){ if(ago(m.match_date)<=30){ recent[key([m.t1p1,m.t1p2])]=1; recent[key([m.t2p1,m.t2p2])]=1; } });
+        return (d.pairs||[]).filter(function(p){ return recent[key([p.name])]; })[0]; })();
       var people={}; (NHEG?[]:mine).forEach(function(m){ [m.t1p1,m.t1p2,m.t2p1,m.t2p2].forEach(function(v){ if(v) String(v).split(" & ").forEach(function(x){ people[x.trim()]=1; }); }); });
       w.innerHTML =
         '<div class="band" style="background:linear-gradient(135deg,'+ink+','+deep+')">'
@@ -15378,7 +15518,7 @@ W.nhOpenPair=function(name){
         + '<div class="tiles">'
         + '<div class="tile"><div class="k">'+esc(nhWhen().replace("this week","This week"))+'</div><div class="v">'+wk+'</div><div class="n">'+(NHEG?"no matches yet":"matches here")+'</div></div>'
         + '<div class="tile"><div class="k">Playing</div><div class="v">'+Object.keys(people).length+'</div><div class="n">with a match on record</div></div>'
-        + '<div class="tile"><div class="k">Top pair</div><div class="v" style="font-size:15px;line-height:1.25">'+esc(top?top.name:"\u2014")+'</div><div class="n">'+(top?Math.round(top.current_rating):"")+'</div></div>'
+        + '<div class="tile"><div class="k">Top pair \u00b7 30 days</div><div class="v" style="font-size:15px;line-height:1.25">'+esc(top?top.name:"\u2014")+'</div><div class="n">'+(top?Math.round(top.current_rating):"")+'</div></div>'
         /* n59: the move was already said twice on this page; the upset is a different story each week */
         + (function(){ var u=nhUpset(d);
             return '<div class="tile"><div class="k">Biggest upset</div>'
