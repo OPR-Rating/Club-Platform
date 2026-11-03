@@ -3750,7 +3750,7 @@ const CLUB_NAME = _club.name;  // shown in the logo as "OPR · <name>"
     link.setAttribute('href', href);
   }catch(e){ /* install stays on the static manifest — no functional impact */ }
 })();
-const OPR_VERSION = "OPR-DOUBLES v2026.09.03-56 · NAT fork n372 (no voice) (of PLAT p117)";  // MANUAL PAIR CREATION REMOVED FROM ADMIN: Create a pair, Bulk create pairs and Re-derive all pairs are gone (they only made match-less ghost pairs, and Re-derive rewrote every stored initial club-wide). Pairs are born automatically at match entry. Current pairs list untouched; the underlying JS is left in place unreferenced, so no other code path changes. Includes v47 (set-score fix + double-tap guard) and all prior.
+const OPR_VERSION = "OPR-DOUBLES v2026.09.03-56 · NAT fork n373 (no voice) (of PLAT p117)";  // MANUAL PAIR CREATION REMOVED FROM ADMIN: Create a pair, Bulk create pairs and Re-derive all pairs are gone (they only made match-less ghost pairs, and Re-derive rewrote every stored initial club-wide). Pairs are born automatically at match entry. Current pairs list untouched; the underlying JS is left in place unreferenced, so no other code path changes. Includes v47 (set-score fix + double-tap guard) and all prior.
 // Explanation shown above the individual ladder. Open on load so it's read; collapsible
 // (state kept for the session) and scrolls away. Mechanics only — no outcome framing, so
 // members aren't nudged away from playing stronger opponents. Every clause maps to a real
@@ -11122,6 +11122,7 @@ async function clRemove(id, label){
       return '<div class="doit">'
         + mb("entry","primary","background:linear-gradient(135deg,"+ink+","+deep+")",I.score,"Enter a score")
         + mb("ladders","","",I.lad,"Ratings &amp; ladders")
+        + mb("leapfrog","","",'<svg viewBox="0 0 24 24"><path d="M6 13l6-6 6 6M6 19l6-6 6 6"/></svg>',"Leapfrog Index")   /* n373 */
         + mb("profiles","","",I.per,"Member profiles")   /* n171 */
         + mb("card","","",I.card,"Court card")
         + mb("tournaments","","",I.cup,"Tournaments")
@@ -14003,21 +14004,37 @@ W.nhOpenPair=function(name){
         .catch(function(){ return null; });
     };
     var url=function(id,what){ return page()+"?club="+id+"&go="+what+(what==="ladders"?"&from=me":"")+"&back="+encodeURIComponent(location.search||""); };
+    /* n373 (Andre, 3 Nov): LEAPFROG FROM MY PAGE — someone who sets the app to open on My page would otherwise never see
+       the Leapfrog tables. The index belongs to a group, so it opens on YOUR group's page (one group: straight there;
+       several: pick from yours). The group page is opened, then its Leapfrog Index; its back arrow lands on the group. */
+    var lfUrl=function(id){ return page()+"?club="+id+"&back="+encodeURIComponent(location.search||""); };
+    W.nhOpenLeapfrog=function(id){ try{ sessionStorage.setItem("nh_open_lf", String(id)); }catch(e){} W.nhNav(lfUrl(id)); };
+    setInterval(function(){ try{
+      var want=sessionStorage.getItem("nh_open_lf"); if(!want) return;
+      if(Number(W.PLAT.cid||0)!==Number(want)) return;
+      var hs=document.getElementById("homeScreen"), nh=document.getElementById("nh");
+      if(!hs || !hs.classList.contains("active") || !nh || !nh.querySelector(".doit") || typeof W.nhLeapfrog!=="function") return;
+      sessionStorage.removeItem("nh_open_lf"); W.nhLeapfrog();
+    }catch(e){} }, 300);
     /* called first thing by My page's meAct; true = handled here */
     W.nhMeRoute=function(what, fallback){
-      if(what!=="entry" && what!=="ladders") return false;
+      if(what!=="entry" && what!=="ladders" && what!=="leapfrog") return false;
       var box=document.getElementById("meWhere");
       if(box && box.style.display==="block" && box.dataset.what===what){ box.style.display="none"; box.dataset.what=""; return true; }
       W.nhMyGroups().then(function(gs){
+        var LF=(what==="leapfrog"), all=false;
+        /* n373: Leapfrog with no claimed groups to go on — offer the region's groups (it lives on each group's page) */
+        if((!gs || !gs.length) && LF){ gs=(W.PLAT.clubs||[]).filter(function(c){ return Number(c.parent_id)===region(); }).map(function(c){ return Number(c.id); }); all=true; }
         if(!gs || !gs.length){ fallback(); return; }
-        if(gs.length===1 || what==="ladders"){ W.nhNav(url(gs[0],what)); return; }
+        if(LF && gs.length===1){ W.nhOpenLeapfrog(gs[0]); return; }
+        if(!LF && (gs.length===1 || what==="ladders")){ W.nhNav(url(gs[0],what)); return; }
         if(!box){ fallback(); return; }
         box.dataset.what=what;
-        box.innerHTML='<div style="font-size:12.5px;color:#5f5770;margin:2px 2px 8px">Enter a score — which of your groups?</div>'
+        box.innerHTML='<div style="font-size:12.5px;color:#5f5770;margin:2px 2px 8px">'+(LF?(all?"Leapfrog Index — which group?":"Leapfrog Index — which of your groups?"):"Enter a score — which of your groups?")+'</div>'
           + gs.map(function(id,i){ var c=(typeof clubPal==="function")?clubPal(id)[0]:"#6c3483", g=clubOf(id)||{name:""};
-              return '<a href="'+url(id,what)+'" style="display:flex;align-items:center;gap:10px;text-decoration:none;background:#fff;border:1.5px solid '+c+';border-radius:12px;padding:11px 13px;margin-bottom:8px">'
+              return '<a href="'+(LF?lfUrl(id):url(id,what))+'"'+(LF?' onclick="try{sessionStorage.setItem(\'nh_open_lf\',\''+id+'\')}catch(e){}"':'')+' style="display:flex;align-items:center;gap:10px;text-decoration:none;background:#fff;border:1.5px solid '+c+';border-radius:12px;padding:11px 13px;margin-bottom:8px">'
                 +'<span style="width:11px;height:11px;border-radius:50%;background:'+c+'"></span><b style="flex:1;color:#241d33;font-size:14px">'+esc(g.name)+'</b>'
-                +(i===0?'<span style="font-size:11px;font-weight:800;color:'+c+'">your group</span>':'')+'</a>'; }).join("");
+                +(i===0&&!all?'<span style="font-size:11px;font-weight:800;color:'+c+'">your group</span>':'')+'</a>'; }).join("");
         box.style.display="block"; try{ box.scrollIntoView({behavior:"smooth",block:"nearest"}); }catch(e){}
       });
       return true;
