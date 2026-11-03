@@ -3750,7 +3750,7 @@ const CLUB_NAME = _club.name;  // shown in the logo as "OPR · <name>"
     link.setAttribute('href', href);
   }catch(e){ /* install stays on the static manifest — no functional impact */ }
 })();
-const OPR_VERSION = "OPR-DOUBLES v2026.09.03-56 · NAT fork n368 (no voice) (of PLAT p117)";  // MANUAL PAIR CREATION REMOVED FROM ADMIN: Create a pair, Bulk create pairs and Re-derive all pairs are gone (they only made match-less ghost pairs, and Re-derive rewrote every stored initial club-wide). Pairs are born automatically at match entry. Current pairs list untouched; the underlying JS is left in place unreferenced, so no other code path changes. Includes v47 (set-score fix + double-tap guard) and all prior.
+const OPR_VERSION = "OPR-DOUBLES v2026.09.03-56 · NAT fork n371 (no voice) (of PLAT p117)";  // MANUAL PAIR CREATION REMOVED FROM ADMIN: Create a pair, Bulk create pairs and Re-derive all pairs are gone (they only made match-less ghost pairs, and Re-derive rewrote every stored initial club-wide). Pairs are born automatically at match entry. Current pairs list untouched; the underlying JS is left in place unreferenced, so no other code path changes. Includes v47 (set-score fix + double-tap guard) and all prior.
 // Explanation shown above the individual ladder. Open on load so it's read; collapsible
 // (state kept for the session) and scrolls away. Mechanics only — no outcome framing, so
 // members aren't nudged away from playing stronger opponents. Every clause maps to a real
@@ -6947,7 +6947,7 @@ async function tmLoadEntries(tournament, division) {
 async function tmLoadFixtures(tournament, division) {
   let q = `tournament_fixtures?select=*&club_id=eq.${CLUB_ID}&tournament=eq.${encodeURIComponent(tournament)}`;
   if (division) q += `&division=eq.${encodeURIComponent(division)}`;
-  q += `&order=round.asc`;
+  q += `&order=round.asc,id.asc`;   // n371: same order every time (the order written)
   return await sbGet(q) || [];
 }
 // Which divisions actually have teams entered in this tournament?
@@ -7454,7 +7454,7 @@ async function loadTournamentSheet(tournament, division) {
       // is (club_id, tournament, round, seed_a, seed_b) with no round_type, so the bands
       // MUST NOT overlap — that collision was rejecting playoff writes.
       const PBASE = 90;
-      const r1fix = koFix.filter(f=> f.round===PBASE);
+      const r1fix = koFix.filter(f=> f.round===PBASE).sort((x,y)=>(Number(x.id)||0)-(Number(y.id)||0));   /* n371: the draw's own order */
       const r1 = r1fix.map(f=>{
         if(f.seed_b===0) return { a:f.seed_a, b:0, fx:{seed_a:f.seed_a, seed_b:0, sets_a:1, sets_b:0} };
         return { a:f.seed_a, b:f.seed_b, fx:f };
