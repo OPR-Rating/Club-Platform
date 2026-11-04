@@ -3750,7 +3750,7 @@ const CLUB_NAME = _club.name;  // shown in the logo as "OPR · <name>"
     link.setAttribute('href', href);
   }catch(e){ /* install stays on the static manifest — no functional impact */ }
 })();
-const OPR_VERSION = "OPR-DOUBLES v2026.09.03-56 · NAT4 booking test b19 (nat3 n373) (no voice) (of PLAT p117)";  // MANUAL PAIR CREATION REMOVED FROM ADMIN: Create a pair, Bulk create pairs and Re-derive all pairs are gone (they only made match-less ghost pairs, and Re-derive rewrote every stored initial club-wide). Pairs are born automatically at match entry. Current pairs list untouched; the underlying JS is left in place unreferenced, so no other code path changes. Includes v47 (set-score fix + double-tap guard) and all prior.
+const OPR_VERSION = "OPR-DOUBLES v2026.09.03-56 · NAT4 booking test b20 (nat3 n373) (no voice) (of PLAT p117)";  // MANUAL PAIR CREATION REMOVED FROM ADMIN: Create a pair, Bulk create pairs and Re-derive all pairs are gone (they only made match-less ghost pairs, and Re-derive rewrote every stored initial club-wide). Pairs are born automatically at match entry. Current pairs list untouched; the underlying JS is left in place unreferenced, so no other code path changes. Includes v47 (set-score fix + double-tap guard) and all prior.
 // Explanation shown above the individual ladder. Open on load so it's read; collapsible
 // (state kept for the session) and scrolls away. Mechanics only — no outcome framing, so
 // members aren't nudged away from playing stronger opponents. Every clause maps to a real
@@ -11204,6 +11204,7 @@ async function clRemove(id, label){
      Every other admin link is gone. */
   W.nhAdminPage=function(){
     var w=nhWrap(); if(!w) return;
+    W.__nhAdminShown=String(location.search||"");   /* squash q240b */
     try{ nhTrailPush("homeScreen","admin"); }catch(e){}   /* n317: a view of its own — back returns here */
     nhCSS();
     var C=(W.PLAT.parentId||W.PLAT.cid), kids=kidsOf(C).sort(function(a,b){ return String(a.name).localeCompare(String(b.name)); });
@@ -13914,7 +13915,7 @@ W.nhOpenPair=function(name){
     setInterval(leapBrk, 900);
     W.__nhTsBuild=build;   /* for the test */
   })();
-  window.__nhBkAnon="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRqbWJudmlrcmRnbm9tamh0a2dmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODUzOTE0MzEsImV4cCI6MjEwMDk2NzQzMX0.vR8xlVFjV6jXW-pAclGjM74HqmWSKVpsacFjM-dCIJI"; window.__nhBkBuild="nat4 b19";
+  window.__nhBkAnon="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRqbWJudmlrcmRnbm9tamh0a2dmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODUzOTE0MzEsImV4cCI6MjEwMDk2NzQzMX0.vR8xlVFjV6jXW-pAclGjM74HqmWSKVpsacFjM-dCIJI"; window.__nhBkBuild="nat4 b20";
   /* ===================================================================================================
      COURT BOOKING (nat4 test copy, Manzini pilot, Andre 26 Oct). Started ONLY from the player's own My page: its
      "Court card" button becomes "Book a court", which asks "Where do you want to play?" — one tile per venue; a venue
@@ -14905,6 +14906,7 @@ W.nhOpenPair=function(name){
        until the draw shows it — tapping it again says so instead of offering to score it twice (q188, only after a real
        save: q244). In padel this is said on the card, never in a pop-up box.
      • A PLAYED match or a bye: the organiser's editor, naming the pair as it played that round (q234).
+     b20 (Andre, 4 Nov): the umpire has a way out — see "the way out of the umpire" below.
      b19 (Andre, 4 Nov): the button says "Use the umpire" (padel's marker is the Live Umpire), and the division's
      "How a match is played" (nat4_rules.js = squash q179/q180/q183) is read BEFORE the card shows: its line is on the card
      in bold, the umpire opens with those sets / games / sets format, and the score sheet's "Sets played" is set for
@@ -14981,7 +14983,7 @@ W.nhOpenPair=function(name){
     };
     var btnSmall='flex:1;padding:11px;font-size:13px;background:#fff;border:1.5px solid #ddd5e6;color:#4b4060;border-radius:10px;cursor:pointer;font-family:inherit';
     var fxOpen=function(d){
-      W.__nhFxNow=d;
+      W.__nhFxNow=d; W.__nhFxCardBack=false;
       card('<div style="font-size:11.5px;letter-spacing:.09em;text-transform:uppercase;font-weight:800;color:#8a8196">You are scoring</div>'
         +'<div style="font-size:17px;font-weight:800;color:#241d33;margin:7px 0 2px;line-height:1.35">'+esc(d.a)+'</div>'
         +'<div style="font-size:13px;color:#8a8196;margin:0 0 2px">v</div>'
@@ -14989,7 +14991,7 @@ W.nhOpenPair=function(name){
         +'<div style="font-size:13px;color:#8a8196;margin-bottom:14px">'+esc(d.label)+' · '+esc(d.tour)+'<br><b style="color:'+ink()+'">'+esc(lineOf(d.div))+'</b></div>'
         +'<button class="btn" onclick="window.__nhFxMarker()" style="width:100%;margin:0 0 9px;padding:14px;font-size:15px;font-weight:800;background:linear-gradient(180deg,#2c2440,#16111f);color:#d4f425;border:1.5px solid rgba(212,244,37,.35);border-radius:12px;cursor:pointer;font-family:inherit">Use the umpire</button>'
         +'<button class="btn" onclick="window.__nhFxManual()" style="width:100%;margin:0 0 9px;padding:14px;font-size:15px;font-weight:800;background:'+ink()+';color:#fff;border:none;border-radius:12px;cursor:pointer;font-family:inherit">Enter the score myself</button>'
-        +'<div style="display:flex;gap:8px"><button onclick="window.__nhFxClose()" style="'+btnSmall+'">Back</button>'
+        +'<div style="display:flex;gap:8px"><button onclick="window.__nhFxBack()" style="'+btnSmall+'">Back</button>'
         +'<button onclick="window.__nhFxOrganiser()" style="'+btnSmall+'">Organiser entry</button></div>');
     };
     /* q188: scored a moment ago and the draw has not caught up — said on the card, not in a pop-up */
@@ -15071,6 +15073,7 @@ W.nhOpenPair=function(name){
           /* b19 (squash q183): the umpire plays the division's rules — nothing is set at the court */
           try{ mkSetGameFmt(r.game_fmt==="star"?"star":"long"); mkSetSetFmt(r.set_fmt==="long"?"long":"tb"); }catch(e){}
           W.__nhAllSets=(r.sets!==1 && !!r.all_sets);
+          W.__nhFxUmp=d;   /* b20: its ← goes back to this match's card */
           var sum=document.getElementById("mkFromEntrySummary"); if(sum) sum.innerHTML+='<br><b>'+esc(lineOf(d.div))+'</b>';
           MK.event=d.tour; MK.division=d.div; MK.cat=d.div; MK.handicap=false; MK.fixtureId=null;
           MK.players.t1p1=A[0]; MK.players.t1p2=A[1]||null; MK.players.t2p1=B[0]; MK.players.t2p2=B[1]||null;
@@ -15081,6 +15084,51 @@ W.nhOpenPair=function(name){
         });
       }catch(e){ W.__nhFxMarkerFail(); } });
     };
+    /* b20 (Andre, 4 Nov: "I can't go back — I tap Home and the umpire page stays"). The way out of the umpire, no pop-up:
+       • opened from the draw, its ← goes back to the "You are scoring" card (Use the umpire · Enter the score myself …);
+       • any bottom-bar tap closes the umpire and then goes where it was tapped;
+       • once a point has been played, both first ask on the card: "Leave this match?" — Yes, leave / No, keep scoring. */
+    var umpOn=function(){ var m=document.getElementById("markerScreen"); return !!(m && m.classList.contains("on")); };
+    var umpPlayed=function(){ try{ return !!(MK.live && ((MK.hist&&MK.hist.length) || (MK.setScores&&MK.setScores.length))); }catch(e){ return false; } };
+    var umpShut=function(){ try{
+      MK.live=false; MK.returnToStep3=false; MK._pending=null; W.__nhAllSets=false;
+      ["mkLive","mkFinish"].forEach(function(id){ var e=document.getElementById(id); if(e) e.classList.remove("on"); });
+      var su=document.getElementById("mkSetup"); if(su) su.style.display="";
+      var bn=document.getElementById("mkBanner"); if(bn) bn.style.display="none";
+      var hd=document.getElementById("mkHeaderTitle"); if(hd) hd.textContent="Live Umpire";
+      var m=document.getElementById("markerScreen"); if(m) m.classList.remove("on");
+    }catch(e){} };
+    var umpAsk=function(go){
+      card('<div style="font-size:15px;font-weight:800;color:#241d33;margin-bottom:8px">Leave this match?</div>'
+        +'<div style="font-size:13.5px;color:#4b4060;line-height:1.5;margin-bottom:14px">The score so far will be lost.</div>'
+        +'<div style="display:flex;gap:8px"><button onclick="window.__nhFxClose()" style="'+btnSmall+'">No, keep scoring</button>'
+        +'<button id="nhUmpLeave" style="'+btnSmall.replace("background:#fff","background:#7c2d12").replace("color:#4b4060","color:#fff")+'">Yes, leave</button></div>');
+      var y=document.getElementById("nhUmpLeave"); if(y) y.onclick=function(){ W.__nhFxClose(); umpShut(); go(); };
+    };
+    W.__nhFxUmp=null;   /* the match the umpire was opened for from the draw */
+    /* the card's Back: on the draw it just closes; reached by leaving the umpire, it goes back to the draw */
+    W.__nhFxBack=function(){ var t=W.__nhFxCardBack; W.__nhFxCardBack=false; W.__nhFxClose(); if(t && typeof W.__nhToDraw==="function") W.__nhToDraw(); };
+    var backToCard=function(){ var d=W.__nhFxUmp; W.__nhFxUmp=null; umpShut(); if(d){ fxOpen(d); W.__nhFxCardBack=true; } };
+    var wrapBack=function(){
+      var b0=W.mkBackButton; if(typeof b0!=="function") return false; if(b0.__nhB20) return true;
+      var b1=function(){
+        if(!W.__nhFxUmp || !umpOn()) return b0.apply(this, arguments);
+        if(umpPlayed()){ umpAsk(backToCard); return; }
+        backToCard();
+      };
+      b1.__nhB20=1; W.mkBackButton=b1; try{ mkBackButton=b1; }catch(e){}
+      return true;
+    };
+    if(!wrapBack()){ var bn0=0, bt0=setInterval(function(){ if(wrapBack() || ++bn0>40) clearInterval(bt0); }, 250); }
+    var BYPASS=false;
+    W.addEventListener("click", function(e){
+      if(BYPASS) return;
+      var a=e.target && e.target.closest ? e.target.closest("#nhBar a") : null; if(!a || !umpOn()) return;
+      e.preventDefault(); e.stopPropagation(); if(e.stopImmediatePropagation) e.stopImmediatePropagation();
+      var go=function(){ W.__nhFxUmp=null; BYPASS=true; try{ a.click(); }finally{ BYPASS=false; } };
+      if(umpPlayed()) umpAsk(function(){ go(); }); else { umpShut(); go(); }
+    }, true);
+
     W.__nhFxMarkerFail=function(){ { card('<div style="font-size:14px;color:#4b4060;margin-bottom:12px">The marker could not be opened here. Use “Enter the score myself”.</div><div style="display:flex"><button onclick="window.__nhFxClose()" style="'+btnSmall+'">Back</button></div>'); }
     };
 
@@ -15428,14 +15476,60 @@ W.nhOpenPair=function(name){
           else if(sets===1){ var tf1=document.getElementById("mkTopFmt"); if(tf1) tf1.textContent="1 set"; }
         }catch(e){}
         return r; };
-      var e1=function(){ W.__nhAllSets=false; return e0.apply(this, arguments); };
-      var o1=function(){ W.__nhAllSets=false; return o0.apply(this, arguments); };
+      var e1=function(){ W.__nhAllSets=false; W.__nhFxUmp=null; return e0.apply(this, arguments); };   /* b20: not from the draw */
+      var o1=function(){ W.__nhAllSets=false; W.__nhFxUmp=null; return o0.apply(this, arguments); };
       s1.__nhRules=1;
       W.mkStart=s1; W.mkOpenFromEntry=e1; W.mkOpen=o1;
       try{ mkStart=s1; mkOpenFromEntry=e1; mkOpen=o1; }catch(e){}
       return true;
     };
     if(!wrapMk()){ var mn=0, mt=setInterval(function(){ if(wrapMk() || ++mn>40) clearInterval(mt); }, 250); }
+  })();
+  /* ===================================================================================================================
+     NAT4 b20 · THE DOOR'S TOURNAMENT CARD BEFORE THE DRAW (Andre, 4 Nov: "summer sizzle has no entries yet — it shows Open
+     the draw and standings, which is right once it is generated, but it should say enter the tournament and take you to
+     the page where you do"). When a tournament has no draw yet (no fixtures in any division), its opened card says
+     "Enter a team →" and goes to the tournament's Enter a team page; the line under it says entry is open. Once any
+     division has a draw, the card is as before ("Open the draw and standings →").
+     ================================================================================================================== */
+  (function(){
+    var W=window, ENC=encodeURIComponent;
+    var RB="https://djmbnvikrdgnomjhtkgf.supabase.co/rest/v1/";
+    var restGet=function(q){ return fetch(RB+q).then(function(r){ return r.ok?r.json():null; }).catch(function(){ return null; }); };
+    var drawn={};   /* club|name -> true/false */
+    var hasDraw=function(t){
+      var c=Number(t.club_id||(W.PLAT&&W.PLAT.cid)||0), k=c+"|"+t.name;
+      if(k in drawn) return Promise.resolve(drawn[k]);
+      return restGet("plat_padel_tournament_fixtures?select=id&club_id=eq."+c+"&tournament=eq."+ENC(t.name)+"&limit=1")
+        .then(function(r){ if(r===null) return true; drawn[k]=r.length>0; return drawn[k]; });   /* a failed read keeps the old card */
+    };
+    /* to the tournament's own page, then its Enter a team page */
+    W.__nhTourEnter=function(k){
+      var t=(W.__nhTours||[])[k]; if(!t) return;
+      try{ sessionStorage.setItem("nhTourEnter", String(t.name)); }catch(e){}
+      W.nhOpenTour(k);
+    };
+    setInterval(function(){ try{
+      var want=sessionStorage.getItem("nhTourEnter"); if(!want) return;
+      var sc=document.getElementById("tournamentScreen"); if(!sc || !sc.classList.contains("active")) return;
+      var cur=""; try{ cur=TOURNAMENT_EVENT||""; }catch(e){}
+      if(cur!==want || typeof showEnterTournament!=="function") return;
+      sessionStorage.removeItem("nhTourEnter"); showEnterTournament(want);
+    }catch(e){} }, 300);
+    var relabel=function(k){
+      var t=(W.__nhTours||[])[k], box=document.getElementById("nhtour"+k); if(!t || !box) return;
+      var b=box.querySelector("button.more"); if(!b || b.dataset.nhB20) return; b.dataset.nhB20="1";
+      hasDraw(t).then(function(d){ if(d) return;
+        b.textContent="Enter a team →"; b.setAttribute("onclick","window.__nhTourEnter("+k+")");
+        Array.prototype.forEach.call(box.children,function(x){ if(/^Under way/.test((x.textContent||"").trim())) x.textContent="Entry is open — no draw yet."; });
+      });
+    };
+    var wrap=function(){
+      var f0=W.nhTourOpen; if(typeof f0!=="function") return false; if(f0.__nhB20) return true;
+      var f1=function(k){ var r=f0.apply(this, arguments); try{ relabel(k); }catch(e){} return r; };
+      f1.__nhB20=1; W.nhTourOpen=f1; return true;
+    };
+    if(!wrap()){ var n=0, t=setInterval(function(){ if(wrap() || ++n>40) clearInterval(t); }, 250); }
   })();
   /* n350: COLUMN NAMES THAT STAY PUT. Group Members gets Name · Rating · Level · Move · Rank in the frozen block with
      its search box (each name measured onto the pill beneath it); on Member profiles and List all members the names
@@ -18504,7 +18598,7 @@ W.nhOpenPair=function(name){
       return false;
     }
     var search="?"+p.q.toString()+(p.hash?("#"+p.hash):"");
-    if(search===String(location.search||"")+String(location.hash||"") && !opts.force){ try{ window.scrollTo(0,0); }catch(e){} return false; }
+    if(search===String(location.search||"")+String(location.hash||"") && !opts.force){ var _tv=W.__nhTrail&&W.__nhTrail[W.__nhTrail.length-1]; var _wantS="homeScreen"; try{ var _wq=new URLSearchParams(search.split("#")[0].replace(/^\?/,""));   var _wg=(_wq.get("go")||"").toLowerCase();   _wantS={tsheet:"tournamentSheetScreen",tournaments:"tournamentScreen",entry:"entryScreen",ladders:"laddersScreen",     ladder:"ladderScreen",profiles:"profileSearchScreen",player:"profileScreen",card:"platSessScreen"}[_wg]||"homeScreen";   if(String(search).indexOf("#enter")>=0) _wantS="entryScreen"; }catch(_e){} var _nowS=""; try{ _nowS=(document.querySelector(".screen.active")||{}).id||""; }catch(_e){} var _elsewhere=!!(_nowS && _wantS && _nowS!==_wantS); if(!_elsewhere && !(_tv && _tv.page && _tv.search===String(location.search||"")) && !(W.__nhAdminShown && W.__nhAdminShown===String(location.search||""))){ try{ window.scrollTo(0,0); }catch(e){} return false; }   /* q240b: Admin control drawn over this address, recorded or not */ try{ if(_tv && _tv.page) W.__nhTrail.pop(); }catch(e){} W.__nhAdminShown=""; opts.force=true; opts.replace=true; }   /* q156b + q196 */
     try{
       if(opts.replace){ history.replaceState({nat3:1},"",location.pathname+search); var t=nhCrumbs(); t.pop(); nhCrumbsSave(t); nhCrumbPush("?"+p.q.toString()); }
       else { history.pushState({nat3:1},"",location.pathname+search); nhCrumbPush("?"+p.q.toString()); }
@@ -19046,6 +19140,7 @@ W.nhOpenPair=function(name){
     var prev=t[t.length-1];
     W.__nhTrailHold=true;
     var open=function(){ try{
+        if(prev.screen==="homeScreen" && !prev.page && _left && _left.page && W.nhNav){ W.__nhTrailHold=false; W.nhNav(PAGE+String(location.search||""),{replace:true,force:true}); return; }   /* q156b: from a view back to the door: redraw it */
         if(prev.screen==="homeScreen"){ goHome(); if(prev.page==="admin" && !document.querySelector("#nh .band") ) W.nhAdminPage(); }
         else if(prev.screen==="ladderScreen" && W.__nhLadderArgs && typeof loadLadder==="function"){ loadLadder.apply(null, W.__nhLadderArgs); try{ if(W.__nhLadRestore) W.__nhLadRestore(); }catch(e){} }   /* n351: the table you left, at once */   /* n328: the TABLE you were on, not the menu */
         else W.showScreen(prev.screen);
