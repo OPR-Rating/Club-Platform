@@ -1067,6 +1067,11 @@ st0.textContent += "html{overflow-y:scroll}";   // p98: the scrollbar's space is
     if(!hit){ hit=_fetch(u,o).then(function(r){ return r.json(); }); W.PLAT._memo[u]=hit; hit.catch(function(){ delete W.PLAT._memo[u]; }); }
     return hit.then(function(j){ return {json:function(){ return Promise.resolve(j); }}; });
   }
+  /* n374: every page of a read (the database stops at 1,000 rows); _memoAll keeps the per-visit memo */
+  function _pagesAll(u,o){ var out=[]; var step=function(from){ return _fetch(u+"&order=id.asc&limit=1000&offset="+from,o).then(function(r){ return r.json(); }).then(function(rows){
+      rows=Array.isArray(rows)?rows:[]; out=out.concat(rows); return (rows.length===1000 && from<100000)?step(from+1000):out; }); }; return step(0); }
+  function _memoAll(u,o){ var k="all|"+u, hit=W.PLAT._memo[k]; if(!hit){ hit=_pagesAll(u,o); W.PLAT._memo[k]=hit; hit.catch(function(){ delete W.PLAT._memo[k]; }); }
+    return hit.then(function(j){ return {json:function(){ return Promise.resolve(j); }}; }); }
   function loadScope(){
     var p = CID ? _memo(PLAT+"/rest/v1/plat_clubs?id=eq."+CID+"&select=id,pool_id,name,colour,is_general",{headers:hdrs()}).then(function(r){return r.json();}).then(function(rows){ var c=rows&&rows[0]; if(c){ W.PLAT.pool=c.pool_id; W.PLAT.name=c.name; W.PLAT.colour=c.colour||""; try{ sessionStorage.setItem("plat_padel_name_"+CID,c.name); }catch(e){} } })
                 : Promise.resolve();
@@ -1095,7 +1100,7 @@ st0.textContent += "html{overflow-y:scroll}";   // p98: the scrollbar's space is
              other. The board now counts the same people the ledger does. The PICKER still sees everyone:
              somebody has to be pickable for their first match. */
           if(CID>0){
-            _memo(PLAT+"/rest/v1/plat_matches?club_id=eq."+CID+"&discipline=eq.padel&select=t1p1,t1p2,t2p1,t2p2",{headers:hdrs()})
+            _memoAll(PLAT+"/rest/v1/plat_matches?club_id=eq."+CID+"&discipline=eq.padel&select=t1p1,t1p2,t2p1,t2p2",{headers:hdrs()})
               .then(function(r){ return r.json(); })
               .then(function(ms){
                 var set={}; (Array.isArray(ms)?ms:[]).forEach(function(m){
@@ -1143,7 +1148,7 @@ st0.textContent += "html{overflow-y:scroll}";   // p98: the scrollbar's space is
             return _fetch(PLAT+"/rest/v1/plat_padel_v_individuals?club_id=in.("+scope.join(",")+")&select=full_name",{headers:hdrs()}).then(function(r){return r.json();}).then(function(rows){
               var set={}; (Array.isArray(rows)?rows:[]).forEach(function(r){ if(r.full_name) set[String(r.full_name)]=1; });
               if(Object.keys(set).length) { W.PLAT.natNames=set; return; }
-              return _fetch(PLAT+"/rest/v1/plat_matches?club_id=in.("+scope.join(",")+")&discipline=eq.padel&select=t1p1,t1p2,t2p1,t2p2",{headers:hdrs()}).then(function(r2){return r2.json();}).then(function(ms){
+              return _memoAll(PLAT+"/rest/v1/plat_matches?club_id=in.("+scope.join(",")+")&discipline=eq.padel&select=t1p1,t1p2,t2p1,t2p2",{headers:hdrs()}).then(function(r2){return r2.json();}).then(function(ms){
                 var s2={}; (Array.isArray(ms)?ms:[]).forEach(function(m){ [m.t1p1,m.t1p2,m.t2p1,m.t2p2].forEach(function(v){ if(!v) return;
                   String(v).split(" & ").forEach(function(x){ x=x.trim(); if(x) s2[x]=1; }); }); });
                 W.PLAT.natNames=Object.keys(s2).length?s2:{};   // {} still filters — an empty club shows nobody, which is true
@@ -3750,7 +3755,7 @@ const CLUB_NAME = _club.name;  // shown in the logo as "OPR · <name>"
     link.setAttribute('href', href);
   }catch(e){ /* install stays on the static manifest — no functional impact */ }
 })();
-const OPR_VERSION = "OPR-DOUBLES v2026.09.03-56 · NAT fork n373 (no voice) (of PLAT p117)";  // MANUAL PAIR CREATION REMOVED FROM ADMIN: Create a pair, Bulk create pairs and Re-derive all pairs are gone (they only made match-less ghost pairs, and Re-derive rewrote every stored initial club-wide). Pairs are born automatically at match entry. Current pairs list untouched; the underlying JS is left in place unreferenced, so no other code path changes. Includes v47 (set-score fix + double-tap guard) and all prior.
+const OPR_VERSION = "OPR-DOUBLES v2026.09.03-56 · NAT fork n374 (no voice) (of PLAT p117)";  // MANUAL PAIR CREATION REMOVED FROM ADMIN: Create a pair, Bulk create pairs and Re-derive all pairs are gone (they only made match-less ghost pairs, and Re-derive rewrote every stored initial club-wide). Pairs are born automatically at match entry. Current pairs list untouched; the underlying JS is left in place unreferenced, so no other code path changes. Includes v47 (set-score fix + double-tap guard) and all prior.
 // Explanation shown above the individual ladder. Open on load so it's read; collapsible
 // (state kept for the session) and scrolls away. Mechanics only — no outcome framing, so
 // members aren't nudged away from playing stronger opponents. Every clause maps to a real
@@ -4044,7 +4049,7 @@ async function loadLadder(type, title) {
       if(type==='allsorts'){
         // ALL SORTS is its own CATEGORY: pairs that have actually played an All Sorts
         // match (match_type = 'All Sorts'). Any pair can play it regardless of M/L/X.
-        const asMatches = await sbGet(`matches?select=t1p1,t2p1&match_type=eq.All%20Sorts&club_id=eq.${CLUB_ID}`) || [];
+        const asMatches = await (window.__nhSbAll||sbGet)(`matches?select=t1p1,t2p1&match_type=eq.All%20Sorts&club_id=eq.${CLUB_ID}`) || [];
         const names = new Set();
         asMatches.forEach(m=>{ if(m.t1p1) names.add(m.t1p1); if(m.t2p1) names.add(m.t2p1); });
         if(names.size){
@@ -4176,7 +4181,7 @@ async function showPartnerships(indivId){
     const [teams, pr, myMatches] = await Promise.all([
       sbGet(`players?select=id,name,gender,initial_rating,member_a_id,member_b_id&club_id=eq.${CLUB_ID}&or=(member_a_id.eq.${indivId},member_b_id.eq.${indivId})`).then(r=>r||[]),
       sbGet(`player_results?select=name,current_rating,initial_rating&club_id=eq.${CLUB_ID}`).then(r=>r||[]),
-      sbGet(`matches?select=t1p1,t2p1,t1_sets,t2_sets,t1_games,t2_games,rating_delta&club_id=eq.${CLUB_ID}`).then(r=>r||[]),
+      (window.__nhSbAll||sbGet)(`matches?select=t1p1,t2p1,t1_sets,t2_sets,t1_games,t2_games,rating_delta&club_id=eq.${CLUB_ID}`).then(r=>r||[]),
       OPR.load()
     ]);
     // NEW PLAYER (no partnerships yet): do NOT early-return — still render the banner and the
@@ -6415,7 +6420,7 @@ async function loadClubStats(){
   try{
     const pl=await sbGet(`players?select=member_a_id&club_id=eq.${CLUB_ID}`)||[];
     const pairs=(pl||[]).filter(p=>p.member_a_id!=null);
-    const matches=await sbGet(`matches?select=id&club_id=eq.${CLUB_ID}`)||[];
+    const matches=await (window.__nhSbAll||sbGet)(`matches?select=id&club_id=eq.${CLUB_ID}`)||[];
     const nm=(window.CLUB_NAME_LIVE||CLUB_NAME);
     box.innerHTML =
       '<div class="club-stat"><span class="lbl">Club</span><span class="val">'+nm+'</span></div>'
@@ -9469,7 +9474,15 @@ async function clRemove(id, label){
     if(window.scrollY > 300) b.classList.add('show'); else b.classList.remove('show');
   });
 </script>
-<script>
+<script>/* n374: every page of a read (the database stops at 1,000 rows) — squash q209's __nsqPgAll */
+window.__nhPgAll=function(url){ var u=String(url).replace(/&limit=\d+/,"").replace(/\?limit=\d+&?/,"?");
+  if(!/[?&]order=/.test(u)) u+=(u.indexOf("?")<0?"?":"&")+"order=id.asc";
+  var out=[]; var step=function(from){ return fetch(u+"&limit=1000&offset="+from).then(function(r){ return r.json(); }).then(function(rows){
+    rows=Array.isArray(rows)?rows:[]; out=out.concat(rows); return (rows.length===1000 && from<100000)?step(from+1000):out; }); };
+  return step(0); };
+window.__nhSbAll=async function(path){ var p=String(path); if(!/[?&]order=/.test(p)) p+="&order=id.asc"; var out=[], off=0;
+  for(;;){ var rows=await sbGet(p+"&limit=1000&offset="+off); rows=Array.isArray(rows)?rows:[]; out=out.concat(rows); if(rows.length<1000 || off>100000) return out; off+=1000; } };
+
 /* NAT GLUE — nat-padel.html n1: the PLAT p117 glue with the CLUB RUNG (national door, club door, club ledger,
    National grid toggle, chips that climb the ladder, General Admin on nat_admin). Every change is marked NAT. */
 /* PLAT GLUE — club strip under the hero, club dropdown at ✚ Enter, hero name from the platform. */
@@ -9835,7 +9848,7 @@ async function clRemove(id, label){
     var B="https://djmbnvikrdgnomjhtkgf.supabase.co/rest/v1/";
     return Promise.all([
       fetch(B+"plat_padel_v_individuals?club_id=in.("+boards.join(",")+")&select=full_name,seed_rating").then(function(r){ return r.json(); }),
-      fetch(B+"plat_matches?club_id=in.("+boards.join(",")+")&discipline=eq.padel&select=t1p1,t1p2,t2p1,t2p2").then(function(r){ return r.json(); })
+      W.__nhPgAll(B+"plat_matches?club_id=in.("+boards.join(",")+")&discipline=eq.padel&select=t1p1,t1p2,t2p1,t2p2")
     ]).then(function(res){
       var members=Array.isArray(res[0])?res[0]:[], ms=Array.isArray(res[1])?res[1]:[];
       /* how many are registered on the club's OTHER boards and have not played — said as a count, not a list */
@@ -9845,7 +9858,7 @@ async function clRemove(id, label){
           var B2="https://djmbnvikrdgnomjhtkgf.supabase.co/rest/v1/";
           Promise.all([
             fetch(B2+"plat_padel_v_individuals?club_id=in.("+all.join(",")+")&select=full_name").then(function(r){ return r.json(); }),
-            fetch(B2+"plat_matches?club_id=in.("+all.concat([W.PLAT.cid]).join(",")+")&discipline=eq.padel&select=t1p1,t1p2,t2p1,t2p2").then(function(r){ return r.json(); })
+            W.__nhPgAll(B2+"plat_matches?club_id=in.("+all.concat([W.PLAT.cid]).join(",")+")&discipline=eq.padel&select=t1p1,t1p2,t2p1,t2p2")
           ]).then(function(o){
             var pl={}; (Array.isArray(o[1])?o[1]:[]).forEach(function(m){ [m.t1p1,m.t1p2,m.t2p1,m.t2p2].forEach(function(v){ if(!v) return;
               String(v).split(" & ").forEach(function(x){ x=x.trim(); if(x) pl[x]=1; }); }); });
@@ -12644,7 +12657,7 @@ W.mePair=function(name,col){
     Promise.all([
       fetch(B+"plat_clubs?pool_id=eq."+P+"&select=id,name,colour,options&order=name.asc").then(J).catch(function(){ return []; }),
       fetch(B+"nat_club_parent?select=group_id,club_id").then(J).catch(function(){ return []; }),
-      fetch(B+"plat_matches?pool_id=eq."+P+"&discipline=eq.padel&select=club_id,match_date&limit=20000").then(J).catch(function(){ return []; }),
+      W.__nhPgAll(B+"plat_matches?pool_id=eq."+P+"&discipline=eq.padel&select=club_id,match_date").catch(function(){ return []; }),
       /* n117: this register's memberships only, with the person, so a region counts each member once */
       fetch(B+"plat_clubs?pool_id=eq."+P+"&select=id").then(J).catch(function(){ return []; }).then(function(cs){
         var ids=(Array.isArray(cs)?cs:[]).map(function(c){ return c.id; }); if(!ids.length) return [];
@@ -12875,9 +12888,9 @@ W.mePair=function(name,col){
       var inList="club_id=in.("+boards.join(",")+")";
       /* n203: every match of these boards, oldest first — the bands have to be judged on the ratings as they
          stood ON THE DAY, which means replaying the season, exactly as the tests did. */
-      return fetch(B+"plat_matches?"+inList+"&discipline=eq.padel"
+      return W.__nhPgAll(B+"plat_matches?"+inList+"&discipline=eq.padel"
         +"&select=id,club_id,match_date,t1p1,t1p2,t2p1,t2p2,t1_sets,t2_sets,t1_games,t2_games,display_t1,display_t2"
-        +"&order=match_date.asc,id.asc&limit=4000").then(J).catch(function(){ return null; });
+        +"&order=match_date.asc,id.asc").catch(function(){ return null; });
     }catch(e){ return Promise.resolve(null); }
   }
   function meLiftBlock(me, all, col){
@@ -13213,8 +13226,8 @@ W.mePair=function(name,col){
       ? null
       : "plat_padel_v_individuals?club_id=in.("+sc.boards.join(",")+")&select=id,club_id,full_name,gender,current_rating,seed_rating,pool_seed&order=full_name.asc";
     var mq = sc.wide
-      ? "plat_matches?pool_id=eq."+W.PLAT.pool+"&discipline=eq.padel&select=club_id,t1p1,t1p2,t2p1,t2p2&limit=6000"
-      : "plat_matches?club_id=in.("+sc.boards.join(",")+")&discipline=eq.padel&select=club_id,t1p1,t1p2,t2p1,t2p2&limit=6000";
+      ? "plat_matches?pool_id=eq."+W.PLAT.pool+"&discipline=eq.padel&select=club_id,t1p1,t1p2,t2p1,t2p2"
+      : "plat_matches?club_id=in.("+sc.boards.join(",")+")&discipline=eq.padel&select=club_id,t1p1,t1p2,t2p1,t2p2";
     var peopleP = q ? fetch(B+q).then(J).catch(function(){ return []; })
       : fetch(B+"plat_clubs?pool_id=eq."+W.PLAT.pool+"&select=id").then(J).catch(function(){ return []; }).then(function(cs){
           var ids=(Array.isArray(cs)?cs:[]).map(function(c){ return c.id; });
@@ -13222,7 +13235,7 @@ W.mePair=function(name,col){
           return fetch(B+"plat_padel_v_individuals?club_id=in.("+ids.join(",")+")&select=id,club_id,full_name,gender,current_rating,seed_rating,pool_seed&order=full_name.asc").then(J).catch(function(){ return []; });
         });
     Promise.all([peopleP,
-                 fetch(B+mq).then(J).catch(function(){ return []; }),
+                 W.__nhPgAll(B+mq).catch(function(){ return []; }),
                  fetch(B+"plat_clubs?pool_id=eq."+W.PLAT.pool+"&select=id,name,colour").then(J).catch(function(){ return []; })]).then(function(rr){
       var rows=Array.isArray(rr[0])?rr[0]:[], ms=Array.isArray(rr[1])?rr[1]:[], clubs=Array.isArray(rr[2])?rr[2]:[];
       var CL={}; clubs.forEach(function(c){ CL[Number(c.id)]=c; });
@@ -14793,7 +14806,7 @@ W.nhOpenPair=function(name){
     function deltas(){
       if(DELTAS) return Promise.resolve(DELTAS);
       return Promise.all([
-        fetch(SBR("plat_matches?pool_id=eq."+W.PLAT.pool+"&discipline=eq.padel&select=club_id,t1p1,t2p1,rating_delta")).then(function(r){return r.json();}),
+        W.__nhPgAll(SBR("plat_matches?pool_id=eq."+W.PLAT.pool+"&discipline=eq.padel&select=club_id,t1p1,t2p1,rating_delta")),
         fetch(SBR("plat_players?pool_id=eq."+W.PLAT.pool+"&discipline=eq.padel&select=name,club_id,member_a_id,member_b_id")).then(function(r){return r.json();}),
         fetch(SBR("plat_individuals?select=id,full_name")).then(function(r){return r.json();})
       ]).then(function(res){
