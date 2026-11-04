@@ -3750,7 +3750,7 @@ const CLUB_NAME = _club.name;  // shown in the logo as "OPR · <name>"
     link.setAttribute('href', href);
   }catch(e){ /* install stays on the static manifest — no functional impact */ }
 })();
-const OPR_VERSION = "OPR-DOUBLES v2026.09.03-56 · NAT4 booking test b18 (nat3 n373) (no voice) (of PLAT p117)";  // MANUAL PAIR CREATION REMOVED FROM ADMIN: Create a pair, Bulk create pairs and Re-derive all pairs are gone (they only made match-less ghost pairs, and Re-derive rewrote every stored initial club-wide). Pairs are born automatically at match entry. Current pairs list untouched; the underlying JS is left in place unreferenced, so no other code path changes. Includes v47 (set-score fix + double-tap guard) and all prior.
+const OPR_VERSION = "OPR-DOUBLES v2026.09.03-56 · NAT4 booking test b19 (nat3 n373) (no voice) (of PLAT p117)";  // MANUAL PAIR CREATION REMOVED FROM ADMIN: Create a pair, Bulk create pairs and Re-derive all pairs are gone (they only made match-less ghost pairs, and Re-derive rewrote every stored initial club-wide). Pairs are born automatically at match entry. Current pairs list untouched; the underlying JS is left in place unreferenced, so no other code path changes. Includes v47 (set-score fix + double-tap guard) and all prior.
 // Explanation shown above the individual ladder. Open on load so it's read; collapsible
 // (state kept for the session) and scrolls away. Mechanics only — no outcome framing, so
 // members aren't nudged away from playing stronger opponents. Every clause maps to a real
@@ -13914,7 +13914,7 @@ W.nhOpenPair=function(name){
     setInterval(leapBrk, 900);
     W.__nhTsBuild=build;   /* for the test */
   })();
-  window.__nhBkAnon="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRqbWJudmlrcmRnbm9tamh0a2dmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODUzOTE0MzEsImV4cCI6MjEwMDk2NzQzMX0.vR8xlVFjV6jXW-pAclGjM74HqmWSKVpsacFjM-dCIJI"; window.__nhBkBuild="nat4 b18";
+  window.__nhBkAnon="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRqbWJudmlrcmRnbm9tamh0a2dmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODUzOTE0MzEsImV4cCI6MjEwMDk2NzQzMX0.vR8xlVFjV6jXW-pAclGjM74HqmWSKVpsacFjM-dCIJI"; window.__nhBkBuild="nat4 b19";
   /* ===================================================================================================
      COURT BOOKING (nat4 test copy, Manzini pilot, Andre 26 Oct). Started ONLY from the player's own My page: its
      "Court card" button becomes "Book a court", which asks "Where do you want to play?" — one tile per venue; a venue
@@ -14905,6 +14905,10 @@ W.nhOpenPair=function(name){
        until the draw shows it — tapping it again says so instead of offering to score it twice (q188, only after a real
        save: q244). In padel this is said on the card, never in a pop-up box.
      • A PLAYED match or a bye: the organiser's editor, naming the pair as it played that round (q234).
+     b19 (Andre, 4 Nov): the button says "Use the umpire" (padel's marker is the Live Umpire), and the division's
+     "How a match is played" (nat4_rules.js = squash q179/q180/q183) is read BEFORE the card shows: its line is on the card
+     in bold, the umpire opens with those sets / games / sets format, and the score sheet's "Sets played" is set for
+     "1 set" and "All 3 sets" (best of 3 stays the players' choice — it is how many were actually played).
      =================================================================================================== */
   (function(){
     var W=window;
@@ -14925,6 +14929,9 @@ W.nhOpenPair=function(name){
       return restGet("plat_padel_tournaments?select=club_id&name=eq."+ENC(tour)+"&club_id=in.("+ids.join(",")+")&order=id.desc&limit=1")
         .then(function(r){ var b=r&&r[0]&&Number(r[0].club_id); return b || Number(W.PLAT.tourClub||0) || cid(); });
     };
+    W.__nhTourBoard=tourBoard;   /* b19: the rules are kept on the tournament's own board too */
+    var rulesOf=function(div){ return (typeof W.__nhRules==="function")?W.__nhRules(div):{sets:3, all_sets:false, game_fmt:"long", set_fmt:"tb"}; };
+    var lineOf=function(div){ return (typeof W.__nhRulesLine==="function")?W.__nhRulesLine(div):"best of 3 sets · long games · tie-breaker sets"; };
     /* q234: a seed's pair as it plays a given round — the substitute from sub_from_round on */
     W.__nhEntriesBySeed=W.__nhEntriesBySeed||{};
     var loadEntries=function(board, tour, div){
@@ -14979,8 +14986,8 @@ W.nhOpenPair=function(name){
         +'<div style="font-size:17px;font-weight:800;color:#241d33;margin:7px 0 2px;line-height:1.35">'+esc(d.a)+'</div>'
         +'<div style="font-size:13px;color:#8a8196;margin:0 0 2px">v</div>'
         +'<div style="font-size:17px;font-weight:800;color:#241d33;margin:0 0 10px;line-height:1.35">'+esc(d.b)+'</div>'
-        +'<div style="font-size:13px;color:#8a8196;margin-bottom:14px">'+esc(d.label)+' · '+esc(d.tour)+'</div>'
-        +'<button class="btn" onclick="window.__nhFxMarker()" style="width:100%;margin:0 0 9px;padding:14px;font-size:15px;font-weight:800;background:linear-gradient(180deg,#2c2440,#16111f);color:#d4f425;border:1.5px solid rgba(212,244,37,.35);border-radius:12px;cursor:pointer;font-family:inherit">Use the marker</button>'
+        +'<div style="font-size:13px;color:#8a8196;margin-bottom:14px">'+esc(d.label)+' · '+esc(d.tour)+'<br><b style="color:'+ink()+'">'+esc(lineOf(d.div))+'</b></div>'
+        +'<button class="btn" onclick="window.__nhFxMarker()" style="width:100%;margin:0 0 9px;padding:14px;font-size:15px;font-weight:800;background:linear-gradient(180deg,#2c2440,#16111f);color:#d4f425;border:1.5px solid rgba(212,244,37,.35);border-radius:12px;cursor:pointer;font-family:inherit">Use the umpire</button>'
         +'<button class="btn" onclick="window.__nhFxManual()" style="width:100%;margin:0 0 9px;padding:14px;font-size:15px;font-weight:800;background:'+ink()+';color:#fff;border:none;border-radius:12px;cursor:pointer;font-family:inherit">Enter the score myself</button>'
         +'<div style="display:flex;gap:8px"><button onclick="window.__nhFxClose()" style="'+btnSmall+'">Back</button>'
         +'<button onclick="window.__nhFxOrganiser()" style="'+btnSmall+'">Organiser entry</button></div>');
@@ -15033,7 +15040,11 @@ W.nhOpenPair=function(name){
         if(dt && !dt.value) dt.value=new Date().toISOString().slice(0,10);
         /* the division: the event's own change re-reads the allowed types, so it is set once they are there */
         var k=0, tt=setInterval(function(){ var t=document.getElementById("matchType");
-          if(t && Array.prototype.some.call(t.options,function(o){ return o.value===d.div; })){ t.value=d.div; clearInterval(tt); if(then) setTimeout(then,300); return; }
+          if(t && Array.prototype.some.call(t.options,function(o){ return o.value===d.div; })){ t.value=d.div; clearInterval(tt);
+            /* b19: "1 set" and "All 3 sets" say how many sets are played; best of 3 is left to the players */
+            var r=rulesOf(d.div), sp=document.getElementById("setsPlayed");
+            if(sp){ if(r.sets===1) sp.value="1"; else if(r.all_sets) sp.value="3"; }
+            if(then) setTimeout(then,300); return; }
           if(++k>40){ clearInterval(tt); if(then) then(); } },120);
       })();
     };
@@ -15053,9 +15064,14 @@ W.nhOpenPair=function(name){
       W.__nhFxCand={id:d.id, tour:d.tour, div:d.div, at:Date.now()};
       /* padel's marker is opened over the score sheet (as from the sheet itself), so its finish lands on page 3 there */
       sheetFor(d, function(){ try{
-        entryData={ date:new Date().toISOString().slice(0,10), type:d.div, sets:3, event:d.tour, format:(A[1]?"doubles":"singles"),
+        var r=rulesOf(d.div);
+        entryData={ date:new Date().toISOString().slice(0,10), type:d.div, sets:(r.sets===1?1:3), event:d.tour, format:(A[1]?"doubles":"singles"),
                     t1p1:A[0], t1p2:A[1]||null, t2p1:B[0], t2p2:B[1]||null };
         Promise.resolve(mkOpenFromEntry()).then(function(){
+          /* b19 (squash q183): the umpire plays the division's rules — nothing is set at the court */
+          try{ mkSetGameFmt(r.game_fmt==="star"?"star":"long"); mkSetSetFmt(r.set_fmt==="long"?"long":"tb"); }catch(e){}
+          W.__nhAllSets=(r.sets!==1 && !!r.all_sets);
+          var sum=document.getElementById("mkFromEntrySummary"); if(sum) sum.innerHTML+='<br><b>'+esc(lineOf(d.div))+'</b>';
           MK.event=d.tour; MK.division=d.div; MK.cat=d.div; MK.handicap=false; MK.fixtureId=null;
           MK.players.t1p1=A[0]; MK.players.t1p2=A[1]||null; MK.players.t2p1=B[0]; MK.players.t2p2=B[1]||null;
           MK.matchFormat=A[1]?"doubles":"singles";
@@ -15132,6 +15148,9 @@ W.nhOpenPair=function(name){
           if(PEND.has(fixtureId)){ pendOpen(); return; }
           var div=ctx.division||f.division||"", names=W._tmSeedNames||{}, board=0;
           tourBoard(ctx.tournament).then(function(b){ board=b; return loadEntries(b, ctx.tournament, div); }).then(function(){
+            /* b19 (squash q180): the division's rules are in hand BEFORE the card shows */
+            return (typeof W.__nhRulesLoad==="function") ? Promise.race([W.__nhRulesLoad(false, board, ctx.tournament), new Promise(function(ok){ setTimeout(ok,2500); })]) : null;
+          }).then(function(){
             fxOpen({ id:fixtureId, club:board, tour:ctx.tournament, div:div, round:Number(f.round)||null,
                      label:(typeof tmDivLabel==="function"?tmDivLabel(div):div),
                      a:W.__nhPairAt(f.seed_a, f.round)||names[f.seed_a]||("Seed "+f.seed_a),
@@ -15152,6 +15171,271 @@ W.nhOpenPair=function(name){
       /* q188: once the draw shows the result, the match is no longer "on its way" */
       var m=PEND.all(); Object.keys(m).forEach(function(id){ var f=(W._tmFixturesById||{})[id]; if(f && f.sets_a!=null) PEND.drop(id); });
     }catch(e){} }, 400);
+  })();
+  /* ===================================================================================================================
+     NAT4 b19 · HOW A MATCH IS PLAYED — PER DIVISION. A port of Nat-Squash sq_rules.js (q179/q182/q183/q184/q199/q235/q250)
+     in padel words (Andre, 4 Nov). The rules are set ONCE, where the division's draw is made, and never again at the court:
+       sets   1 set · Best of 3 · All 3 sets   ("All 3 sets" = the match goes on after 2–0)
+       games  Long games · Star point          (the umpire's own 'long' / 'star')
+       sets   Tie-breaker sets · Long sets     (the umpire's own 'tb' / 'long')
+     A division with no rules saved plays the default: best of 3 · long games · tie-breaker sets. Editable after the draw —
+     matches already played keep the score they were played under. Kept in plat_padel_section_rules on the tournament's
+     own board (squash q200), saved through the tournament function's admin-gated rules_save.
+     Where: the generate page (each division, before its Generate button — q235), the draw (read-only, "Change" — q182/
+     q183/q184), the "You are scoring" card (nat4_fixturetap.js), and Create a tournament (Andre: "it is also in the
+     selection when you create the tournament"). Padel: no pop-ups — a code that is needed is typed in the panel.
+     ================================================================================================================== */
+  (function(){
+    var W=window;
+    var esc=function(s){ return String(s==null?"":s).replace(/[&<>"']/g,function(c){ return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]; }); };
+    var ENC=encodeURIComponent;
+    var cid=function(){ try{ return Number(W.PLAT&&W.PLAT.cid)||Number(CLUB_ID)||0; }catch(e){ return 0; } };
+    var ink=function(){ try{ return (getComputedStyle(document.documentElement).getPropertyValue("--nhc")||"").trim()||"#6c3483"; }catch(e){ return "#6c3483"; } };
+    /* the generate page's tournament while it is on screen, else the draw's */
+    var tourNow=function(){ try{ var et=document.getElementById("enterTournamentScreen");
+      if(et && et.classList.contains("active") && W._etTournament) return W._etTournament;
+      return (W._tmCtx&&W._tmCtx.tournament)||W._etTournament||""; }catch(e){ return ""; } };
+    var RB="https://djmbnvikrdgnomjhtkgf.supabase.co/rest/v1/";
+    var restGet=function(q){ return fetch(RB+q).then(function(r){ return r.ok?r.json():[]; }).catch(function(){ return []; }); };
+    var act=function(body){ return fetch(SB_URL+"/functions/v1/tournament",{method:"POST",headers:{apikey:SB_ANON,Authorization:"Bearer "+SB_ANON,"Content-Type":"application/json"},body:JSON.stringify(body)})
+      .then(function(r){ return r.json().catch(function(){ return {ok:false,error:"No reply ("+r.status+")"}; }); }).catch(function(){ return {ok:false,error:"Connection problem."}; }); };
+
+    var DEF={sets:3, all_sets:false, game_fmt:"long", set_fmt:"tb"};
+    var MAP={}, AT=0, BUSY=null, FOR="", BOARD={};
+    var norm=function(r){ return { sets:(Number(r.sets)===1?1:3), all_sets:(Number(r.sets)!==1 && !!r.all_sets),
+                                   game_fmt:(r.game_fmt==="star"?"star":"long"), set_fmt:(r.set_fmt==="long"?"long":"tb") }; };
+
+    /* ---- the rules for a division, as the umpire and the score sheet read them ---- */
+    W.__nhRules=function(div){ var r=MAP[String(div||"")]; return norm(r||DEF); };
+    var lineFor=function(r){ return (r.sets===1?"1 set":(r.all_sets?"all 3 sets":"best of 3 sets"))
+      +" · "+(r.game_fmt==="star"?"star point":"long games")+" · "+(r.set_fmt==="long"?"long sets":"tie-breaker sets"); };
+    W.__nhRulesLine=function(div){ return lineFor(W.__nhRules(div)); };
+    W.__nhRulesReady=function(){ return !!AT; };
+
+    /* the tournament's own board (squash q200) — from the draw tap's lookup, kept per tournament */
+    var boardOf=function(t){
+      if(BOARD[t]) return Promise.resolve(BOARD[t]);
+      var f=W.__nhTourBoard; if(typeof f!=="function") return Promise.resolve(cid());
+      return f(t).then(function(b){ BOARD[t]=b||cid(); return BOARD[t]; }).catch(function(){ return cid(); });
+    };
+    var load=function(force, board, tour){
+      var t=tour||tourNow(); if(!t) return Promise.resolve(MAP);
+      return (board?Promise.resolve(board):boardOf(t)).then(function(c){
+        if(board) BOARD[t]=board;
+        if(!c) return MAP;
+        if(!force && FOR===c+"|"+t && AT && Date.now()-AT<30000) return MAP;
+        if(BUSY && BUSY.k===c+"|"+t) return BUSY.p;
+        var p=restGet("plat_padel_section_rules?club_id=eq."+c+"&tournament=eq."+ENC(t)+"&select=division,sets,all_sets,game_fmt,set_fmt")
+          .then(function(rows){ var m={}; (rows||[]).forEach(function(r){ m[String(r.division)]=r; });
+            MAP=m; AT=Date.now(); FOR=c+"|"+t; BUSY=null; return MAP; })
+          .catch(function(){ BUSY=null; return MAP; });
+        BUSY={k:c+"|"+t, p:p}; return p;
+      });
+    };
+    W.__nhRulesLoad=load;
+
+    /* ---- the panel ---- */
+    var PICK={};                                   /* what is on screen but not yet saved, per division */
+    var cur=function(d){ return PICK[d]||W.__nhRules(d); };
+    var pill=function(d,key,val,label,on){
+      var c=ink();
+      return '<button type="button" class="nhRuleP" data-sec="'+esc(d)+'" data-k="'+key+'" data-v="'+esc(String(val))+'" '
+        +'style="border:1.5px solid '+(on?c:'#ddd5e6')+';background:'+(on?c:'#fff')+';color:'+(on?'#fff':'#4b4060')+';'
+        +'border-radius:18px;padding:6px 12px;font-size:12.5px;font-weight:'+(on?'800':'600')+';cursor:pointer;font-family:inherit">'+esc(label)+'</button>';
+    };
+    var pills=function(d,r){
+      return '<div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:6px">'
+          + pill(d,"s","1","1 set", r.sets===1)
+          + pill(d,"s","3b","Best of 3", r.sets===3&&!r.all_sets)
+          + pill(d,"s","3a","All 3 sets", r.sets===3&&r.all_sets)
+        +'</div>'
+        +'<div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:6px">'
+          + pill(d,"g","long","Long games", r.game_fmt==="long")
+          + pill(d,"g","star","Star point", r.game_fmt==="star")
+        +'</div>'
+        +'<div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:6px">'
+          + pill(d,"t","tb","Tie-breaker sets", r.set_fmt==="tb")
+          + pill(d,"t","long","Long sets", r.set_fmt==="long")
+        +'</div>';
+    };
+    /* the code: the generate page's Admin PIN box, or this visit's admin entries; else typed in the panel */
+    var knownPin=function(){
+      var p=""; var pe=document.getElementById("etPin"); p=(pe&&pe.value)||"";
+      if(!p){ try{ p=sessionStorage.getItem("nhAdminEntries")||""; }catch(e){} }
+      return String(p||"").trim();
+    };
+    /* q183 (Andre): a player must not be able to change a division's rules. The panel READS for everyone — it is what
+       the court needs to know — and only opens for changing on "Change", which still needs the admin code to save. */
+    var OPEN={};
+    W.__nhRulesEdit=function(d,on){ OPEN[d]=!!on; if(!on) delete PICK[d]; repaint(d); };
+    var q=function(d){ return String(d).replace(/\\/g,"\\\\").replace(/'/g,"\\'"); };
+    var html=function(d, label){
+      var r=cur(d), open=!!OPEN[d], c=ink();
+      var lab=label || (typeof tmDivLabel==="function"?tmDivLabel(d):d);
+      if(!open){
+        return '<div class="nhRules" data-sec="'+esc(d)+'" data-tour="'+esc(tourNow())+'" style="margin:10px 0 2px;padding:9px 11px;border:1px solid #e6e3ec;border-radius:10px;background:#faf8fc;display:flex;align-items:center;gap:10px;flex-wrap:wrap">'
+          +'<span style="font-size:12px;font-weight:800;color:'+c+'">How a match is played<span style="display:block;font-weight:700;color:#8a8196;font-size:11px;margin-top:1px">'+esc(lab)+'</span></span>'
+          +'<b style="font-size:13px;color:#241d33;flex:1;min-width:140px">'+esc(W.__nhRulesLine(d))+'</b>'
+          +'<button type="button" onclick="window.__nhRulesEdit(\''+q(d)+'\',true)" '
+          +'style="border:1.5px solid #ddd5e6;background:#fff;color:#4b4060;border-radius:16px;padding:5px 12px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit">Change</button>'
+          +'<span class="nhRuleMsg" style="font-size:11.5px;color:#8a8196;width:100%"></span></div>';
+      }
+      return '<div class="nhRules" data-sec="'+esc(d)+'" data-tour="'+esc(tourNow())+'" style="margin:10px 0 2px;padding:10px 11px;border:1px solid #e6e3ec;border-radius:10px;background:#faf8fc">'
+        +'<div style="display:flex;align-items:center;gap:8px;margin-bottom:7px"><span style="font-size:12px;font-weight:800;color:'+c+';flex:1">How is a match played?</span>'
+        +'<button type="button" onclick="window.__nhRulesEdit(\''+q(d)+'\',false)" style="border:none;background:none;color:#8a8196;font-size:12px;cursor:pointer;font-family:inherit">Close</button></div>'
+        + pills(d,r)
+        +(knownPin()?'':'<input class="nhRulePin" type="password" inputmode="numeric" autocomplete="off" placeholder="Admin code" style="width:100%;box-sizing:border-box;padding:9px 10px;font-size:15px;border:1.5px solid #ddd5e6;border-radius:9px;margin:2px 0 7px;font-family:inherit">')
+        +'<div style="display:flex;gap:8px;align-items:center">'
+          +'<button type="button" class="ac-btn nhRuleSave" data-sec="'+esc(d)+'" style="flex:1;padding:8px 10px;font-size:12.5px">Save these rules</button>'
+          +'<span class="nhRuleMsg" style="font-size:11.5px;color:#8a8196"></span></div>'
+        +'<div style="font-size:11px;color:#8a8196;margin-top:6px">The umpire and the score sheet use these — nothing is set at the court. '
+        +'Changing them later leaves matches already played as they were.</div></div>';
+    };
+    var sel=function(d){ return '.nhRules[data-sec="'+String(d).replace(/\\/g,"\\\\").replace(/"/g,'\\"')+'"]'; };
+    var repaint=function(d){
+      Array.prototype.forEach.call(document.querySelectorAll(sel(d)),function(box){
+        var msg=box.querySelector(".nhRuleMsg"), keep=msg?msg.textContent:"", pin=box.querySelector(".nhRulePin"), pv=pin?pin.value:"";
+        var w=document.createElement("div"); w.innerHTML=html(d); var nb=w.firstChild; nb.style.margin=box.style.margin;
+        box.parentNode.replaceChild(nb, box);
+        if(keep){ var m2=nb.querySelector(".nhRuleMsg"); if(m2) m2.textContent=keep; }
+        if(pv){ var p2=nb.querySelector(".nhRulePin"); if(p2) p2.value=pv; }
+      });
+    };
+    W.__nhRulesRepaint=repaint;
+
+    document.addEventListener("click", function(e){
+      var p=e.target && e.target.closest && e.target.closest(".nhRuleP");
+      if(p){ var d=p.getAttribute("data-sec"), k=p.getAttribute("data-k"), v=p.getAttribute("data-v"), r=Object.assign({}, cur(d));
+        if(k==="s"){ r.sets=(v==="1")?1:3; r.all_sets=(v==="3a"); }
+        else if(k==="g") r.game_fmt=(v==="star")?"star":"long";
+        else if(k==="t") r.set_fmt=(v==="long")?"long":"tb";
+        PICK[d]=r;
+        if(d===NEW){ paintNew(); } else repaint(d);
+        e.preventDefault(); return; }
+      var s=e.target && e.target.closest && e.target.closest(".nhRuleSave");
+      if(!s) return;
+      e.preventDefault();
+      var d=s.getAttribute("data-sec"), box=s.closest(".nhRules"), msg=box?box.querySelector(".nhRuleMsg"):null, r=cur(d), t=tourNow();
+      var pb=box?box.querySelector(".nhRulePin"):null, pin=String((pb&&pb.value)||knownPin()||"").trim();
+      if(!pin){ if(msg) msg.textContent="The admin code is needed."; if(pb) pb.focus(); return; }
+      if(msg) msg.textContent="Saving…";
+      boardOf(t).then(function(b){
+        return act({action:"rules_save", club_id:b, admin_pin:pin, tournament:t, division:d,
+                    sets:r.sets, all_sets:r.all_sets, game_fmt:r.game_fmt, set_fmt:r.set_fmt});
+      }).then(function(res){
+        if(!res || res.ok!==true){ var er=String((res&&res.error)||"Not saved.");
+          if(/Admin PIN required/i.test(er)) er="That code is not valid for this tournament's group.";
+          if(msg) msg.textContent=er; return; }
+        delete PICK[d]; OPEN[d]=false;
+        load(true).then(function(){ repaint(d);
+          Array.prototype.forEach.call(document.querySelectorAll(sel(d)+" .nhRuleMsg"),function(m2){ m2.textContent="Saved — "+W.__nhRulesLine(d); }); });
+      });
+    }, true);
+
+    /* the generate page: each division's block in "Generate draws", the panel BEFORE its Generate button (q235, q199) */
+    setInterval(function(){ try{
+      var body=document.getElementById("etBody"); if(!body || !W._etTournament) return;
+      var gen=null; Array.prototype.forEach.call(body.querySelectorAll(".card"),function(c){ var h=c.querySelector("h2"); if(h && /^Generate draws/.test(h.textContent||"")) gen=c; });
+      if(!gen) return;
+      var want=[];
+      Array.prototype.forEach.call(gen.children,function(blk){
+        if(blk.tagName!=="DIV") return; var head=blk.firstElementChild; if(!head) return;
+        var b=head.querySelector("b"); if(!b || head===b) return;
+        var d=(b.textContent||"").trim(); if(!d) return;
+        if(blk.querySelector(sel(d))) return;
+        want.push([blk,head,d]);
+      });
+      if(!want.length) return;
+      load().then(function(){ want.forEach(function(x){ var blk=x[0], head=x[1], d=x[2];
+        if(!document.body.contains(blk) || blk.querySelector(sel(d))) return;
+        var w=document.createElement("div"); w.innerHTML=html(d); var el=w.firstChild; el.style.margin="2px 0 10px";
+        head.parentNode.insertBefore(el, head.nextSibling);
+      }); });
+    }catch(e){} }, 700);
+
+    /* q182/q184: on the DRAW, for the division on screen, at the foot of the sheet — confirmation, openable by an admin */
+    setInterval(function(){ try{
+      var scr=document.getElementById("tournamentSheetScreen"); if(!scr || !scr.classList.contains("active")) return;
+      var box=document.getElementById("tournamentSheetContent"); if(!box) return;
+      var txt=box.innerText||"";
+      if(/Loading tournament/.test(txt) || txt.trim().length<60){ var old=box.querySelector(".nhRules"); if(old) old.remove(); return; }   /* q192 */
+      if(!box.querySelector(".tm-nav")){ var o2=box.querySelector(".nhRules"); if(o2) o2.remove(); return; }   /* q250: a stats / form table is not the draw */
+      var ctx=W._tmCtx||{}, d=ctx.division||""; if(!d || !ctx.tournament) return;
+      var have=box.querySelector(".nhRules");
+      if(have && have.dataset.sec===d && have.dataset.tour===ctx.tournament) return;
+      if(have) have.remove();
+      load().then(function(){
+        var b2=document.getElementById("tournamentSheetContent"); if(!b2) return;
+        var c2=(W._tmCtx||{}).division||""; if(c2!==d) return;
+        if(b2.querySelector(sel(d))) return;
+        var wrap=document.createElement("div"); wrap.innerHTML=html(d);
+        var el=wrap.firstChild; el.style.margin="14px 0 2px";
+        b2.appendChild(el);
+      });
+    }catch(e){} }, 800);
+
+    /* a tournament change clears what was loaded */
+    setInterval(function(){ try{ var t=tourNow(); if(FOR && t && FOR.split("|").slice(1).join("|")!==t){ MAP={}; AT=0; PICK={}; OPEN={}; FOR=""; } }catch(e){} }, 1500);
+
+    /* ---- Create a tournament (Control Room): the same choice, saved for every ticked division once it is created ---- */
+    var NEW="__nhNewTour__";
+    var paintNew=function(){ var h=document.getElementById("nhRulesNew"); if(!h) return;
+      h.innerHTML='<label style="font-size:12px;color:#9b80b3;font-weight:700;">How a match is played</label>'
+        +'<div class="nhRules" data-sec="'+NEW+'" style="margin:4px 0 8px">'+pills(NEW, PICK[NEW]||norm(DEF))+'</div>'; };
+    setInterval(function(){ try{
+      var fb=document.getElementById("atFormatBlock"); if(!fb || document.getElementById("nhRulesNew")) return;
+      var h=document.createElement("div"); h.id="nhRulesNew"; h.style.marginTop="6px"; fb.appendChild(h); paintNew();
+    }catch(e){} }, 900);
+    var wrapCreate=function(){
+      var f0=W.adminCreateTournament; if(typeof f0!=="function" || f0.__nhRules) return !!(f0&&f0.__nhRules);
+      var nf=async function(){
+        var cidv=Number((document.getElementById("adminClubSelect")||{}).value)||0;
+        var name=((document.getElementById("atName")||{}).value||"").trim();
+        var type=(document.getElementById("atType")||{}).value;
+        var ds=[]; try{ AT_DIV_DEFS.forEach(function(x){ var cb=document.getElementById("atDiv"+x[0]); if(cb && cb.checked) ds.push(x[1]); }); }catch(e){}
+        var r=PICK[NEW]||norm(DEF);
+        var res=await f0.apply(this, arguments);
+        var msg=document.getElementById("adminTourMsg");
+        if(type!=="internal" || !name || !ds.length || !msg || !/Created "/.test(msg.textContent||"")) return res;
+        var pin=""; try{ pin=String(ADMIN_PIN||""); }catch(e){}
+        var bad="";
+        for(var i=0;i<ds.length;i++){
+          var j=await act({action:"rules_save", club_id:cidv, admin_pin:pin, tournament:name, division:ds[i],
+                           sets:r.sets, all_sets:r.all_sets, game_fmt:r.game_fmt, set_fmt:r.set_fmt});
+          if(!j || j.ok!==true){ bad=String((j&&j.error)||"not saved"); break; }
+        }
+        msg.innerHTML+= bad
+          ? '<br><span style="color:#c0392b;">How a match is played was not saved ('+esc(bad)+'). Set it on the generate page, before Generate.</span>'
+          : '<br><span style="color:#1e8449;">How a match is played: '+esc(lineFor(r))+'.</span>';
+        delete PICK[NEW]; paintNew();
+        return res;
+      };
+      nf.__nhRules=1; W.adminCreateTournament=nf; try{ adminCreateTournament=nf; }catch(e){}
+      return true;
+    };
+    if(!wrapCreate()){ var cn=0, ct=setInterval(function(){ if(wrapCreate() || ++cn>40) clearInterval(ct); }, 250); }
+
+    /* ---- the umpire: "All 3 sets" plays on after 2–0 and stops only after 3 sets (padel's own end rule: mkWinSet's
+       need / setsCap). Set by the draw's "Use the umpire" (window.__nhAllSets); any other opening of the umpire clears it. ---- */
+    W.__nhAllSets=false;
+    var wrapMk=function(){
+      if(typeof W.mkStart!=="function" || typeof W.mkOpenFromEntry!=="function" || typeof W.mkOpen!=="function") return false;
+      if(W.mkStart.__nhRules) return true;
+      var s0=W.mkStart, e0=W.mkOpenFromEntry, o0=W.mkOpen;
+      var s1=function(){ var r=s0.apply(this, arguments);
+        try{ var sets=parseInt((document.getElementById("mkSetsSel")||{}).value||"0",10);
+          if(W.__nhAllSets && sets!==1){ MK.setsTarget=99; MK.setsCap=3; var tf=document.getElementById("mkTopFmt"); if(tf) tf.textContent="All 3 sets"; }
+          else if(sets===1){ var tf1=document.getElementById("mkTopFmt"); if(tf1) tf1.textContent="1 set"; }
+        }catch(e){}
+        return r; };
+      var e1=function(){ W.__nhAllSets=false; return e0.apply(this, arguments); };
+      var o1=function(){ W.__nhAllSets=false; return o0.apply(this, arguments); };
+      s1.__nhRules=1;
+      W.mkStart=s1; W.mkOpenFromEntry=e1; W.mkOpen=o1;
+      try{ mkStart=s1; mkOpenFromEntry=e1; mkOpen=o1; }catch(e){}
+      return true;
+    };
+    if(!wrapMk()){ var mn=0, mt=setInterval(function(){ if(wrapMk() || ++mn>40) clearInterval(mt); }, 250); }
   })();
   /* n350: COLUMN NAMES THAT STAY PUT. Group Members gets Name · Rating · Level · Move · Rank in the frozen block with
      its search box (each name measured onto the pill beneath it); on Member profiles and List all members the names
