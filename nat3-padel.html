@@ -1057,6 +1057,40 @@ st0.textContent += "html{overflow-y:scroll}";   // p98: the scrollbar's space is
   function fnHdrs(h){ var o=hdrs(h); Object.keys(o).forEach(function(k){ if(/^(prefer|range|range-unit|accept-profile|content-profile)$/i.test(k)) delete o[k]; }); o["Content-Type"]="application/json"; return o; }
   function jsonResp(obj,status){ status=status||200; if(status===204||status===205||status===304) return new Response(null,{status:status}); return new Response(JSON.stringify(obj),{status:status,headers:{"Content-Type":"application/json"}}); }
   var _fetch=W.fetch.bind(W);
+  /* n374: THE WHOLE REGISTER, NOT THE FIRST THOUSAND. Supabase stops at 1,000 rows a request, silently. A read of the
+     match / pair tables that wants more is fetched in pages of 1,000 (stable order: the caller's, then a tie-breaker) and
+     answered as one. Anything else, or any failure, is the original request unchanged. */
+  var NH_PAGED={plat_matches:"id", plat_players:"id", plat_player_results:"name,club_id"};
+  function _paged(u,o){
+    try{
+      o=o||{}; var meth=String(o.method||"GET").toUpperCase();
+      var mm=String(u).match(/\/rest\/v1\/([a-z_0-9]+)\?(.*)$/);
+      if(meth!=="GET" || !mm || !NH_PAGED[mm[1]] || /(^|&)offset=/.test(mm[2])) return _fetch(u,o);
+      var hk=Object.keys(o.headers||{}).map(function(k){ return k.toLowerCase(); });
+      if(hk.indexOf("range")>=0 || hk.indexOf("prefer")>=0) return _fetch(u,o);
+      var lm=mm[2].match(/(^|&)limit=(\d+)/), want=lm?Number(lm[2]):Infinity;
+      if(want<=1000) return _fetch(u,o);
+      var qs=mm[2].split("&").filter(function(p){ return p && p.indexOf("limit=")!==0; });
+      var tie=NH_PAGED[mm[1]].split(","), oi=-1;
+      qs.forEach(function(p,i){ if(p.indexOf("order=")===0) oi=i; });
+      var cols=oi<0?[]:qs[oi].slice(6).split(",").map(function(x){ return x.split(".")[0]; });
+      var add=tie.filter(function(c){ return cols.indexOf(c)<0; }).map(function(c){ return c+".asc"; });
+      if(oi<0) qs.push("order="+add.join(",")); else if(add.length) qs[oi]+=","+add.join(",");
+      var base=u.slice(0,u.indexOf("?")+1)+qs.join("&"), out=[], PAGE=1000;
+      var step=function(off){
+        var n=Math.min(PAGE, want-off);
+        return _fetch(base+"&limit="+n+"&offset="+off,o).then(function(r){
+          if(!r.ok) return null;
+          return r.json().then(function(rows){
+            if(!Array.isArray(rows)) return null;
+            out=out.concat(rows);
+            return (rows.length<n || out.length>=want) ? out : step(off+PAGE);
+          });
+        });
+      };
+      return step(0).then(function(all){ return all ? jsonResp(all,200) : _fetch(u,o); }, function(){ return _fetch(u,o); });
+    }catch(e){ return _fetch(u,o); }
+  }
   /* NAT3: THE SAME FOUR READS, SERVED FROM MEMORY WITHIN A VISIT. A navigation inside the shell re-runs the scope
      chain below for the new board; clubs, pool and parent rows do not change between taps, so they are answered
      from a per-visit memo and the chain settles in a microtask. Any write (a score, an edit) empties the memo. */
@@ -1064,7 +1098,7 @@ st0.textContent += "html{overflow-y:scroll}";   // p98: the scrollbar's space is
   W.PLAT.memoDrop=function(){ W.PLAT._memo={}; };
   function _memo(u,o){
     var hit=W.PLAT._memo[u];
-    if(!hit){ hit=_fetch(u,o).then(function(r){ return r.json(); }); W.PLAT._memo[u]=hit; hit.catch(function(){ delete W.PLAT._memo[u]; }); }
+    if(!hit){ hit=_paged(u,o).then(function(r){ return r.json(); });   /* n374 */ W.PLAT._memo[u]=hit; hit.catch(function(){ delete W.PLAT._memo[u]; }); }
     return hit.then(function(j){ return {json:function(){ return Promise.resolve(j); }}; });
   }
   function loadScope(){
@@ -1143,7 +1177,7 @@ st0.textContent += "html{overflow-y:scroll}";   // p98: the scrollbar's space is
             return _fetch(PLAT+"/rest/v1/plat_padel_v_individuals?club_id=in.("+scope.join(",")+")&select=full_name",{headers:hdrs()}).then(function(r){return r.json();}).then(function(rows){
               var set={}; (Array.isArray(rows)?rows:[]).forEach(function(r){ if(r.full_name) set[String(r.full_name)]=1; });
               if(Object.keys(set).length) { W.PLAT.natNames=set; return; }
-              return _fetch(PLAT+"/rest/v1/plat_matches?club_id=in.("+scope.join(",")+")&discipline=eq.padel&select=t1p1,t1p2,t2p1,t2p2",{headers:hdrs()}).then(function(r2){return r2.json();}).then(function(ms){
+              return _paged(PLAT+"/rest/v1/plat_matches?club_id=in.("+scope.join(",")+")&discipline=eq.padel&select=t1p1,t1p2,t2p1,t2p2",{headers:hdrs()}).then(function(r2){return r2.json();}).then(function(ms){
                 var s2={}; (Array.isArray(ms)?ms:[]).forEach(function(m){ [m.t1p1,m.t1p2,m.t2p1,m.t2p2].forEach(function(v){ if(!v) return;
                   String(v).split(" & ").forEach(function(x){ x=x.trim(); if(x) s2[x]=1; }); }); });
                 W.PLAT.natNames=Object.keys(s2).length?s2:{};   // {} still filters — an empty club shows nobody, which is true
@@ -1449,7 +1483,7 @@ st0.textContent += "html{overflow-y:scroll}";   // p98: the scrollbar's space is
         /* n14: the add-member confirm now happens above, before routing, so it covers both doors. */
       }
       if(f) h=fnHdrs(init.headers);
-      return _fetch(u,Object.assign({},init,{headers:h}));
+      return _paged(u,Object.assign({},init,{headers:h}));   /* n374: functions and small reads pass straight through */
     });
   };
 })();
@@ -3750,7 +3784,7 @@ const CLUB_NAME = _club.name;  // shown in the logo as "OPR · <name>"
     link.setAttribute('href', href);
   }catch(e){ /* install stays on the static manifest — no functional impact */ }
 })();
-const OPR_VERSION = "OPR-DOUBLES v2026.09.03-56 · NAT fork n373 (no voice) (of PLAT p117)";  // MANUAL PAIR CREATION REMOVED FROM ADMIN: Create a pair, Bulk create pairs and Re-derive all pairs are gone (they only made match-less ghost pairs, and Re-derive rewrote every stored initial club-wide). Pairs are born automatically at match entry. Current pairs list untouched; the underlying JS is left in place unreferenced, so no other code path changes. Includes v47 (set-score fix + double-tap guard) and all prior.
+const OPR_VERSION = "OPR-DOUBLES v2026.09.03-56 · NAT fork n374 (no voice) (of PLAT p117)";  // MANUAL PAIR CREATION REMOVED FROM ADMIN: Create a pair, Bulk create pairs and Re-derive all pairs are gone (they only made match-less ghost pairs, and Re-derive rewrote every stored initial club-wide). Pairs are born automatically at match entry. Current pairs list untouched; the underlying JS is left in place unreferenced, so no other code path changes. Includes v47 (set-score fix + double-tap guard) and all prior.
 // Explanation shown above the individual ladder. Open on load so it's read; collapsible
 // (state kept for the session) and scrolls away. Mechanics only — no outcome framing, so
 // members aren't nudged away from playing stronger opponents. Every clause maps to a real
