@@ -3784,7 +3784,7 @@ const CLUB_NAME = _club.name;  // shown in the logo as "OPR · <name>"
     link.setAttribute('href', href);
   }catch(e){ /* install stays on the static manifest — no functional impact */ }
 })();
-const OPR_VERSION = "OPR-DOUBLES v2026.09.03-56 · NAT4 booking test b25 (nat3 n374) (no voice) (of PLAT p117)";  // MANUAL PAIR CREATION REMOVED FROM ADMIN: Create a pair, Bulk create pairs and Re-derive all pairs are gone (they only made match-less ghost pairs, and Re-derive rewrote every stored initial club-wide). Pairs are born automatically at match entry. Current pairs list untouched; the underlying JS is left in place unreferenced, so no other code path changes. Includes v47 (set-score fix + double-tap guard) and all prior.
+const OPR_VERSION = "OPR-DOUBLES v2026.09.03-56 · NAT4 booking test b26 (nat3 n374) (no voice) (of PLAT p117)";  // MANUAL PAIR CREATION REMOVED FROM ADMIN: Create a pair, Bulk create pairs and Re-derive all pairs are gone (they only made match-less ghost pairs, and Re-derive rewrote every stored initial club-wide). Pairs are born automatically at match entry. Current pairs list untouched; the underlying JS is left in place unreferenced, so no other code path changes. Includes v47 (set-score fix + double-tap guard) and all prior.
 // Explanation shown above the individual ladder. Open on load so it's read; collapsible
 // (state kept for the session) and scrolls away. Mechanics only — no outcome framing, so
 // members aren't nudged away from playing stronger opponents. Every clause maps to a real
@@ -13949,7 +13949,7 @@ W.nhOpenPair=function(name){
     setInterval(leapBrk, 900);
     W.__nhTsBuild=build;   /* for the test */
   })();
-  window.__nhBkAnon="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRqbWJudmlrcmRnbm9tamh0a2dmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODUzOTE0MzEsImV4cCI6MjEwMDk2NzQzMX0.vR8xlVFjV6jXW-pAclGjM74HqmWSKVpsacFjM-dCIJI"; window.__nhBkBuild="nat4 b25";
+  window.__nhBkAnon="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRqbWJudmlrcmRnbm9tamh0a2dmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODUzOTE0MzEsImV4cCI6MjEwMDk2NzQzMX0.vR8xlVFjV6jXW-pAclGjM74HqmWSKVpsacFjM-dCIJI"; window.__nhBkBuild="nat4 b26";
   /* ===================================================================================================
      COURT BOOKING (nat4 test copy, Manzini pilot, Andre 26 Oct). Started ONLY from the player's own My page: its
      "Court card" button becomes "Book a court", which asks "Where do you want to play?" — one tile per venue; a venue
@@ -15832,6 +15832,26 @@ W.nhOpenPair=function(name){
        pills), the tabs Pairs · Rounds · Reigns (as Teams & Bands · Rounds · Standings), the draw's tables and round buttons,
        "How a match is played" at the foot and the Page / WhatsApp buttons. Back returns to where it was opened from. */
     var PREV={screen:"", ctx:null};
+    /* b26 (Andre, 5 Nov: "it starts off in purple and then after you enter a score it goes to green"): the Topside page
+       always wears ITS OWN GROUP's colour, wherever it is opened from — dressed by the app's own tournament dresser
+       (n211 nhTourColour, as an ordinary tournament opened from the region's door), the draw's table heads in the same
+       colour; leaving Topside puts the board's own colour back exactly as it was. */
+    var TSCLUB={}, SKIN=null;
+    var dress=function(cid){ cid=Number(cid)||0; if(!ST.on) return;
+      var th=document.getElementById("nhTsSkin");
+      if(!th){ th=document.createElement("style"); th.id="nhTsSkin"; th.textContent="#tournamentSheetContent #nhTs th{background:var(--nhdeep,#3a1d6e) !important}"; document.head.appendChild(th); }
+      if(!cid || (SKIN && SKIN.cid===cid) || typeof W.nhTourColour!=="function") return;
+      if(!SKIN && Number(W.PLAT&&W.PLAT.cid)===cid) return;   /* already on its own group */
+      if(!SKIN){ var ds=document.documentElement.style, hd=document.getElementById("nhHdr");
+        SKIN={vars:{}, hdr:hd?hd.textContent:null, col:W.PLAT.colour};
+        ["--nhraw","--nhc","--nhtint","--nhdeep"].forEach(function(k){ SKIN.vars[k]=ds.getPropertyValue(k); }); }
+      SKIN.cid=cid;
+      var had=!!W.__nhTours, L=W.__nhTours||(W.__nhTours=[]), key="⁣topside "+cid; L.push({name:key, club_id:cid});
+      try{ W.nhTourColour(key); }catch(e){} L.pop(); if(!had) delete W.__nhTours; };
+    var undress=function(){ var th=document.getElementById("nhTsSkin"); if(th) th.remove(); if(!SKIN) return; var S=SKIN; SKIN=null;
+      try{ var ds=document.documentElement.style; Object.keys(S.vars).forEach(function(k){ if(S.vars[k]) ds.setProperty(k, S.vars[k]); else ds.removeProperty(k); });
+        var hd=document.getElementById("nhHdr"); if(hd){ if(S.hdr!=null) hd.textContent=S.hdr; else hd.remove(); }
+        W.PLAT.colour=S.col; if(W.platInkRefresh) W.platInkRefresh(); }catch(e){} };
     W.nhTopsideOpen=function(tourId, who){
       ST.tour=Number(tourId)||0; ST.preview=null; ST.ask=null; ST.msg=""; ST.pick=false; ST.q=""; ST.pickMode="me"; ST.bulk=false; ST.bq=""; ST.ticks={};
       ST.tab=""; ST.sec=""; ST.rsel=0; ST.dates=false; W.__nhTsLast=ST.tour;
@@ -15840,10 +15860,11 @@ W.nhOpenPair=function(name){
       var a=document.querySelector(".screen.active"); if(!ST.on) { PREV.screen=(a && !/^(tournamentSheetScreen|entryScreen|markerScreen)$/.test(a.id))?a.id:"homeScreen"; PREV.ctx=W._tmCtx||null; }   /* back from a score: to the door, not the score sheet */
       ST.on=true;
       try{ showScreen("tournamentSheetScreen"); }catch(e){}
+      dress(TSCLUB[ST.tour]);   /* b26: in its group's colour from the first frame when the group is already known */
       var box=document.getElementById("tournamentSheetContent"); if(box) box.innerHTML='<div id="nhTs"><div class="loading">Loading Topside\u2026</div></div>';
       refresh();
     };
-    W.nhTopsideClose=function(stay){ if(!ST.on) return; ST.on=false; ST.tour=0; try{ W._tmCtx=PREV.ctx; }catch(e){}
+    W.nhTopsideClose=function(stay){ if(!ST.on) return; ST.on=false; ST.tour=0; undress(); try{ W._tmCtx=PREV.ctx; }catch(e){}
       if(!stay){ try{ showScreen(PREV.screen||"homeScreen"); }catch(e){} } };
     /* leaving the draw screen any other way (the bar, another tournament) ends Topside's view */
     (function(){ var t=setInterval(function(){ if(typeof W.showScreen!=="function" || W.showScreen.__nhTs) { if(W.showScreen&&W.showScreen.__nhTs) clearInterval(t); return; }
@@ -15875,6 +15896,7 @@ W.nhOpenPair=function(name){
     var paint=function(){
       var o=document.getElementById("nhTs"); if(!o || !ST.on) return; var D=ST.D, c=ink();
       if(!D){ o.innerHTML=card(h("Topside")+'<p class="sub">This Topside could not be read.</p>'); return; }
+      TSCLUB[ST.tour]=Number(D.t.club_id)||0; dress(D.t.club_id); c=ink();   /* b26 */
       var t=D.t, cur=Number(t.current_round)||0, rnow=(D.rounds||[]).filter(function(r){ return Number(r.round)===cur; })[0];
       var locked=Date.now()>=new Date(t.next_lock).getTime();
       /* the draw screen's header: the name and the group pill; the context the draw's add-ons read */
@@ -16127,6 +16149,7 @@ W.nhOpenPair=function(name){
       var ids=boardsOfRegion(); if(!ids.length) return Promise.resolve("");
       return get("plat_topside?club_id=in.("+ids.join(",")+")&select=tour_id,club_id,name,start_date,current_round&order=tour_id.asc").then(function(ts){
         if(!ts || !ts.length) return "";
+        ts.forEach(function(t){ TSCLUB[t.tour_id]=Number(t.club_id)||0; });   /* b26 */
         return Promise.all(ts.map(function(t){ return get("plat_topside_players?tour_id=eq."+t.tour_id+"&left_at=is.null&select=id"); })).then(function(cnt){
           return ts.map(function(t,i){ var g=boardOf(t.club_id), col=g.colour||ink(), n=(cnt[i]||[]).length;
             return '<button onclick="window.nhTopsideOpen('+t.tour_id+')" style="display:flex;width:100%;align-items:center;gap:10px;background:#fff;border:1px solid #e6e0ee;border-radius:14px;padding:10px 12px;margin-top:6px;font:inherit;cursor:pointer;text-align:left">'
