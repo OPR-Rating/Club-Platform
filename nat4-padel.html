@@ -3784,7 +3784,7 @@ const CLUB_NAME = _club.name;  // shown in the logo as "OPR · <name>"
     link.setAttribute('href', href);
   }catch(e){ /* install stays on the static manifest — no functional impact */ }
 })();
-const OPR_VERSION = "OPR-DOUBLES v2026.09.03-56 · NAT4 booking test b24 (nat3 n374) (no voice) (of PLAT p117)";  // MANUAL PAIR CREATION REMOVED FROM ADMIN: Create a pair, Bulk create pairs and Re-derive all pairs are gone (they only made match-less ghost pairs, and Re-derive rewrote every stored initial club-wide). Pairs are born automatically at match entry. Current pairs list untouched; the underlying JS is left in place unreferenced, so no other code path changes. Includes v47 (set-score fix + double-tap guard) and all prior.
+const OPR_VERSION = "OPR-DOUBLES v2026.09.03-56 · NAT4 booking test b25 (nat3 n374) (no voice) (of PLAT p117)";  // MANUAL PAIR CREATION REMOVED FROM ADMIN: Create a pair, Bulk create pairs and Re-derive all pairs are gone (they only made match-less ghost pairs, and Re-derive rewrote every stored initial club-wide). Pairs are born automatically at match entry. Current pairs list untouched; the underlying JS is left in place unreferenced, so no other code path changes. Includes v47 (set-score fix + double-tap guard) and all prior.
 // Explanation shown above the individual ladder. Open on load so it's read; collapsible
 // (state kept for the session) and scrolls away. Mechanics only — no outcome framing, so
 // members aren't nudged away from playing stronger opponents. Every clause maps to a real
@@ -13949,7 +13949,7 @@ W.nhOpenPair=function(name){
     setInterval(leapBrk, 900);
     W.__nhTsBuild=build;   /* for the test */
   })();
-  window.__nhBkAnon="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRqbWJudmlrcmRnbm9tamh0a2dmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODUzOTE0MzEsImV4cCI6MjEwMDk2NzQzMX0.vR8xlVFjV6jXW-pAclGjM74HqmWSKVpsacFjM-dCIJI"; window.__nhBkBuild="nat4 b24";
+  window.__nhBkAnon="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRqbWJudmlrcmRnbm9tamh0a2dmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODUzOTE0MzEsImV4cCI6MjEwMDk2NzQzMX0.vR8xlVFjV6jXW-pAclGjM74HqmWSKVpsacFjM-dCIJI"; window.__nhBkBuild="nat4 b25";
   /* ===================================================================================================
      COURT BOOKING (nat4 test copy, Manzini pilot, Andre 26 Oct). Started ONLY from the player's own My page: its
      "Court card" button becomes "Book a court", which asks "Where do you want to play?" — one tile per venue; a venue
@@ -16137,13 +16137,29 @@ W.nhOpenPair=function(name){
               +'<span style="color:'+ink()+';font-weight:800">\u203a</span></button>'; }).join("");
         }); });
     };
+    /* b25 (Andre, 5 Nov: "the Topside card arrives a moment after the other tournaments"): the last cards are kept (per region)
+       and fetched once the door has loaded; a page shows the kept cards AT ONCE and then refreshes them quietly (one box only) */
+    var tsCache={key:null, html:null}, tsBusy=null;
+    var tsKey=function(){ try{ if(!W.PLAT) return ""; return boardsOfRegion().join(","); }catch(e){ return ""; } };
+    var tsCached=function(){ var k=tsKey(); return (k && tsCache.key===k) ? tsCache.html : null; };
+    var tsFresh=function(){ var k=tsKey(); if(!k) return Promise.resolve(null);
+      if(tsBusy && tsBusy.key===k) return tsBusy.p;
+      var p=W.__nhTsCards().then(function(h){ h=h||""; if(tsKey()===k) tsCache={key:k, html:h}; if(tsBusy&&tsBusy.p===p) tsBusy=null; return h; },
+                                 function(){ if(tsBusy&&tsBusy.p===p) tsBusy=null; return null; });
+      tsBusy={key:k, p:p}; return p; };
+    var putDoor=function(sub, html){ if(!sub) return; var box=sub.querySelector("#nhTsDoorCards");
+      if(!html){ if(box){ if(box.__nhEmpty) box.replaceWith(box.__nhEmpty); else box.remove(); } return; }
+      if(box){ if(box.__nhHtml!==html){ box.innerHTML=html; box.__nhHtml=html; } return; }
+      box=document.createElement("div"); box.id="nhTsDoorCards"; box.style.cssText="padding:0 10px 10px"; box.innerHTML=html; box.__nhHtml=html;
+      var empty=Array.prototype.filter.call(sub.children,function(x){ return /^Nothing here yet\.$/.test((x.textContent||"").trim()); })[0];
+      if(empty){ empty.replaceWith(box); box.__nhEmpty=empty; }
+      else { var foot=sub.lastElementChild; sub.insertBefore(box, foot); } };
+    var doorK="";
     (function(){ var wrapDoor=function(){ var f0=W.nhDoorSec; if(typeof f0!=="function") return false; if(f0.__nhTs) return true;
-        var f1=function(k){ var r=f0.apply(this, arguments);
-          if(k==="t") W.__nhTsCards().then(function(html){ if(!html) return; var sub=document.getElementById("nhDoorSub"); if(!sub || sub.style.display==="none") return;
-            var box=document.createElement("div"); box.id="nhTsDoorCards"; box.style.cssText="padding:0 10px 10px"; box.innerHTML=html;
-            var empty=Array.prototype.filter.call(sub.children,function(x){ return /^Nothing here yet\.$/.test((x.textContent||"").trim()); })[0];
-            if(empty) empty.replaceWith(box);
-            else { var foot=sub.lastElementChild; sub.insertBefore(box, foot); } });
+        var f1=function(k){ var r=f0.apply(this, arguments); doorK=k;
+          if(k==="t"){ var c=tsCached(); if(c) putDoor(document.getElementById("nhDoorSub"), c);
+            tsFresh().then(function(html){ if(html===null || doorK!=="t") return; var sub=document.getElementById("nhDoorSub"); if(!sub || sub.style.display==="none") return;
+              putDoor(sub, html); }); }
           return r; };
         f1.__nhTs=1; W.nhDoorSec=f1; return true; };
       if(!wrapDoor()){ var dn=0, dt=setInterval(function(){ if(wrapDoor() || ++dn>40) clearInterval(dt); }, 250); } })();
@@ -16161,15 +16177,22 @@ W.nhOpenPair=function(name){
     }catch(e){} }, 1000); })();
     /* b22 (Andre, 5 Nov: "in the Greens group the tournament tab shows no tournaments"): the Tournaments page lists the
        region's Topsides too — the same card as the door's (Topside is in its own tables, not the tournaments list) */
+    var putPk=function(pk, html){ if(!pk) return; var box=pk.querySelector("#nhTsTourCards");
+      if(!html){ if(box) box.remove(); return; }
+      if(box){ if(box.__nhHtml!==html){ box.innerHTML=html; box.__nhHtml=html; } return; }
+      box=document.createElement("div"); box.id="nhTsTourCards"; box.style.cssText="margin:0 0 12px"; box.innerHTML=html; box.__nhHtml=html;
+      var none=/No active tournament right now/.test(pk.textContent||"");
+      if(none){ pk.innerHTML=""; pk.appendChild(box); } else pk.insertBefore(box, pk.firstChild); };
+    var pkOn=false;
     setInterval(function(){ try{
+      /* b25: fetch the cards once the door has loaded (and again if the region changes) */
+      if(!tsBusy){ var k=tsKey(); if(k && tsCache.key!==k) tsFresh(); }
       var sc=document.getElementById("tournamentScreen"), pk=document.getElementById("tournamentPicker");
-      if(!sc || !sc.classList.contains("active") || !pk || pk.querySelector("#nhTsTourCards") || pk.dataset.nhTsBusy) return;
-      pk.dataset.nhTsBusy="1";
-      W.__nhTsCards().then(function(html){ delete pk.dataset.nhTsBusy; if(!html || pk.querySelector("#nhTsTourCards")) return;
-        var box=document.createElement("div"); box.id="nhTsTourCards"; box.style.cssText="margin:0 0 12px"; box.innerHTML=html;
-        var none=/No active tournament right now/.test(pk.textContent||"");
-        if(none){ pk.innerHTML=""; pk.appendChild(box); } else pk.insertBefore(box, pk.firstChild);
-      }).catch(function(){ delete pk.dataset.nhTsBusy; });
+      if(!sc || !sc.classList.contains("active") || !pk){ pkOn=false; return; }
+      var c=tsCached(); if(c && !pk.querySelector("#nhTsTourCards")) putPk(pk, c);
+      if(pkOn) return; pkOn=true;
+      tsFresh().then(function(html){ if(html===null) return; var sc2=document.getElementById("tournamentScreen"), pk2=document.getElementById("tournamentPicker");
+        if(!sc2 || !sc2.classList.contains("active")) return; putPk(pk2, html); });
     }catch(e){} }, 800);
 
     /* ---------------------------------------------------------------- after every saved score: is it a Topside match? */
