@@ -3784,7 +3784,7 @@ const CLUB_NAME = _club.name;  // shown in the logo as "OPR · <name>"
     link.setAttribute('href', href);
   }catch(e){ /* install stays on the static manifest — no functional impact */ }
 })();
-const OPR_VERSION = "OPR-DOUBLES v2026.09.03-56 · NAT4 booking test b23 (nat3 n374) (no voice) (of PLAT p117)";  // MANUAL PAIR CREATION REMOVED FROM ADMIN: Create a pair, Bulk create pairs and Re-derive all pairs are gone (they only made match-less ghost pairs, and Re-derive rewrote every stored initial club-wide). Pairs are born automatically at match entry. Current pairs list untouched; the underlying JS is left in place unreferenced, so no other code path changes. Includes v47 (set-score fix + double-tap guard) and all prior.
+const OPR_VERSION = "OPR-DOUBLES v2026.09.03-56 · NAT4 booking test b24 (nat3 n374) (no voice) (of PLAT p117)";  // MANUAL PAIR CREATION REMOVED FROM ADMIN: Create a pair, Bulk create pairs and Re-derive all pairs are gone (they only made match-less ghost pairs, and Re-derive rewrote every stored initial club-wide). Pairs are born automatically at match entry. Current pairs list untouched; the underlying JS is left in place unreferenced, so no other code path changes. Includes v47 (set-score fix + double-tap guard) and all prior.
 // Explanation shown above the individual ladder. Open on load so it's read; collapsible
 // (state kept for the session) and scrolls away. Mechanics only — no outcome framing, so
 // members aren't nudged away from playing stronger opponents. Every clause maps to a real
@@ -13949,7 +13949,7 @@ W.nhOpenPair=function(name){
     setInterval(leapBrk, 900);
     W.__nhTsBuild=build;   /* for the test */
   })();
-  window.__nhBkAnon="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRqbWJudmlrcmRnbm9tamh0a2dmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODUzOTE0MzEsImV4cCI6MjEwMDk2NzQzMX0.vR8xlVFjV6jXW-pAclGjM74HqmWSKVpsacFjM-dCIJI"; window.__nhBkBuild="nat4 b23";
+  window.__nhBkAnon="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRqbWJudmlrcmRnbm9tamh0a2dmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODUzOTE0MzEsImV4cCI6MjEwMDk2NzQzMX0.vR8xlVFjV6jXW-pAclGjM74HqmWSKVpsacFjM-dCIJI"; window.__nhBkBuild="nat4 b24";
   /* ===================================================================================================
      COURT BOOKING (nat4 test copy, Manzini pilot, Andre 26 Oct). Started ONLY from the player's own My page: its
      "Court card" button becomes "Book a court", which asks "Where do you want to play?" — one tile per venue; a venue
@@ -15073,19 +15073,32 @@ W.nhOpenPair=function(name){
         }
         var ev=document.getElementById("matchEvent"), mt=document.getElementById("matchType"), dt=document.getElementById("matchDate");
         if(!ev||!mt){ if(++n<40) setTimeout(go,250); return; }
-        var evn=d.event||d.tour;   /* b21d: Topside's matches are entered as Social (nat3 never sees a Topside tournament) */
-        if(!Array.prototype.some.call(ev.options,function(o){ return o.value===evn; })){ var o2=document.createElement("option"); o2.value=evn; o2.textContent=evn; ev.insertBefore(o2, ev.firstChild); }
-        if(ev.value!==evn){ ev.value=evn; try{ ev.onchange && ev.onchange(); }catch(e){} }
+        var evn=d.event||d.tour;   /* b22: a Topside match's event is the Topside's name */
+        var thenDone=false, userPicked=false;
+        var choose=function(ev){
+          if(!Array.prototype.some.call(ev.options,function(o){ return o.value===evn; })){ var o2=document.createElement("option"); o2.value=evn; o2.textContent=evn; ev.insertBefore(o2, ev.firstChild); }
+          if(ev.value!==evn){ ev.value=evn; try{ ev.onchange && ev.onchange(); }catch(e){} }
+          /* the division: the event's own change re-reads the allowed types, so it is set once they are there */
+          var k=0, tt=setInterval(function(){ var t=document.getElementById("matchType");
+            var ty=d.type||d.div;
+            if(t && Array.prototype.some.call(t.options,function(o){ return o.value===ty; })){ t.value=ty; clearInterval(tt);
+              /* b19: "1 set" and "All 3 sets" say how many sets are played; best of 3 is left to the players */
+              var r=rulesOf(d.div), sp=document.getElementById("setsPlayed");
+              if(sp){ if(r.sets===1) sp.value="1"; else if(r.all_sets) sp.value="3"; }
+              if(then && !thenDone){ thenDone=true; setTimeout(then,300); } return; }
+            if(++k>40){ clearInterval(tt); if(then && !thenDone){ thenDone=true; then(); } } },120);
+        };
+        choose(ev);
         if(dt && !dt.value) dt.value=new Date().toISOString().slice(0,10);
-        /* the division: the event's own change re-reads the allowed types, so it is set once they are there */
-        var k=0, tt=setInterval(function(){ var t=document.getElementById("matchType");
-          var ty=d.type||d.div;
-          if(t && Array.prototype.some.call(t.options,function(o){ return o.value===ty; })){ t.value=ty; clearInterval(tt);
-            /* b19: "1 set" and "All 3 sets" say how many sets are played; best of 3 is left to the players */
-            var r=rulesOf(d.div), sp=document.getElementById("setsPlayed");
-            if(sp){ if(r.sets===1) sp.value="1"; else if(r.all_sets) sp.value="3"; }
-            if(then) setTimeout(then,300); return; }
-          if(++k>40){ clearInterval(tt); if(then) then(); } },120);
+        /* b24 (Andre, 5 Nov: Topside scores saved as Social). On a slower line the sheet fills its event list AFTER this
+           ran and puts it back on Social (or draws a fresh list). So, as n326 does for tournaments: while page 1 is up,
+           choose the event again whenever the list is no longer on it — unless the player changed it himself. */
+        var watched=null, t0=Date.now(), keep=setInterval(function(){
+          var s=document.getElementById("matchEvent"), scr2=document.getElementById("entryScreen");
+          if(!s || !scr2 || !scr2.classList.contains("active") || Date.now()-t0>30000){ clearInterval(keep); return; }
+          if(s!==watched){ watched=s; s.addEventListener("change",function(e){ if(e.isTrusted) userPicked=true; }); }
+          if(!userPicked && s.value!==evn) choose(s);
+        },150);
       })();
     };
     /* page 2: the four names (the sheet is drawn after the players choose the sets and press Next) */
