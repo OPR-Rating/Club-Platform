@@ -3784,7 +3784,7 @@ const CLUB_NAME = _club.name;  // shown in the logo as "OPR · <name>"
     link.setAttribute('href', href);
   }catch(e){ /* install stays on the static manifest — no functional impact */ }
 })();
-const OPR_VERSION = "OPR-DOUBLES v2026.09.03-56 · NAT4 booking test b22 (nat3 n374) (no voice) (of PLAT p117)";  // MANUAL PAIR CREATION REMOVED FROM ADMIN: Create a pair, Bulk create pairs and Re-derive all pairs are gone (they only made match-less ghost pairs, and Re-derive rewrote every stored initial club-wide). Pairs are born automatically at match entry. Current pairs list untouched; the underlying JS is left in place unreferenced, so no other code path changes. Includes v47 (set-score fix + double-tap guard) and all prior.
+const OPR_VERSION = "OPR-DOUBLES v2026.09.03-56 · NAT4 booking test b23 (nat3 n374) (no voice) (of PLAT p117)";  // MANUAL PAIR CREATION REMOVED FROM ADMIN: Create a pair, Bulk create pairs and Re-derive all pairs are gone (they only made match-less ghost pairs, and Re-derive rewrote every stored initial club-wide). Pairs are born automatically at match entry. Current pairs list untouched; the underlying JS is left in place unreferenced, so no other code path changes. Includes v47 (set-score fix + double-tap guard) and all prior.
 // Explanation shown above the individual ladder. Open on load so it's read; collapsible
 // (state kept for the session) and scrolls away. Mechanics only — no outcome framing, so
 // members aren't nudged away from playing stronger opponents. Every clause maps to a real
@@ -13949,7 +13949,7 @@ W.nhOpenPair=function(name){
     setInterval(leapBrk, 900);
     W.__nhTsBuild=build;   /* for the test */
   })();
-  window.__nhBkAnon="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRqbWJudmlrcmRnbm9tamh0a2dmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODUzOTE0MzEsImV4cCI6MjEwMDk2NzQzMX0.vR8xlVFjV6jXW-pAclGjM74HqmWSKVpsacFjM-dCIJI"; window.__nhBkBuild="nat4 b22";
+  window.__nhBkAnon="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRqbWJudmlrcmRnbm9tamh0a2dmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODUzOTE0MzEsImV4cCI6MjEwMDk2NzQzMX0.vR8xlVFjV6jXW-pAclGjM74HqmWSKVpsacFjM-dCIJI"; window.__nhBkBuild="nat4 b23";
   /* ===================================================================================================
      COURT BOOKING (nat4 test copy, Manzini pilot, Andre 26 Oct). Started ONLY from the player's own My page: its
      "Court card" button becomes "Book a court", which asks "Where do you want to play?" — one tile per venue; a venue
@@ -15821,7 +15821,7 @@ W.nhOpenPair=function(name){
     var PREV={screen:"", ctx:null};
     W.nhTopsideOpen=function(tourId, who){
       ST.tour=Number(tourId)||0; ST.preview=null; ST.ask=null; ST.msg=""; ST.pick=false; ST.q=""; ST.pickMode="me"; ST.bulk=false; ST.bq=""; ST.ticks={};
-      ST.tab=""; ST.sec=""; ST.rsel=0; W.__nhTsLast=ST.tour;
+      ST.tab=""; ST.sec=""; ST.rsel=0; ST.dates=false; W.__nhTsLast=ST.tour;
       try{ ST.adm=sessionStorage.getItem("nhTsAdm|"+ST.tour)||""; }catch(e){ ST.adm=""; }
       if(who) meSet(who); else ST.me=meGet();
       var a=document.querySelector(".screen.active"); if(!ST.on) { PREV.screen=(a && !/^(tournamentSheetScreen|entryScreen|markerScreen)$/.test(a.id))?a.id:"homeScreen"; PREV.ctx=W._tmCtx||null; }   /* back from a score: to the door, not the score sheet */
@@ -15849,6 +15849,10 @@ W.nhOpenPair=function(name){
     var btn=function(label, on, primary, style){ var c=ink();
       return '<button onclick="'+on+'" style="border:1.5px solid '+(primary?c:'#ddd5e6')+';background:'+(primary?c:'#fff')+';color:'+(primary?'#fff':'#4b4060')+';border-radius:12px;padding:11px 12px;font:inherit;font-size:13.5px;font-weight:800;cursor:pointer;'+(style||"")+'">'+label+'</button>'; };
     var card=function(inner, style){ return '<div class="card" style="'+(style||"")+'">'+inner+'</div>'; };   /* b21d: the draw's own cards */
+    /* b23 (Andre, 5 Nov — rain): a day the organiser moved shows where it was moved from, and why */
+    var moved=function(was, now, why){ was=String(was||"").slice(0,10); now=String(now||"").slice(0,10);
+      return (was && was!==now) ? (" · moved from "+day(was)+(why?(" ("+why+")"):"")) : ""; };
+    var todayE=function(){ return new Date(Date.now()+2*3600e3).toISOString().slice(0,10); };   /* Eswatini date */
     var h=function(t){ return '<h2>'+t+'</h2>'; };
     var pairName=function(P){ return P ? (P.p1+" & "+P.p2) : "—"; };
     var pairById=function(id){ return (ST.D.allPairs||[]).filter(function(p){ return Number(p.id)===Number(id); })[0]; };
@@ -15867,8 +15871,8 @@ W.nhOpenPair=function(name){
       if(!ST.sec){ var P0=mePair(), r0=D.rating[lc(ST.me)]; ST.sec=P0?P0.section:((r0!=null && r0<Number(t.line))?"B":"A"); }
       if(!ST.tab) ST.tab=cur>0?"rounds":"pairs";
       if(!ST.rsel) ST.rsel=cur;
-      var when = cur===0 ? ("Starts "+day(t.start_date)+" \u00b7 first draw "+lockTxt(t.next_lock))
-                         : ("Round "+cur+(rnow?(" \u00b7 "+day(rnow.starts)+"\u2013"+day(rnow.ends)):"")+" \u00b7 next draw "+lockTxt(t.next_lock));
+      var when = cur===0 ? ("Starts "+day(t.start_date)+moved(t.start_was, t.start_date, t.start_note)+" \u00b7 first draw "+lockTxt(t.next_lock))
+                         : ("Round "+cur+(rnow?(" \u00b7 "+day(rnow.starts)+"\u2013"+day(rnow.ends)+moved(rnow.ends_was, rnow.ends, rnow.note)):"")+" \u00b7 next draw "+lockTxt(t.next_lock));
       var html='<p class="sub" style="text-align:center;margin:6px 0 8px">Topside \u00b7 '+esc(when)+'</p>';
       if(ST.msg) html+=card('<div style="font-size:13.5px;color:#4b4060;line-height:1.5">'+ST.msg+'</div>', 'border:1.5px solid '+c);
       html+= ST.pick ? picker() : you(locked, cur);
@@ -15962,7 +15966,7 @@ W.nhOpenPair=function(name){
           +((ST.adm && m.status!=="bye" && R===cur)?'<tr><td></td><td colspan="5" style="padding-top:0">'+admRow(m)+'</td></tr>':''); }).join("");
       return '<div class="card"><h2>Round Fixtures &amp; Results'+secTag()+'</h2>'
         +'<div class="rsel">'+rs.map(function(i){ return '<button class="fixed '+(i===R?'active':'')+'" onclick="window.__nhTsRound('+i+')">R'+i+'</button>'; }).join("")+'</div>'
-        +(rr?'<p class="sub">Round '+R+' \u00b7 '+day(rr.starts)+'\u2013'+day(rr.ends)+(R===cur?' \u00b7 play by midnight '+day(rr.ends):'')+'</p>':'')
+        +(rr?'<p class="sub">Round '+R+' \u00b7 '+day(rr.starts)+'\u2013'+day(rr.ends)+(R===cur?' \u00b7 play by midnight '+day(rr.ends):'')+esc(moved(rr.ends_was, rr.ends, rr.note))+'</p>':'')
         +(rows?'<table class="fxtbl"><thead><tr><th class="num">Rn</th><th class="ta">Pair A</th><th class="num"></th><th class="tb">Pair B</th><th class="num">Rn</th><th class="num">Score</th></tr></thead><tbody>'+rows+'</tbody></table>'
              :'<p class="sub">No matches in this section in round '+R+'.</p>')
         +(R===cur?'<p class="sub" style="text-align:left"><b>Tap a match to enter the score.</b> Rn = the pair\'s reign.</p>':'')+'</div>';
@@ -16003,6 +16007,20 @@ W.nhOpenPair=function(name){
           +'<div style="display:flex;gap:8px;margin-top:8px">'+btn("Close","window.__nhTsBulk(false)",false,"flex:1")+btn("Add "+nT+" player"+(nT===1?"":"s"),"window.__nhTsBulkGo()",nT>0,"flex:1")+'</div>'
           +'<div style="height:12px"></div>';
       } else s+=btn("Add players","window.__nhTsBulk(true)",false,"width:100%;margin-bottom:8px");
+      /* b23 (Andre, 5 Nov: "say we have 6 days of rain we must be able to set a new date for the round completion") */
+      if(ST.dates){
+        var rn=(D.rounds||[]).filter(function(r){ return Number(r.round)===cur; })[0], nowDay=cur===0?String(D.t.start_date).slice(0,10):String(rn&&rn.ends||"").slice(0,10);
+        var inp='width:100%;box-sizing:border-box;padding:10px;font-size:15px;border:1.5px solid #ddd5e6;border-radius:10px;margin-bottom:8px;font-family:inherit';
+        s+='<div style="border:1px solid #e6e0ee;border-radius:12px;padding:12px;margin-bottom:10px">'
+          +'<div style="font-size:13.5px;font-weight:800;color:#241d33;margin-bottom:2px">'+(cur===0?'Round 1 starts':'Last day to play in round '+cur)+'</div>'
+          +'<div style="font-size:12px;color:#8a8196;margin-bottom:8px">Now '+esc(day(nowDay))+'</div>'
+          +'<input id="nhTsDay" type="date" value="'+esc(nowDay)+'" min="'+todayE()+'" style="'+inp+'">'
+          +'<input id="nhTsWhy" maxlength="60" placeholder="Reason, e.g. Rain (optional)" style="'+inp+'">'
+          +'<div style="font-size:12px;color:#4b4060;line-height:1.5;margin-bottom:10px">'+(cur===0
+              ? 'The first draw is then at 08:00 on that day.'
+              : 'The I\'m in / I\'m out switch then locks 08:00 the next day, and round '+(cur+1)+' starts that day. Later rounds move with it.')+'</div>'
+          +'<div style="display:flex;gap:8px">'+btn("Cancel","window.__nhTsDates(false)",false,"flex:1")+btn("Save new date","window.__nhTsDatesGo()",true,"flex:1")+'</div></div>';
+      } else s+=btn(cur===0?"Change the start date":"Change this round's dates","window.__nhTsDates(true)",false,"width:100%;margin-bottom:8px");
       if(!ST.preview) s+=btn("Draw round "+(cur+1)+" \u2014 show it first","window.__nhTsPreview()",true,"width:100%");
       else {
         var P=ST.preview, R=P.res, st=P.state, lines=[];
@@ -16061,7 +16079,16 @@ W.nhOpenPair=function(name){
       (function next(){ if(i>=names.length){ ST.bulk=false; ST.ticks={}; ST.msg="Added "+ok+" player"+(ok===1?"":"s")+" to Topside."+(bad.length?(" Not added: "+bad.map(esc).join(", ")+"."):""); refresh(); return; }
         var n=names[i++]; rpc("ts_join",{p_tour:ST.tour, p_name:n}).then(function(r){ if(r&&r.ok) ok++; else bad.push(n+" ("+((r&&r.error)||"error")+")"); next(); }); })();
     };
-    W.__nhTsLock=function(){ ST.adm=""; ST.preview=null; try{ sessionStorage.removeItem("nhTsAdm|"+ST.tour); }catch(e){} paint(); };
+    W.__nhTsDates=function(on){ ST.dates=!!on; ST.msg=""; paint(); };
+    W.__nhTsDatesGo=function(){
+      var d=((document.getElementById("nhTsDay")||{}).value||"").trim(), why=((document.getElementById("nhTsWhy")||{}).value||"").trim();
+      if(!d){ say("Pick a day."); return; }
+      rpc("ts_set_dates",{p_tour:ST.tour, p_code:ST.adm, p_day:d, p_reason:why}).then(function(r){ if(!r||!r.ok){ say(esc((r&&r.error)||"Not changed.")); return; }
+        ST.dates=false;
+        ST.msg = Number(r.round)===0 ? ("Round 1 now starts "+esc(day(r.starts))+". The first draw is "+esc(lockTxt(r.lock))+".")
+          : ("Round "+r.round+" now ends "+esc(day(r.ends))+". The switch locks "+esc(lockTxt(r.lock))+"; round "+(Number(r.round)+1)+" starts "+esc(day(addDays(String(r.ends).slice(0,10),1)))+".");
+        refresh(); }); };
+    W.__nhTsLock=function(){ ST.adm=""; ST.preview=null; ST.dates=false; try{ sessionStorage.removeItem("nhTsAdm|"+ST.tour); }catch(e){} paint(); };
     W.__nhTsPreview=function(){ load(ST.tour).then(function(D){ ST.D=D; var P=makeDraw(D); if(P.error){ say(esc(P.error)); return; } ST.preview=P; ST.msg=""; paint(); }); };
     W.__nhTsPreviewOff=function(){ ST.preview=null; paint(); };
     W.__nhTsSave=function(){ var P=ST.preview; if(!P) return;
