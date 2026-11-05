@@ -3784,7 +3784,7 @@ const CLUB_NAME = _club.name;  // shown in the logo as "OPR · <name>"
     link.setAttribute('href', href);
   }catch(e){ /* install stays on the static manifest — no functional impact */ }
 })();
-const OPR_VERSION = "OPR-DOUBLES v2026.09.03-56 · NAT4 booking test b21 (nat3 n374) (no voice) (of PLAT p117)";  // MANUAL PAIR CREATION REMOVED FROM ADMIN: Create a pair, Bulk create pairs and Re-derive all pairs are gone (they only made match-less ghost pairs, and Re-derive rewrote every stored initial club-wide). Pairs are born automatically at match entry. Current pairs list untouched; the underlying JS is left in place unreferenced, so no other code path changes. Includes v47 (set-score fix + double-tap guard) and all prior.
+const OPR_VERSION = "OPR-DOUBLES v2026.09.03-56 · NAT4 booking test b22 (nat3 n374) (no voice) (of PLAT p117)";  // MANUAL PAIR CREATION REMOVED FROM ADMIN: Create a pair, Bulk create pairs and Re-derive all pairs are gone (they only made match-less ghost pairs, and Re-derive rewrote every stored initial club-wide). Pairs are born automatically at match entry. Current pairs list untouched; the underlying JS is left in place unreferenced, so no other code path changes. Includes v47 (set-score fix + double-tap guard) and all prior.
 // Explanation shown above the individual ladder. Open on load so it's read; collapsible
 // (state kept for the session) and scrolls away. Mechanics only — no outcome framing, so
 // members aren't nudged away from playing stronger opponents. Every clause maps to a real
@@ -13949,7 +13949,7 @@ W.nhOpenPair=function(name){
     setInterval(leapBrk, 900);
     W.__nhTsBuild=build;   /* for the test */
   })();
-  window.__nhBkAnon="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRqbWJudmlrcmRnbm9tamh0a2dmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODUzOTE0MzEsImV4cCI6MjEwMDk2NzQzMX0.vR8xlVFjV6jXW-pAclGjM74HqmWSKVpsacFjM-dCIJI"; window.__nhBkBuild="nat4 b21";
+  window.__nhBkAnon="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRqbWJudmlrcmRnbm9tamh0a2dmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODUzOTE0MzEsImV4cCI6MjEwMDk2NzQzMX0.vR8xlVFjV6jXW-pAclGjM74HqmWSKVpsacFjM-dCIJI"; window.__nhBkBuild="nat4 b22";
   /* ===================================================================================================
      COURT BOOKING (nat4 test copy, Manzini pilot, Andre 26 Oct). Started ONLY from the player's own My page: its
      "Court card" button becomes "Book a court", which asks "Where do you want to play?" — one tile per venue; a venue
@@ -15821,7 +15821,7 @@ W.nhOpenPair=function(name){
     var PREV={screen:"", ctx:null};
     W.nhTopsideOpen=function(tourId, who){
       ST.tour=Number(tourId)||0; ST.preview=null; ST.ask=null; ST.msg=""; ST.pick=false; ST.q=""; ST.pickMode="me"; ST.bulk=false; ST.bq=""; ST.ticks={};
-      ST.tab=""; ST.sec=""; ST.rsel=0;
+      ST.tab=""; ST.sec=""; ST.rsel=0; W.__nhTsLast=ST.tour;
       try{ ST.adm=sessionStorage.getItem("nhTsAdm|"+ST.tour)||""; }catch(e){ ST.adm=""; }
       if(who) meSet(who); else ST.me=meGet();
       var a=document.querySelector(".screen.active"); if(!ST.on) { PREV.screen=(a && !/^(tournamentSheetScreen|entryScreen|markerScreen)$/.test(a.id))?a.id:"homeScreen"; PREV.ctx=W._tmCtx||null; }   /* back from a score: to the door, not the score sheet */
@@ -16072,9 +16072,10 @@ W.nhOpenPair=function(name){
     W.__nhTsScore=function(id){
       var m=(ST.D.matches||[]).filter(function(x){ return Number(x.id)===Number(id); })[0]; if(!m) return;
       var A=pairById(m.pair_a), B=pairById(m.pair_b), t=ST.D.t; if(!A||!B) return;
-      /* b21d: All Sorts and the sets from its How a match is played, as every tournament; the event stays Social
-         (nat3 never sees a Topside tournament) — the result is put on this match by the pairs' names */
-      var d={id:"ts"+m.id, ts:ST.tour, club:t.club_id, tour:t.name, div:"All Sorts", type:"All Sorts", event:"Social", round:m.round,
+      /* b21d: All Sorts and the sets from its How a match is played, as every tournament. b22 (Andre, 5 Nov): the event is the
+         Topside's NAME, so the match shows as a tournament match (T pill) — Eswatini never sees the sandbox; the result is
+         put on this match by the pairs' names */
+      var d={id:"ts"+m.id, ts:ST.tour, club:t.club_id, tour:t.name, div:"All Sorts", type:"All Sorts", event:t.name, round:m.round,
              label:"Topside \u00b7 Round "+m.round+" \u00b7 Section "+m.section, a:A.p1+" & "+A.p2, b:B.p1+" & "+B.p2};
       var go=function(){ if(typeof W.__nhFxOpen==="function") W.__nhFxOpen(d); };
       if(W.__nhRulesLoad) Promise.race([W.__nhRulesLoad(false, t.club_id, t.name), new Promise(function(ok){ setTimeout(ok,2500); })]).then(go, go); else go();
@@ -16107,6 +16108,29 @@ W.nhOpenPair=function(name){
         f1.__nhTs=1; W.nhDoorSec=f1; return true; };
       if(!wrapDoor()){ var dn=0, dt=setInterval(function(){ if(wrapDoor() || ++dn>40) clearInterval(dt); }, 250); } })();
     /* the bottom bar: the screen change itself ends Topside's view (showScreen, above) */
+    /* b22 (Andre's hourglass, 5 Nov): going BACK through the app's history can land on the draw screen with nothing in it
+       (Topside is not in the address), and its "Loading..." never ends. When the draw screen shows only "Loading..." with no
+       tournament behind it for 3 seconds: the last Topside opens again, or (none) the door. */
+    (function(){ var n=0; setInterval(function(){ try{
+      var scr=document.getElementById("tournamentSheetScreen"), box=document.getElementById("tournamentSheetContent");
+      if(!scr || !scr.classList.contains("active") || ST.on || !box){ n=0; return; }
+      var txt=(box.innerText||"").replace(/\s+/g," ").trim(), ev=""; try{ ev=TOURNAMENT_EVENT||""; }catch(e){}
+      if(!/^\u23f3?\s*Loading\.\.\.$/.test(txt) || (W._tmCtx&&W._tmCtx.tournament) || ev){ n=0; return; }
+      if(++n<3) return; n=0;
+      if(W.__nhTsLast) W.nhTopsideOpen(W.__nhTsLast); else { try{ goHome(); }catch(e){} }
+    }catch(e){} }, 1000); })();
+    /* b22 (Andre, 5 Nov: "in the Greens group the tournament tab shows no tournaments"): the Tournaments page lists the
+       region's Topsides too — the same card as the door's (Topside is in its own tables, not the tournaments list) */
+    setInterval(function(){ try{
+      var sc=document.getElementById("tournamentScreen"), pk=document.getElementById("tournamentPicker");
+      if(!sc || !sc.classList.contains("active") || !pk || pk.querySelector("#nhTsTourCards") || pk.dataset.nhTsBusy) return;
+      pk.dataset.nhTsBusy="1";
+      W.__nhTsCards().then(function(html){ delete pk.dataset.nhTsBusy; if(!html || pk.querySelector("#nhTsTourCards")) return;
+        var box=document.createElement("div"); box.id="nhTsTourCards"; box.style.cssText="margin:0 0 12px"; box.innerHTML=html;
+        var none=/No active tournament right now/.test(pk.textContent||"");
+        if(none){ pk.innerHTML=""; pk.appendChild(box); } else pk.insertBefore(box, pk.firstChild);
+      }).catch(function(){ delete pk.dataset.nhTsBusy; });
+    }catch(e){} }, 800);
 
     /* ---------------------------------------------------------------- after every saved score: is it a Topside match? */
     (function(){ var f0=W.fetch; if(typeof f0!=="function" || f0.__nhTs) return;
