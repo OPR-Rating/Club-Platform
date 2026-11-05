@@ -1057,6 +1057,40 @@ st0.textContent += "html{overflow-y:scroll}";   // p98: the scrollbar's space is
   function fnHdrs(h){ var o=hdrs(h); Object.keys(o).forEach(function(k){ if(/^(prefer|range|range-unit|accept-profile|content-profile)$/i.test(k)) delete o[k]; }); o["Content-Type"]="application/json"; return o; }
   function jsonResp(obj,status){ status=status||200; if(status===204||status===205||status===304) return new Response(null,{status:status}); return new Response(JSON.stringify(obj),{status:status,headers:{"Content-Type":"application/json"}}); }
   var _fetch=W.fetch.bind(W);
+  /* n374: THE WHOLE REGISTER, NOT THE FIRST THOUSAND. Supabase stops at 1,000 rows a request, silently. A read of the
+     match / pair tables that wants more is fetched in pages of 1,000 (stable order: the caller's, then a tie-breaker) and
+     answered as one. Anything else, or any failure, is the original request unchanged. */
+  var NH_PAGED={plat_matches:"id", plat_players:"id", plat_player_results:"name,club_id"};
+  function _paged(u,o){
+    try{
+      o=o||{}; var meth=String(o.method||"GET").toUpperCase();
+      var mm=String(u).match(/\/rest\/v1\/([a-z_0-9]+)\?(.*)$/);
+      if(meth!=="GET" || !mm || !NH_PAGED[mm[1]] || /(^|&)offset=/.test(mm[2])) return _fetch(u,o);
+      var hk=Object.keys(o.headers||{}).map(function(k){ return k.toLowerCase(); });
+      if(hk.indexOf("range")>=0 || hk.indexOf("prefer")>=0) return _fetch(u,o);
+      var lm=mm[2].match(/(^|&)limit=(\d+)/), want=lm?Number(lm[2]):Infinity;
+      if(want<=1000) return _fetch(u,o);
+      var qs=mm[2].split("&").filter(function(p){ return p && p.indexOf("limit=")!==0; });
+      var tie=NH_PAGED[mm[1]].split(","), oi=-1;
+      qs.forEach(function(p,i){ if(p.indexOf("order=")===0) oi=i; });
+      var cols=oi<0?[]:qs[oi].slice(6).split(",").map(function(x){ return x.split(".")[0]; });
+      var add=tie.filter(function(c){ return cols.indexOf(c)<0; }).map(function(c){ return c+".asc"; });
+      if(oi<0) qs.push("order="+add.join(",")); else if(add.length) qs[oi]+=","+add.join(",");
+      var base=u.slice(0,u.indexOf("?")+1)+qs.join("&"), out=[], PAGE=1000;
+      var step=function(off){
+        var n=Math.min(PAGE, want-off);
+        return _fetch(base+"&limit="+n+"&offset="+off,o).then(function(r){
+          if(!r.ok) return null;
+          return r.json().then(function(rows){
+            if(!Array.isArray(rows)) return null;
+            out=out.concat(rows);
+            return (rows.length<n || out.length>=want) ? out : step(off+PAGE);
+          });
+        });
+      };
+      return step(0).then(function(all){ return all ? jsonResp(all,200) : _fetch(u,o); }, function(){ return _fetch(u,o); });
+    }catch(e){ return _fetch(u,o); }
+  }
   /* NAT3: THE SAME FOUR READS, SERVED FROM MEMORY WITHIN A VISIT. A navigation inside the shell re-runs the scope
      chain below for the new board; clubs, pool and parent rows do not change between taps, so they are answered
      from a per-visit memo and the chain settles in a microtask. Any write (a score, an edit) empties the memo. */
@@ -1064,7 +1098,7 @@ st0.textContent += "html{overflow-y:scroll}";   // p98: the scrollbar's space is
   W.PLAT.memoDrop=function(){ W.PLAT._memo={}; };
   function _memo(u,o){
     var hit=W.PLAT._memo[u];
-    if(!hit){ hit=_fetch(u,o).then(function(r){ return r.json(); }); W.PLAT._memo[u]=hit; hit.catch(function(){ delete W.PLAT._memo[u]; }); }
+    if(!hit){ hit=_paged(u,o).then(function(r){ return r.json(); });   /* n374 */ W.PLAT._memo[u]=hit; hit.catch(function(){ delete W.PLAT._memo[u]; }); }
     return hit.then(function(j){ return {json:function(){ return Promise.resolve(j); }}; });
   }
   function loadScope(){
@@ -1143,7 +1177,7 @@ st0.textContent += "html{overflow-y:scroll}";   // p98: the scrollbar's space is
             return _fetch(PLAT+"/rest/v1/plat_padel_v_individuals?club_id=in.("+scope.join(",")+")&select=full_name",{headers:hdrs()}).then(function(r){return r.json();}).then(function(rows){
               var set={}; (Array.isArray(rows)?rows:[]).forEach(function(r){ if(r.full_name) set[String(r.full_name)]=1; });
               if(Object.keys(set).length) { W.PLAT.natNames=set; return; }
-              return _fetch(PLAT+"/rest/v1/plat_matches?club_id=in.("+scope.join(",")+")&discipline=eq.padel&select=t1p1,t1p2,t2p1,t2p2",{headers:hdrs()}).then(function(r2){return r2.json();}).then(function(ms){
+              return _paged(PLAT+"/rest/v1/plat_matches?club_id=in.("+scope.join(",")+")&discipline=eq.padel&select=t1p1,t1p2,t2p1,t2p2",{headers:hdrs()}).then(function(r2){return r2.json();}).then(function(ms){
                 var s2={}; (Array.isArray(ms)?ms:[]).forEach(function(m){ [m.t1p1,m.t1p2,m.t2p1,m.t2p2].forEach(function(v){ if(!v) return;
                   String(v).split(" & ").forEach(function(x){ x=x.trim(); if(x) s2[x]=1; }); }); });
                 W.PLAT.natNames=Object.keys(s2).length?s2:{};   // {} still filters — an empty club shows nobody, which is true
@@ -1449,7 +1483,7 @@ st0.textContent += "html{overflow-y:scroll}";   // p98: the scrollbar's space is
         /* n14: the add-member confirm now happens above, before routing, so it covers both doors. */
       }
       if(f) h=fnHdrs(init.headers);
-      return _fetch(u,Object.assign({},init,{headers:h}));
+      return _paged(u,Object.assign({},init,{headers:h}));   /* n374: functions and small reads pass straight through */
     });
   };
 })();
@@ -3750,7 +3784,7 @@ const CLUB_NAME = _club.name;  // shown in the logo as "OPR · <name>"
     link.setAttribute('href', href);
   }catch(e){ /* install stays on the static manifest — no functional impact */ }
 })();
-const OPR_VERSION = "OPR-DOUBLES v2026.09.03-56 · NAT4 booking test b21 (nat3 n373) (no voice) (of PLAT p117)";  // MANUAL PAIR CREATION REMOVED FROM ADMIN: Create a pair, Bulk create pairs and Re-derive all pairs are gone (they only made match-less ghost pairs, and Re-derive rewrote every stored initial club-wide). Pairs are born automatically at match entry. Current pairs list untouched; the underlying JS is left in place unreferenced, so no other code path changes. Includes v47 (set-score fix + double-tap guard) and all prior.
+const OPR_VERSION = "OPR-DOUBLES v2026.09.03-56 · NAT4 booking test b21 (nat3 n374) (no voice) (of PLAT p117)";  // MANUAL PAIR CREATION REMOVED FROM ADMIN: Create a pair, Bulk create pairs and Re-derive all pairs are gone (they only made match-less ghost pairs, and Re-derive rewrote every stored initial club-wide). Pairs are born automatically at match entry. Current pairs list untouched; the underlying JS is left in place unreferenced, so no other code path changes. Includes v47 (set-score fix + double-tap guard) and all prior.
 // Explanation shown above the individual ladder. Open on load so it's read; collapsible
 // (state kept for the session) and scrolls away. Mechanics only — no outcome framing, so
 // members aren't nudged away from playing stronger opponents. Every clause maps to a real
@@ -14994,6 +15028,7 @@ W.nhOpenPair=function(name){
         +'<div style="display:flex;gap:8px"><button onclick="window.__nhFxBack()" style="'+btnSmall+'">Back</button>'
         +'<button onclick="window.__nhFxOrganiser()" style="'+btnSmall+'">Organiser entry</button></div>');
     };
+    W.__nhFxOpen=function(d){ fxOpen(d); };   /* b21d: Topside opens the same card */
     /* q188: scored a moment ago and the draw has not caught up — said on the card, not in a pop-up */
     var pendOpen=function(){
       card('<div style="font-size:15px;font-weight:800;color:#241d33;margin-bottom:8px">That score was entered a moment ago</div>'
@@ -15013,6 +15048,7 @@ W.nhOpenPair=function(name){
     W.__nhBackToDraw={on:false, club:0, tour:"", div:""};
     W.__nhToDraw=function(){
       var d=W.__nhBackToDraw||{}; W.__nhBackToDraw={on:false, club:0, tour:"", div:""};
+      if(d.ts && typeof W.nhTopsideOpen==="function"){ W.nhTopsideOpen(d.ts); return; }   /* b21d */
       if(!d.tour){ try{ goHome(); }catch(e){} return; }
       var href=PAGEN()+"?club="+(d.club||cid())+"&go=tsheet&tn="+ENC(d.tour)+(d.div?"&div="+ENC(d.div):"");
       if(W.nhNav) W.nhNav(href); else location.href=href;
@@ -15021,7 +15057,7 @@ W.nhOpenPair=function(name){
     W.__nhFxManual=function(){
       var d=W.__nhFxNow; if(!d) return; W.__nhFxClose();
       var A=halves(d.a), B=halves(d.b), n=0;
-      W.__nhBackToDraw={on:true, club:d.club, tour:d.tour, div:d.div};
+      W.__nhBackToDraw={on:true, club:d.club, tour:d.tour, div:d.div, ts:d.ts||0};
       W.__nhFxCand={id:d.id, tour:d.tour, div:d.div, at:Date.now()};
       W.__nhFxFill={a:A, b:B, at:Date.now()};
       sheetFor(d, null);
@@ -15037,12 +15073,14 @@ W.nhOpenPair=function(name){
         }
         var ev=document.getElementById("matchEvent"), mt=document.getElementById("matchType"), dt=document.getElementById("matchDate");
         if(!ev||!mt){ if(++n<40) setTimeout(go,250); return; }
-        if(!Array.prototype.some.call(ev.options,function(o){ return o.value===d.tour; })){ var o2=document.createElement("option"); o2.value=d.tour; o2.textContent=d.tour; ev.insertBefore(o2, ev.firstChild); }
-        if(ev.value!==d.tour){ ev.value=d.tour; try{ ev.onchange && ev.onchange(); }catch(e){} }
+        var evn=d.event||d.tour;   /* b21d: Topside's matches are entered as Social (nat3 never sees a Topside tournament) */
+        if(!Array.prototype.some.call(ev.options,function(o){ return o.value===evn; })){ var o2=document.createElement("option"); o2.value=evn; o2.textContent=evn; ev.insertBefore(o2, ev.firstChild); }
+        if(ev.value!==evn){ ev.value=evn; try{ ev.onchange && ev.onchange(); }catch(e){} }
         if(dt && !dt.value) dt.value=new Date().toISOString().slice(0,10);
         /* the division: the event's own change re-reads the allowed types, so it is set once they are there */
         var k=0, tt=setInterval(function(){ var t=document.getElementById("matchType");
-          if(t && Array.prototype.some.call(t.options,function(o){ return o.value===d.div; })){ t.value=d.div; clearInterval(tt);
+          var ty=d.type||d.div;
+          if(t && Array.prototype.some.call(t.options,function(o){ return o.value===ty; })){ t.value=ty; clearInterval(tt);
             /* b19: "1 set" and "All 3 sets" say how many sets are played; best of 3 is left to the players */
             var r=rulesOf(d.div), sp=document.getElementById("setsPlayed");
             if(sp){ if(r.sets===1) sp.value="1"; else if(r.all_sets) sp.value="3"; }
@@ -15062,12 +15100,12 @@ W.nhOpenPair=function(name){
     W.__nhFxMarker=function(){
       var d=W.__nhFxNow; if(!d) return; W.__nhFxClose();
       var A=halves(d.a), B=halves(d.b);
-      W.__nhBackToDraw={on:true, club:d.club, tour:d.tour, div:d.div};
+      W.__nhBackToDraw={on:true, club:d.club, tour:d.tour, div:d.div, ts:d.ts||0};
       W.__nhFxCand={id:d.id, tour:d.tour, div:d.div, at:Date.now()};
       /* padel's marker is opened over the score sheet (as from the sheet itself), so its finish lands on page 3 there */
       sheetFor(d, function(){ try{
         var r=rulesOf(d.div);
-        entryData={ date:new Date().toISOString().slice(0,10), type:d.div, sets:(r.sets===1?1:3), event:d.tour, format:(A[1]?"doubles":"singles"),
+        entryData={ date:new Date().toISOString().slice(0,10), type:(d.type||d.div), sets:(r.sets===1?1:3), event:(d.event||d.tour), format:(A[1]?"doubles":"singles"),
                     t1p1:A[0], t1p2:A[1]||null, t2p1:B[0], t2p2:B[1]||null };
         Promise.resolve(mkOpenFromEntry()).then(function(){
           /* b19 (squash q183): the umpire plays the division's rules — nothing is set at the court */
@@ -15075,12 +15113,12 @@ W.nhOpenPair=function(name){
           W.__nhAllSets=(r.sets!==1 && !!r.all_sets);
           W.__nhFxUmp=d;   /* b20: its ← goes back to this match's card */
           var sum=document.getElementById("mkFromEntrySummary"); if(sum) sum.innerHTML+='<br><b>'+esc(lineOf(d.div))+'</b>';
-          MK.event=d.tour; MK.division=d.div; MK.cat=d.div; MK.handicap=false; MK.fixtureId=null;
+          var evn=d.event||d.tour; MK.event=evn; MK.division=(d.type||d.div); MK.cat=(d.type||d.div); MK.handicap=false; MK.fixtureId=null;
           MK.players.t1p1=A[0]; MK.players.t1p2=A[1]||null; MK.players.t2p1=B[0]; MK.players.t2p2=B[1]||null;
           MK.matchFormat=A[1]?"doubles":"singles";
           var evSel=document.getElementById("mkEvent");
-          if(evSel){ if(!Array.prototype.some.call(evSel.options,function(o){ return o.value===d.tour; })){ var o=document.createElement("option"); o.value=d.tour; o.textContent=d.tour; evSel.appendChild(o); } evSel.value=d.tour; }
-          var catSel=document.getElementById("mkCatSel"); if(catSel) catSel.value=d.div;
+          if(evSel){ if(!Array.prototype.some.call(evSel.options,function(o){ return o.value===evn; })){ var o=document.createElement("option"); o.value=evn; o.textContent=evn; evSel.appendChild(o); } evSel.value=evn; }
+          var catSel=document.getElementById("mkCatSel"); if(catSel) catSel.value=(d.type||d.div);
         });
       }catch(e){ W.__nhFxMarkerFail(); } });
     };
@@ -15427,6 +15465,7 @@ W.nhOpenPair=function(name){
 
     /* ---- Create a tournament (Control Room): the same choice, saved for every ticked division once it is created ---- */
     var NEW="__nhNewTour__";
+    W.__nhRulesNewPick=function(){ return PICK[NEW]||norm(DEF); };   /* b21d: a new Topside saves the same choice */
     var paintNew=function(){ var h=document.getElementById("nhRulesNew"); if(!h) return;
       h.innerHTML='<label style="font-size:12px;color:#9b80b3;font-weight:700;">How a match is played</label>'
         +'<div class="nhRules" data-sec="'+NEW+'" style="margin:4px 0 8px">'+pills(NEW, PICK[NEW]||norm(DEF))+'</div>'; };
@@ -15665,6 +15704,9 @@ W.nhOpenPair=function(name){
        · Scores are entered the normal way; after every save the app asks ts_link_match, which puts the result on the
          Topside match of those two pairs (no question asked: the pairs and the round decide it).
      The database side is topside_b21.sql (tables plat_topside*, functions ts_*). No pop-ups anywhere.
+     b21c (Andre, 4 Nov: "it can't be shown on 373 until we have finalised the build"): Topside keeps to ITS OWN tables —
+     no row in nat3's tournaments or entries (3_topside_own_tables_only.sql). So nat4 adds it itself: a Topside card on the
+     door's Tournaments page, a Topside row (with the switch) under My page → Tournaments, and on a player's page.
      ================================================================================================================== */
   (function(){
     var W=window;
@@ -15750,7 +15792,7 @@ W.nhOpenPair=function(name){
           get("plat_topside_players?tour_id=eq."+tourId+"&select=*&order=name.asc"),
           get("plat_topside_pairs?tour_id=eq."+tourId+"&select=*&order=id.asc"),
           get("plat_topside_rounds?tour_id=eq."+tourId+"&select=*&order=round.desc&limit=3"),
-          get("plat_topside_matches?tour_id=eq."+tourId+"&round=gte."+Math.max(0,(Number(t.current_round)||0)-1)+"&select=*&order=id.asc"),
+          get("plat_topside_matches?tour_id=eq."+tourId+"&select=*&order=id.asc"),
           get("plat_padel_v_pool_individuals?pool_id=eq."+(Number(W.PLAT&&W.PLAT.pool)||0)+"&select=full_name,current_rating,seed_rating,gender")
         ]).then(function(r){
           var rating={}, gender={}; (r[4]||[]).forEach(function(p){ var v=(p.current_rating!=null?p.current_rating:p.seed_rating); rating[lc(p.full_name)]=v!=null?Math.round(Number(v)):null; gender[lc(p.full_name)]=p.gender; });
@@ -15767,57 +15809,83 @@ W.nhOpenPair=function(name){
       return get("plat_topside?club_id=eq."+Number(club)+"&name=eq."+ENC(name)+"&select=tour_id").then(function(r){ FIND[k]=(r&&r[0])?Number(r[0].tour_id):0; return FIND[k]; }); };
 
     /* ---------------------------------------------------------------- the page */
-    var ST={tour:0, D:null, me:"", adm:"", preview:null, ask:null, msg:"", pick:false, q:""};
+    var ST={tour:0, D:null, me:"", adm:"", preview:null, ask:null, msg:"", pick:false, q:"", pickMode:"me", bulk:false, bq:"", ticks:{}, focus:""};
     var meKey=function(){ return "nhTsMe|"+ST.tour; };
     var myPage=function(){ try{ return localStorage.getItem("opr_me_"+(W.PLAT.parentId||W.PLAT.cid))||""; }catch(e){ return ""; } };
     var meGet=function(){ var v=""; try{ v=localStorage.getItem(meKey())||""; }catch(e){} return v||myPage(); };
     var meSet=function(n){ ST.me=n||""; try{ if(n) localStorage.setItem(meKey(), n); else localStorage.removeItem(meKey()); }catch(e){} };
+    /* b21d (Andre, 4 Nov: "why can't the draw be like for other tournaments — people are used to that"): Topside is shown
+       ON THE DRAW SCREEN, with the draw's own pieces — the header with the group pill, the section pills (as the division
+       pills), the tabs Pairs · Rounds · Reigns (as Teams & Bands · Rounds · Standings), the draw's tables and round buttons,
+       "How a match is played" at the foot and the Page / WhatsApp buttons. Back returns to where it was opened from. */
+    var PREV={screen:"", ctx:null};
     W.nhTopsideOpen=function(tourId, who){
-      ST.tour=Number(tourId)||0; ST.preview=null; ST.ask=null; ST.msg=""; ST.pick=false; ST.q="";
+      ST.tour=Number(tourId)||0; ST.preview=null; ST.ask=null; ST.msg=""; ST.pick=false; ST.q=""; ST.pickMode="me"; ST.bulk=false; ST.bq=""; ST.ticks={};
+      ST.tab=""; ST.sec=""; ST.rsel=0;
       try{ ST.adm=sessionStorage.getItem("nhTsAdm|"+ST.tour)||""; }catch(e){ ST.adm=""; }
       if(who) meSet(who); else ST.me=meGet();
-      var o=document.getElementById("nhTs"); if(!o){ o=document.createElement("div"); o.id="nhTs"; document.body.appendChild(o); }
-      o.style.cssText="position:fixed;inset:0;z-index:2147482000;background:#f6f4f9;overflow:auto;-webkit-overflow-scrolling:touch;padding-bottom:110px";
-      o.innerHTML='<div style="padding:40px 16px;color:#8a8196;font-size:14px">Loading Topside…</div>';
+      var a=document.querySelector(".screen.active"); if(!ST.on) { PREV.screen=(a && !/^(tournamentSheetScreen|entryScreen|markerScreen)$/.test(a.id))?a.id:"homeScreen"; PREV.ctx=W._tmCtx||null; }   /* back from a score: to the door, not the score sheet */
+      ST.on=true;
+      try{ showScreen("tournamentSheetScreen"); }catch(e){}
+      var box=document.getElementById("tournamentSheetContent"); if(box) box.innerHTML='<div id="nhTs"><div class="loading">Loading Topside\u2026</div></div>';
       refresh();
     };
-    W.nhTopsideClose=function(){ var o=document.getElementById("nhTs"); if(o) o.remove(); ST.tour=0; };
-    var refresh=function(){ var t0=ST.tour; return load(t0).then(function(D){ if(ST.tour!==t0) return; ST.D=D; paint(); }); };
+    W.nhTopsideClose=function(stay){ if(!ST.on) return; ST.on=false; ST.tour=0; try{ W._tmCtx=PREV.ctx; }catch(e){}
+      if(!stay){ try{ showScreen(PREV.screen||"homeScreen"); }catch(e){} } };
+    /* leaving the draw screen any other way (the bar, another tournament) ends Topside's view */
+    (function(){ var t=setInterval(function(){ if(typeof W.showScreen!=="function" || W.showScreen.__nhTs) { if(W.showScreen&&W.showScreen.__nhTs) clearInterval(t); return; }
+        var s0=W.showScreen; var s1=function(id){ if(ST.on && id!=="tournamentSheetScreen") W.nhTopsideClose(true); return s0.apply(this, arguments); };
+        Object.keys(s0).forEach(function(k){ s1[k]=s0[k]; }); s1.__nhTs=1; W.showScreen=s1; try{ showScreen=s1; }catch(e){} clearInterval(t); }, 250); })();
+    (function(){ var t=setInterval(function(){ var f0=W.loadTournamentSheet; if(typeof f0!=="function") return; clearInterval(t); if(f0.__nhTs) return;
+        var f1=function(){ if(ST.on) W.nhTopsideClose(true); return f0.apply(this, arguments); }; f1.__nhTs=1; W.loadTournamentSheet=f1; try{ loadTournamentSheet=f1; }catch(e){} }, 250); })();
+    /* the draw screen's back arrow: back to where Topside was opened from */
+    document.addEventListener("click", function(e){ if(!ST.on) return; var b=e.target && e.target.closest && e.target.closest("#tournamentSheetScreen .back-btn"); if(!b) return;
+      e.preventDefault(); e.stopPropagation(); if(e.stopImmediatePropagation) e.stopImmediatePropagation(); W.nhTopsideClose(); }, true);
+    var refresh=function(){ var t0=ST.tour; return load(t0).then(function(D){ if(ST.tour!==t0 || !ST.on) return; ST.D=D;
+      try{ if(D && W.__nhRulesLoad) W.__nhRulesLoad(true, D.t.club_id, D.t.name); }catch(e){}   /* its How a match is played */
+      paint(); }); };
     var say=function(m){ ST.msg=m||""; paint(); };
 
     var btn=function(label, on, primary, style){ var c=ink();
       return '<button onclick="'+on+'" style="border:1.5px solid '+(primary?c:'#ddd5e6')+';background:'+(primary?c:'#fff')+';color:'+(primary?'#fff':'#4b4060')+';border-radius:12px;padding:11px 12px;font:inherit;font-size:13.5px;font-weight:800;cursor:pointer;'+(style||"")+'">'+label+'</button>'; };
-    var card=function(inner, style){ return '<div style="background:#fff;border:1px solid #e6e0ee;border-radius:14px;padding:12px 13px;margin:10px 12px;'+(style||"")+'">'+inner+'</div>'; };
-    var h=function(t){ return '<div style="font-size:11.5px;letter-spacing:.09em;text-transform:uppercase;font-weight:800;color:#8a8196;margin:0 0 8px">'+t+'</div>'; };
+    var card=function(inner, style){ return '<div class="card" style="'+(style||"")+'">'+inner+'</div>'; };   /* b21d: the draw's own cards */
+    var h=function(t){ return '<h2>'+t+'</h2>'; };
     var pairName=function(P){ return P ? (P.p1+" & "+P.p2) : "—"; };
     var pairById=function(id){ return (ST.D.allPairs||[]).filter(function(p){ return Number(p.id)===Number(id); })[0]; };
     var meRow=function(){ var D=ST.D; return D && ST.me ? (D.players||[]).filter(function(p){ return lc(p.name)===lc(ST.me) && !p.left_at; })[0] : null; };
     var mePair=function(){ var D=ST.D; return D && ST.me ? (D.pairs||[]).filter(function(p){ return lc(p.p1)===lc(ST.me) || lc(p.p2)===lc(ST.me); })[0] : null; };
 
     var paint=function(){
-      var o=document.getElementById("nhTs"); if(!o) return; var D=ST.D, c=ink();
-      if(!D){ o.innerHTML=top("Topside")+card('This Topside could not be read. '+btn("Back","window.nhTopsideClose()",false)); return; }
+      var o=document.getElementById("nhTs"); if(!o || !ST.on) return; var D=ST.D, c=ink();
+      if(!D){ o.innerHTML=card(h("Topside")+'<p class="sub">This Topside could not be read.</p>'); return; }
       var t=D.t, cur=Number(t.current_round)||0, rnow=(D.rounds||[]).filter(function(r){ return Number(r.round)===cur; })[0];
       var locked=Date.now()>=new Date(t.next_lock).getTime();
-      var when = cur===0 ? ("Starts "+day(t.start_date)+" · first draw "+lockTxt(t.next_lock))
-                         : ("Round "+cur+(rnow?(" · "+day(rnow.starts)+"–"+day(rnow.ends)):"")+" · next draw "+lockTxt(t.next_lock));
-      var html=top(t.name, when);
-      if(ST.msg) html+=card('<div style="font-size:13.5px;color:#4b4060;line-height:1.5">'+ST.msg+'</div>', 'border-color:'+c);
+      /* the draw screen's header: the name and the group pill; the context the draw's add-ons read */
+      try{ var tt=document.getElementById("tournamentSheetTitle"); if(tt) tt.textContent=t.name;
+        var g=boardOf(t.club_id), pill=document.querySelector("#tournamentSheetScreen .platWhere"); if(pill){ pill.textContent=g.name||""; if(g.colour) pill.style.background=g.colour; }
+        W._tmCtx={tournament:t.name, division:"All Sorts", topside:ST.tour}; }catch(e){}
+      if(!ST.sec){ var P0=mePair(), r0=D.rating[lc(ST.me)]; ST.sec=P0?P0.section:((r0!=null && r0<Number(t.line))?"B":"A"); }
+      if(!ST.tab) ST.tab=cur>0?"rounds":"pairs";
+      if(!ST.rsel) ST.rsel=cur;
+      var when = cur===0 ? ("Starts "+day(t.start_date)+" \u00b7 first draw "+lockTxt(t.next_lock))
+                         : ("Round "+cur+(rnow?(" \u00b7 "+day(rnow.starts)+"\u2013"+day(rnow.ends)):"")+" \u00b7 next draw "+lockTxt(t.next_lock));
+      var html='<p class="sub" style="text-align:center;margin:6px 0 8px">Topside \u00b7 '+esc(when)+'</p>';
+      if(ST.msg) html+=card('<div style="font-size:13.5px;color:#4b4060;line-height:1.5">'+ST.msg+'</div>', 'border:1.5px solid '+c);
       html+= ST.pick ? picker() : you(locked, cur);
-      html+= thisRound(cur);
-      html+= reigns();
-      html+= waiting();
+      html+='<div class="tm-divbar">'+["A","B"].map(function(d){ return '<button class="'+(ST.sec===d?'active':'')+'" onclick="window.__nhTsSec(\''+d+'\')">Section '+d+'</button>'; }).join("")+'</div>';
+      html+='<div class="tm-nav">'
+        +'<button class="'+(ST.tab==="pairs"?"active":"")+'" onclick="window.__nhTsTab(\'pairs\')">\ud83d\udc65 Pairs</button>'
+        +'<button class="'+(ST.tab==="rounds"?"active":"")+'" onclick="window.__nhTsTab(\'rounds\')">\ud83e\udd4e Rounds</button>'
+        +'<button class="'+(ST.tab==="reigns"?"active":"")+'" onclick="window.__nhTsTab(\'reigns\')">\ud83d\udcca Reigns</button></div>';
+      html+= ST.tab==="rounds" ? roundsTab(cur) : ST.tab==="reigns" ? reignsTab() : pairsTab();
       html+= organiser(cur);
       o.innerHTML=html;
-      if(ST.pick){ var i=document.getElementById("nhTsQ"); if(i){ i.focus(); i.setSelectionRange(i.value.length,i.value.length); } }
+      ["nhTsQ","nhTsBQ"].forEach(function(id){ var i=document.getElementById(id); if(i && ST.focus===id){ i.focus(); i.setSelectionRange(i.value.length,i.value.length); } });
     };
-    var top=function(name, sub){ var c=ink();
-      return '<div style="background:linear-gradient(135deg,'+c+',#241d33);color:#fff;padding:14px 14px 16px">'
-        +'<button onclick="window.nhTopsideClose()" style="background:rgba(255,255,255,.16);border:1px solid rgba(255,255,255,.35);color:#fff;border-radius:99px;padding:6px 12px;font:inherit;font-weight:800;font-size:12.5px;cursor:pointer">\u2039 Back</button>'
-        +'<div style="font-size:11px;letter-spacing:.12em;font-weight:800;opacity:.8;margin-top:12px">TOPSIDE \u00b7 WITH SOUTHSIDE</div>'
-        +'<div style="font-size:22px;font-weight:900;margin-top:2px">'+esc(name)+'</div>'
-        +(sub?'<div style="font-size:12.5px;opacity:.85;margin-top:4px">'+esc(sub)+'</div>':'')+'</div>';
-    };
+    W.__nhTsSec=function(d){ ST.sec=d; paint(); };
+    W.__nhTsTab=function(t){ ST.tab=t; paint(); };
+    W.__nhTsRound=function(r){ ST.rsel=Number(r)||1; paint(); };
+    var secTag=function(){ return ' <span class="tm-divtag">Section '+ST.sec+(ST.sec==="A"?" \u00b7 1300 and up":" \u00b7 below 1300")+'</span>'; };
     /* you: join, the switch, your partnership */
     var you=function(locked, cur){
       var D=ST.D, me=ST.me, row=meRow(), P=mePair();
@@ -15826,7 +15894,8 @@ W.nhOpenPair=function(name){
       var name='<b style="color:#241d33">'+esc(me)+'</b> <a href="#" onclick="event.preventDefault();window.__nhTsPick()" style="font-size:12px;color:#8a8196;margin-left:6px">not you?</a>';
       if(!row){
         if(ST.ask==="join") return card(h("You")+name+'<div style="margin:10px 0">'+btn("Join Topside as "+esc(me),"window.__nhTsJoin()",true,"width:100%")+'</div>');
-        return card(h("You")+name+'<div style="font-size:13px;color:#4b4060;margin:8px 0 10px">You are not in Topside.</div>'+btn("Join Topside","window.__nhTsJoin()",true,"width:100%"));
+        return card(h("You")+name+'<div style="font-size:13px;color:#4b4060;margin:8px 0 10px">You are not in Topside.</div>'+btn("Join Topside","window.__nhTsJoin()",true,"width:100%")
+          +'<div style="margin-top:8px">'+btn("Join someone else","window.__nhTsPickOther()",false,"width:100%;font-size:12.5px")+'</div>');
       }
       var r=D.rating[lc(me)], sec=(r!=null && r>=Number(D.t.line))?"A":"B";
       var s=card(h("You")+name
@@ -15839,52 +15908,75 @@ W.nhOpenPair=function(name){
              +'<div style="display:flex;gap:8px">'+btn("No, keep it","window.__nhTsAsk(null)",false,"flex:1")+btn("Yes, end it","window.__nhTsEnd()",true,"flex:1")+'</div></div>')
           : ST.ask==="leave" ? ('<div style="margin-top:12px;padding:10px;border:1px solid #e6e0ee;border-radius:10px"><b>Leave Topside?</b><div style="font-size:12.5px;color:#4b4060;margin:4px 0 8px">You are out for good; you can join again later, from zero.</div>'
              +'<div style="display:flex;gap:8px">'+btn("No, stay","window.__nhTsAsk(null)",false,"flex:1")+btn("Yes, leave","window.__nhTsLeave()",true,"flex:1")+'</div></div>')
-          : ('<div style="display:flex;gap:8px;margin-top:12px">'+(P?btn("End our partnership","window.__nhTsAsk('end')",false,"flex:1;font-size:12.5px"):"")+btn("Leave Topside","window.__nhTsAsk('leave')",false,"flex:1;font-size:12.5px")+'</div>')));
+          : ('<div style="display:flex;gap:8px;margin-top:12px">'+(P?btn("End our partnership","window.__nhTsAsk('end')",false,"flex:1;font-size:12.5px"):"")+btn("Leave Topside","window.__nhTsAsk('leave')",false,"flex:1;font-size:12.5px")+'</div>'))
+        +'<div style="margin-top:8px">'+btn("Join someone else","window.__nhTsPickOther()",false,"width:100%;font-size:12.5px")+'</div>');
       return s;
     };
     /* the name picker (first letters, as everywhere) */
     var picker=function(){
       var D=ST.D, q=lc(ST.q);
       var names=(D.people||[]).map(function(p){ return p.full_name; }).filter(function(n){ return n && (!q || (typeof W.nhStartsIn==="function" ? W.nhStartsIn(n,q) : lc(n).indexOf(q)===0)); }).sort(function(a,b){ return a.localeCompare(b); }).slice(0,60);
-      return card(h("Which one is you?")
-        +'<input id="nhTsQ" value="'+esc(ST.q)+'" oninput="window.__nhTsQ(this.value)" placeholder="Type the first letters of your name" style="width:100%;box-sizing:border-box;padding:11px;font-size:15px;border:1.5px solid #ddd5e6;border-radius:10px;margin-bottom:8px;font-family:inherit">'
+      var other=(ST.pickMode==="other"), joined={}; (D.players||[]).forEach(function(p){ if(!p.left_at) joined[lc(p.name)]=1; });
+      return card(h(other?"Who is joining?":"Which one is you?")
+        +'<input id="nhTsQ" value="'+esc(ST.q)+'" oninput="window.__nhTsQ(this.value)" placeholder="Type the first letters of the name" style="width:100%;box-sizing:border-box;padding:11px;font-size:15px;border:1.5px solid #ddd5e6;border-radius:10px;margin-bottom:8px;font-family:inherit">'
         +'<div style="max-height:320px;overflow:auto">'+names.map(function(n){ var r=D.rating[lc(n)];
-          return '<button onclick="window.__nhTsChose(\''+String(n).replace(/\\/g,"\\\\").replace(/'/g,"\\'")+'\')" style="display:flex;width:100%;justify-content:space-between;background:#fff;border:none;border-bottom:1px solid #f0ecf4;padding:10px 4px;font:inherit;font-size:14px;cursor:pointer;text-align:left"><span>'+esc(n)+'</span><span style="color:#8a8196">'+(r!=null?r:"")+'</span></button>'; }).join("")+'</div>'
+          return '<button onclick="window.__nhTsChose(\''+String(n).replace(/\\/g,"\\\\").replace(/'/g,"\\'")+'\')" style="display:flex;width:100%;justify-content:space-between;background:#fff;border:none;border-bottom:1px solid #f0ecf4;padding:10px 4px;font:inherit;font-size:14px;cursor:pointer;text-align:left"><span>'+esc(n)+(joined[lc(n)]?' <span style="color:#1e8449;font-size:12px;font-weight:800">\u00b7 in Topside</span>':'')+'</span><span style="color:#8a8196">'+(r!=null?r:"")+'</span></button>'; }).join("")+'</div>'
         +'<div style="margin-top:10px">'+btn("Cancel","window.__nhTsPickOff()",false)+'</div>');
     };
-    var thisRound=function(cur){
-      var D=ST.D; if(cur===0) return card(h("This round")+'<div style="font-size:13px;color:#4b4060">No draw yet. Everyone who has joined and is in is paired at the first draw.</div>');
-      var ms=(D.matches||[]).filter(function(m){ return Number(m.round)===cur; });
-      var row=function(m){ var A=pairById(m.pair_a), B=m.pair_b!=null?pairById(m.pair_b):null, c=ink();
-        var tag=m.status==="bye"?"bye":m.status==="open"?"to play":m.status==="not_played"?"not played":(m.winner!=null?("won by "+pairName(pairById(m.winner))+(m.status==="walkover"?" (walkover)":"")):m.status);
-        var mine=ST.me && [A,B].some(function(P){ return P && (lc(P.p1)===lc(ST.me)||lc(P.p2)===lc(ST.me)); });
-        return '<div style="padding:9px 0;border-bottom:1px solid #f0ecf4'+(mine?';background:#fbf8ff':'')+'">'
-          +'<div style="font-size:13.5px;color:#241d33"><b>'+esc(pairName(A))+'</b>'+(A&&A.reign?' <span style="color:'+c+';font-weight:800">\u00b7'+A.reign+'</span>':'')
-          +(B?(' <span style="color:#8a8196">v</span> <b>'+esc(pairName(B))+'</b>'+(B.reign?' <span style="color:'+c+';font-weight:800">\u00b7'+B.reign+'</span>':'')):'')+'</div>'
-          +'<div style="display:flex;align-items:center;gap:8px;margin-top:4px"><span style="font-size:12px;color:#8a8196;flex:1">'+esc(tag)+(m.sets?(' \u00b7 '+esc(m.sets)):'')+'</span>'
-          +(m.status==="open"&&B?btn("Enter the score","window.__nhTsScore("+m.id+")",mine,"padding:6px 10px;font-size:12px"):'')
-          +(ST.adm&&m.status!=="bye"?admRow(m):'')+'</div></div>'; };
-      var sec=function(d){ var L=ms.filter(function(m){ return m.section===d; }); if(!L.length) return "";
-        return '<div style="font-size:12px;font-weight:800;color:'+ink()+';margin:8px 0 2px">SECTION '+d+(d==="A"?" \u00b7 1300 and up":" \u00b7 below 1300")+'</div>'+L.map(row).join(""); };
-      return card(h("This round")+(sec("A")+sec("B")||'<div style="font-size:13px;color:#4b4060">No matches in this round.</div>'));
-    };
-    var reigns=function(){
-      var D=ST.D, c=ink();
-      var t=function(d){ var L=(D.pairs||[]).filter(function(p){ return p.section===d; }).sort(function(a,b){ return b.reign-a.reign || a.id-b.id; });
-        if(!L.length) return '';
-        return '<div style="font-size:12px;font-weight:800;color:'+c+';margin:8px 0 4px">SECTION '+d+'</div>'+L.map(function(p,i){
-          return '<div style="display:flex;gap:8px;padding:7px 0;border-bottom:1px solid #f0ecf4;font-size:13.5px"><span style="width:22px;color:#8a8196">'+(i+1)+'</span><span style="flex:1">'+esc(pairName(p))+(p.pauses&&D.t.current_round>0&&!(D.matches||[]).some(function(m){ return Number(m.round)===Number(D.t.current_round)&&(Number(m.pair_a)===Number(p.id)||Number(m.pair_b)===Number(p.id)); })?' <span style="color:#8a8196;font-size:12px">(paused)</span>':'')+'</span><b style="color:'+c+'">'+p.reign+'</b></div>'; }).join(""); };
-      var body=t("A")+t("B");
-      return card(h("The Castle stands — reigns")+(body||'<div style="font-size:13px;color:#4b4060">No pairs yet.</div>'));
-    };
-    var waiting=function(){
-      var D=ST.D, inPair={}; (D.pairs||[]).forEach(function(p){ inPair[lc(p.p1)]=1; inPair[lc(p.p2)]=1; });
+    var reignOf=function(P){ return P ? (Number(P.reign)||0) : 0; };
+    var isPaused=function(P){ var D=ST.D, cur=Number(D.t.current_round)||0; return P && P.pauses>0 && cur>0 && !(D.matches||[]).some(function(m){ return Number(m.round)===cur && (Number(m.pair_a)===Number(P.id)||Number(m.pair_b)===Number(P.id)); }); };
+    /* Pairs (as Teams & Bands): this section's pairs as they stand, strongest first; the waiting room and who is out */
+    var pairsTab=function(){
+      var D=ST.D, c=ink(), rt=function(n){ var r=D.rating[lc(n)]; return r!=null?Number(r):1200; };
+      var L=(D.pairs||[]).filter(function(p){ return p.section===ST.sec; }).map(function(p){ return {p:p, r:pr60(rt(p.p1),rt(p.p2))}; }).sort(function(a,b){ return b.r-a.r; });
+      var inPair={}; (D.pairs||[]).forEach(function(p){ inPair[lc(p.p1)]=1; inPair[lc(p.p2)]=1; });
       var act=(D.players||[]).filter(function(p){ return !p.left_at; });
-      var wait=act.filter(function(p){ return p.is_in && !inPair[lc(p.name)]; }), out=act.filter(function(p){ return !p.is_in; });
-      var list=function(L){ return L.map(function(p){ return esc(p.name); }).join(" \u00b7 "); };
-      return card(h("Waiting room \u00b7 "+wait.length)+'<div style="font-size:13px;color:#4b4060;line-height:1.6">'+(wait.length?list(wait):"Nobody waiting.")+'</div>'
-        +(out.length?'<div style="font-size:12px;font-weight:800;color:#8a8196;margin-top:10px">OUT NEXT ROUND \u00b7 '+out.length+'</div><div style="font-size:13px;color:#4b4060;line-height:1.6">'+list(out)+'</div>':'')
-        +'<div style="font-size:12px;color:#8a8196;margin-top:10px">'+act.length+' in Topside</div>');
+      var inSec=function(p){ var r=D.rating[lc(p.name)]; return ((r!=null && r>=Number(D.t.line))?"A":"B")===ST.sec; };
+      var wait=act.filter(function(p){ return p.is_in && !inPair[lc(p.name)] && inSec(p); }), out=act.filter(function(p){ return !p.is_in && inSec(p); });
+      var names=function(X){ return X.map(function(p){ return esc(p.name)+(D.rating[lc(p.name)]!=null?' <span style="color:#8a8196">'+D.rating[lc(p.name)]+'</span>':''); }).join(" \u00b7 "); };
+      return '<div class="card"><h2>Pairs'+secTag()+'</h2><p class="sub">Drawn each round so every pair\'s 60/40 rating is as even as possible. Winners stay together; losers are drawn again.</p>'
+        +(L.length?'<table><thead><tr><th class="num">#</th><th>Pair</th><th class="num">Rating</th><th class="num">Reign</th></tr></thead><tbody>'
+          +L.map(function(x,i){ var mine=ST.me && (lc(x.p.p1)===lc(ST.me)||lc(x.p.p2)===lc(ST.me));
+            return '<tr'+(mine?' style="background:#fbf8ff"':'')+'><td class="num"><span class="seed'+(i===0?' s1':'')+'">'+(i+1)+'</span></td><td><b>'+esc(x.p.p1)+' / '+esc(x.p.p2)+'</b>'+(isPaused(x.p)?' <span style="color:#8a8196;font-size:12px">(paused)</span>':'')+'</td>'
+              +'<td class="num"><b style="color:'+c+'">'+x.r+'</b></td><td class="num">'+reignOf(x.p)+'</td></tr>'; }).join("")+'</tbody></table>'
+          :'<p class="sub">No pairs yet in this section \u2014 the draw makes them.</p>')
+        +'<p class="sub" style="margin-top:12px;text-align:left"><b>Waiting room \u00b7 '+wait.length+'</b><br>'+(wait.length?names(wait):"Nobody waiting.")+'</p>'
+        +(out.length?'<p class="sub" style="text-align:left"><b>Out next round \u00b7 '+out.length+'</b><br>'+names(out)+'</p>':'')
+        +'<p class="sub" style="text-align:left">'+act.length+' in Topside</p></div>';
+    };
+    /* Rounds (as Round Fixtures & Results): R1, R2 … and this section's matches; tap one to score it */
+    var roundsTab=function(cur){
+      var D=ST.D;
+      if(cur===0) return '<div class="card"><h2>Round Fixtures &amp; Results'+secTag()+'</h2><p class="sub">No draw yet. Everyone who has joined and is in is paired at the first draw ('+esc(lockTxt(D.t.next_lock))+').</p></div>';
+      var rs=[]; for(var i=1;i<=cur;i++) rs.push(i); var R=Math.min(Math.max(1,ST.rsel||cur),cur);
+      var rr=(D.rounds||[]).filter(function(x){ return Number(x.round)===R; })[0];
+      var ms=(D.matches||[]).filter(function(m){ return Number(m.round)===R && m.section===ST.sec; });
+      var cell=function(P,won){ return '<td class="'+(won?'winr ':'')+'%s">'+(P?(esc(P.p1)+'<br>'+esc(P.p2)):'\u2014')+'</td>'; };
+      var rows=ms.map(function(m){ var A=pairById(m.pair_a), B=m.pair_b!=null?pairById(m.pair_b):null;
+        var res=m.status==="bye"?'<span style="color:#8a8196">bye</span>':m.status==="open"?'<span style="color:#9a9a9a;font-weight:600">to play</span>'
+          :m.status==="not_played"?'<span style="color:#8a8196">not played</span>':('<span class="res-done">'+(m.status==="walkover"?'W/O':esc(m.sets||'won'))+'</span>');
+        var tap=(m.status==="open"&&B&&R===cur)?' style="cursor:pointer;" onclick="window.__nhTsScore('+m.id+')" title="Tap to enter the score"':'';
+        return '<tr'+tap+'><td class="num"><span class="seed'+(reignOf(A)?' s1':'')+'">'+reignOf(A)+'</span></td>'+cell(A, Number(m.winner)===Number(m.pair_a)).replace('%s','ta')
+          +'<td class="num">v</td>'+cell(B, B && Number(m.winner)===Number(m.pair_b)).replace('%s','tb')
+          +'<td class="num">'+(B?'<span class="seed'+(reignOf(B)?' s1':'')+'">'+reignOf(B)+'</span>':'')+'</td><td class="num">'+res+'</td></tr>'
+          +((ST.adm && m.status!=="bye" && R===cur)?'<tr><td></td><td colspan="5" style="padding-top:0">'+admRow(m)+'</td></tr>':''); }).join("");
+      return '<div class="card"><h2>Round Fixtures &amp; Results'+secTag()+'</h2>'
+        +'<div class="rsel">'+rs.map(function(i){ return '<button class="fixed '+(i===R?'active':'')+'" onclick="window.__nhTsRound('+i+')">R'+i+'</button>'; }).join("")+'</div>'
+        +(rr?'<p class="sub">Round '+R+' \u00b7 '+day(rr.starts)+'\u2013'+day(rr.ends)+(R===cur?' \u00b7 play by midnight '+day(rr.ends):'')+'</p>':'')
+        +(rows?'<table class="fxtbl"><thead><tr><th class="num">Rn</th><th class="ta">Pair A</th><th class="num"></th><th class="tb">Pair B</th><th class="num">Rn</th><th class="num">Score</th></tr></thead><tbody>'+rows+'</tbody></table>'
+             :'<p class="sub">No matches in this section in round '+R+'.</p>')
+        +(R===cur?'<p class="sub" style="text-align:left"><b>Tap a match to enter the score.</b> Rn = the pair\'s reign.</p>':'')+'</div>';
+    };
+    /* Reigns (as Standings): the longest unbroken reign wins */
+    var reignsTab=function(){
+      var D=ST.D, c=ink();
+      var L=(D.pairs||[]).filter(function(p){ return p.section===ST.sec; }).sort(function(a,b){ return b.reign-a.reign || a.formed_round-b.formed_round || a.id-b.id; });
+      return '<div class="card"><h2>Reigns'+secTag()+'</h2><p class="sub">The longest unbroken reign wins. A win adds 1; a loss ends the partnership.</p>'
+        +(L.length?'<table><thead><tr><th class="num">#</th><th>Pair</th><th class="num">Reign</th><th class="num">Since</th></tr></thead><tbody>'
+          +L.map(function(p,i){ return '<tr><td class="num"><span class="rank'+(i===0&&p.reign>0?' top':'')+'">'+(i+1)+'</span></td><td><b>'+esc(p.p1)+' / '+esc(p.p2)+'</b>'
+            +(p.banked_b?' <span style="color:#8a8196;font-size:12px">(B reign '+p.banked_b+' banked)</span>':'')+(isPaused(p)?' <span style="color:#8a8196;font-size:12px">(paused)</span>':'')+'</td>'
+            +'<td class="num"><b style="color:'+c+'">'+p.reign+'</b></td><td class="num">R'+(p.formed_round||1)+'</td></tr>'; }).join("")+'</tbody></table>'
+          :'<p class="sub">No pairs yet in this section.</p>')+'</div>';
     };
     /* ---------------------------------------------------------------- the organiser */
     var admRow=function(m){
@@ -15898,6 +15990,19 @@ W.nhOpenPair=function(name){
         +(ST.ask==="adm"?card(h("Organiser")+'<input id="nhTsCode" type="password" inputmode="numeric" placeholder="Admin code" style="width:100%;box-sizing:border-box;padding:11px;font-size:15px;border:1.5px solid #ddd5e6;border-radius:10px;margin-bottom:8px;font-family:inherit">'
           +'<div style="display:flex;gap:8px">'+btn("Cancel","window.__nhTsAsk(null)",false,"flex:1")+btn("Unlock","window.__nhTsUnlock()",true,"flex:1")+'</div>'):'');
       var s=h("Organiser")+'<div style="font-size:12.5px;color:#4b4060;margin-bottom:10px">On this round\'s matches: W/O 1st / 2nd = a walkover to that pair; Not played; Reopen.</div>';
+      if(ST.bulk){
+        var joined={}; (D.players||[]).forEach(function(p){ if(!p.left_at) joined[lc(p.name)]=1; }); var bq=lc(ST.bq);
+        var L=(D.people||[]).map(function(p){ return p.full_name; }).filter(function(n){ return n && !joined[lc(n)] && (!bq || (typeof W.nhStartsIn==="function" ? W.nhStartsIn(n,bq) : lc(n).indexOf(bq)===0)); }).sort(function(a,b){ return a.localeCompare(b); });
+        var nT=Object.keys(ST.ticks).filter(function(k){ return ST.ticks[k]; }).length;
+        s+='<div style="font-size:13.5px;font-weight:800;color:#241d33;margin-bottom:6px">Add players</div>'
+          +'<input id="nhTsBQ" value="'+esc(ST.bq)+'" oninput="window.__nhTsBQ(this.value)" placeholder="First letters of a name" style="width:100%;box-sizing:border-box;padding:10px;font-size:15px;border:1.5px solid #ddd5e6;border-radius:10px;margin-bottom:6px;font-family:inherit">'
+          +'<div style="display:flex;gap:8px;margin-bottom:6px">'+btn("Tick all shown","window.__nhTsTickAll()",false,"flex:1;padding:7px;font-size:12px")+btn("Clear","window.__nhTsTickNone()",false,"flex:1;padding:7px;font-size:12px")+'</div>'
+          +'<div style="max-height:300px;overflow:auto;border:1px solid #f0ecf4;border-radius:10px">'+(L.length?L.map(function(n){ var on=!!ST.ticks[n], r=D.rating[lc(n)];
+              return '<label style="display:flex;align-items:center;gap:10px;padding:9px 8px;border-bottom:1px solid #f0ecf4;font-size:14px;cursor:pointer"><input type="checkbox" '+(on?'checked ':'')+'onchange="window.__nhTsTick(this.dataset.n,this.checked)" data-n="'+esc(n)+'" style="width:18px;height:18px"><span style="flex:1">'+esc(n)+'</span><span style="color:#8a8196">'+(r!=null?r:"")+'</span></label>'; }).join("")
+            :'<div style="padding:10px;font-size:13px;color:#8a8196">Everyone shown is already in.</div>')+'</div>'
+          +'<div style="display:flex;gap:8px;margin-top:8px">'+btn("Close","window.__nhTsBulk(false)",false,"flex:1")+btn("Add "+nT+" player"+(nT===1?"":"s"),"window.__nhTsBulkGo()",nT>0,"flex:1")+'</div>'
+          +'<div style="height:12px"></div>';
+      } else s+=btn("Add players","window.__nhTsBulk(true)",false,"width:100%;margin-bottom:8px");
       if(!ST.preview) s+=btn("Draw round "+(cur+1)+" \u2014 show it first","window.__nhTsPreview()",true,"width:100%");
       else {
         var P=ST.preview, R=P.res, st=P.state, lines=[];
@@ -15921,10 +16026,15 @@ W.nhOpenPair=function(name){
     };
 
     /* ---------------------------------------------------------------- the taps */
-    W.__nhTsPick=function(){ ST.pick=true; ST.q=""; ST.ask=null; paint(); };
+    W.__nhTsPick=function(){ ST.pick=true; ST.pickMode="me"; ST.q=""; ST.ask=null; ST.focus="nhTsQ"; paint(); };
+    W.__nhTsPickOther=function(){ ST.pick=true; ST.pickMode="other"; ST.q=""; ST.ask=null; ST.focus="nhTsQ"; paint(); };
     W.__nhTsPickOff=function(){ ST.pick=false; paint(); };
-    W.__nhTsQ=function(v){ ST.q=v; paint(); };
-    W.__nhTsChose=function(n){ meSet(n); ST.pick=false; ST.ask=meRow()?null:"join"; ST.msg=""; paint(); };
+    W.__nhTsQ=function(v){ ST.q=v; ST.focus="nhTsQ"; paint(); };
+    W.__nhTsChose=function(n){
+      if(ST.pickMode==="other"){ ST.pick=false; ST.pickMode="me";
+        rpc("ts_join",{p_tour:ST.tour, p_name:n}).then(function(r){ if(!r||!r.ok){ say(esc((r&&r.error)||"Not joined.")); return; }
+          ST.msg=esc(r.name||n)+(r.already?" is already in Topside.":" is in Topside."); refresh(); }); return; }
+      meSet(n); ST.pick=false; ST.ask=meRow()?null:"join"; ST.msg=""; paint(); };
     W.__nhTsAsk=function(a){ ST.ask=a; paint(); };
     W.__nhTsJoin=function(){ if(!ST.me){ W.__nhTsPick(); return; }
       rpc("ts_join",{p_tour:ST.tour, p_name:ST.me}).then(function(r){ if(!r||!r.ok){ say(esc((r&&r.error)||"Not joined.")); return; }
@@ -15940,6 +16050,17 @@ W.nhOpenPair=function(name){
       rpc("ts_save_draw",{p_tour:ST.tour, p_code:code, p_state:{round:-1}}).then(function(r){
         if(r && /next round is/.test(String(r.error||""))){ ST.adm=code; try{ sessionStorage.setItem("nhTsAdm|"+ST.tour, code); }catch(e){} ST.ask=null; ST.msg=""; paint(); }
         else say(esc((r&&r.error)||"That code was not accepted.")); }); };
+    W.__nhTsBulk=function(on){ ST.bulk=!!on; ST.bq=""; ST.ticks={}; ST.focus=on?"nhTsBQ":""; paint(); };
+    W.__nhTsBQ=function(v){ ST.bq=v; ST.focus="nhTsBQ"; paint(); };
+    W.__nhTsTick=function(n,on){ ST.ticks[n]=!!on; ST.focus=""; paint(); };
+    W.__nhTsTickAll=function(){ var D=ST.D, joined={}; (D.players||[]).forEach(function(p){ if(!p.left_at) joined[lc(p.name)]=1; }); var bq=lc(ST.bq);
+      (D.people||[]).forEach(function(p){ var n=p.full_name; if(n && !joined[lc(n)] && (!bq || (typeof W.nhStartsIn==="function" ? W.nhStartsIn(n,bq) : lc(n).indexOf(bq)===0))) ST.ticks[n]=true; }); ST.focus=""; paint(); };
+    W.__nhTsTickNone=function(){ ST.ticks={}; paint(); };
+    W.__nhTsBulkGo=function(){ var names=Object.keys(ST.ticks).filter(function(k){ return ST.ticks[k]; }); if(!names.length) return;
+      var ok=0, bad=[], i=0; say("Adding "+names.length+" players\u2026");
+      (function next(){ if(i>=names.length){ ST.bulk=false; ST.ticks={}; ST.msg="Added "+ok+" player"+(ok===1?"":"s")+" to Topside."+(bad.length?(" Not added: "+bad.map(esc).join(", ")+"."):""); refresh(); return; }
+        var n=names[i++]; rpc("ts_join",{p_tour:ST.tour, p_name:n}).then(function(r){ if(r&&r.ok) ok++; else bad.push(n+" ("+((r&&r.error)||"error")+")"); next(); }); })();
+    };
     W.__nhTsLock=function(){ ST.adm=""; ST.preview=null; try{ sessionStorage.removeItem("nhTsAdm|"+ST.tour); }catch(e){} paint(); };
     W.__nhTsPreview=function(){ load(ST.tour).then(function(D){ ST.D=D; var P=makeDraw(D); if(P.error){ say(esc(P.error)); return; } ST.preview=P; ST.msg=""; paint(); }); };
     W.__nhTsPreviewOff=function(){ ST.preview=null; paint(); };
@@ -15950,21 +16071,42 @@ W.nhOpenPair=function(name){
     /* the score: the normal score sheet on the Topside's own board, the four names on page 2 (as from a draw) */
     W.__nhTsScore=function(id){
       var m=(ST.D.matches||[]).filter(function(x){ return Number(x.id)===Number(id); })[0]; if(!m) return;
-      var A=pairById(m.pair_a), B=pairById(m.pair_b), t=ST.D.t;
-      W.__nhFxFill={a:[A.p1,A.p2], b:[B.p1,B.p2], at:Date.now()};
-      try{ sessionStorage.setItem("nhTsEvent", JSON.stringify({tour:t.name, at:Date.now()})); }catch(e){}
-      W.nhTopsideClose();
-      var href=PAGEN()+"?club="+t.club_id+"&go=entry"; if(W.nhNav) W.nhNav(href); else location.href=href;
+      var A=pairById(m.pair_a), B=pairById(m.pair_b), t=ST.D.t; if(!A||!B) return;
+      /* b21d: All Sorts and the sets from its How a match is played, as every tournament; the event stays Social
+         (nat3 never sees a Topside tournament) — the result is put on this match by the pairs' names */
+      var d={id:"ts"+m.id, ts:ST.tour, club:t.club_id, tour:t.name, div:"All Sorts", type:"All Sorts", event:"Social", round:m.round,
+             label:"Topside \u00b7 Round "+m.round+" \u00b7 Section "+m.section, a:A.p1+" & "+A.p2, b:B.p1+" & "+B.p2};
+      var go=function(){ if(typeof W.__nhFxOpen==="function") W.__nhFxOpen(d); };
+      if(W.__nhRulesLoad) Promise.race([W.__nhRulesLoad(false, t.club_id, t.name), new Promise(function(ok){ setTimeout(ok,2500); })]).then(go, go); else go();
     };
-    /* on the score sheet: the Topside tournament as the event, once its list is there */
-    setInterval(function(){ try{
-      var s=sessionStorage.getItem("nhTsEvent"); if(!s) return; var o=JSON.parse(s); if(!o || Date.now()-o.at>120000){ sessionStorage.removeItem("nhTsEvent"); return; }
-      var ev=document.getElementById("matchEvent"); if(!ev) return;
-      if(!Array.prototype.some.call(ev.options,function(x){ return x.value===o.tour; })) return;
-      ev.value=o.tour; try{ ev.onchange && ev.onchange(); }catch(e){} sessionStorage.removeItem("nhTsEvent");
-    }catch(e){} }, 400);
-    /* the bottom bar closes the page and goes where it was tapped */
-    W.addEventListener("click", function(e){ var a=e.target && e.target.closest ? e.target.closest("#nhBar a") : null; if(a && document.getElementById("nhTs")) W.nhTopsideClose(); }, true);
+    var boardsOfRegion=function(){ var region=Number(W.PLAT&&(W.PLAT.parentId||W.PLAT.cid))||0;
+      return [region].concat((W.PLAT.clubs||[]).filter(function(c){ return Number(c.parent_id)===region; }).map(function(c){ return Number(c.id); })).filter(Boolean); };
+    var boardOf=function(id){ return (W.PLAT.clubs||[]).filter(function(c){ return Number(c.id)===Number(id); })[0]||{}; };
+    W.__nhTsCards=function(){
+      var ids=boardsOfRegion(); if(!ids.length) return Promise.resolve("");
+      return get("plat_topside?club_id=in.("+ids.join(",")+")&select=tour_id,club_id,name,start_date,current_round&order=tour_id.asc").then(function(ts){
+        if(!ts || !ts.length) return "";
+        return Promise.all(ts.map(function(t){ return get("plat_topside_players?tour_id=eq."+t.tour_id+"&left_at=is.null&select=id"); })).then(function(cnt){
+          return ts.map(function(t,i){ var g=boardOf(t.club_id), col=g.colour||ink(), n=(cnt[i]||[]).length;
+            return '<button onclick="window.nhTopsideOpen('+t.tour_id+')" style="display:flex;width:100%;align-items:center;gap:10px;background:#fff;border:1px solid #e6e0ee;border-radius:14px;padding:10px 12px;margin-top:6px;font:inherit;cursor:pointer;text-align:left">'
+              +'<span style="flex:1;min-width:0"><span data-plat-keep="1" style="display:inline-block;background:'+col+';color:#fff;border-radius:99px;padding:2px 9px;font-size:10.5px;font-weight:800;letter-spacing:.04em">'+(Number(t.club_id)===ids[0]?'REGION':'GROUP')+' \u00b7 '+esc(g.name||"")+'</span>'
+              +'<span style="display:block;font-weight:800;font-size:14px;color:#241d33;margin-top:4px">'+esc(t.name)+' <span style="font-size:11px;font-weight:800;color:'+ink()+'">TOPSIDE</span></span>'
+              +'<span style="display:block;font-size:12px;color:#8a8196;margin-top:2px">'+(Number(t.current_round)>0?('Round '+t.current_round):('Starts '+day(t.start_date)))+' \u00b7 enter on your own</span></span>'
+              +'<span style="text-align:right;line-height:1.2"><span style="display:block;font-size:15px;font-weight:800;color:'+col+'">'+n+'</span><span style="font-size:10px;color:#8a8196">players</span></span>'
+              +'<span style="color:'+ink()+';font-weight:800">\u203a</span></button>'; }).join("");
+        }); });
+    };
+    (function(){ var wrapDoor=function(){ var f0=W.nhDoorSec; if(typeof f0!=="function") return false; if(f0.__nhTs) return true;
+        var f1=function(k){ var r=f0.apply(this, arguments);
+          if(k==="t") W.__nhTsCards().then(function(html){ if(!html) return; var sub=document.getElementById("nhDoorSub"); if(!sub || sub.style.display==="none") return;
+            var box=document.createElement("div"); box.id="nhTsDoorCards"; box.style.cssText="padding:0 10px 10px"; box.innerHTML=html;
+            var empty=Array.prototype.filter.call(sub.children,function(x){ return /^Nothing here yet\.$/.test((x.textContent||"").trim()); })[0];
+            if(empty) empty.replaceWith(box);
+            else { var foot=sub.lastElementChild; sub.insertBefore(box, foot); } });
+          return r; };
+        f1.__nhTs=1; W.nhDoorSec=f1; return true; };
+      if(!wrapDoor()){ var dn=0, dt=setInterval(function(){ if(wrapDoor() || ++dn>40) clearInterval(dt); }, 250); } })();
+    /* the bottom bar: the screen change itself ends Topside's view (showScreen, above) */
 
     /* ---------------------------------------------------------------- after every saved score: is it a Topside match? */
     (function(){ var f0=W.fetch; if(typeof f0!=="function" || f0.__nhTs) return;
@@ -15976,6 +16118,32 @@ W.nhOpenPair=function(name){
         return p; };
       f1.__nhTs=1; W.fetch=f1; })();
 
+    /* b21c: My page → Tournaments lists your Topside too (it is not in nat3's entries any more), with the switch */
+    setInterval(function(){ try{
+      var box=document.getElementById("meWhere"); if(!box || box.style.display==="none") return;
+      var t=(box.textContent||""); if(/Finding your tournaments/.test(t)) return;
+      var me=myPage(); if(!me) return; if(box.dataset.nhTsFor===me && box.querySelector(".nhTsMine,.nhTsNone")) return;
+      if(box.dataset.nhTsBusy) return; box.dataset.nhTsBusy="1";
+      var ids=boardsOfRegion();
+      get("plat_topside?club_id=in.("+ids.join(",")+")&select=tour_id,club_id,name,current_round,start_date").then(function(ts){
+        ts=ts||[]; if(!ts.length){ box.dataset.nhTsFor=me; delete box.dataset.nhTsBusy; var z=document.createElement("span"); z.className="nhTsNone"; box.appendChild(z); return; }
+        return get("plat_topside_players?tour_id=in.("+ts.map(function(x){ return x.tour_id; }).join(",")+")&name=eq."+ENC(me)+"&left_at=is.null&select=tour_id,is_in").then(function(ps){
+          delete box.dataset.nhTsBusy; box.dataset.nhTsFor=me;
+          Array.prototype.forEach.call(box.querySelectorAll(".nhTsMine"),function(x){ x.remove(); });
+          (ps||[]).forEach(function(p){ var T=ts.filter(function(x){ return Number(x.tour_id)===Number(p.tour_id); })[0]; if(!T) return; var g=boardOf(T.club_id);
+            var none=Array.prototype.filter.call(box.children,function(x){ return /not entered in any tournament/.test(x.textContent||""); })[0]; if(none) none.remove();
+            var d=document.createElement("div"); d.className="nhTsMine";
+            d.style.cssText="display:block;background:#fff;border:1px solid #e6e0ee;border-radius:12px;padding:10px 12px;margin-bottom:8px;cursor:pointer";
+            d.innerHTML='<div style="display:flex;align-items:center;gap:8px"><b style="flex:1;color:#241d33;font-size:14px">'+esc(T.name)+'</b><span style="font-size:11px;font-weight:800;padding:2px 8px;border-radius:99px;background:#d4f425;color:#2a3000">running</span></div>'
+              +'<div style="font-size:12px;color:#5f5770;margin-top:3px"><span style="color:'+(g.colour||ink())+';font-weight:800">'+esc(g.name||"")+'</span> \u00b7 Topside \u00b7 '+(Number(T.current_round)>0?('round '+T.current_round):('starts '+day(T.start_date)))+'</div>'
+              +'<div style="display:flex;align-items:center;gap:8px;margin-top:8px;font-size:12.5px;color:#5f5770"><span class="nhTsSw" style="flex:1">Next round: <b>'+(p.is_in?"I'm in":"I'm out")+'</b></span><button style="border:1.5px solid #ddd5e6;background:#fff;border-radius:99px;padding:5px 11px;font:inherit;font-weight:800;font-size:12px;cursor:pointer">'+(p.is_in?"I'm out":"I'm in")+'</button></div>';
+            d.addEventListener("click",function(e){ if(e.target.closest("button")) return; W.nhTopsideOpen(T.tour_id, me); });
+            d.querySelector("button").onclick=function(e){ e.stopPropagation(); rpc("ts_set_in",{p_tour:T.tour_id,p_name:me,p_in:!p.is_in}).then(function(r2){
+              if(r2&&r2.ok){ p.is_in=!p.is_in; d.querySelector(".nhTsSw b").textContent=p.is_in?"I'm in":"I'm out"; d.querySelector("button").textContent=p.is_in?"I'm out":"I'm in"; }
+              else d.querySelector(".nhTsSw").textContent=String((r2&&r2.error)||"Not changed."); }); };
+            box.appendChild(d); });
+        }); }).catch(function(){ delete box.dataset.nhTsBusy; });
+    }catch(e){} }, 900);
     /* ---------------------------------------------------------------- My page → Tournaments: Topside opens its page, and the switch */
     setInterval(function(){ try{
       var box=document.getElementById("meWhere"); if(!box) return;
@@ -16002,7 +16170,7 @@ W.nhOpenPair=function(name){
       d.innerHTML='<label style="font-size:12px;color:#9b80b3;font-weight:700;">Round 1 starts</label><input id="nhTsStart" type="date" class="ac-field">'
         +'<p style="font-size:11px;color:#9b80b3;margin:2px 0 0">Players join on their own; the first draw is at 08:00 on this day. Divisions, caps and handicap are not used.</p>';
       blk.appendChild(d);
-      f.addEventListener("change",function(){ d.style.display=(f.value==="topside")?"block":"none"; var r=document.getElementById("nhRulesNew"); if(r) r.style.display=(f.value==="topside")?"none":""; });
+      f.addEventListener("change",function(){ d.style.display=(f.value==="topside")?"block":"none"; });
     }catch(e){} }, 900);
     var wrapCreate=function(){
       var f0=W.adminCreateTournament; if(typeof f0!=="function" || !f0.__nhRules) return false; if(f0.__nhTs) return true;
@@ -16016,7 +16184,13 @@ W.nhOpenPair=function(name){
         if(!start){ if(msg) msg.innerHTML='<span style="color:#c0392b;">Pick the day round 1 starts.</span>'; return; }
         var r=await rpc("ts_create",{p_club:cid, p_code:pin, p_name:name, p_start:start});
         if(!r || !r.ok){ if(msg) msg.innerHTML='<span style="color:#c0392b;">'+esc((r&&r.error)||"Not created.")+'</span>'; return; }
-        if(msg) msg.innerHTML='<span style="color:#1e8449;">Created Topside "'+esc(name)+'" \u2014 round 1 starts '+esc(day(start))+'. Players join from the door or My page.</span>';
+        var rl=(typeof W.__nhRulesNewPick==="function")?W.__nhRulesNewPick():null, rtxt="";
+        if(rl){ var rs=await fetch(SB_URL+"/functions/v1/tournament",{method:"POST",headers:{apikey:SB_ANON,Authorization:"Bearer "+SB_ANON,"Content-Type":"application/json"},
+              body:JSON.stringify({action:"rules_save",club_id:cid,admin_pin:pin,tournament:name,division:"All Sorts",sets:rl.sets,all_sets:rl.all_sets,game_fmt:rl.game_fmt,set_fmt:rl.set_fmt})})
+            .then(function(x){ return x.json(); }).catch(function(){ return {ok:false}; });
+          rtxt = (rs&&rs.ok) ? (' How a match is played: '+(rl.sets===1?"1 set":(rl.all_sets?"all 3 sets":"best of 3 sets"))+' \u00b7 '+(rl.game_fmt==="star"?"star point":"long games")+' \u00b7 '+(rl.set_fmt==="long"?"long sets":"tie-breaker sets")+'.')
+                             : ' (How a match is played was not saved \u2014 set it at the foot of the Topside draw.)'; }
+        if(msg) msg.innerHTML='<span style="color:#1e8449;">Created Topside "'+esc(name)+'" \u2014 round 1 starts '+esc(day(start))+'. Players join from the door or My page.'+esc(rtxt)+'</span>';
         var n=document.getElementById("atName"); if(n) n.value="";
         try{ adminLoadTournaments(); }catch(e){}
       };
@@ -16056,7 +16230,7 @@ W.nhOpenPair=function(name){
       var inB="club_id=in.("+boards.join(",")+")", nm=ENC(me);
       return get("plat_padel_tournament_entries?"+inB+"&or=(p1.eq."+nm+",p2.eq."+nm+",sub_p1.eq."+nm+",sub_p2.eq."+nm+")&select=club_id,tournament,category,seed,p1,p2,sub_p1,sub_p2,sub_from_round")
       .then(function(mine){
-        mine=mine||[]; if(!mine.length) return [];
+        mine=(mine||[]).filter(function(e){ return e.category!=="Topside"; }); if(!mine.length) return [];   /* b21c: Topside is read from its own table below */
         var rows=[], jobs=[];
         var groups={}; mine.forEach(function(e){ var k=e.club_id+"|"+e.tournament+"|"+e.category; (groups[k]=groups[k]||[]).push(e); });
         Object.keys(groups).forEach(function(k){ var e0=groups[k][0];
@@ -16076,6 +16250,14 @@ W.nhOpenPair=function(name){
               }); }));
         });
         return Promise.all(jobs).then(function(){ return rows; });
+      }).then(function(rows){
+        /* b21c: Topside is not in the entries table any more — its own players table says who is in */
+        return get("plat_topside_players?name=eq."+nm+"&select=tour_id").then(function(ps){
+          var ids=(ps||[]).map(function(x){ return Number(x.tour_id); }); if(!ids.length) return rows;
+          return get("plat_topside?tour_id=in.("+ids.join(",")+")&club_id=in.("+boards.join(",")+")&select=tour_id,club_id,name").then(function(ts){
+            return Promise.all((ts||[]).map(function(T){ return topside({club_id:T.club_id, tournament:T.name, p1:me}, low); })).then(function(L){ L.forEach(function(x){ rows=rows.concat(x); }); return rows; });
+          });
+        });
       });
     };
     /* Topside: every match the player played or has to play, with that round's partner */
