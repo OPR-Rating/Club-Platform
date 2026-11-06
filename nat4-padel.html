@@ -3784,7 +3784,7 @@ const CLUB_NAME = _club.name;  // shown in the logo as "OPR · <name>"
     link.setAttribute('href', href);
   }catch(e){ /* install stays on the static manifest — no functional impact */ }
 })();
-const OPR_VERSION = "OPR-DOUBLES v2026.09.03-56 · NAT4 booking test b26 (nat3 n374) (no voice) (of PLAT p117)";  // MANUAL PAIR CREATION REMOVED FROM ADMIN: Create a pair, Bulk create pairs and Re-derive all pairs are gone (they only made match-less ghost pairs, and Re-derive rewrote every stored initial club-wide). Pairs are born automatically at match entry. Current pairs list untouched; the underlying JS is left in place unreferenced, so no other code path changes. Includes v47 (set-score fix + double-tap guard) and all prior.
+const OPR_VERSION = "OPR-DOUBLES v2026.09.03-56 · NAT4 booking test b28 (nat3 n374) (no voice) (of PLAT p117)";  // MANUAL PAIR CREATION REMOVED FROM ADMIN: Create a pair, Bulk create pairs and Re-derive all pairs are gone (they only made match-less ghost pairs, and Re-derive rewrote every stored initial club-wide). Pairs are born automatically at match entry. Current pairs list untouched; the underlying JS is left in place unreferenced, so no other code path changes. Includes v47 (set-score fix + double-tap guard) and all prior.
 // Explanation shown above the individual ladder. Open on load so it's read; collapsible
 // (state kept for the session) and scrolls away. Mechanics only — no outcome framing, so
 // members aren't nudged away from playing stronger opponents. Every clause maps to a real
@@ -13949,7 +13949,7 @@ W.nhOpenPair=function(name){
     setInterval(leapBrk, 900);
     W.__nhTsBuild=build;   /* for the test */
   })();
-  window.__nhBkAnon="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRqbWJudmlrcmRnbm9tamh0a2dmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODUzOTE0MzEsImV4cCI6MjEwMDk2NzQzMX0.vR8xlVFjV6jXW-pAclGjM74HqmWSKVpsacFjM-dCIJI"; window.__nhBkBuild="nat4 b26";
+  window.__nhBkAnon="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRqbWJudmlrcmRnbm9tamh0a2dmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODUzOTE0MzEsImV4cCI6MjEwMDk2NzQzMX0.vR8xlVFjV6jXW-pAclGjM74HqmWSKVpsacFjM-dCIJI"; window.__nhBkBuild="nat4 b28";
   /* ===================================================================================================
      COURT BOOKING (nat4 test copy, Manzini pilot, Andre 26 Oct). Started ONLY from the player's own My page: its
      "Court card" button becomes "Book a court", which asks "Where do you want to play?" — one tile per venue; a venue
@@ -15048,7 +15048,7 @@ W.nhOpenPair=function(name){
     W.__nhBackToDraw={on:false, club:0, tour:"", div:""};
     W.__nhToDraw=function(){
       var d=W.__nhBackToDraw||{}; W.__nhBackToDraw={on:false, club:0, tour:"", div:""};
-      if(d.ts && typeof W.nhTopsideOpen==="function"){ W.nhTopsideOpen(d.ts); return; }   /* b21d */
+      if(d.ts && typeof W.nhTopsideOpen==="function"){ W.nhTopsideOpen(d.ts, null, d.sec); return; }   /* b21d; b27: on the section just scored */
       if(!d.tour){ try{ goHome(); }catch(e){} return; }
       var href=PAGEN()+"?club="+(d.club||cid())+"&go=tsheet&tn="+ENC(d.tour)+(d.div?"&div="+ENC(d.div):"");
       if(W.nhNav) W.nhNav(href); else location.href=href;
@@ -15057,7 +15057,7 @@ W.nhOpenPair=function(name){
     W.__nhFxManual=function(){
       var d=W.__nhFxNow; if(!d) return; W.__nhFxClose();
       var A=halves(d.a), B=halves(d.b), n=0;
-      W.__nhBackToDraw={on:true, club:d.club, tour:d.tour, div:d.div, ts:d.ts||0};
+      W.__nhBackToDraw={on:true, club:d.club, tour:d.tour, div:d.div, ts:d.ts||0, sec:d.sec||""};
       W.__nhFxCand={id:d.id, tour:d.tour, div:d.div, at:Date.now()};
       W.__nhFxFill={a:A, b:B, at:Date.now()};
       sheetFor(d, null);
@@ -15113,7 +15113,7 @@ W.nhOpenPair=function(name){
     W.__nhFxMarker=function(){
       var d=W.__nhFxNow; if(!d) return; W.__nhFxClose();
       var A=halves(d.a), B=halves(d.b);
-      W.__nhBackToDraw={on:true, club:d.club, tour:d.tour, div:d.div, ts:d.ts||0};
+      W.__nhBackToDraw={on:true, club:d.club, tour:d.tour, div:d.div, ts:d.ts||0, sec:d.sec||""};
       W.__nhFxCand={id:d.id, tour:d.tour, div:d.div, at:Date.now()};
       /* padel's marker is opened over the score sheet (as from the sheet itself), so its finish lands on page 3 there */
       sheetFor(d, function(){ try{
@@ -15843,18 +15843,23 @@ W.nhOpenPair=function(name){
       if(!cid || (SKIN && SKIN.cid===cid) || typeof W.nhTourColour!=="function") return;
       if(!SKIN && Number(W.PLAT&&W.PLAT.cid)===cid) return;   /* already on its own group */
       if(!SKIN){ var ds=document.documentElement.style, hd=document.getElementById("nhHdr");
-        SKIN={vars:{}, hdr:hd?hd.textContent:null, col:W.PLAT.colour};
+        SKIN={vars:{}, hdr:hd?hd.textContent:null, col:W.PLAT.colour, board:Number(W.PLAT.cid)};
         ["--nhraw","--nhc","--nhtint","--nhdeep"].forEach(function(k){ SKIN.vars[k]=ds.getPropertyValue(k); }); }
       SKIN.cid=cid;
       var had=!!W.__nhTours, L=W.__nhTours||(W.__nhTours=[]), key="⁣topside "+cid; L.push({name:key, club_id:cid});
       try{ W.nhTourColour(key); }catch(e){} L.pop(); if(!had) delete W.__nhTours; };
     var undress=function(){ var th=document.getElementById("nhTsSkin"); if(th) th.remove(); if(!SKIN) return; var S=SKIN; SKIN=null;
+      /* b27 (Andre, 6 Nov: "if you use the umpire it goes purple"): the score sheet moves to the Topside's own group first; the
+         colours saved on the region are put back only while the app still stands on the region — never over the next board's */
+      if(Number(W.PLAT&&W.PLAT.cid)!==S.board) return;
       try{ var ds=document.documentElement.style; Object.keys(S.vars).forEach(function(k){ if(S.vars[k]) ds.setProperty(k, S.vars[k]); else ds.removeProperty(k); });
         var hd=document.getElementById("nhHdr"); if(hd){ if(S.hdr!=null) hd.textContent=S.hdr; else hd.remove(); }
         W.PLAT.colour=S.col; if(W.platInkRefresh) W.platInkRefresh(); }catch(e){} };
-    W.nhTopsideOpen=function(tourId, who){
+    W.nhTopsideOpen=function(tourId, who, sec){
       ST.tour=Number(tourId)||0; ST.preview=null; ST.ask=null; ST.msg=""; ST.pick=false; ST.q=""; ST.pickMode="me"; ST.bulk=false; ST.bq=""; ST.ticks={};
-      ST.tab=""; ST.sec=""; ST.rsel=0; ST.dates=false; W.__nhTsLast=ST.tour;
+      ST.tab=""; ST.sec=""; ST.rsel=0; ST.dates=false; ST.youOpen=false; W.__nhTsLast=ST.tour;
+      /* b27 (Andre, 6 Nov): back from a score, the draw opens on the section of the match just scored */
+      if(/^[AB]$/.test(String(sec||""))){ ST.sec=sec; ST.tab="rounds"; }
       try{ ST.adm=sessionStorage.getItem("nhTsAdm|"+ST.tour)||""; }catch(e){ ST.adm=""; }
       if(who) meSet(who); else ST.me=meGet();
       var a=document.querySelector(".screen.active"); if(!ST.on) { PREV.screen=(a && !/^(tournamentSheetScreen|entryScreen|markerScreen)$/.test(a.id))?a.id:"homeScreen"; PREV.ctx=W._tmCtx||null; }   /* back from a score: to the door, not the score sheet */
@@ -15937,7 +15942,17 @@ W.nhOpenPair=function(name){
           +'<div style="margin-top:8px">'+btn("Join someone else","window.__nhTsPickOther()",false,"width:100%;font-size:12.5px")+'</div>');
       }
       var r=D.rating[lc(me)], sec=(r!=null && r>=Number(D.t.line))?"A":"B";
-      var s=card(h("You")+name
+      /* b28 (Andre, 6 Nov: "it needs to roll closed again as it is confusing"): one line until tapped; it folds again
+         after I'm in / I'm out, End our partnership or Leave */
+      if(!ST.youOpen && ST.ask!=="end" && ST.ask!=="leave"){
+        var mate=P?(lc(P.p1)===lc(me)?P.p2:P.p1):"";
+        return '<div class="card" onclick="window.__nhTsYou(true)" style="cursor:pointer;display:flex;align-items:center;gap:10px;padding-top:12px;padding-bottom:12px">'
+          +'<div style="flex:1;min-width:0;font-size:14px;color:#241d33;line-height:1.45;text-align:left">You: <b>'+esc(me)+'</b>'
+          +(P?(' · with <b>'+esc(mate)+'</b> · reign <b>'+P.reign+'</b>'):'')
+          +' · <b style="color:'+(row.is_in?ink():'#8a8196')+'">'+(row.is_in?"I'm in":"I'm out")+'</b></div>'
+          +'<span style="color:'+ink()+';font-size:16px;font-weight:800">▾</span></div>';
+      }
+      var s=card(h('You <a href="#" onclick="event.preventDefault();window.__nhTsYou(false)" title="Close" style="color:'+ink()+';font-size:16px;font-weight:800;text-decoration:none;margin-left:6px">▴</a>')+name
         +'<div style="font-size:12.5px;color:#8a8196;margin:3px 0 10px">Rating '+(r!=null?r:"—")+' \u00b7 Section '+(P?P.section:sec)+'</div>'
         +(P?('<div style="font-size:13.5px;color:#241d33;margin-bottom:10px">With <b>'+esc(lc(P.p1)===lc(me)?P.p2:P.p1)+'</b> \u00b7 reign <b>'+P.reign+'</b>'+(P.banked_b?(' \u00b7 B reign banked '+P.banked_b):'')+'</div>'):'<div style="font-size:13px;color:#4b4060;margin-bottom:10px">No partner right now — the next draw pairs you.</div>')
         +'<div style="font-size:12px;font-weight:800;color:#8a8196;margin-bottom:6px">NEXT ROUND</div>'
@@ -15983,6 +15998,13 @@ W.nhOpenPair=function(name){
         +(out.length?'<p class="sub" style="text-align:left"><b>Out next round \u00b7 '+out.length+'</b><br>'+names(out)+'</p>':'')
         +'<p class="sub" style="text-align:left">'+act.length+' in Topside</p></div>';
     };
+    /* b27: the games are kept as the score sheet had them (either pair first); shown Pair A first, as the table reads —
+       the side that won more sets is the recorded winner */
+    var gamesAB=function(m){ var s=String(m.sets||""), L=0, R=0;
+      s.replace(/(\d+)\s*-\s*(\d+)/g, function(x,a,b){ a=+a; b=+b; if(a>b) L++; else if(b>a) R++; return x; });
+      if(L===R || m.winner==null) return s;
+      if((L>R)===(Number(m.winner)===Number(m.pair_a))) return s;
+      return s.replace(/(\d+)(\s*)-(\s*)(\d+)/g, function(x,a,s1,s2,b){ return b+s1+"-"+s2+a; }); };
     /* Rounds (as Round Fixtures & Results): R1, R2 … and this section's matches; tap one to score it */
     var roundsTab=function(cur){
       var D=ST.D;
@@ -15993,7 +16015,7 @@ W.nhOpenPair=function(name){
       var cell=function(P,won){ return '<td class="'+(won?'winr ':'')+'%s">'+(P?(esc(P.p1)+'<br>'+esc(P.p2)):'\u2014')+'</td>'; };
       var rows=ms.map(function(m){ var A=pairById(m.pair_a), B=m.pair_b!=null?pairById(m.pair_b):null;
         var res=m.status==="bye"?'<span style="color:#8a8196">bye</span>':m.status==="open"?'<span style="color:#9a9a9a;font-weight:600">to play</span>'
-          :m.status==="not_played"?'<span style="color:#8a8196">not played</span>':('<span class="res-done">'+(m.status==="walkover"?'W/O':esc(m.sets||'won'))+'</span>');
+          :m.status==="not_played"?'<span style="color:#8a8196">not played</span>':('<span class="res-done">'+(m.status==="walkover"?'W/O':esc(gamesAB(m)||'won'))+'</span>');
         var tap=(m.status==="open"&&B&&R===cur)?' style="cursor:pointer;" onclick="window.__nhTsScore('+m.id+')" title="Tap to enter the score"':'';
         return '<tr'+tap+'><td class="num"><span class="seed'+(reignOf(A)?' s1':'')+'">'+reignOf(A)+'</span></td>'+cell(A, Number(m.winner)===Number(m.pair_a)).replace('%s','ta')
           +'<td class="num">v</td>'+cell(B, B && Number(m.winner)===Number(m.pair_b)).replace('%s','tb')
@@ -16087,17 +16109,18 @@ W.nhOpenPair=function(name){
       if(ST.pickMode==="other"){ ST.pick=false; ST.pickMode="me";
         rpc("ts_join",{p_tour:ST.tour, p_name:n}).then(function(r){ if(!r||!r.ok){ say(esc((r&&r.error)||"Not joined.")); return; }
           ST.msg=esc(r.name||n)+(r.already?" is already in Topside.":" is in Topside."); refresh(); }); return; }
-      meSet(n); ST.pick=false; ST.ask=meRow()?null:"join"; ST.msg=""; paint(); };
+      meSet(n); ST.pick=false; ST.youOpen=false; ST.ask=meRow()?null:"join"; ST.msg=""; paint(); };
     W.__nhTsAsk=function(a){ ST.ask=a; paint(); };
+    W.__nhTsYou=function(on){ ST.youOpen=!!on; paint(); };
     W.__nhTsJoin=function(){ if(!ST.me){ W.__nhTsPick(); return; }
       rpc("ts_join",{p_tour:ST.tour, p_name:ST.me}).then(function(r){ if(!r||!r.ok){ say(esc((r&&r.error)||"Not joined.")); return; }
-        meSet(r.name||ST.me); ST.ask=null; ST.msg=r.already?"You are already in Topside.":"You are in Topside — it is on your My page too. The next draw pairs you."; refresh(); }); };
+        meSet(r.name||ST.me); ST.ask=null; ST.youOpen=false; ST.msg=r.already?"You are already in Topside.":"You are in Topside — it is on your My page too. The next draw pairs you."; refresh(); }); };
     W.__nhTsIn=function(on){ rpc("ts_set_in",{p_tour:ST.tour, p_name:ST.me, p_in:!!on}).then(function(r){ if(!r||!r.ok){ say(esc((r&&r.error)||"Not changed.")); return; }
-      ST.msg=on?"You are IN for the next round.":"You are OUT of the next round."; refresh(); }); };
+      ST.youOpen=false; ST.msg=on?"You are IN for the next round.":"You are OUT of the next round."; refresh(); }); };
     W.__nhTsEnd=function(){ rpc("ts_end_partnership",{p_tour:ST.tour, p_name:ST.me}).then(function(r){ ST.ask=null; if(!r||!r.ok){ say(esc((r&&r.error)||"Not changed.")); return; }
-      ST.msg="Your partnership has ended — you are both in the next draw."; refresh(); }); };
+      ST.youOpen=false; ST.msg="Your partnership has ended — you are both in the next draw."; refresh(); }); };
     W.__nhTsLeave=function(){ rpc("ts_leave",{p_tour:ST.tour, p_name:ST.me}).then(function(r){ ST.ask=null; if(!r||!r.ok){ say(esc((r&&r.error)||"Not changed.")); return; }
-      ST.msg="You have left Topside."; refresh(); }); };
+      ST.youOpen=false; ST.msg="You have left Topside."; refresh(); }); };
     W.__nhTsUnlock=function(){ var code=((document.getElementById("nhTsCode")||{}).value||"").trim(); if(!code) return;
       /* the code is checked by the server: a draw for round -1 is refused AFTER the code is accepted */
       rpc("ts_save_draw",{p_tour:ST.tour, p_code:code, p_state:{round:-1}}).then(function(r){
@@ -16137,7 +16160,7 @@ W.nhOpenPair=function(name){
       /* b21d: All Sorts and the sets from its How a match is played, as every tournament. b22 (Andre, 5 Nov): the event is the
          Topside's NAME, so the match shows as a tournament match (T pill) — Eswatini never sees the sandbox; the result is
          put on this match by the pairs' names */
-      var d={id:"ts"+m.id, ts:ST.tour, club:t.club_id, tour:t.name, div:"All Sorts", type:"All Sorts", event:t.name, round:m.round,
+      var d={id:"ts"+m.id, ts:ST.tour, sec:m.section, club:t.club_id, tour:t.name, div:"All Sorts", type:"All Sorts", event:t.name, round:m.round,
              label:"Topside \u00b7 Round "+m.round+" \u00b7 Section "+m.section, a:A.p1+" & "+A.p2, b:B.p1+" & "+B.p2};
       var go=function(){ if(typeof W.__nhFxOpen==="function") W.__nhFxOpen(d); };
       if(W.__nhRulesLoad) Promise.race([W.__nhRulesLoad(false, t.club_id, t.name), new Promise(function(ok){ setTimeout(ok,2500); })]).then(go, go); else go();
@@ -16370,6 +16393,13 @@ W.nhOpenPair=function(name){
         });
       });
     };
+    /* b27 (Andre, 6 Nov: "the topside shows 1-6 … the round 1 Reds shows the set score 2-0"): a Topside match keeps the games
+       as the score sheet had them (either pair first), so the row shows SETS from this player's side, as the tournament rows
+       do — the side that won more sets is the winner the server recorded */
+    var setScore=function(s, won){ var L=0, R=0, n=0;
+      String(s||"").replace(/(\d+)\s*-\s*(\d+)/g, function(x,a,b){ a=+a; b=+b; if(a>b) L++; else if(b>a) R++; n++; return x; });
+      if(!n || L===R) return won?"won":"lost";
+      var hi=Math.max(L,R), lo=Math.min(L,R); return won?(hi+"-"+lo):(lo+"-"+hi); };
     /* Topside: every match the player played or has to play, with that round's partner */
     var topside=function(e, low){
       return get("plat_topside?club_id=eq."+e.club_id+"&name=eq."+ENC(e.tournament)+"&select=tour_id,current_round").then(function(t){ t=t&&t[0]; if(!t) return [];
@@ -16386,7 +16416,7 @@ W.nhOpenPair=function(name){
               var won=played?(Number(m.winner)===Number(us.id)):null;
               return {order:Number(m.round), head:"Topside round "+m.round+" · Section "+(m.section||""), partner:[us.p1,us.p2].filter(function(n){ return n && lc(n)!==low; })[0]||"",
                 them:[them.p1,them.p2].filter(Boolean).join(" & "), div:"Topside", tour:e.tournament, played:played||m.status==="not_played",
-                score:played?(m.status==="walkover"?(won?"W/O won":"W/O lost"):(m.sets||(won?"won":"lost"))):(m.status==="not_played"?"not played":""), won:won};
+                score:played?(m.status==="walkover"?(won?"W/O won":"W/O lost"):setScore(m.sets, won)):(m.status==="not_played"?"not played":""), won:won};
             });
           });
         });
