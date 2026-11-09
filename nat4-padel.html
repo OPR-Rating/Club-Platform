@@ -3784,7 +3784,7 @@ const CLUB_NAME = _club.name;  // shown in the logo as "OPR · <name>"
     link.setAttribute('href', href);
   }catch(e){ /* install stays on the static manifest — no functional impact */ }
 })();
-const OPR_VERSION = "OPR-DOUBLES v2026.09.03-56 · NAT4 booking test b28 (nat3 n374) (no voice) (of PLAT p117)";  // MANUAL PAIR CREATION REMOVED FROM ADMIN: Create a pair, Bulk create pairs and Re-derive all pairs are gone (they only made match-less ghost pairs, and Re-derive rewrote every stored initial club-wide). Pairs are born automatically at match entry. Current pairs list untouched; the underlying JS is left in place unreferenced, so no other code path changes. Includes v47 (set-score fix + double-tap guard) and all prior.
+const OPR_VERSION = "OPR-DOUBLES v2026.09.03-56 · NAT4 booking test b30 (nat3 n374) (no voice) (of PLAT p117)";  // MANUAL PAIR CREATION REMOVED FROM ADMIN: Create a pair, Bulk create pairs and Re-derive all pairs are gone (they only made match-less ghost pairs, and Re-derive rewrote every stored initial club-wide). Pairs are born automatically at match entry. Current pairs list untouched; the underlying JS is left in place unreferenced, so no other code path changes. Includes v47 (set-score fix + double-tap guard) and all prior.
 // Explanation shown above the individual ladder. Open on load so it's read; collapsible
 // (state kept for the session) and scrolls away. Mechanics only — no outcome framing, so
 // members aren't nudged away from playing stronger opponents. Every clause maps to a real
@@ -13949,7 +13949,7 @@ W.nhOpenPair=function(name){
     setInterval(leapBrk, 900);
     W.__nhTsBuild=build;   /* for the test */
   })();
-  window.__nhBkAnon="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRqbWJudmlrcmRnbm9tamh0a2dmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODUzOTE0MzEsImV4cCI6MjEwMDk2NzQzMX0.vR8xlVFjV6jXW-pAclGjM74HqmWSKVpsacFjM-dCIJI"; window.__nhBkBuild="nat4 b28";
+  window.__nhBkAnon="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRqbWJudmlrcmRnbm9tamh0a2dmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODUzOTE0MzEsImV4cCI6MjEwMDk2NzQzMX0.vR8xlVFjV6jXW-pAclGjM74HqmWSKVpsacFjM-dCIJI"; window.__nhBkBuild="nat4 b30";
   /* ===================================================================================================
      COURT BOOKING (nat4 test copy, Manzini pilot, Andre 26 Oct). Started ONLY from the player's own My page: its
      "Court card" button becomes "Book a court", which asks "Where do you want to play?" — one tile per venue; a venue
@@ -15825,7 +15825,7 @@ W.nhOpenPair=function(name){
     var ST={tour:0, D:null, me:"", adm:"", preview:null, ask:null, msg:"", pick:false, q:"", pickMode:"me", bulk:false, bq:"", ticks:{}, focus:""};
     var meKey=function(){ return "nhTsMe|"+ST.tour; };
     var myPage=function(){ try{ return localStorage.getItem("opr_me_"+(W.PLAT.parentId||W.PLAT.cid))||""; }catch(e){ return ""; } };
-    var meGet=function(){ var v=""; try{ v=localStorage.getItem(meKey())||""; }catch(e){} return v||myPage(); };
+    var meGet=function(){ var v=""; try{ v=localStorage.getItem(meKey())||""; }catch(e){} if(v==="-") return ""; /* b30: "I'm not playing" */ return v||myPage(); };
     var meSet=function(n){ ST.me=n||""; try{ if(n) localStorage.setItem(meKey(), n); else localStorage.removeItem(meKey()); }catch(e){} };
     /* b21d (Andre, 4 Nov: "why can't the draw be like for other tournaments — people are used to that"): Topside is shown
        ON THE DRAW SCREEN, with the draw's own pieces — the header with the group pill, the section pills (as the division
@@ -15857,7 +15857,7 @@ W.nhOpenPair=function(name){
         W.PLAT.colour=S.col; if(W.platInkRefresh) W.platInkRefresh(); }catch(e){} };
     W.nhTopsideOpen=function(tourId, who, sec){
       ST.tour=Number(tourId)||0; ST.preview=null; ST.ask=null; ST.msg=""; ST.pick=false; ST.q=""; ST.pickMode="me"; ST.bulk=false; ST.bq=""; ST.ticks={};
-      ST.tab=""; ST.sec=""; ST.rsel=0; ST.dates=false; ST.youOpen=false; W.__nhTsLast=ST.tour;
+      ST.tab=""; ST.sec=""; ST.rsel=0; ST.dates=false; ST.youOpen=false; ST.rm=false; ST.rq=""; ST.rticks={}; ST.rask=false; W.__nhTsLast=ST.tour;
       /* b27 (Andre, 6 Nov): back from a score, the draw opens on the section of the match just scored */
       if(/^[AB]$/.test(String(sec||""))){ ST.sec=sec; ST.tab="rounds"; }
       try{ ST.adm=sessionStorage.getItem("nhTsAdm|"+ST.tour)||""; }catch(e){ ST.adm=""; }
@@ -15924,7 +15924,7 @@ W.nhOpenPair=function(name){
       html+= ST.tab==="rounds" ? roundsTab(cur) : ST.tab==="reigns" ? reignsTab() : pairsTab();
       html+= organiser(cur);
       o.innerHTML=html;
-      ["nhTsQ","nhTsBQ"].forEach(function(id){ var i=document.getElementById(id); if(i && ST.focus===id){ i.focus(); i.setSelectionRange(i.value.length,i.value.length); } });
+      ["nhTsQ","nhTsBQ","nhTsRQ"].forEach(function(id){ var i=document.getElementById(id); if(i && ST.focus===id){ i.focus(); i.setSelectionRange(i.value.length,i.value.length); } });
     };
     W.__nhTsSec=function(d){ ST.sec=d; paint(); };
     W.__nhTsTab=function(t){ ST.tab=t; paint(); };
@@ -15975,7 +15975,9 @@ W.nhOpenPair=function(name){
         +'<input id="nhTsQ" value="'+esc(ST.q)+'" oninput="window.__nhTsQ(this.value)" placeholder="Type the first letters of the name" style="width:100%;box-sizing:border-box;padding:11px;font-size:15px;border:1.5px solid #ddd5e6;border-radius:10px;margin-bottom:8px;font-family:inherit">'
         +'<div style="max-height:320px;overflow:auto">'+names.map(function(n){ var r=D.rating[lc(n)];
           return '<button onclick="window.__nhTsChose(\''+String(n).replace(/\\/g,"\\\\").replace(/'/g,"\\'")+'\')" style="display:flex;width:100%;justify-content:space-between;background:#fff;border:none;border-bottom:1px solid #f0ecf4;padding:10px 4px;font:inherit;font-size:14px;cursor:pointer;text-align:left"><span>'+esc(n)+(joined[lc(n)]?' <span style="color:#1e8449;font-size:12px;font-weight:800">\u00b7 in Topside</span>':'')+'</span><span style="color:#8a8196">'+(r!=null?r:"")+'</span></button>'; }).join("")+'</div>'
-        +'<div style="margin-top:10px">'+btn("Cancel","window.__nhTsPickOff()",false)+'</div>');
+        +'<div style="margin-top:10px;display:flex;gap:8px;flex-wrap:wrap">'+btn("Cancel","window.__nhTsPickOff()",false)
+        /* b30 (Andre, 9 Nov: "I want to test it as organiser and not as a player"): this phone forgets the name */
+        +((!other && ST.me)?btn("I'm not playing — forget "+esc(ST.me),"window.__nhTsNotMe()",false,"flex:1"):"")+'</div>');
     };
     var reignOf=function(P){ return P ? (Number(P.reign)||0) : 0; };
     var isPaused=function(P){ var D=ST.D, cur=Number(D.t.current_round)||0; return P && P.pauses>0 && cur>0 && !(D.matches||[]).some(function(m){ return Number(m.round)===cur && (Number(m.pair_a)===Number(P.id)||Number(m.pair_b)===Number(P.id)); }); };
@@ -16064,6 +16066,27 @@ W.nhOpenPair=function(name){
           +'<div style="display:flex;gap:8px;margin-top:8px">'+btn("Close","window.__nhTsBulk(false)",false,"flex:1")+btn("Add "+nT+" player"+(nT===1?"":"s"),"window.__nhTsBulkGo()",nT>0,"flex:1")+'</div>'
           +'<div style="height:12px"></div>';
       } else s+=btn("Add players","window.__nhTsBulk(true)",false,"width:100%;margin-bottom:8px");
+      /* b29 (Andre, 9 Nov: "some are lazy and will phone the organiser and ask them to remove them"): the organiser takes
+         players out — the same as their own "Leave Topside" (out for good; their partnership ends; they can join again) */
+      if(ST.rm){
+        var mates={}; (D.pairs||[]).forEach(function(p){ mates[lc(p.p1)]=p.p2; mates[lc(p.p2)]=p.p1; }); var rq=lc(ST.rq);
+        var RL=(D.players||[]).filter(function(p){ return !p.left_at && (!rq || (typeof W.nhStartsIn==="function" ? W.nhStartsIn(p.name,rq) : lc(p.name).indexOf(rq)===0)); }).map(function(p){ return p.name; }).sort(function(a,b){ return a.localeCompare(b); });
+        var rN=Object.keys(ST.rticks).filter(function(k){ return ST.rticks[k]; });
+        s+='<div style="font-size:13.5px;font-weight:800;color:#241d33;margin-bottom:6px">Remove players</div>';
+        if(ST.rask){
+          s+='<div style="border:1px solid #e6e0ee;border-radius:10px;padding:10px;margin-bottom:8px"><b>Remove '+rN.length+' player'+(rN.length===1?'':'s')+' from Topside?</b>'
+            +'<div style="font-size:12.5px;color:#4b4060;margin:4px 0 6px;line-height:1.5">'+rN.map(esc).join(", ")+'</div>'
+            +'<div style="font-size:12.5px;color:#4b4060;margin-bottom:8px;line-height:1.5">They are out for good and a partnership they are in ends. They can join again later, from zero.</div>'
+            +'<div style="display:flex;gap:8px">'+btn("No, keep them","window.__nhTsRmAsk(false)",false,"flex:1")+btn("Yes, remove","window.__nhTsRmGo()",true,"flex:1")+'</div></div>';
+        } else {
+          s+='<input id="nhTsRQ" value="'+esc(ST.rq)+'" oninput="window.__nhTsRQ(this.value)" placeholder="First letters of a name" style="width:100%;box-sizing:border-box;padding:10px;font-size:15px;border:1.5px solid #ddd5e6;border-radius:10px;margin-bottom:6px;font-family:inherit">'
+            +'<div style="max-height:300px;overflow:auto;border:1px solid #f0ecf4;border-radius:10px">'+(RL.length?RL.map(function(n){ var on=!!ST.rticks[n], r=D.rating[lc(n)];
+                return '<label style="display:flex;align-items:center;gap:10px;padding:9px 8px;border-bottom:1px solid #f0ecf4;font-size:14px;cursor:pointer"><input type="checkbox" '+(on?'checked ':'')+'onchange="window.__nhTsRmTick(this.dataset.n,this.checked)" data-n="'+esc(n)+'" style="width:18px;height:18px"><span style="flex:1">'+esc(n)+(mates[lc(n)]?' <span style="color:#8a8196;font-size:12px">· with '+esc(mates[lc(n)])+'</span>':'')+'</span><span style="color:#8a8196">'+(r!=null?r:"")+'</span></label>'; }).join("")
+              :'<div style="padding:10px;font-size:13px;color:#8a8196">Nobody in Topside by that name.</div>')+'</div>'
+            +'<div style="display:flex;gap:8px;margin-top:8px">'+btn("Close","window.__nhTsRm(false)",false,"flex:1")+btn("Remove "+rN.length+" player"+(rN.length===1?"":"s"),"window.__nhTsRmAsk(true)",rN.length>0,"flex:1")+'</div>';
+        }
+        s+='<div style="height:12px"></div>';
+      } else s+=btn("Remove players","window.__nhTsRm(true)",false,"width:100%;margin-bottom:8px");
       /* b23 (Andre, 5 Nov: "say we have 6 days of rain we must be able to set a new date for the round completion") */
       if(ST.dates){
         var rn=(D.rounds||[]).filter(function(r){ return Number(r.round)===cur; })[0], nowDay=cur===0?String(D.t.start_date).slice(0,10):String(rn&&rn.ends||"").slice(0,10);
@@ -16104,6 +16127,7 @@ W.nhOpenPair=function(name){
     W.__nhTsPick=function(){ ST.pick=true; ST.pickMode="me"; ST.q=""; ST.ask=null; ST.focus="nhTsQ"; paint(); };
     W.__nhTsPickOther=function(){ ST.pick=true; ST.pickMode="other"; ST.q=""; ST.ask=null; ST.focus="nhTsQ"; paint(); };
     W.__nhTsPickOff=function(){ ST.pick=false; paint(); };
+    W.__nhTsNotMe=function(){ meSet(""); try{ localStorage.setItem(meKey(),"-"); }catch(e){} ST.pick=false; ST.ask=null; ST.youOpen=false; ST.msg="This phone no longer takes you for a player."; paint(); };
     W.__nhTsQ=function(v){ ST.q=v; ST.focus="nhTsQ"; paint(); };
     W.__nhTsChose=function(n){
       if(ST.pickMode==="other"){ ST.pick=false; ST.pickMode="me";
@@ -16132,6 +16156,16 @@ W.nhOpenPair=function(name){
     W.__nhTsTickAll=function(){ var D=ST.D, joined={}; (D.players||[]).forEach(function(p){ if(!p.left_at) joined[lc(p.name)]=1; }); var bq=lc(ST.bq);
       (D.people||[]).forEach(function(p){ var n=p.full_name; if(n && !joined[lc(n)] && (!bq || (typeof W.nhStartsIn==="function" ? W.nhStartsIn(n,bq) : lc(n).indexOf(bq)===0))) ST.ticks[n]=true; }); ST.focus=""; paint(); };
     W.__nhTsTickNone=function(){ ST.ticks={}; paint(); };
+    /* b29: Remove players (organiser) */
+    W.__nhTsRm=function(on){ ST.rm=!!on; ST.rq=""; ST.rticks={}; ST.rask=false; ST.focus=on?"nhTsRQ":""; if(on) ST.msg=""; paint(); };
+    W.__nhTsRQ=function(v){ ST.rq=v; ST.focus="nhTsRQ"; paint(); };
+    W.__nhTsRmTick=function(n,on){ ST.rticks[n]=!!on; ST.focus=""; paint(); };
+    W.__nhTsRmAsk=function(on){ ST.rask=!!on; ST.focus=""; paint(); };
+    W.__nhTsRmGo=function(){ var names=Object.keys(ST.rticks).filter(function(k){ return ST.rticks[k]; }); if(!names.length) return;
+      var ok=0, bad=[], i=0; ST.rask=false; say("Removing "+names.length+" player"+(names.length===1?"":"s")+"…");
+      (function next(){ if(i>=names.length){ ST.rm=false; ST.rticks={}; ST.msg="Removed "+ok+" player"+(ok===1?"":"s")+" from Topside."+(bad.length?(" Not removed: "+bad.map(esc).join(", ")+"."):""); refresh(); return; }
+        var n=names[i++]; rpc("ts_leave",{p_tour:ST.tour, p_name:n}).then(function(r){ if(r&&r.ok) ok++; else bad.push(n+" ("+((r&&r.error)||"error")+")"); next(); }); })();
+    };
     W.__nhTsBulkGo=function(){ var names=Object.keys(ST.ticks).filter(function(k){ return ST.ticks[k]; }); if(!names.length) return;
       var ok=0, bad=[], i=0; say("Adding "+names.length+" players\u2026");
       (function next(){ if(i>=names.length){ ST.bulk=false; ST.ticks={}; ST.msg="Added "+ok+" player"+(ok===1?"":"s")+" to Topside."+(bad.length?(" Not added: "+bad.map(esc).join(", ")+"."):""); refresh(); return; }
@@ -16146,7 +16180,7 @@ W.nhOpenPair=function(name){
         ST.msg = Number(r.round)===0 ? ("Round 1 now starts "+esc(day(r.starts))+". The first draw is "+esc(lockTxt(r.lock))+".")
           : ("Round "+r.round+" now ends "+esc(day(r.ends))+". The switch locks "+esc(lockTxt(r.lock))+"; round "+(Number(r.round)+1)+" starts "+esc(day(addDays(String(r.ends).slice(0,10),1)))+".");
         refresh(); }); };
-    W.__nhTsLock=function(){ ST.adm=""; ST.preview=null; ST.dates=false; try{ sessionStorage.removeItem("nhTsAdm|"+ST.tour); }catch(e){} paint(); };
+    W.__nhTsLock=function(){ ST.adm=""; ST.preview=null; ST.dates=false; ST.rm=false; ST.rticks={}; ST.rask=false; try{ sessionStorage.removeItem("nhTsAdm|"+ST.tour); }catch(e){} paint(); };
     W.__nhTsPreview=function(){ load(ST.tour).then(function(D){ ST.D=D; var P=makeDraw(D); if(P.error){ say(esc(P.error)); return; } ST.preview=P; ST.msg=""; paint(); }); };
     W.__nhTsPreviewOff=function(){ ST.preview=null; paint(); };
     W.__nhTsSave=function(){ var P=ST.preview; if(!P) return;
@@ -19524,7 +19558,7 @@ W.nhOpenPair=function(name){
       return false;
     }
     var search="?"+p.q.toString()+(p.hash?("#"+p.hash):"");
-    if(search===String(location.search||"")+String(location.hash||"") && !opts.force){ var _tv=W.__nhTrail&&W.__nhTrail[W.__nhTrail.length-1]; var _wantS="homeScreen"; try{ var _wq=new URLSearchParams(search.split("#")[0].replace(/^\?/,""));   var _wg=(_wq.get("go")||"").toLowerCase();   _wantS={tsheet:"tournamentSheetScreen",tournaments:"tournamentScreen",entry:"entryScreen",ladders:"laddersScreen",     ladder:"ladderScreen",profiles:"profileSearchScreen",player:"profileScreen",card:"platSessScreen"}[_wg]||"homeScreen";   if(String(search).indexOf("#enter")>=0) _wantS="entryScreen"; }catch(_e){} var _nowS=""; try{ _nowS=(document.querySelector(".screen.active")||{}).id||""; }catch(_e){} var _elsewhere=!!(_nowS && _wantS && _nowS!==_wantS); if(!_elsewhere && !(_tv && _tv.page && _tv.search===String(location.search||"")) && !(W.__nhAdminShown && W.__nhAdminShown===String(location.search||""))){ try{ window.scrollTo(0,0); }catch(e){} return false; }   /* q240b: Admin control drawn over this address, recorded or not */ try{ if(_tv && _tv.page) W.__nhTrail.pop(); }catch(e){} W.__nhAdminShown=""; opts.force=true; opts.replace=true; }   /* q156b + q196 */
+    if(search===String(location.search||"")+String(location.hash||"") && !opts.force){ var _tv=W.__nhTrail&&W.__nhTrail[W.__nhTrail.length-1]; var _wantS="homeScreen"; try{ var _wq=new URLSearchParams(search.split("#")[0].replace(/^\?/,""));   var _wg=(_wq.get("go")||"").toLowerCase();   _wantS={tsheet:"tournamentSheetScreen",tournaments:"tournamentScreen",entry:"entryScreen",ladders:"laddersScreen",     ladder:"ladderScreen",profiles:"profileSearchScreen",player:"profileScreen",card:"platSessScreen"}[_wg]||"homeScreen";   if(String(search).indexOf("#enter")>=0) _wantS="entryScreen"; }catch(_e){} var _nowS=""; try{ _nowS=(document.querySelector(".screen.active")||{}).id||""; }catch(_e){} var _elsewhere=!!(_nowS && _wantS && _nowS!==_wantS); if(!_elsewhere && _wantS==="homeScreen"){ try{ var _ds=document.getElementById("nhDoorSub"); if(_ds && _ds.style.display!=="none" && _ds.innerHTML){ if(W.nhDoorBack){ W.nhDoorBack(); return false; } } }catch(_e){} }   /* b30: a door tile's page */ if(!_elsewhere && !(_tv && _tv.page && _tv.search===String(location.search||"")) && !(W.__nhAdminShown && W.__nhAdminShown===String(location.search||""))){ try{ window.scrollTo(0,0); }catch(e){} return false; }   /* q240b: Admin control drawn over this address, recorded or not */ try{ if(_tv && _tv.page) W.__nhTrail.pop(); }catch(e){} W.__nhAdminShown=""; opts.force=true; opts.replace=true; }   /* q156b + q196 */
     try{
       if(opts.replace){ history.replaceState({nat3:1},"",location.pathname+search); var t=nhCrumbs(); t.pop(); nhCrumbsSave(t); nhCrumbPush("?"+p.q.toString()); }
       else { history.pushState({nat3:1},"",location.pathname+search); nhCrumbPush("?"+p.q.toString()); }
