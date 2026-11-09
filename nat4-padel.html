@@ -3784,7 +3784,7 @@ const CLUB_NAME = _club.name;  // shown in the logo as "OPR · <name>"
     link.setAttribute('href', href);
   }catch(e){ /* install stays on the static manifest — no functional impact */ }
 })();
-const OPR_VERSION = "OPR-DOUBLES v2026.09.03-56 · NAT4 booking test b36 (nat3 n375) (no voice) (of PLAT p117)";  // MANUAL PAIR CREATION REMOVED FROM ADMIN: Create a pair, Bulk create pairs and Re-derive all pairs are gone (they only made match-less ghost pairs, and Re-derive rewrote every stored initial club-wide). Pairs are born automatically at match entry. Current pairs list untouched; the underlying JS is left in place unreferenced, so no other code path changes. Includes v47 (set-score fix + double-tap guard) and all prior.
+const OPR_VERSION = "OPR-DOUBLES v2026.09.03-56 · NAT4 booking test b37 (nat3 n375) (no voice) (of PLAT p117)";  // MANUAL PAIR CREATION REMOVED FROM ADMIN: Create a pair, Bulk create pairs and Re-derive all pairs are gone (they only made match-less ghost pairs, and Re-derive rewrote every stored initial club-wide). Pairs are born automatically at match entry. Current pairs list untouched; the underlying JS is left in place unreferenced, so no other code path changes. Includes v47 (set-score fix + double-tap guard) and all prior.
 // Explanation shown above the individual ladder. Open on load so it's read; collapsible
 // (state kept for the session) and scrolls away. Mechanics only — no outcome framing, so
 // members aren't nudged away from playing stronger opponents. Every clause maps to a real
@@ -13952,7 +13952,7 @@ W.nhOpenPair=function(name){
     setInterval(leapBrk, 900);
     W.__nhTsBuild=build;   /* for the test */
   })();
-  window.__nhBkAnon="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRqbWJudmlrcmRnbm9tamh0a2dmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODUzOTE0MzEsImV4cCI6MjEwMDk2NzQzMX0.vR8xlVFjV6jXW-pAclGjM74HqmWSKVpsacFjM-dCIJI"; window.__nhBkBuild="nat4 b36";
+  window.__nhBkAnon="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRqbWJudmlrcmRnbm9tamh0a2dmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODUzOTE0MzEsImV4cCI6MjEwMDk2NzQzMX0.vR8xlVFjV6jXW-pAclGjM74HqmWSKVpsacFjM-dCIJI"; window.__nhBkBuild="nat4 b37";
   /* ===================================================================================================
      COURT BOOKING (nat4 test copy, Manzini pilot, Andre 26 Oct). Started ONLY from the player's own My page: its
      "Court card" button becomes "Book a court", which asks "Where do you want to play?" — one tile per venue; a venue
@@ -15475,6 +15475,7 @@ W.nhOpenPair=function(name){
       if(/Loading tournament/.test(txt) || txt.trim().length<60){ var old=box.querySelector(".nhRules"); if(old) old.remove(); return; }   /* q192 */
       if(!box.querySelector(".tm-nav")){ var o2=box.querySelector(".nhRules"); if(o2) o2.remove(); return; }   /* q250: a stats / form table is not the draw */
       var ctx=W._tmCtx||{}, d=ctx.division||""; if(!d || !ctx.tournament) return;
+      if(ctx.amex){ var o3=box.querySelector(".nhRules"); if(o3) o3.remove(); return; }   /* b37: an Americano / Mexicano says its own scoring at the top */
       var have=box.querySelector(".nhRules");
       if(have && have.dataset.sec===d && have.dataset.tour===ctx.tournament) return;
       if(have) have.remove();
