@@ -3784,7 +3784,7 @@ const CLUB_NAME = _club.name;  // shown in the logo as "OPR · <name>"
     link.setAttribute('href', href);
   }catch(e){ /* install stays on the static manifest — no functional impact */ }
 })();
-const OPR_VERSION = "OPR-DOUBLES v2026.09.03-56 · NAT4 booking test b30 (nat3 n374) (no voice) (of PLAT p117)";  // MANUAL PAIR CREATION REMOVED FROM ADMIN: Create a pair, Bulk create pairs and Re-derive all pairs are gone (they only made match-less ghost pairs, and Re-derive rewrote every stored initial club-wide). Pairs are born automatically at match entry. Current pairs list untouched; the underlying JS is left in place unreferenced, so no other code path changes. Includes v47 (set-score fix + double-tap guard) and all prior.
+const OPR_VERSION = "OPR-DOUBLES v2026.09.03-56 · NAT4 booking test b33 (nat3 n374) (no voice) (of PLAT p117)";  // MANUAL PAIR CREATION REMOVED FROM ADMIN: Create a pair, Bulk create pairs and Re-derive all pairs are gone (they only made match-less ghost pairs, and Re-derive rewrote every stored initial club-wide). Pairs are born automatically at match entry. Current pairs list untouched; the underlying JS is left in place unreferenced, so no other code path changes. Includes v47 (set-score fix + double-tap guard) and all prior.
 // Explanation shown above the individual ladder. Open on load so it's read; collapsible
 // (state kept for the session) and scrolls away. Mechanics only — no outcome framing, so
 // members aren't nudged away from playing stronger opponents. Every clause maps to a real
@@ -13949,7 +13949,7 @@ W.nhOpenPair=function(name){
     setInterval(leapBrk, 900);
     W.__nhTsBuild=build;   /* for the test */
   })();
-  window.__nhBkAnon="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRqbWJudmlrcmRnbm9tamh0a2dmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODUzOTE0MzEsImV4cCI6MjEwMDk2NzQzMX0.vR8xlVFjV6jXW-pAclGjM74HqmWSKVpsacFjM-dCIJI"; window.__nhBkBuild="nat4 b30";
+  window.__nhBkAnon="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRqbWJudmlrcmRnbm9tamh0a2dmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODUzOTE0MzEsImV4cCI6MjEwMDk2NzQzMX0.vR8xlVFjV6jXW-pAclGjM74HqmWSKVpsacFjM-dCIJI"; window.__nhBkBuild="nat4 b33";
   /* ===================================================================================================
      COURT BOOKING (nat4 test copy, Manzini pilot, Andre 26 Oct). Started ONLY from the player's own My page: its
      "Court card" button becomes "Book a court", which asks "Where do you want to play?" — one tile per venue; a venue
@@ -15120,6 +15120,7 @@ W.nhOpenPair=function(name){
         var r=rulesOf(d.div);
         entryData={ date:new Date().toISOString().slice(0,10), type:(d.type||d.div), sets:(r.sets===1?1:3), event:(d.event||d.tour), format:(A[1]?"doubles":"singles"),
                     t1p1:A[0], t1p2:A[1]||null, t2p1:B[0], t2p2:B[1]||null };
+        if(d.hcTeam){ try{ MK._pendingHc=d.hcTeam; }catch(e){} }   /* b31: mkOpenFromEntry turns it into MK.hcTeam */
         Promise.resolve(mkOpenFromEntry()).then(function(){
           /* b19 (squash q183): the umpire plays the division's rules — nothing is set at the court */
           try{ mkSetGameFmt(r.game_fmt==="star"?"star":"long"); mkSetSetFmt(r.set_fmt==="long"?"long":"tb"); }catch(e){}
@@ -15129,6 +15130,11 @@ W.nhOpenPair=function(name){
           var evn=d.event||d.tour; MK.event=evn; MK.division=(d.type||d.div); MK.cat=(d.type||d.div); MK.handicap=false; MK.fixtureId=null;
           MK.players.t1p1=A[0]; MK.players.t1p2=A[1]||null; MK.players.t2p1=B[0]; MK.players.t2p2=B[1]||null;
           MK.matchFormat=A[1]?"doubles":"singles";
+          /* b31: the draw's head start, every game (the parent's mkNewGamePts); the labels on the two team cards. MK.handicap
+             stays false so the umpire does not recompute it from today's ratings — the draw's numbers are the ones played. */
+          if(d.hcTeam){ MK.hcTeam=d.hcTeam; MK.hcStart=true; MK.hcGameNo=0;
+            MK.hc={scratch:false, favIsT1:false, t1Label:(d.hcLabels&&d.hcLabels[0])||null, t2Label:(d.hcLabels&&d.hcLabels[1])||null};
+            try{ mkRenderHandicap(); }catch(e){} }
           var evSel=document.getElementById("mkEvent");
           if(evSel){ if(!Array.prototype.some.call(evSel.options,function(o){ return o.value===evn; })){ var o=document.createElement("option"); o.value=evn; o.textContent=evn; evSel.appendChild(o); } evSel.value=evn; }
           var catSel=document.getElementById("mkCatSel"); if(catSel) catSel.value=(d.type||d.div);
@@ -15250,7 +15256,12 @@ W.nhOpenPair=function(name){
             /* b19 (squash q180): the division's rules are in hand BEFORE the card shows */
             return (typeof W.__nhRulesLoad==="function") ? Promise.race([W.__nhRulesLoad(false, board, ctx.tournament), new Promise(function(ok){ setTimeout(ok,2500); })]) : null;
           }).then(function(){
-            fxOpen({ id:fixtureId, club:board, tour:ctx.tournament, div:div, round:Number(f.round)||null,
+            /* b31 (Andre, 9 Nov: "see the handicap matches … none of this is working"): a HANDICAP event's fixture takes the
+               head start the draw shows (the parent's own tmFixtureHandicap → numBySeed, as its tmUmpireFixture does) */
+            var hcT=null, hcL=null, z={base:0,alt:0,frac:0};
+            try{ var fh=(ctx.handicap && typeof W._tmFixtureHandicap==="function")?W._tmFixtureHandicap(f.seed_a, f.seed_b):null;   /* handicap events only (the draw's own flag) */
+              if(fh && !fh.scratch && fh.numBySeed){ hcT=[fh.numBySeed[f.seed_a]||z, fh.numBySeed[f.seed_b]||z]; hcL=[(fh.bySeed||{})[f.seed_a]||"", (fh.bySeed||{})[f.seed_b]||""]; } }catch(e){}
+            fxOpen({ id:fixtureId, club:board, tour:ctx.tournament, div:div, round:Number(f.round)||null, hcTeam:hcT, hcLabels:hcL,
                      label:(typeof tmDivLabel==="function"?tmDivLabel(div):div),
                      a:W.__nhPairAt(f.seed_a, f.round)||names[f.seed_a]||("Seed "+f.seed_a),
                      b:W.__nhPairAt(f.seed_b, f.round)||names[f.seed_b]||("Seed "+f.seed_b) }); });
@@ -16490,6 +16501,153 @@ W.nhOpenPair=function(name){
       if(MINE.busy) return; MINE.busy=true; MINE.name=me;
       build(me).then(function(rows){ MINE.html=html(rows||[], who); MINE.at=Date.now(); MINE.busy=false; place(); }).catch(function(){ MINE.busy=false; });
     }catch(e){} }, 1200);
+  })();
+  /* ===================================================================================================================
+     NAT4 b32 · ENTER SEVERAL PAIRS AT ONCE — the padel copy of Nat-Squash q106 (sq_masters.js "Enter several pairs").
+     Andre, 9 Nov: "have a look at the squash — we still don't have the option of entering multiple teams at once".
+     On a tournament's "Enter a team" page (doubles divisions), under the single "Add team" card: rows of Player 1 /
+     Player 2 (the page's own name picker, the same rules as the single form: Men's = men, Ladies = ladies, Mixed = one of
+     each, All Sorts = anyone; nobody already entered in the division, nobody twice in the list), a × to drop a row,
+     "+ Add another pair", then "Enter all pairs" — each pair goes through the SAME enter_team the single form uses (seed =
+     the page's own TM.pairRating of the two current ratings), one after another. Each row says "entered" or why not.
+     No admin code and no server change (the single form needs none either).
+     ================================================================================================================== */
+  (function(){
+    var W=window;
+    var esc=function(s){ return String(s==null?"":s).replace(/[&<>"']/g,function(c){ return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]; }); };
+    var ROWS=[{p1:"",p2:""},{p1:"",p2:""},{p1:"",p2:""}], FOR="";
+    var isLady=function(g){ return g==="F" || g==="L"; };
+    var used=function(){ var s={}; ROWS.forEach(function(r){ if(r.p1) s[r.p1]=1; if(r.p2) s[r.p2]=1; }); return s; };
+    function listFor(k, which){
+      var players=W._etPlayers||[], cat=(document.getElementById("etCat")||{}).value||"", r=ROWS[k], other=which===1?r.p2:r.p1, mine=which===1?r.p1:r.p2;
+      var inDiv={}; ((W._etUsedInDiv&&W._etUsedInDiv[cat])||[]).forEach(function(n){ if(n) inDiv[n]=1; });
+      var u=used(); var av=players.filter(function(p){ return p.name!==other && !inDiv[p.name] && (!u[p.name] || p.name===mine); });
+      var men=av.filter(function(p){ return p.gender==="M"; }).map(function(p){ return p.name; }), lad=av.filter(function(p){ return isLady(p.gender); }).map(function(p){ return p.name; });
+      var all=av.map(function(p){ return p.name; });
+      if(cat==="Men's") return men; if(cat==="Ladies") return lad;
+      if(cat==="Mixed"){ var om=players.some(function(p){ return p.name===other && p.gender==="M"; }), of=players.some(function(p){ return p.name===other && isLady(p.gender); });
+        return other?(om?lad:(of?men:all)):all; }
+      return all;   /* All Sorts — anyone */
+    }
+    W.nhMultiPick=function(k,which){ if(typeof W.openNamePicker!=="function") return;
+      W.openNamePicker("Pair "+(k+1)+" · Player "+which, listFor(k,which), function(n){ ROWS[k][which===1?"p1":"p2"]=n; ROWS[k].msg=""; draw(); }); };
+    W.nhMultiAdd=function(){ ROWS.push({p1:"",p2:""}); draw(); };
+    W.nhMultiClear=function(k){ ROWS.splice(k,1); if(!ROWS.length) ROWS.push({p1:"",p2:""}); draw(); };
+    W.nhMultiGo=function(){
+      var tour=(document.getElementById("etTour")||{}).value, cat=(document.getElementById("etCat")||{}).value;
+      var todo=ROWS.filter(function(r){ return r.p1 && r.p2 && r.p1!==r.p2 && !r.done; });
+      if(!tour || !cat || !todo.length){ var m=document.getElementById("nhMultiMsg"); if(m) m.textContent="Choose both players for at least one pair."; return; }
+      var b=document.getElementById("nhMultiBtn"); if(b){ b.disabled=true; b.textContent="Entering…"; }
+      var url=(typeof SB_URL!=="undefined"?SB_URL:""), key=(typeof SB_ANON!=="undefined"?SB_ANON:""), club=(typeof CLUB_ID!=="undefined"?CLUB_ID:0);
+      var chain=Promise.resolve();
+      todo.forEach(function(r){ chain=chain.then(function(){
+        return Promise.all([TM.readCurrentRating(r.p1), TM.readCurrentRating(r.p2)]).then(function(rr){
+          if(rr[0]==null || rr[1]==null){ r.msg="no published rating yet"; return; }
+          var seed=TM.pairRating(rr[0], rr[1], cat);
+          return W.fetch(url+"/functions/v1/tournament",{method:"POST",headers:{apikey:key,Authorization:"Bearer "+key,"Content-Type":"application/json"},
+            body:JSON.stringify({action:"enter_team",club_id:club,entry:{tournament:tour,category:cat,p1:r.p1,p2:r.p2,seed_rating:seed}})})
+            .then(function(x){ return x.json().catch(function(){ return {}; }).then(function(j){ if(x.ok && j.ok!==false){ r.done=true; r.msg="entered"; } else r.msg=(j&&j.error)||("not saved ("+x.status+")"); }); });
+        }).catch(function(){ r.msg="not saved"; }).then(draw); }); });
+      chain.then(function(){ var ok=ROWS.filter(function(r){ return r.done; }).length;
+        ROWS=ROWS.filter(function(r){ return !r.done; }); if(!ROWS.length) ROWS=[{p1:"",p2:""}];
+        try{ if(typeof renderEnterScreen==="function") renderEnterScreen(); }catch(e){}
+        setTimeout(function(){ var m=document.getElementById("nhMultiMsg"); if(m) m.innerHTML='<span style="color:#1e8449;font-weight:800">'+ok+' pair'+(ok===1?"":"s")+' entered.</span>'+(ROWS.some(function(r){ return r.msg; })?' The rest are still listed with the reason.':''); }, 900); });
+    };
+    function slot(k,which,name){ return '<button type="button" class="name-pick-btn'+(name?' selected':'')+'" onclick="window.nhMultiPick('+k+','+which+')" style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+(name?esc(name):'Player '+which+' — select')+'</button>'; }
+    function draw(){
+      var box=document.getElementById("nhMulti"); if(!box) return;
+      var h='<h3 style="margin:0 0 4px;font-size:15px">Enter several pairs</h3><p class="sub" style="margin:0 0 10px">Pick as many pairs as you like, then enter them all at once.</p>';
+      ROWS.forEach(function(r,k){
+        h+='<div style="display:flex;align-items:center;gap:6px;margin:0 0 8px"><b style="flex:none;width:22px;color:var(--nhc,#6c3483)">'+(k+1)+'</b>'+slot(k,1,r.p1)+slot(k,2,r.p2)
+          +'<button type="button" onclick="window.nhMultiClear('+k+')" title="Remove this row" style="flex:none;border:0;background:none;color:#c0392b;font-size:18px;padding:0 4px;cursor:pointer">×</button></div>'
+          +(r.msg?'<div style="margin:-4px 0 8px 28px;font-size:12px;color:'+(r.done?"#1e8449":"#c0392b")+'">'+esc(r.msg)+'</div>':'');
+      });
+      var addB=Array.prototype.filter.call(document.querySelectorAll("#enterTournamentScreen button"),function(b){ return /^\s*Add team\s*$/i.test(b.textContent||""); })[0];
+      var cls=addB?addB.className:"", sty=addB?(addB.getAttribute("style")||""):"";   /* the same look as "Add team" */
+      h+='<button type="button" onclick="window.nhMultiAdd()" style="width:100%;margin:2px 0 8px;padding:11px;border-radius:12px;border:1.5px solid var(--nhc,#6c3483);background:#fff;color:var(--nhc,#6c3483);font:inherit;font-weight:800;cursor:pointer">+ Add another pair</button>'
+        +'<button type="button" id="nhMultiBtn" onclick="window.nhMultiGo()" class="'+cls+'" style="'+sty+';width:100%">Enter all pairs</button><div id="nhMultiMsg" class="sub" style="margin-top:8px"></div>';
+      box.innerHTML=h;
+    }
+    setInterval(function(){ try{
+      var scr=document.getElementById("enterTournamentScreen"); if(!scr || !scr.classList.contains("active")) return;
+      var k=((document.getElementById("etTour")||{}).value||"")+"|"+((document.getElementById("etCat")||{}).value||"");
+      if(k!==FOR){ FOR=k; ROWS=[{p1:"",p2:""},{p1:"",p2:""},{p1:"",p2:""}]; }   /* another tournament or division: fresh rows */
+      var add=Array.prototype.filter.call(scr.querySelectorAll("button"),function(b){ return /^\s*Add team\s*$/i.test(b.textContent||""); })[0];
+      if(!add || document.getElementById("nhMulti") || !document.getElementById("etP2")) return;   /* doubles entry open */
+      var card=add.closest(".card")||add.parentNode, box=document.createElement("div"); box.id="nhMulti"; box.className=card.className||"card";
+      box.style.cssText="margin-top:12px;padding:14px"; card.parentNode.insertBefore(box, card.nextSibling); draw();
+    }catch(err){} }, 500);
+  })();
+  /* ===================================================================================================================
+     NAT4 b33 · RECENT HANDICAP RESULTS on the door's "Recent matches" page (Andre, 9 Nov: "in OPR a handicap match does
+     not count towards ratings — but the recent matches on the front door add a section with the handicap matches played,
+     so people can follow results"). A straight copy of the parent's own front-page glimpse (live_plat-padel.html
+     #homeHcWrap / toggleHandicapGlimpse: "🎯 Recent Handicap Results ▸", the last 5 results, winner ✓, sets (games),
+     the tournament, the H badge, "Handicap results — just for fun, no effect on ratings.") — the new door never showed it.
+     The door covers the region AND its groups, so it reads the handicap tournaments of all of them. Reads the tournament
+     tables only (never the matches) — so it can never touch a rating. Shown only when a handicap tournament exists.
+     ================================================================================================================== */
+  (function(){
+    var W=window, ENC=encodeURIComponent;
+    var RB="https://djmbnvikrdgnomjhtkgf.supabase.co/rest/v1/";
+    var esc=function(s){ return String(s==null?"":s).replace(/[&<>"']/g,function(c){ return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]; }); };
+    var get=function(q){ var k=W.__nhBkAnon||""; return fetch(RB+q,{headers:{apikey:k,Authorization:"Bearer "+k}}).then(function(r){ return r.ok?r.json():[]; }).catch(function(){ return []; }); };
+    var boards=function(){ try{ var region=Number(W.PLAT&&(W.PLAT.parentId||W.PLAT.cid))||0; if(!region) return [];
+      return [region].concat((W.PLAT.clubs||[]).filter(function(c){ return Number(c.parent_id)===region; }).map(function(c){ return Number(c.id); })); }catch(e){ return []; } };
+    var TOURS={key:"", list:null, busy:null}, LIST={key:"", html:null};
+    var key=function(){ return boards().join(","); };
+    var tours=function(){ var k=key(); if(!k) return Promise.resolve([]);
+      if(TOURS.key===k && TOURS.list) return Promise.resolve(TOURS.list);
+      if(TOURS.key===k && TOURS.busy) return TOURS.busy;
+      TOURS.key=k; TOURS.list=null;
+      TOURS.busy=get("plat_padel_tournaments?club_id=in.("+k+")&handicap=eq.true&select=club_id,name").then(function(t){ if(TOURS.key===k){ TOURS.list=t||[]; TOURS.busy=null; } return t||[]; });
+      return TOURS.busy; };
+    var listHtml=function(){ var k=key();
+      return tours().then(function(ts){
+        if(!ts.length) return '<div style="color:#888;font-size:12px;padding:4px 2px;">No handicap events yet.</div>';
+        return Promise.all(ts.map(function(t){ return get("plat_padel_tournament_fixtures?club_id=eq."+t.club_id+"&tournament=eq."+ENC(t.name)+"&sets_a=not.is.null&select=id,club_id,tournament,division,seed_a,seed_b,sets_a,sets_b,games_a,games_b&order=id.desc&limit=5"); })).then(function(rs){
+          var all=[]; rs.forEach(function(r){ all=all.concat(r||[]); });
+          if(!all.length) return '<div style="color:#888;font-size:12px;padding:4px 2px;">No handicap results in yet — check back after some matches.</div>';
+          all.sort(function(a,b){ return (b.id||0)-(a.id||0); }); var fx=all.slice(0,5), need={};
+          fx.forEach(function(f){ need[f.club_id+"|"+f.tournament+"|"+f.division]=f; });
+          var keys=Object.keys(need);
+          return Promise.all(keys.map(function(kk){ var f=need[kk]; return get("plat_padel_tournament_entries?club_id=eq."+f.club_id+"&tournament=eq."+ENC(f.tournament)+"&category=eq."+ENC(f.division)+"&select=seed,p1,p2"); })).then(function(es){
+            var names={}; keys.forEach(function(kk,i){ var m={}; (es[i]||[]).forEach(function(e){ m[e.seed]=e.p2?(e.p1+" / "+e.p2):e.p1; }); names[kk]=m; });
+            var nm=function(f,s){ return (names[f.club_id+"|"+f.tournament+"|"+f.division]||{})[s]||("Seed "+s); };
+            return fx.map(function(f){ var aWin=f.sets_a>f.sets_b, a=nm(f,f.seed_a), b=nm(f,f.seed_b);
+              return '<div style="border:1px solid #f0e0b0;background:#fffdf8;border-radius:8px;padding:7px 10px;margin-bottom:6px;">'
+                +'<div style="font-size:12px;line-height:1.5;"><b style="color:'+(aWin?'#6c3483':'#555')+';">'+esc(a)+(aWin?' ✓':'')+'</b>'
+                +'<span style="color:#999;"> vs </span><b style="color:'+(!aWin?'#6c3483':'#555')+';">'+esc(b)+(!aWin?' ✓':'')+'</b></div>'
+                +'<div style="font-size:11px;color:#8a6d1a;margin-top:2px;">'+f.sets_a+'–'+f.sets_b+' ('+f.games_a+'–'+f.games_b+') · <span style="opacity:.8;">'+esc(f.tournament)+'</span> '
+                +'<span style="background:#8fb500;color:#fff;font-size:9px;font-weight:700;padding:1px 5px;border-radius:4px;">H</span></div></div>'; }).join("")
+              +'<div style="font-size:10px;color:#b0a48a;text-align:center;margin-top:2px;">Handicap results — just for fun, no effect on ratings.</div>';
+          }); }); })
+      .then(function(h){ if(key()===k) LIST={key:k, html:h}; return h; })
+      .catch(function(){ return '<div style="color:#c0392b;font-size:12px;padding:4px 2px;">Could not load handicap results.</div>'; }); };
+    /* the toggle, as the parent's: closed until tapped; the list is read once and kept (fresh each time the door loads) */
+    W.nhHcToggle=function(){ var list=document.getElementById("nhHcList"), caret=document.getElementById("nhHcCaret"); if(!list) return;
+      if(list.style.display!=="none"){ list.style.display="none"; if(caret) caret.textContent="▸"; return; }
+      list.style.display=""; if(caret) caret.textContent="▾";
+      if(LIST.key===key() && LIST.html!=null){ list.innerHTML=LIST.html; return; }
+      list.innerHTML='<div style="color:#888;font-size:12px;padding:4px 2px;">Loading…</div>';
+      listHtml().then(function(h){ var l2=document.getElementById("nhHcList"); if(l2) l2.innerHTML=h; }); };
+    var WRAP='<div id="nhHcWrap" style="margin:12px 12px 0;">'
+      +'<button onclick="window.nhHcToggle()" style="width:100%;text-align:left;background:#fffdf5;color:#8a6d1a;border:1.5px solid #8fb500;border-radius:10px;padding:8px 12px;font-size:13px;font-weight:800;letter-spacing:0.3px;cursor:pointer;display:flex;justify-content:space-between;align-items:center;font-family:inherit">'
+      +'<span>🎯 Recent Handicap Results</span><span id="nhHcCaret">▸</span></button>'
+      +'<div id="nhHcList" style="display:none;max-height:360px;overflow-y:auto;margin-top:8px;padding-right:2px;"></div></div>';
+    var put=function(){ var sub=document.getElementById("nhDoorSub"); if(!sub || sub.style.display==="none" || document.getElementById("nhHcWrap")) return;
+      var box=document.createElement("div"); box.innerHTML=WRAP; var w=box.firstChild; sub.insertBefore(w, sub.lastElementChild); };
+    var doorK="";
+    (function(){ var wrap=function(){ var f0=W.nhDoorSec; if(typeof f0!=="function") return false; if(f0.__nhHc) return true;
+        var f1=function(k){ var r=f0.apply(this, arguments); doorK=k;
+          if(k==="m"){ var k0=key();
+            if(TOURS.key===k0 && TOURS.list){ if(TOURS.list.length) put(); }
+            else tours().then(function(ts){ if(ts.length && doorK==="m") put(); }); }
+          return r; };
+        Object.keys(f0).forEach(function(p){ f1[p]=f0[p]; }); f1.__nhHc=1; W.nhDoorSec=f1; return true; };
+      /* after the other door add-ons (Topside wraps it too); the list of handicap events is read once the door has loaded */
+      var n=0, t=setInterval(function(){ if((W.nhDoorSec && W.nhDoorSec.__nhTs) || ++n>12){ if(wrap() || n>60){ clearInterval(t); } }
+        try{ var k=key(); if(k && TOURS.key!==k) tours(); }catch(e){} }, 250); })();
   })();
   /* n350: COLUMN NAMES THAT STAY PUT. Group Members gets Name · Rating · Level · Move · Rank in the frozen block with
      its search box (each name measured onto the pill beneath it); on Member profiles and List all members the names
