@@ -3784,7 +3784,7 @@ const CLUB_NAME = _club.name;  // shown in the logo as "OPR · <name>"
     link.setAttribute('href', href);
   }catch(e){ /* install stays on the static manifest — no functional impact */ }
 })();
-const OPR_VERSION = "OPR-DOUBLES v2026.09.03-56 · NAT4 booking test b39 (nat3 n375) (no voice) (of PLAT p117)";  // MANUAL PAIR CREATION REMOVED FROM ADMIN: Create a pair, Bulk create pairs and Re-derive all pairs are gone (they only made match-less ghost pairs, and Re-derive rewrote every stored initial club-wide). Pairs are born automatically at match entry. Current pairs list untouched; the underlying JS is left in place unreferenced, so no other code path changes. Includes v47 (set-score fix + double-tap guard) and all prior.
+const OPR_VERSION = "OPR-DOUBLES v2026.09.03-56 · NAT4 booking test b40 (nat3 n375) (no voice) (of PLAT p117)";  // MANUAL PAIR CREATION REMOVED FROM ADMIN: Create a pair, Bulk create pairs and Re-derive all pairs are gone (they only made match-less ghost pairs, and Re-derive rewrote every stored initial club-wide). Pairs are born automatically at match entry. Current pairs list untouched; the underlying JS is left in place unreferenced, so no other code path changes. Includes v47 (set-score fix + double-tap guard) and all prior.
 // Explanation shown above the individual ladder. Open on load so it's read; collapsible
 // (state kept for the session) and scrolls away. Mechanics only — no outcome framing, so
 // members aren't nudged away from playing stronger opponents. Every clause maps to a real
@@ -13952,7 +13952,7 @@ W.nhOpenPair=function(name){
     setInterval(leapBrk, 900);
     W.__nhTsBuild=build;   /* for the test */
   })();
-  window.__nhBkAnon="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRqbWJudmlrcmRnbm9tamh0a2dmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODUzOTE0MzEsImV4cCI6MjEwMDk2NzQzMX0.vR8xlVFjV6jXW-pAclGjM74HqmWSKVpsacFjM-dCIJI"; window.__nhBkBuild="nat4 b39";
+  window.__nhBkAnon="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRqbWJudmlrcmRnbm9tamh0a2dmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODUzOTE0MzEsImV4cCI6MjEwMDk2NzQzMX0.vR8xlVFjV6jXW-pAclGjM74HqmWSKVpsacFjM-dCIJI"; window.__nhBkBuild="nat4 b40";
   /* ===================================================================================================
      COURT BOOKING (nat4 test copy, Manzini pilot, Andre 26 Oct). Started ONLY from the player's own My page: its
      "Court card" button becomes "Book a court", which asks "Where do you want to play?" — one tile per venue; a venue
@@ -16005,15 +16005,19 @@ W.nhOpenPair=function(name){
       var act=(D.players||[]).filter(function(p){ return !p.left_at; });
       var inSec=function(p){ var r=D.rating[lc(p.name)]; return ((r!=null && r>=Number(D.t.line))?"A":"B")===ST.sec; };
       var wait=act.filter(function(p){ return p.is_in && !inPair[lc(p.name)] && inSec(p); }), out=act.filter(function(p){ return !p.is_in && inSec(p); });
-      var names=function(X){ return X.map(function(p){ return esc(p.name)+(D.rating[lc(p.name)]!=null?' <span style="color:#8a8196">'+D.rating[lc(p.name)]+'</span>':''); }).join(" \u00b7 "); };
+      var tbl=function(X, id){ X=X.slice().sort(function(a,b){ return rt(b.name)-rt(a.name) || String(a.name).localeCompare(String(b.name)); });
+        return '<table id="'+id+'"><thead><tr><th class="num">#</th><th>Player</th><th class="num">Rating</th></tr></thead><tbody>'
+          +X.map(function(p,i){ var mine=ST.me && lc(p.name)===lc(ST.me), r=D.rating[lc(p.name)];
+            return '<tr'+(mine?' style="background:#fbf8ff"':'')+'><td class="num"><span class="seed">'+(i+1)+'</span></td><td><b>'+esc(p.name)+'</b></td><td class="num">'+(r!=null?r:"")+'</td></tr>'; }).join("")+'</tbody></table>'; };
       return '<div class="card"><h2>Pairs'+secTag()+'</h2><p class="sub">Drawn each round so every pair\'s 60/40 rating is as even as possible. Winners stay together; losers are drawn again.</p>'
         +(L.length?'<table><thead><tr><th class="num">#</th><th>Pair</th><th class="num">Rating</th><th class="num">Reign</th></tr></thead><tbody>'
           +L.map(function(x,i){ var mine=ST.me && (lc(x.p.p1)===lc(ST.me)||lc(x.p.p2)===lc(ST.me));
             return '<tr'+(mine?' style="background:#fbf8ff"':'')+'><td class="num"><span class="seed'+(i===0?' s1':'')+'">'+(i+1)+'</span></td><td><b>'+esc(x.p.p1)+' / '+esc(x.p.p2)+'</b>'+(isPaused(x.p)?' <span style="color:#8a8196;font-size:12px">(paused)</span>':'')+'</td>'
               +'<td class="num"><b style="color:'+c+'">'+x.r+'</b></td><td class="num">'+reignOf(x.p)+'</td></tr>'; }).join("")+'</tbody></table>'
           :'<p class="sub">No pairs yet in this section \u2014 the draw makes them.</p>')
-        +'<p class="sub" style="margin-top:12px;text-align:left"><b>Waiting room \u00b7 '+wait.length+'</b><br>'+(wait.length?names(wait):"Nobody waiting.")+'</p>'
-        +(out.length?'<p class="sub" style="text-align:left"><b>Out next round \u00b7 '+out.length+'</b><br>'+names(out)+'</p>':'')
+        /* b40 (Andre, 10 Nov: "show the names in a table form and not just as a list") */
+        +'<h2 style="margin-top:14px">Waiting room <span class="tm-divtag">'+wait.length+'</span></h2>'+(wait.length?tbl(wait,"nhTsWait"):'<p class="sub">Nobody waiting.</p>')
+        +(out.length?('<h2 style="margin-top:14px">Out next round <span class="tm-divtag">'+out.length+'</span></h2>'+tbl(out,"nhTsOut")):'')
         +'<p class="sub" style="text-align:left">'+act.length+' in Topside</p></div>';
     };
     /* b27: the games are kept as the score sheet had them (either pair first); shown Pair A first, as the table reads —
@@ -17370,54 +17374,80 @@ W.nhOpenPair=function(name){
          level   — players by rating; a section is an even number; inside it strongest with weakest
          mixed   — men by rating and ladies by rating, rank by rank; inside a section strongest man with weakest lady */
     var pairR=function(D,a,b){ var x=rt(D,a), y=rt(D,b); return Math.round(Math.max(x,y)*0.6+Math.min(x,y)*0.4); };
+    /* b40 (Andre, 10 Nov: "have a look at how the squash moves teams from one division to the next … so before the admin
+       activates the draw he can see each division and decide to move a team or teams up or down"): every section is its
+       own table (seed · pair or player · rating) and every row has ↑ To Section 1 / ↓ To Section 2. The first split is the
+       system's (down the middle by rating); a moved row is marked "playing up" / "playing down". With level pairs it is
+       PLAYERS that move, and the pairs of each section are re-made and shown under its table. */
     var setupBuild=function(D, rows){
-      var e=D.e, S={mode:"", atoms:[], step:1, min:0, cut:0, split:(e.sections==="split"), one:false, few:false};
+      var e=D.e, S={mode:"", items:[], split:(e.sections==="split"), one:false, few:false, min:0};
       var names=[]; rows.forEach(function(p){ names.push(p.p1); if(p.p2) names.push(p.p2); });
-      var byR=function(a,b){ return rt(D,b)-rt(D,a) || String(a).localeCompare(String(b)); };
       var g=function(n){ var x=String(D.gender[n]||"").toUpperCase(); return (x==="F"||x==="L")?"F":(x==="M"?"M":""); };
-      if(e.kind==="single"){ S.mode="single"; S.atoms=names.sort(byR); S.min=4; if(S.atoms.length<4) return {error:"At least 4 players are needed."}; }
-      else if(e.pairing!=="system"){ S.mode="own"; S.atoms=rows.map(function(p){ return [p.p1,p.p2]; }).sort(function(a,b){ return pairR(D,b[0],b[1])-pairR(D,a[0],a[1]); }); S.min=2;
-        if(S.atoms.length<2) return {error:"At least 2 pairs are needed."}; }
-      else if(e.division==="Mixed"){ var men=names.filter(function(n){ return g(n)==="M"; }).sort(byR), lad=names.filter(function(n){ return g(n)==="F"; }).sort(byR);
-        if(men.length+lad.length!==names.length) return {error:"A mixed event needs each player's gender on the register."};
-        if(men.length!==lad.length) return {error:"Mixed pairs need the same number of men and ladies — there are "+men.length+" men and "+lad.length+" ladies."};
-        if(men.length<2) return {error:"At least 2 men and 2 ladies are needed."};
-        S.mode="mixed"; S.atoms=men.map(function(m,i){ return [m,lad[i]]; }); S.min=2; }
+      var it=function(nm, r, gg){ return {names:nm, r:r, g:gg||"", sec:0, base:0}; };
+      if(e.kind==="single"){ S.mode="single"; S.min=4; if(names.length<4) return {error:"At least 4 players are needed."}; S.items=names.map(function(n){ return it([n], rt(D,n)); }); }
+      else if(e.pairing!=="system"){ S.mode="own"; S.min=2; if(rows.length<2) return {error:"At least 2 pairs are needed."}; S.items=rows.map(function(p){ return it([p.p1,p.p2], pairR(D,p.p1,p.p2)); }); }
+      else if(e.division==="Mixed"){ var men=names.filter(function(n){ return g(n)==="M"; }).length, lad=names.filter(function(n){ return g(n)==="F"; }).length;
+        if(men+lad!==names.length) return {error:"A mixed event needs each player's gender on the register."};
+        if(men!==lad) return {error:"Mixed pairs need the same number of men and ladies — there are "+men+" men and "+lad+" ladies."};
+        if(men<2) return {error:"At least 2 men and 2 ladies are needed."};
+        S.mode="mixed"; S.min=4; S.items=names.map(function(n){ return it([n], rt(D,n), g(n)); }); }
       else { if(names.length<4) return {error:"At least 4 players are needed."};
         if(names.length%2) return {error:"The system needs an even number of players to make pairs — there are "+names.length+". Add one or remove one."};
-        S.mode="level"; S.atoms=names.sort(byR); S.step=2; S.min=4; }
-      var n=S.atoms.length;
-      if(!S.split || n<2*S.min){ S.cut=n; S.one=true; S.few=(S.split && n<2*S.min); }
-      else { var h=Math.floor(n/2); if(S.step===2 && h%2) h+=1; S.cut=h; }
+        S.mode="level"; S.min=4; S.items=names.map(function(n){ return it([n], rt(D,n)); }); }
+      S.items.sort(function(a,b){ return b.r-a.r || String(a.names[0]).localeCompare(String(b.names[0])); });
+      var n=S.items.length;
+      if(!S.split || n<2*S.min){ S.one=true; S.few=(S.split && n<2*S.min); return S; }
+      if(S.mode==="mixed"){ var h=Math.floor(n/4), cm=0, cl=0; S.items.forEach(function(x){ if(x.g==="M") x.sec=(cm++<h)?0:1; else x.sec=(cl++<h)?0:1; }); }
+      else { var k=Math.floor(n/2); if(S.mode==="level" && k%2) k+=1; S.items.forEach(function(x,i){ x.sec=(i<k)?0:1; }); }
+      S.items.forEach(function(x){ x.base=x.sec; });
       return S; };
-    var setupSections=function(S){
-      var parts=S.one?[S.atoms]:[S.atoms.slice(0,S.cut), S.atoms.slice(S.cut)];
-      return parts.map(function(A){
-        if(S.mode==="single") return A.map(function(n){ return [n]; });
-        if(S.mode==="own") return A.map(function(p){ return [p[0],p[1]]; });
-        if(S.mode==="mixed"){ var lad=A.map(function(x){ return x[1]; }).reverse(); return A.map(function(x,i){ return [x[0], lad[i]]; }); }
-        var out=[]; for(var i=0;i<A.length/2;i++) out.push([A[i], A[A.length-1-i]]); return out; }); };
+    var setupGroups=function(S){ return S.one ? [S.items] : [0,1].map(function(k){ return S.items.filter(function(x){ return x.sec===k; }); }); };
+    var setupErr=function(S, A){
+      if(S.mode==="single") return A.length<4 ? "Needs at least 4 players." : "";
+      if(S.mode==="own") return A.length<2 ? "Needs at least 2 pairs." : "";
+      if(S.mode==="mixed"){ var m=A.filter(function(x){ return x.g==="M"; }).length, l=A.length-m;
+        if(m!==l) return "Has "+m+" men and "+l+" ladies — the same number of each is needed to make mixed pairs.";
+        return m<2 ? "Needs at least 2 men and 2 ladies." : ""; }
+      if(A.length<4) return "Needs at least 4 players.";
+      return A.length%2 ? ("Has "+A.length+" players — an even number is needed to make pairs.") : ""; };
+    var setupPairs=function(S, A){   /* one section's entries, as am_setup takes them */
+      if(S.mode==="single" || S.mode==="own") return A.map(function(x){ return x.names.slice(); });
+      if(S.mode==="mixed"){ var men=A.filter(function(x){ return x.g==="M"; }).map(function(x){ return x.names[0]; }), lad=A.filter(function(x){ return x.g!=="M"; }).map(function(x){ return x.names[0]; }).reverse();
+        return men.map(function(m,i){ return [m, lad[i]]; }).filter(function(p){ return p[1]; }); }
+      var out=[]; for(var i=0;i<Math.floor(A.length/2);i++) out.push([A[i].names[0], A[A.length-1-i].names[0]]); return out; };
+    var setupSections=function(S){ return setupGroups(S).map(function(A){ return setupPairs(S, A); }); };
     var setupPreview=function(){
-      var D=ST.D, e=D.e, S=ST.setup, c=ink(), secs=setupSections(S), unit=(S.mode==="single"?"players":"pairs"), n=S.atoms.length, s="";
-      s+='<div id="nhAmSetup"><div style="font-size:14px;font-weight:800;color:#241d33;margin:8px 0 4px">'+(e.pairing==="system"?(S.one?"The pairs":"The pairs and sections"):"The sections")+'</div>';
-      if(e.pairing==="system") s+='<p class="sub" style="text-align:left;margin:0 0 6px">Strongest with weakest'+(S.one?'':' inside each section')+', so the pairs are as level as they can be. They stay together for the whole event.</p>';
+      var D=ST.D, e=D.e, S=ST.setup, c=ink(), G=setupGroups(S), sys=(e.pairing==="system"), unit=(S.mode==="own"?"pairs":"players"), s="", bad=false;
+      var step=function(t){ return '<div style="font-size:11px;font-weight:800;letter-spacing:.1em;color:'+c+';margin:12px 0 2px">'+t+'</div>'; };
+      var mv=function(label, idx, to){ return '<button onclick="window.__nhAmMove('+idx+','+to+')" style="border:1px solid #cfc5e0;background:#fff;color:#4b4060;border-radius:8px;padding:5px 8px;font:inherit;font-size:11.5px;cursor:pointer;white-space:nowrap">'+label+'</button>'; };
+      s+='<div id="nhAmSetup">'+step("STEP 2 · CHECK WHO IS IN")+'<div style="font-size:15px;font-weight:800;color:#241d33;margin-bottom:4px">Entered '+unit+'</div>';
       if(S.few) s+='<p class="sub" style="text-align:left;margin:0 0 6px"><b>Too few entries for two sections</b> — everyone plays in one.</p>';
-      var up=(S.cut-S.step>=S.min), down=(n-(S.cut+S.step)>=S.min);
-      var mv=function(label, d, on){ return '<button '+(on?('onclick="window.__nhAmLine('+d+')" '):'disabled ')+'style="border:1.5px solid '+(on?c:'#e6e0ee')+';background:#fff;color:'+(on?c:'#b9b2c4')+';border-radius:10px;padding:8px 12px;font:inherit;font-size:13px;font-weight:800;'+(on?'cursor:pointer':'')+'">'+label+'</button>'; };
-      secs.forEach(function(sec,i){
-        if(!S.one && i===1) s+='<div style="display:flex;gap:8px;align-items:center;margin:10px 0;padding:8px 10px;border:1.5px dashed '+c+';border-radius:10px"><span style="flex:1;font-size:12.5px;font-weight:800;color:#241d33">The line between the sections</span>'+mv("▲ Up",-1,up)+mv("▼ Down",1,down)+'</div>';
-        if(!S.one) s+='<div class="nhAmSecHead" style="font-size:12px;font-weight:800;color:'+c+';margin:8px 0 2px">SECTION '+(i+1)+' · '+sec.length+' '+unit+'</div>';
-        s+=sec.map(function(en){ var r=en.length===2?pairR(D,en[0],en[1]):rt(D,en[0]);
-          return '<div class="nhAmSetRow" style="display:flex;justify-content:space-between;gap:8px;font-size:13px;padding:4px 0;border-bottom:1px solid #f4f0f8"><span>'+esc(en.join(" & "))+'</span><span style="color:#8a8196">'+r+'</span></div>'; }).join("");
+      else if(!S.one) s+='<p class="sub" style="text-align:left;margin:0 0 6px">Split down the middle by rating. Move any '+(S.mode==="own"?"pair":"player")+' up or down before you save.</p>';
+      G.forEach(function(A, k){
+        s+='<div class="nhAmSecHead" style="display:flex;justify-content:space-between;align-items:baseline;margin:10px 0 2px"><b style="font-size:14px;color:#241d33">'+(S.one?(e.division||"Everyone"):("Section "+(k+1)))+'</b><span style="font-size:12px;color:#8a8196">'+A.length+' '+(A.length===1?unit.replace(/s$/,""):unit)+'</span></div>';
+        s+='<table><thead><tr><th class="num">Seed</th><th>'+(S.mode==="own"?"Pair":"Player")+'</th><th class="num">Rating</th>'+(S.one?'':'<th></th>')+'</tr></thead><tbody>'
+          +(A.length?A.map(function(x,i){ var idx=S.items.indexOf(x);
+            var tag=(x.sec<x.base)?"playing up":(x.sec>x.base?"playing down":"");
+            return '<tr class="nhAmSetRow"><td class="num"><span class="seed'+(i===0?' s1':'')+'">'+(i+1)+'</span></td><td><b>'+esc(x.names.join(" / "))+'</b>'
+              +(tag?' <span style="background:#e3edff;color:#2148a0;border-radius:99px;padding:1px 7px;font-size:10.5px;font-weight:800">'+tag+'</span>':'')+'</td><td class="num">'+x.r+'</td>'
+              +(S.one?'':('<td class="num">'+(k===0?mv("↓ To Section 2", idx, 1):mv("↑ To Section 1", idx, 0))+'</td>'))+'</tr>'; }).join("")
+            :'<tr><td colspan="4" style="color:#8a8196">Nobody in this section.</td></tr>')+'</tbody></table>';
       });
-      return s+'<div style="display:flex;gap:8px;margin-top:12px">'+btn("Cancel","window.__nhAmSetupOff()",false,"flex:1")+btn("Save","window.__nhAmSetupSave()",true,"flex:1")+'</div></div>'; };
+      s+=step(sys?"STEP 3 · THE LEVEL PAIRS, THEN SAVE":"STEP 3 · SAVE, THEN MAKE THE DRAW");
+      if(sys) s+='<p class="sub" style="text-align:left;margin:0 0 6px">Strongest with weakest'+(S.one?'':' inside each section')+', so the pairs are as level as they can be. They stay together for the whole event.</p>';
+      G.forEach(function(A, k){ var er=setupErr(S, A), P=er?[]:setupPairs(S, A); if(er) bad=true;
+        s+='<div class="nhAmSecCard" style="background:#f4f0f8;border-radius:12px;padding:10px 12px;margin:6px 0"><div style="display:flex;justify-content:space-between;align-items:baseline"><b style="font-size:14px;color:#241d33">'+esc(e.division)+(S.one?'':(' · Section '+(k+1)))+'</b><span style="font-size:12px;color:#8a8196">'+(er?'':(P.length+(S.mode==="single"?' players':' pairs')))+'</span></div>'
+          +(er?('<div style="font-size:13.5px;color:#a3321f;margin-top:3px">'+esc(er)+'</div>')
+              :(sys?P.map(function(p){ return '<div class="nhAmPairRow" style="display:flex;justify-content:space-between;gap:8px;font-size:13px;padding:3px 0;border-bottom:1px solid #e9e2f0"><span>'+esc(p[0])+' / '+esc(p[1])+'</span><span style="color:#8a8196">'+pairR(D,p[0],p[1])+'</span></div>'; }).join(""):'<div style="font-size:13px;color:#4b4060;margin-top:3px">Ready.</div>'))+'</div>'; });
+      return s+'<div style="display:flex;gap:8px;margin-top:12px">'+btn("Cancel","window.__nhAmSetupOff()",false,"flex:1")
+        +(bad?'<button disabled style="flex:1;border:1.5px solid #e6e0ee;background:#f4f0f8;color:#b9b2c4;border-radius:12px;padding:11px 12px;font:inherit;font-size:13.5px;font-weight:800">Save</button>':btn("Save","window.__nhAmSetupSave()",true,"flex:1"))+'</div></div>'; };
     W.__nhAmSetup=function(){ var D=ST.D; if(!D) return; var fam=(D.fam && D.fam.length)?D.fam:[D.e];
       Promise.all(fam.map(function(x){ return get("plat_amex_players?event_id=eq."+x.event_id+"&left_at=is.null&select=*&order=id.asc"); })).then(function(rs){
         var rows=[]; rs.forEach(function(r){ (r||[]).forEach(function(p){ rows.push(p); }); });
         var S=setupBuild(D, rows); if(S.error){ say(esc(S.error)); return; } ST.setup=S; ST.msg=""; ST.pick=null; ST.rm=false; paint(); }); };
     W.__nhAmSetupOff=function(){ ST.setup=null; paint(); };
-    W.__nhAmLine=function(d){ var S=ST.setup; if(!S || S.one) return; var k=S.cut+(Number(d)<0?-1:1)*S.step; if(k<S.min || S.atoms.length-k<S.min) return; S.cut=k; paint(); };
-    W.__nhAmSetupSave=function(){ var D=ST.D, S=ST.setup; if(!S) return; var secs=setupSections(S), root=Number((D.fam && D.fam[0] && D.fam[0].event_id)||D.e.parent_id||D.e.event_id);
+    W.__nhAmMove=function(idx, to){ var S=ST.setup; if(!S || S.one) return; var x=S.items[Number(idx)]; if(!x) return; x.sec=Number(to)?1:0; paint(); };
+    W.__nhAmSetupSave=function(){ var D=ST.D, S=ST.setup; if(!S) return; if(setupGroups(S).some(function(A){ return !!setupErr(S, A); })) return; var secs=setupSections(S), root=Number((D.fam && D.fam[0] && D.fam[0].event_id)||D.e.parent_id||D.e.event_id);
       rpc("am_setup",{p_event:ST.id, p_code:ST.adm, p_sections:secs}).then(function(r){ if(!r||!r.ok){ say(esc((r&&r.error)||"Not saved.")); return; }
         ST.setup=null; CK.key=""; W.__nhAmSec(root, madeLine(D.e)+" Now make the draw"+(secs.length>1?" for each section.":".")); }); };
     W.__nhAmSec=function(id, msg){ try{ if(ST.adm) sessionStorage.setItem("nhAmAdm|"+Number(id), ST.adm); }catch(e){} W.nhAmOpen(id); if(msg) ST.msg=msg; };
@@ -17581,7 +17611,7 @@ W.nhOpenPair=function(name){
         +'<div id="nhAmPairWrap" style="display:none">'+lab("Pairs")+sel("nhAmPairing",[["own","Players enter with a partner"],["system","Players enter alone — the system makes level pairs"]])+'</div>'
         +lab("Divisions")+'<p style="font-size:11px;color:#9b80b3;margin:2px 0 2px">Tick each division. Each one gets its own players, rounds and table.</p>'
         +'<div id="nhAmDivs" style="margin:0 0 8px">'+tick("nhAmDivAll","All Sorts — anyone with anyone",false)+tick("nhAmDivMen","Men's",false)+tick("nhAmDivLadies","Ladies",false)+tick("nhAmDivMixed","Mixed — one man and one lady a side",false)+'</div>'
-        +lab("Field")+sel("nhAmSections",[["open","Open — everyone in one field"],["split","Sections — split down the middle by rating (you can move the line)"]])
+        +lab("Field")+sel("nhAmSections",[["open","Open — everyone in one field"],["split","Sections — split down the middle by rating (you can move teams up or down)"]])
         +lab("Scored in")+sel("nhAmScoring",[["games","Games (an odd number, all played)"],["points","Points (e.g. 24; at 12-12 one more point)"]])
         +'<div style="display:flex;gap:8px"><div style="flex:1">'+lab("Games / points a match")+'<input id="nhAmTarget" type="number" class="ac-field" value="5" min="1" max="64"></div>'
         +'<div style="flex:1">'+lab("Courts")+'<input id="nhAmCourts" type="number" class="ac-field" value="2" min="1" max="20"></div>'
