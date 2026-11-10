@@ -3784,7 +3784,7 @@ const CLUB_NAME = _club.name;  // shown in the logo as "OPR · <name>"
     link.setAttribute('href', href);
   }catch(e){ /* install stays on the static manifest — no functional impact */ }
 })();
-const OPR_VERSION = "OPR-DOUBLES v2026.09.03-56 · NAT4 booking test b41 (nat3 n375) (no voice) (of PLAT p117)";  // MANUAL PAIR CREATION REMOVED FROM ADMIN: Create a pair, Bulk create pairs and Re-derive all pairs are gone (they only made match-less ghost pairs, and Re-derive rewrote every stored initial club-wide). Pairs are born automatically at match entry. Current pairs list untouched; the underlying JS is left in place unreferenced, so no other code path changes. Includes v47 (set-score fix + double-tap guard) and all prior.
+const OPR_VERSION = "OPR-DOUBLES v2026.09.03-56 · NAT4 booking test b42 (nat3 n375) (no voice) (of PLAT p117)";  // MANUAL PAIR CREATION REMOVED FROM ADMIN: Create a pair, Bulk create pairs and Re-derive all pairs are gone (they only made match-less ghost pairs, and Re-derive rewrote every stored initial club-wide). Pairs are born automatically at match entry. Current pairs list untouched; the underlying JS is left in place unreferenced, so no other code path changes. Includes v47 (set-score fix + double-tap guard) and all prior.
 // Explanation shown above the individual ladder. Open on load so it's read; collapsible
 // (state kept for the session) and scrolls away. Mechanics only — no outcome framing, so
 // members aren't nudged away from playing stronger opponents. Every clause maps to a real
@@ -13952,7 +13952,7 @@ W.nhOpenPair=function(name){
     setInterval(leapBrk, 900);
     W.__nhTsBuild=build;   /* for the test */
   })();
-  window.__nhBkAnon="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRqbWJudmlrcmRnbm9tamh0a2dmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODUzOTE0MzEsImV4cCI6MjEwMDk2NzQzMX0.vR8xlVFjV6jXW-pAclGjM74HqmWSKVpsacFjM-dCIJI"; window.__nhBkBuild="nat4 b41";
+  window.__nhBkAnon="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRqbWJudmlrcmRnbm9tamh0a2dmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODUzOTE0MzEsImV4cCI6MjEwMDk2NzQzMX0.vR8xlVFjV6jXW-pAclGjM74HqmWSKVpsacFjM-dCIJI"; window.__nhBkBuild="nat4 b42";
   /* ===================================================================================================
      COURT BOOKING (nat4 test copy, Manzini pilot, Andre 26 Oct). Started ONLY from the player's own My page: its
      "Court card" button becomes "Book a court", which asks "Where do you want to play?" — one tile per venue; a venue
@@ -17087,7 +17087,21 @@ W.nhOpenPair=function(name){
     E.teamAmericano=function(units, o){   /* units: ["A & B", …] best first; the circle, then split to the courts */
       var L=units.slice(); if(L.length%2) L.push(null); var n=L.length, circle=[];
       for(var r=0;r<n-1;r++){ var ms=[]; for(var i=0;i<n/2;i++){ var a=L[i], b=L[n-1-i]; if(a&&b) ms.push([a,b]); } circle.push(ms); L=[L[0]].concat([L[n-1]], L.slice(1,n-1)); }
-      var rounds=[]; circle.forEach(function(ms){ for(var i=0;i<ms.length;i+=o.courts) rounds.push(ms.slice(i,i+o.courts)); });
+      /* b42 (Andre, 10 Nov: "why has round 1 got 3 matches but round 2 only 1?"): the circle gives 4 matches a round for
+         8 pairs; cut to 3 courts it left the 4th match as a round of its own. Now every round FILLS the courts: all the
+         circle's matches wait in one line, and each round takes the first ones whose pairs are free, those who have
+         played least first — so nobody plays twice in a round, nobody meets twice, and sitting out is shared. */
+      var queue=[]; circle.forEach(function(ms){ ms.forEach(function(m){ queue.push(m); }); });
+      var played={}, rounds=[]; units.forEach(function(u){ played[u]=0; });
+      while(queue.length && rounds.length<o.rounds){
+        var busy={}, ms2=[], take=[];
+        var idx=queue.map(function(m,i){ return i; }).sort(function(x,y){ var a=queue[x], b=queue[y];
+          return (played[a[0]]+played[a[1]])-(played[b[0]]+played[b[1]]) || Math.max(played[a[0]],played[a[1]])-Math.max(played[b[0]],played[b[1]]) || x-y; });
+        idx.forEach(function(i){ if(ms2.length>=o.courts) return; var m=queue[i]; if(busy[m[0]] || busy[m[1]]) return; busy[m[0]]=busy[m[1]]=1; ms2.push(m); take.push(i); });
+        take.sort(function(a,b){ return b-a; }).forEach(function(i){ queue.splice(i,1); });
+        ms2.forEach(function(m){ played[m[0]]++; played[m[1]]++; });
+        rounds.push(ms2);
+      }
       return rounds.slice(0,o.rounds).map(function(ms,ri){ return ms.map(function(m,c){ var A=m[0].split(" & "), B=m[1].split(" & ");
         return {round:ri+1, court:c+1, a1:A[0], a2:A[1], b1:B[0], b2:B[1]}; }); });
     };
@@ -17179,7 +17193,10 @@ W.nhOpenPair=function(name){
       try{ showScreen("tournamentSheetScreen"); }catch(e){}
       var box=document.getElementById("tournamentSheetContent"); if(box) box.innerHTML='<div id="nhAm"><div class="loading">Loading…</div></div>';
       refresh(); };
-    W.nhAmClose=function(stay){ if(!ST.on) return; ST.on=false; ST.id=0; unskin(); try{ W._tmCtx=PREV.ctx; }catch(e){} if(!stay){ try{ showScreen(PREV.screen||"homeScreen"); }catch(e){} } };
+    W.nhAmClose=function(stay){ if(!ST.on) return;
+      try{ var ids=[ST.id]; ((ST.D && ST.D.fam)||[]).forEach(function(x){ ids.push(Number(x.event_id)); }); ids.forEach(function(i){ sessionStorage.removeItem("nhAmAdm|"+i); }); }catch(e){}
+      ST.adm=""; ST.setup=null; ST.preview=null; ST.ask=false;   /* b42 */
+      ST.on=false; ST.id=0; unskin(); try{ W._tmCtx=PREV.ctx; }catch(e){} if(!stay){ try{ showScreen(PREV.screen||"homeScreen"); }catch(e){} } };
     (function(){ var t=setInterval(function(){ if(typeof W.showScreen!=="function") return; if(W.showScreen.__nhAm){ clearInterval(t); return; }
         var s0=W.showScreen; var s1=function(id){ if(ST.on && id!=="tournamentSheetScreen") W.nhAmClose(true); return s0.apply(this, arguments); };
         Object.keys(s0).forEach(function(k){ s1[k]=s0[k]; }); s1.__nhAm=1; W.showScreen=s1; try{ showScreen=s1; }catch(e){} clearInterval(t); }, 300); })();
@@ -17358,6 +17375,7 @@ W.nhOpenPair=function(name){
           + (P.sits && P.sits.length?'<div style="font-size:12.5px;color:#8a8196;margin-top:6px">Sitting out: '+P.sits.map(esc).join(", ")+'</div>':'')
           + '<div style="display:flex;gap:8px;margin-top:12px">'+btn("Cancel","window.__nhAmPreviewOff()",false,"flex:1")+btn("Save this draw","window.__nhAmSave()",true,"flex:1")+'</div>';
       }
+      if(ST.msg) s+='<div id="nhAmOrgMsg" style="margin-top:10px;padding:9px 11px;border:1.5px solid '+c+';border-radius:10px;font-size:13.5px;color:#4b4060;line-height:1.5">'+ST.msg+'</div>';   /* b42 */
       s+='<div style="margin-top:10px;text-align:right"><a href="#" onclick="event.preventDefault();window.__nhAmLock()" style="color:#8a8196;font-size:12px">Lock organiser</a></div>';
       return card(s,'border-color:#7c2d12');
     };
@@ -17455,8 +17473,8 @@ W.nhOpenPair=function(name){
         var S=setupBuild(D, rows); if(S.error){ say(esc(S.error)); return; } ST.setup=S; ST.msg=""; ST.pick=null; ST.rm=false; paint(); }); };
     W.__nhAmSetupOff=function(){ ST.setup=null; paint(); };
     W.__nhAmMove=function(idx, to){ var S=ST.setup; if(!S || S.one) return; var x=S.items[Number(idx)]; if(!x) return; x.sec=Number(to)?1:0; paint(); };
-    W.__nhAmSetupSave=function(){ var D=ST.D, S=ST.setup; if(!S) return; if(setupGroups(S).some(function(A){ return !!setupErr(S, A); })) return; var secs=setupSections(S), root=Number((D.fam && D.fam[0] && D.fam[0].event_id)||D.e.parent_id||D.e.event_id);
-      rpc("am_setup",{p_event:ST.id, p_code:ST.adm, p_sections:secs}).then(function(r){ if(!r||!r.ok){ say(esc((r&&r.error)||"Not saved.")); return; }
+    W.__nhAmSetupSave=function(){ var D=ST.D, S=ST.setup; if(!S) return; if(setupGroups(S).some(function(A){ return !!setupErr(S, A); })) return; if(ST.busy) return; ST.busy=true; setTimeout(function(){ ST.busy=false; }, 8000); say("Saving…"); var secs=setupSections(S), root=Number((D.fam && D.fam[0] && D.fam[0].event_id)||D.e.parent_id||D.e.event_id);
+      rpc("am_setup",{p_event:ST.id, p_code:ST.adm, p_sections:secs}).then(function(r){ ST.busy=false; if(!r||!r.ok){ say(esc((r&&r.error)||"Not saved.")); return; }
         ST.setup=null; CK.key=""; W.__nhAmSec(root, madeLine(D.e)+" Now make the draw"+(secs.length>1?" for each section.":".")); }); };
     W.__nhAmSec=function(id, msg){ try{ if(ST.adm) sessionStorage.setItem("nhAmAdm|"+Number(id), ST.adm); }catch(e){} W.nhAmOpen(id); if(msg) ST.msg=msg; };
 
@@ -17507,7 +17525,7 @@ W.nhOpenPair=function(name){
         units.forEach(function(u){ if(!on[lc(String(u).split(" & ")[0])]) sat[u]=(sat[u]||0)+1; }); }); return sat; };
     W.__nhAmPreview=function(){ load(ST.id).then(function(D){ ST.D=D; var P=makeDraw(D); if(P.error){ say(esc(P.error)); return; } ST.preview=P; ST.msg=""; paint(); }); };
     W.__nhAmPreviewOff=function(){ ST.preview=null; paint(); };
-    W.__nhAmSave=function(){ var P=ST.preview; if(!P) return; var flat=[]; P.rounds.forEach(function(r){ r.forEach(function(m){ flat.push(m); }); });
+    W.__nhAmSave=function(){ var P=ST.preview; if(!P) return; say("Saving…"); var flat=[]; P.rounds.forEach(function(r){ r.forEach(function(m){ flat.push(m); }); });
       rpc("am_save_round",{p_event:ST.id, p_code:ST.adm, p_matches:flat}).then(function(r){ if(!r||!r.ok){ say(esc((r&&r.error)||"Not saved.")); return; }
         ST.preview=null; ST.rsel=(P.rounds[0][0].round); ST.tab="rounds"; ST.msg=(P.rounds.length>1?("The draw is made: "+P.rounds.length+" rounds."):("Round "+r.round+" is drawn.")); refresh(); }); };
 
