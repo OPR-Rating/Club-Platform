@@ -3784,7 +3784,7 @@ const CLUB_NAME = _club.name;  // shown in the logo as "OPR · <name>"
     link.setAttribute('href', href);
   }catch(e){ /* install stays on the static manifest — no functional impact */ }
 })();
-const OPR_VERSION = "OPR-DOUBLES v2026.09.03-56 · NAT4 booking test b40 (nat3 n375) (no voice) (of PLAT p117)";  // MANUAL PAIR CREATION REMOVED FROM ADMIN: Create a pair, Bulk create pairs and Re-derive all pairs are gone (they only made match-less ghost pairs, and Re-derive rewrote every stored initial club-wide). Pairs are born automatically at match entry. Current pairs list untouched; the underlying JS is left in place unreferenced, so no other code path changes. Includes v47 (set-score fix + double-tap guard) and all prior.
+const OPR_VERSION = "OPR-DOUBLES v2026.09.03-56 · NAT4 booking test b41 (nat3 n375) (no voice) (of PLAT p117)";  // MANUAL PAIR CREATION REMOVED FROM ADMIN: Create a pair, Bulk create pairs and Re-derive all pairs are gone (they only made match-less ghost pairs, and Re-derive rewrote every stored initial club-wide). Pairs are born automatically at match entry. Current pairs list untouched; the underlying JS is left in place unreferenced, so no other code path changes. Includes v47 (set-score fix + double-tap guard) and all prior.
 // Explanation shown above the individual ladder. Open on load so it's read; collapsible
 // (state kept for the session) and scrolls away. Mechanics only — no outcome framing, so
 // members aren't nudged away from playing stronger opponents. Every clause maps to a real
@@ -13952,7 +13952,7 @@ W.nhOpenPair=function(name){
     setInterval(leapBrk, 900);
     W.__nhTsBuild=build;   /* for the test */
   })();
-  window.__nhBkAnon="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRqbWJudmlrcmRnbm9tamh0a2dmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODUzOTE0MzEsImV4cCI6MjEwMDk2NzQzMX0.vR8xlVFjV6jXW-pAclGjM74HqmWSKVpsacFjM-dCIJI"; window.__nhBkBuild="nat4 b40";
+  window.__nhBkAnon="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRqbWJudmlrcmRnbm9tamh0a2dmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODUzOTE0MzEsImV4cCI6MjEwMDk2NzQzMX0.vR8xlVFjV6jXW-pAclGjM74HqmWSKVpsacFjM-dCIJI"; window.__nhBkBuild="nat4 b41";
   /* ===================================================================================================
      COURT BOOKING (nat4 test copy, Manzini pilot, Andre 26 Oct). Started ONLY from the player's own My page: its
      "Court card" button becomes "Book a court", which asks "Where do you want to play?" — one tile per venue; a venue
@@ -17213,6 +17213,7 @@ W.nhOpenPair=function(name){
       html+= ST.tab==="players" ? playersTab() : ST.tab==="table" ? tableTab() : roundsTab();
       html+= organiser();
       o.innerHTML=html;
+      if(ST.askFocus){ ST.askFocus=false; var ci=document.getElementById("nhAmCode"); if(ci){ try{ ci.scrollIntoView({block:"center"}); ci.focus(); }catch(x){} } }
       ["nhAmQ","nhAmRQ"].forEach(function(id){ var i=document.getElementById(id); if(i && ST.focus===id){ i.focus(); i.setSelectionRange(i.value.length,i.value.length); } });
     };
     W.__nhAmTab=function(t){ ST.tab=t; paint(); };
@@ -17227,8 +17228,11 @@ W.nhOpenPair=function(name){
           : (e.pairing==="system" ? "Tick your name and tap Enter. You enter on your own: when entry closes the system gives you a partner so that the pairs are as level as possible, and you stay together for the whole event."
                                   : "Tick your name and your partner's, then tap Enter. You play together for the whole event.");
         if(e.sections==="split") how+=" The field is then split into sections by rating; each section has its own rounds and table.";
-        s+='<div class="card"><h2>Enter this tournament</h2><p class="sub" style="text-align:left;margin-bottom:0">'+how+'</p>'
-          +(ST.pick==="add" ? '' : picker("join"))+'</div>';
+        /* b41 (Andre, 10 Nov: "there must be multiple selection for an admin person"): with the organiser unlocked the
+           list on top IS the organiser's — tick as many as you like; a player on his own phone ticks one name */
+        if(ST.adm) s+='<div class="card"><h2>Enter players</h2><p class="sub" style="text-align:left;margin-bottom:0"><b>Organiser:</b> '+(sl?"tick as many names as you like, then tap Add.":"tick two names to make a pair, then the next two, and so on; then tap Add.")+'</p>'+picker("add")+'</div>';
+        else s+='<div class="card"><h2>Enter this tournament</h2><p class="sub" style="text-align:left;margin-bottom:0">'+how+'</p>'+picker("join")
+          +'<p class="sub" style="text-align:left;margin:10px 0 0"><a href="#" onclick="event.preventDefault();window.__nhAmAskTop()" style="color:'+ink()+';font-weight:800">Organiser? Enter several players at once</a></p></div>';
       }
       s+='<div class="card"><h2>'+(open?"Entered":"Players")+' <span class="tm-divtag">'+L.length+(sl?" players":" pairs")+'</span></h2>';
       s+= L.length ? ('<table><thead><tr><th class="num">#</th><th>'+(sl?"Player":"Pair")+'</th><th class="num">Rating</th></tr></thead><tbody>'
@@ -17256,16 +17260,19 @@ W.nhOpenPair=function(name){
           :'<div style="padding:10px;font-size:13px;color:#8a8196">Nobody to show — everyone shown is already in.</div>')+'</div>';
       var n=pairs?ST.pend.filter(function(pp){ return pp[1]; }).length:chosen.length;
       var go = mode==="join" ? (pairs?(n?"Enter as this pair":"Tick two names"):(n?"Enter "+esc(chosen[0]):"Tick your name")) : ("Add "+n+(pairs?" pair":" player")+(n===1?"":"s"));
-      s+='<div style="display:flex;gap:8px;margin-top:8px">'+(mode==="join"?"":btn("Close","window.__nhAmPick(null)",false,"flex:1"))+btn(go,"window.__nhAmGo('"+mode+"')",n>0,"flex:1")+'</div></div>';
+      s+='<div style="display:flex;gap:8px;margin-top:8px">'+((mode==="join" || topAdd())?"":btn("Close","window.__nhAmPick(null)",false,"flex:1"))+btn(go,"window.__nhAmGo('"+mode+"')",n>0,"flex:1")+'</div></div>';
       return s;
     };
+    var topAdd=function(){ return !!ST.adm && !!ST.D && entryOpen(ST.D.e) && ST.tab==="players"; };   /* b41 */
+    var addMode=function(){ return ST.pick==="add" || topAdd(); };
+    W.__nhAmAskTop=function(){ ST.askFocus=true; W.__nhAmAsk(true); };
     W.__nhAmPick=function(m){ ST.pick=m; ST.q=""; ST.ticks={}; ST.pend=[]; ST.focus=m?"nhAmQ":""; ST.msg=""; paint(); };
     W.__nhAmQ=function(v){ ST.q=v; ST.focus="nhAmQ"; paint(); };
     W.__nhAmTick=function(n,on){ var e=ST.D.e; ST.focus="";
       if(!solo(e)){ if(on){ var last=ST.pend[ST.pend.length-1]; if(last && !last[1]) last[1]=n; else ST.pend.push([n,null]); }
         else ST.pend=ST.pend.map(function(pp){ return pp.filter(function(x){ return x && x!==n; }); }).filter(function(pp){ return pp.length; }).map(function(pp){ return [pp[0], pp[1]||null]; });
-        if(ST.pick!=="add" && ST.pend.length>1) ST.pend=[ST.pend[ST.pend.length-1]]; ST.ticks={}; paint(); return; }
-      if(ST.pick!=="add"){ ST.ticks={}; if(on) ST.ticks[n]=true; } else ST.ticks[n]=!!on; paint(); };
+        if(!addMode() && ST.pend.length>1) ST.pend=[ST.pend[ST.pend.length-1]]; ST.ticks={}; paint(); return; }
+      if(!addMode()){ ST.ticks={}; if(on) ST.ticks[n]=true; } else ST.ticks[n]=!!on; paint(); };
     W.__nhAmGo=function(mode){ var e=ST.D.e, list=[];
       if(!solo(e)) list=ST.pend.filter(function(pp){ return pp[1]; }); else list=Object.keys(ST.ticks).filter(function(k){ return ST.ticks[k]; }).map(function(n){ return [n,null]; });
       if(!list.length) return;
@@ -17316,7 +17323,8 @@ W.nhOpenPair=function(name){
         +(ST.ask?card('<h2>Organiser</h2><input id="nhAmCode" type="password" inputmode="numeric" placeholder="Admin code" style="'+inp+'">'
           +'<div style="display:flex;gap:8px">'+btn("Cancel","window.__nhAmAsk(false)",false,"flex:1")+btn("Unlock","window.__nhAmUnlock()",true,"flex:1")+'</div>'):'');
       var s='<h2>Organiser</h2>';
-      if(ST.pick==="add") s+=picker("add"); else s+=btn(solo(e)?"Add players":"Add pairs","window.__nhAmPick('add')",false,"width:100%;margin-bottom:8px");
+      if(topAdd()) s+='<p class="sub" style="text-align:left;margin:0 0 8px">Enter players in the list at the top of this page.</p>';
+      else if(ST.pick==="add") s+=picker("add"); else s+=btn(solo(e)?"Add players":"Add pairs","window.__nhAmPick('add')",false,"width:100%;margin-bottom:8px");
       if(ST.rm){
         var L=D.players.filter(function(p){ return starts(unitOf(p), ST.rq); }), n=Object.keys(ST.rticks).filter(function(k){ return ST.rticks[k]; });
         s+='<div style="border:1px solid #e6e0ee;border-radius:12px;padding:12px;margin-bottom:8px"><div style="font-size:13.5px;font-weight:800;color:#241d33;margin-bottom:6px">Remove players</div>';
@@ -17355,7 +17363,7 @@ W.nhOpenPair=function(name){
     };
     W.__nhAmAsk=function(on){ ST.ask=!!on; paint(); };
     W.__nhAmUnlock=function(){ var code=((document.getElementById("nhAmCode")||{}).value||"").trim(); if(!code) return;
-      rpc("am_admin_check",{p_event:ST.id, p_code:code}).then(function(r){ if(r&&r.ok){ ST.adm=code; ST.ask=false; try{ sessionStorage.setItem("nhAmAdm|"+ST.id, code); }catch(e){} ST.msg=""; paint(); } else say(esc((r&&r.error)||"That code was not accepted.")); }); };
+      rpc("am_admin_check",{p_event:ST.id, p_code:code}).then(function(r){ if(r&&r.ok){ ST.adm=code; ST.ask=false; ST.ticks={}; ST.pend=[]; ST.q=""; try{ window.scrollTo(0,0); var sc=document.getElementById("tournamentSheetScreen"); if(sc) sc.scrollTop=0; }catch(x){} try{ sessionStorage.setItem("nhAmAdm|"+ST.id, code); }catch(e){} ST.msg=""; paint(); } else say(esc((r&&r.error)||"That code was not accepted.")); }); };
     W.__nhAmLock=function(){ ST.adm=""; ST.preview=null; ST.rm=false; ST.pick=null; try{ sessionStorage.removeItem("nhAmAdm|"+ST.id); }catch(e){} paint(); };
     W.__nhAmRm=function(on){ ST.rm=!!on; ST.rq=""; ST.rticks={}; ST.rask=false; ST.focus=on?"nhAmRQ":""; paint(); };
     W.__nhAmRQ=function(v){ ST.rq=v; ST.focus="nhAmRQ"; paint(); };
@@ -17693,7 +17701,7 @@ W.nhOpenPair=function(name){
           if(!r || !r.ok){ bad=((r&&r.error)||"Not created.")+(divs.length>1?(" ("+divs[i]+")"):""); break; }
           made.push(r.name); }
         var kindW=(a.p_kind==="pairs"?"Team ":"")+(a.p_draw==="mexicano"?"Mexicano":"Americano");
-        var okh=made.length?('<span style="color:#1e8449;">Created '+esc(kindW)+' '+made.map(function(x){ return '"'+esc(x)+'"'; }).join(", ")+' — '+a.p_courts+' court'+(a.p_courts===1?'':'s')+', '+a.p_rounds+' rounds, 1 set of '+a.p_target+' '+(a.p_scoring==="points"?"points":"games")+'. '+(made.length>1?"They are":"It is")+' on the group\'s Tournaments page; players join there until you make the draw.</span>'):'';
+        var okh=made.length?('<span style="color:#1e8449;">Created '+esc(kindW)+' '+made.map(function(x){ return '"'+esc(x)+'"'; }).join(", ")+' — '+(a.p_kind==="pairs"?(a.p_pairing==="system"?'players enter alone and the system makes level pairs, ':'players enter with a partner, '):'partners change every round, ')+(a.p_sections==="split"?'sections by rating, ':'one open field, ')+a.p_courts+' court'+(a.p_courts===1?'':'s')+', '+a.p_rounds+' rounds, 1 set of '+a.p_target+' '+(a.p_scoring==="points"?"points":"games")+'. '+(made.length>1?"They are":"It is")+' on the group\'s Tournaments page; players join there until you make the draw.</span>'):'';
         if(msg) msg.innerHTML=okh+(bad?((okh?'<br>':'')+'<span style="color:#c0392b;">'+esc(bad)+'</span>'):'');
         if(!made.length) return;
         var n=document.getElementById("atName"); if(n && !bad) n.value=""; CK.key="";
