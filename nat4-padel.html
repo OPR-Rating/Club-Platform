@@ -3784,7 +3784,7 @@ const CLUB_NAME = _club.name;  // shown in the logo as "OPR · <name>"
     link.setAttribute('href', href);
   }catch(e){ /* install stays on the static manifest — no functional impact */ }
 })();
-const OPR_VERSION = "OPR-DOUBLES v2026.09.03-56 · NAT4 booking test b42 (nat3 n375) (no voice) (of PLAT p117)";  // MANUAL PAIR CREATION REMOVED FROM ADMIN: Create a pair, Bulk create pairs and Re-derive all pairs are gone (they only made match-less ghost pairs, and Re-derive rewrote every stored initial club-wide). Pairs are born automatically at match entry. Current pairs list untouched; the underlying JS is left in place unreferenced, so no other code path changes. Includes v47 (set-score fix + double-tap guard) and all prior.
+const OPR_VERSION = "OPR-DOUBLES v2026.09.03-56 · NAT4 booking test b44 (nat3 n375) (no voice) (of PLAT p117)";  // MANUAL PAIR CREATION REMOVED FROM ADMIN: Create a pair, Bulk create pairs and Re-derive all pairs are gone (they only made match-less ghost pairs, and Re-derive rewrote every stored initial club-wide). Pairs are born automatically at match entry. Current pairs list untouched; the underlying JS is left in place unreferenced, so no other code path changes. Includes v47 (set-score fix + double-tap guard) and all prior.
 // Explanation shown above the individual ladder. Open on load so it's read; collapsible
 // (state kept for the session) and scrolls away. Mechanics only — no outcome framing, so
 // members aren't nudged away from playing stronger opponents. Every clause maps to a real
@@ -13952,7 +13952,7 @@ W.nhOpenPair=function(name){
     setInterval(leapBrk, 900);
     W.__nhTsBuild=build;   /* for the test */
   })();
-  window.__nhBkAnon="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRqbWJudmlrcmRnbm9tamh0a2dmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODUzOTE0MzEsImV4cCI6MjEwMDk2NzQzMX0.vR8xlVFjV6jXW-pAclGjM74HqmWSKVpsacFjM-dCIJI"; window.__nhBkBuild="nat4 b42";
+  window.__nhBkAnon="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRqbWJudmlrcmRnbm9tamh0a2dmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODUzOTE0MzEsImV4cCI6MjEwMDk2NzQzMX0.vR8xlVFjV6jXW-pAclGjM74HqmWSKVpsacFjM-dCIJI"; window.__nhBkBuild="nat4 b44";
   /* ===================================================================================================
      COURT BOOKING (nat4 test copy, Manzini pilot, Andre 26 Oct). Started ONLY from the player's own My page: its
      "Court card" button becomes "Book a court", which asks "Where do you want to play?" — one tile per venue; a venue
@@ -17183,10 +17183,10 @@ W.nhOpenPair=function(name){
     var unitRating=function(D,p){ if(!p.p2) return rt(D,p.p1); var a=rt(D,p.p1), b=rt(D,p.p2); return Math.round(Math.max(a,b)*0.6+Math.min(a,b)*0.4); };
 
     /* ---------------------------------------------------------------- the page (on the draw screen) */
-    var ST={on:false, id:0, D:null, tab:"rounds", rsel:0, adm:"", msg:"", pick:null, q:"", ticks:{}, pend:[], preview:null, rm:false, rticks:{}, rask:false, focus:"", setup:null};
+    var ST={on:false, id:0, D:null, tab:"rounds", rsel:0, adm:"", msg:"", pick:null, q:"", ticks:{}, pend:[], preview:null, rm:false, rticks:{}, rask:false, focus:"", setup:null, score:null};
     var PREV={screen:"", ctx:null};
     W.nhAmOpen=function(id, round){
-      ST.id=Number(id)||0; ST.tab=round?"rounds":""; ST.setup=null; ST.rsel=Number(round)||0; ST.msg=""; ST.pick=null; ST.q=""; ST.ticks={}; ST.pend=[]; ST.preview=null; ST.rm=false; ST.rticks={}; ST.rask=false;
+      ST.id=Number(id)||0; ST.tab=round?"rounds":""; ST.setup=null; ST.score=null; ST.scrap=false; ST.rsel=Number(round)||0; ST.msg=""; ST.pick=null; ST.q=""; ST.ticks={}; ST.pend=[]; ST.preview=null; ST.rm=false; ST.rticks={}; ST.rask=false;
       try{ ST.adm=sessionStorage.getItem("nhAmAdm|"+ST.id)||""; }catch(e){ ST.adm=""; }
       var a=document.querySelector(".screen.active"); if(!ST.on){ PREV.screen=(a && !/^(tournamentSheetScreen|entryScreen|markerScreen)$/.test(a.id))?a.id:"homeScreen"; PREV.ctx=W._tmCtx||null; }
       ST.on=true; W.__nhAmLast=ST.id;
@@ -17232,6 +17232,7 @@ W.nhOpenPair=function(name){
       o.innerHTML=html;
       if(ST.askFocus){ ST.askFocus=false; var ci=document.getElementById("nhAmCode"); if(ci){ try{ ci.scrollIntoView({block:"center"}); ci.focus(); }catch(x){} } }
       ["nhAmQ","nhAmRQ"].forEach(function(id){ var i=document.getElementById(id); if(i && ST.focus===id){ i.focus(); i.setSelectionRange(i.value.length,i.value.length); } });
+      if(ST.focus==="nhAmSa"){ ST.focus=""; var sa=document.getElementById("nhAmSa"); if(sa){ try{ sa.focus(); }catch(x){} } }
     };
     W.__nhAmTab=function(t){ ST.tab=t; paint(); };
     W.__nhAmRound=function(r){ ST.rsel=Number(r)||1; paint(); };
@@ -17315,6 +17316,7 @@ W.nhOpenPair=function(name){
         var aw=m.status==="played" && m.games_a>m.games_b, bw=m.status==="played" && m.games_b>m.games_a;
         var tap=m.status==="open" ? ' style="cursor:pointer;" onclick="window.__nhAmScore('+m.id+')" title="Tap to enter the score"' : '';
         return '<tr'+tap+'><td class="num">'+m.court+'</td><td class="ta'+(aw?' winr':'')+'">'+esc(m.a1)+'<br>'+esc(m.a2)+'</td><td class="num">v</td><td class="tb'+(bw?' winr':'')+'">'+esc(m.b1)+'<br>'+esc(m.b2)+'</td><td class="num">'+res+'</td></tr>'
+          +((ST.score && ST.score.id===Number(m.id))?scoreRow(m):'')
           +(ST.adm?('<tr><td></td><td colspan="4" style="padding-top:0"><span style="display:flex;gap:4px">'
             +(m.status!=="not_played"&&m.status!=="played"?'<button onclick="window.__nhAmResult('+m.id+',\'not_played\')" style="border:1px solid #ddd5e6;background:#fff;border-radius:8px;padding:5px 7px;font:inherit;font-size:11px;cursor:pointer">Not played</button>':'')
             +(m.status!=="open"?'<button onclick="window.__nhAmResult('+m.id+',\'open\')" style="border:1px solid #ddd5e6;background:#fff;border-radius:8px;padding:5px 7px;font:inherit;font-size:11px;cursor:pointer">Reopen</button>':'')+'</span></td></tr>'):''); }).join("");
@@ -17375,11 +17377,22 @@ W.nhOpenPair=function(name){
           + (P.sits && P.sits.length?'<div style="font-size:12.5px;color:#8a8196;margin-top:6px">Sitting out: '+P.sits.map(esc).join(", ")+'</div>':'')
           + '<div style="display:flex;gap:8px;margin-top:12px">'+btn("Cancel","window.__nhAmPreviewOff()",false,"flex:1")+btn("Save this draw","window.__nhAmSave()",true,"flex:1")+'</div>';
       }
+      /* b44 (Andre, 10 Nov): a wrong set-up no longer means deleting the event — while no score is in, the draw can go */
+      if(cur && !ST.preview && !D.matches.some(function(m){ return m.status==="played"; })){
+        if(ST.scrap) s+='<div id="nhAmScrap" style="border:1px solid #e6e0ee;border-radius:12px;padding:12px;margin-top:8px"><div style="font-size:13px;color:#4b4060;line-height:1.5;margin-bottom:8px"><b>Scrap the draw'+((D.fam && D.fam.length>1)?' of every section':'')+'?</b> All its matches go. '
+            +(setupOn?'The players, pairs and sections stay — you can make them again (courts too) before the new draw.':'The players stay, and entry opens again until the new draw.')+' It cannot be done once a score is in.</div>'
+            +'<div style="display:flex;gap:8px">'+btn("No, keep it","window.__nhAmScrap(false)",false,"flex:1")+btn("Yes, scrap it","window.__nhAmScrapGo()",true,"flex:1")+'</div></div>';
+        else s+=btn("Scrap the draw and start again","window.__nhAmScrap(true)",false,"width:100%;margin-top:8px");
+      }
       if(ST.msg) s+='<div id="nhAmOrgMsg" style="margin-top:10px;padding:9px 11px;border:1.5px solid '+c+';border-radius:10px;font-size:13.5px;color:#4b4060;line-height:1.5">'+ST.msg+'</div>';   /* b42 */
       s+='<div style="margin-top:10px;text-align:right"><a href="#" onclick="event.preventDefault();window.__nhAmLock()" style="color:#8a8196;font-size:12px">Lock organiser</a></div>';
       return card(s,'border-color:#7c2d12');
     };
     W.__nhAmAsk=function(on){ ST.ask=!!on; paint(); };
+    W.__nhAmScrap=function(on){ ST.scrap=!!on; ST.msg=""; paint(); };
+    W.__nhAmScrapGo=function(){ var D=ST.D; if(!D) return; var root=Number((D.fam && D.fam[0] && D.fam[0].event_id)||D.e.parent_id||D.e.event_id); ST.scrap=false; say("Scrapping the draw…");
+      rpc("am_reset",{p_event:ST.id, p_code:ST.adm}).then(function(r){ if(!r||!r.ok){ say(esc((r&&r.error)||"Not done.")); return; }
+        CK.key=""; W.__nhAmSec(root, "The draw is scrapped. "+((D.e.pairing==="system"||D.e.sections==="split")?"Make the pairs and sections again if you want to change them, then make the draw.":"Entry is open again; make the draw when everyone is in.")); }); };
     W.__nhAmUnlock=function(){ var code=((document.getElementById("nhAmCode")||{}).value||"").trim(); if(!code) return;
       rpc("am_admin_check",{p_event:ST.id, p_code:code}).then(function(r){ if(r&&r.ok){ ST.adm=code; ST.ask=false; ST.ticks={}; ST.pend=[]; ST.q=""; try{ window.scrollTo(0,0); var sc=document.getElementById("tournamentSheetScreen"); if(sc) sc.scrollTop=0; }catch(x){} try{ sessionStorage.setItem("nhAmAdm|"+ST.id, code); }catch(e){} ST.msg=""; paint(); } else say(esc((r&&r.error)||"That code was not accepted.")); }); };
     W.__nhAmLock=function(){ ST.adm=""; ST.preview=null; ST.rm=false; ST.pick=null; try{ sessionStorage.removeItem("nhAmAdm|"+ST.id); }catch(e){} paint(); };
@@ -17464,17 +17477,27 @@ W.nhOpenPair=function(name){
       G.forEach(function(A, k){ var er=setupErr(S, A), P=er?[]:setupPairs(S, A); if(er) bad=true;
         s+='<div class="nhAmSecCard" style="background:#f4f0f8;border-radius:12px;padding:10px 12px;margin:6px 0"><div style="display:flex;justify-content:space-between;align-items:baseline"><b style="font-size:14px;color:#241d33">'+esc(e.division)+(S.one?'':(' · Section '+(k+1)))+'</b><span style="font-size:12px;color:#8a8196">'+(er?'':(P.length+(S.mode==="single"?' players':' pairs')))+'</span></div>'
           +(er?('<div style="font-size:13.5px;color:#a3321f;margin-top:3px">'+esc(er)+'</div>')
-              :(sys?P.map(function(p){ return '<div class="nhAmPairRow" style="display:flex;justify-content:space-between;gap:8px;font-size:13px;padding:3px 0;border-bottom:1px solid #e9e2f0"><span>'+esc(p[0])+' / '+esc(p[1])+'</span><span style="color:#8a8196">'+pairR(D,p[0],p[1])+'</span></div>'; }).join(""):'<div style="font-size:13px;color:#4b4060;margin-top:3px">Ready.</div>'))+'</div>'; });
+              :(courtLine(S, k, P.length)+(sys?P.map(function(p){ return '<div class="nhAmPairRow" style="display:flex;justify-content:space-between;gap:8px;font-size:13px;padding:3px 0;border-bottom:1px solid #e9e2f0"><span>'+esc(p[0])+' / '+esc(p[1])+'</span><span style="color:#8a8196">'+pairR(D,p[0],p[1])+'</span></div>'; }).join(""):'')))+'</div>'; });
+      if(!bad && S.courts){ var sum=0; G.forEach(function(A,k){ sum+=Number(S.courts[k])||0; });
+        if(sum>S.total) s+='<p class="sub nhAmCtNote" style="text-align:left;margin:4px 0 0">That is '+sum+' courts in all — the event was set up with '+S.total+'.</p>'; }
       return s+'<div style="display:flex;gap:8px;margin-top:12px">'+btn("Cancel","window.__nhAmSetupOff()",false,"flex:1")
         +(bad?'<button disabled style="flex:1;border:1.5px solid #e6e0ee;background:#f4f0f8;color:#b9b2c4;border-radius:12px;padding:11px 12px;font:inherit;font-size:13.5px;font-weight:800">Save</button>':btn("Save","window.__nhAmSetupSave()",true,"flex:1"))+'</div></div>'; };
     W.__nhAmSetup=function(){ var D=ST.D; if(!D) return; var fam=(D.fam && D.fam.length)?D.fam:[D.e];
       Promise.all(fam.map(function(x){ return get("plat_amex_players?event_id=eq."+x.event_id+"&left_at=is.null&select=*&order=id.asc"); })).then(function(rs){
         var rows=[]; rs.forEach(function(r){ (r||[]).forEach(function(p){ rows.push(p); }); });
-        var S=setupBuild(D, rows); if(S.error){ say(esc(S.error)); return; } ST.setup=S; ST.msg=""; ST.pick=null; ST.rm=false; paint(); }); };
+        var S=setupBuild(D, rows); if(S.error){ say(esc(S.error)); return; }
+        var tot=Number(D.e.courts_all||D.e.courts)||1; S.total=tot; S.courts=S.one?[tot]:[Math.max(1,Math.ceil(tot/2)), Math.max(1,Math.floor(tot/2))];   /* b43 */
+        ST.setup=S; ST.msg=""; ST.pick=null; ST.rm=false; paint(); }); };
+    /* b43: courts for this section, and what that means each round (a court takes 4 players, or 2 pairs) */
+    var courtLine=function(S, k, n){ var c=Math.max(1, Number(S.courts && S.courts[k])||1), per=(S.mode==="single")?4:2, ms=Math.min(c, Math.floor(n/per)), sit=n-ms*per, unit=(S.mode==="single")?"player":"pair";
+      return '<div style="display:flex;align-items:center;gap:8px;margin:6px 0 4px;font-size:13px;color:#4b4060"><b>Courts</b>'
+        +'<input class="nhAmCt" type="number" inputmode="numeric" min="1" max="20" value="'+c+'" onchange="window.__nhAmCourts('+k+',this.value)" style="width:58px;box-sizing:border-box;padding:7px 4px;font-size:15px;font-weight:800;text-align:center;border:1.5px solid #ddd5e6;border-radius:9px;font-family:inherit">'
+        +'<span class="nhAmSit">'+(sit>0?(sit+' '+unit+(sit===1?' sits':'s sit')+' out each round'):'everyone plays each round')+(c>ms?(' · only '+ms+' court'+(ms===1?' is':'s are')+' needed'):'')+'</span></div>'; };
+    W.__nhAmCourts=function(k, v){ var S=ST.setup; if(!S || !S.courts) return; var n=Math.floor(Number(v)); if(!(n>=1)) n=1; if(n>20) n=20; S.courts[Number(k)]=n; paint(); };
     W.__nhAmSetupOff=function(){ ST.setup=null; paint(); };
     W.__nhAmMove=function(idx, to){ var S=ST.setup; if(!S || S.one) return; var x=S.items[Number(idx)]; if(!x) return; x.sec=Number(to)?1:0; paint(); };
     W.__nhAmSetupSave=function(){ var D=ST.D, S=ST.setup; if(!S) return; if(setupGroups(S).some(function(A){ return !!setupErr(S, A); })) return; if(ST.busy) return; ST.busy=true; setTimeout(function(){ ST.busy=false; }, 8000); say("Saving…"); var secs=setupSections(S), root=Number((D.fam && D.fam[0] && D.fam[0].event_id)||D.e.parent_id||D.e.event_id);
-      rpc("am_setup",{p_event:ST.id, p_code:ST.adm, p_sections:secs}).then(function(r){ ST.busy=false; if(!r||!r.ok){ say(esc((r&&r.error)||"Not saved.")); return; }
+      rpc("am_setup",{p_event:ST.id, p_code:ST.adm, p_sections:secs, p_courts:(S.courts||[]).slice(0, secs.length)}).then(function(r){ ST.busy=false; if(!r||!r.ok){ say(esc((r&&r.error)||"Not saved.")); return; }
         ST.setup=null; CK.key=""; W.__nhAmSec(root, madeLine(D.e)+" Now make the draw"+(secs.length>1?" for each section.":".")); }); };
     W.__nhAmSec=function(id, msg){ try{ if(ST.adm) sessionStorage.setItem("nhAmAdm|"+Number(id), ST.adm); }catch(e){} W.nhAmOpen(id); if(msg) ST.msg=msg; };
 
@@ -17530,12 +17553,33 @@ W.nhOpenPair=function(name){
         ST.preview=null; ST.rsel=(P.rounds[0][0].round); ST.tab="rounds"; ST.msg=(P.rounds.length>1?("The draw is made: "+P.rounds.length+" rounds."):("Round "+r.round+" is drawn.")); refresh(); }); };
 
     /* the score: the normal score sheet on the event's group — one set (games or points as played) */
-    W.__nhAmScore=function(id){
-      var D=ST.D, e=D.e, m=D.matches.filter(function(x){ return Number(x.id)===Number(id); })[0]; if(!m) return;
-      if(typeof W.__nhFxOpen!=="function") return;
-      W.__nhFxOpen({id:"am"+m.id, am:e.event_id, club:e.club_id, tour:e.name, div:e.division, type:e.division, event:e.name, round:m.round, oneSet:true, noUmp:true,
-        ruleLine:scoreLine(e)+(e.scoring==="points"?" — enter the points as the set's games (e.g. 13-11)":""),
-        label:(e.draw==="mexicano"?"Mexicano":"Americano")+" · Round "+m.round+" · Court "+m.court, a:m.a1+" & "+m.a2, b:m.b1+" & "+m.b2}); };
+    /* b43 (Andre, 10 Nov: "she lost 10 points for a 5 game match — that is too much … maybe we leave it out"): Americano and
+       Mexicano are OUT of the ratings, like handicap matches. A tap opens a small card under the match; am_score checks the
+       two numbers and saves them on the event's own match. Nothing goes to the score sheet or to plat_matches. */
+    var scoreCheck=function(e, a, b){
+      if(!(a>=0) || !(b>=0) || a!==Math.floor(a) || b!==Math.floor(b)) return "Type both scores.";
+      var t=Number(e.target);
+      if(e.scoring==="games") return (a+b===t) ? "" : ("All "+t+" games are played — the two scores must add up to "+t+".");
+      if((a+b===t && a!==b) || (t%2===0 && a+b===t+1 && Math.abs(a-b)===1)) return "";
+      return "The two scores must add up to "+t+(t%2===0?(" (or "+(t/2+1)+"-"+(t/2)+" after "+(t/2)+"-"+(t/2)+")."):"."); };
+    var scoreRow=function(m){ var e=ST.D.e, S=ST.score;
+      var box=function(id, val){ return '<input id="'+id+'" type="number" inputmode="numeric" min="0" max="99" value="'+esc(val)+'" style="width:66px;box-sizing:border-box;padding:10px 4px;font-size:19px;font-weight:800;text-align:center;border:1.5px solid #ddd5e6;border-radius:10px;font-family:inherit">'; };
+      return '<tr id="nhAmScoreRow"><td colspan="5" style="background:#fbf8ff;padding:12px"><div style="font-size:13px;font-weight:800;color:#241d33;margin-bottom:8px;text-align:center">Enter the score — '+esc(scoreLine(e))+'</div>'
+        +'<div style="display:flex;align-items:center;gap:10px;justify-content:center"><span style="flex:1;text-align:right;font-size:13px">'+esc(m.a1)+'<br>'+esc(m.a2)+'</span>'+box("nhAmSa",S.a)+'<span style="color:#8a8196">-</span>'+box("nhAmSb",S.b)+'<span style="flex:1;text-align:left;font-size:13px">'+esc(m.b1)+'<br>'+esc(m.b2)+'</span></div>'
+        +(S.msg?'<div id="nhAmScoreMsg" style="color:#a3321f;font-size:13px;margin-top:8px;text-align:center">'+esc(S.msg)+'</div>':'')
+        +'<div style="display:flex;gap:8px;margin-top:10px">'+btn("Cancel","window.__nhAmScoreOff()",false,"flex:1")+btn("Save the score","window.__nhAmScoreSave()",true,"flex:1")+'</div>'
+        +'<div style="font-size:11.5px;color:#8a8196;margin-top:8px;text-align:center">For this event\'s table only — it does not count for ratings.</div></td></tr>'; };
+    W.__nhAmScore=function(id){ var D=ST.D; if(!D) return; var m=D.matches.filter(function(x){ return Number(x.id)===Number(id); })[0]; if(!m || m.status!=="open") return;
+      ST.score={id:Number(id), a:"", b:"", msg:""}; ST.focus="nhAmSa"; paint(); };
+    W.__nhAmScoreOff=function(){ ST.score=null; paint(); };
+    W.__nhAmScoreSave=function(){ var S=ST.score, D=ST.D; if(!S || !D || S.busy) return;
+      var va=((document.getElementById("nhAmSa")||{}).value||"").trim(), vb=((document.getElementById("nhAmSb")||{}).value||"").trim(); S.a=va; S.b=vb;
+      var a=(va===""?NaN:Number(va)), b=(vb===""?NaN:Number(vb)), er=scoreCheck(D.e, a, b);
+      if(er){ S.msg=er; ST.focus=""; paint(); return; }
+      S.busy=true; S.msg="Saving…"; ST.focus=""; paint();
+      rpc("am_score",{p_match:S.id, p_a:a, p_b:b}).then(function(r){ if(ST.score!==S) return; S.busy=false;
+        if(!r || !r.ok){ S.msg=(r&&r.error)||"Not saved."; paint(); return; }
+        ST.score=null; ST.msg=""; refresh(); }); };
     /* after every saved score: is it this event's match? */
     (function(){ var f0=W.fetch; if(typeof f0!=="function" || f0.__nhAm) return;
       var f1=function(u,init){ var p=f0.apply(this,arguments);
@@ -17571,8 +17615,49 @@ W.nhOpenPair=function(name){
       box=document.createElement("div"); box.id=id; box.style.cssText=css; box.innerHTML=html; box.__h=html;
       if(before) host.insertBefore(box, before); else host.appendChild(box); };
     var doorK="";
+    /* b44 (Andre, 10 Nov: "because we are no longer having the ratings on the americano and mexicano — maybe we should add a
+       recent matches section like we have with handicaps … so people can follow results there"). On the door's Recent
+       matches page, under the handicap one, and only when the region has an Americano / Mexicano event. The last 8 scores
+       entered (played_at, from the b44 SQL), each with its event and round; a tap on a row opens the event. */
+    var AMR={key:"", evs:null, busy:null, html:null};
+    var amrEvents=function(){ var k=cardsKey(); if(!k) return Promise.resolve([]);
+      if(AMR.key===k && AMR.evs) return Promise.resolve(AMR.evs);
+      if(AMR.key===k && AMR.busy) return AMR.busy;
+      AMR.key=k; AMR.evs=null; AMR.html=null;
+      AMR.busy=get("plat_amex?club_id=in.("+k+")&select=*").then(function(a){ a=(a||[]).filter(function(x){ return x.active!==false && !x.archived; }); if(AMR.key===k){ AMR.evs=a; AMR.busy=null; } return a; });
+      return AMR.busy; };
+    var amrHtml=function(){ var k=cardsKey();
+      return amrEvents().then(function(evs){
+        var note=function(t){ return '<div style="color:#888;font-size:12px;padding:4px 2px;">'+t+'</div>'; };
+        if(!evs.length) return note("No Americano or Mexicano events yet.");
+        var by={}; evs.forEach(function(e){ by[e.event_id]=e; });
+        return get("plat_amex_matches?event_id=in.("+evs.map(function(e){ return e.event_id; }).join(",")+")&status=eq.played&select=*&order=id.desc&limit=300").then(function(ms){
+          ms=(ms||[]).filter(function(m){ return m.games_a!=null && by[m.event_id]; });
+          if(!ms.length) return note("No results in yet — check back after some matches.");
+          ms.sort(function(a,b){ var x=String(b.played_at||""), y=String(a.played_at||""); return x<y?-1:(x>y?1:((b.id||0)-(a.id||0))); });
+          return ms.slice(0,8).map(function(m){ var e=by[m.event_id], aw=m.games_a>m.games_b, mex=(e.draw==="mexicano"), root=Number(e.parent_id||e.event_id), c=ink();
+            return '<div class="nhAmResRow" onclick="window.nhAmOpen('+Number(m.event_id)+','+Number(m.round)+')" style="border:1px solid #e6e0ee;background:#fff;border-radius:8px;padding:7px 10px;margin-bottom:6px;cursor:pointer">'
+              +'<div style="font-size:12px;line-height:1.5;"><b style="color:'+(aw?c:'#555')+';">'+esc(m.a1)+' / '+esc(m.a2)+(aw?' ✓':'')+'</b>'
+              +'<span style="color:#999;"> vs </span><b style="color:'+(!aw?c:'#555')+';">'+esc(m.b1)+' / '+esc(m.b2)+(!aw?' ✓':'')+'</b></div>'
+              +'<div style="font-size:11px;color:#6f6680;margin-top:2px;">'+m.games_a+'-'+m.games_b+' · <span style="opacity:.85;">'+esc(e.name)+'</span> · Round '+m.round+' '
+              +'<span style="background:'+c+';color:#fff;font-size:9px;font-weight:700;padding:1px 5px;border-radius:4px;">'+(mex?'MEX':'AM')+'</span></div></div>'; }).join("")
+            +'<div style="font-size:10px;color:#9a93a6;text-align:center;margin-top:2px;">Americano and Mexicano results — for the event\'s own table, no effect on ratings.</div>'; }); })
+        .then(function(h){ if(cardsKey()===k) AMR.html=h; return h; })
+        .catch(function(){ return '<div style="color:#c0392b;font-size:12px;padding:4px 2px;">Could not load the results.</div>'; }); };
+    W.nhAmResToggle=function(){ var list=document.getElementById("nhAmResList"), caret=document.getElementById("nhAmResCaret"); if(!list) return;
+      if(list.style.display!=="none"){ list.style.display="none"; if(caret) caret.textContent="▸"; return; }
+      list.style.display=""; if(caret) caret.textContent="▾";
+      list.innerHTML='<div style="color:#888;font-size:12px;padding:4px 2px;">Loading…</div>';
+      amrHtml().then(function(h){ var l2=document.getElementById("nhAmResList"); if(l2) l2.innerHTML=h; }); };
+    var amrPut=function(){ var sub=document.getElementById("nhDoorSub"); if(!sub || sub.style.display==="none" || document.getElementById("nhAmResWrap")) return;
+      var w=document.createElement("div"); w.id="nhAmResWrap"; w.style.cssText="margin:12px 12px 0;";
+      w.innerHTML='<button onclick="window.nhAmResToggle()" style="width:100%;text-align:left;background:#fff;color:#4b4060;border:1.5px solid '+ink()+';border-radius:10px;padding:8px 12px;font-size:13px;font-weight:800;letter-spacing:0.3px;cursor:pointer;display:flex;justify-content:space-between;align-items:center;font-family:inherit">'
+        +'<span>🥎 Recent Americano / Mexicano Results</span><span id="nhAmResCaret">▸</span></button>'
+        +'<div id="nhAmResList" style="display:none;max-height:420px;overflow-y:auto;margin-top:8px;padding-right:2px;"></div>';
+      sub.insertBefore(w, sub.lastElementChild); };
     (function(){ var wrap=function(){ var f0=W.nhDoorSec; if(typeof f0!=="function") return false; if(f0.__nhAm) return true;
         var f1=function(k){ var r=f0.apply(this, arguments); doorK=k;
+          if(k==="m"){ amrEvents().then(function(evs){ if(evs.length && doorK==="m") amrPut(); }); }   /* b44 */
           if(k==="t"){ var sub=document.getElementById("nhDoorSub"); if(CK.key===cardsKey() && CK.html!=null){ fill(sub, CK.html); }
             cards().then(function(h){ if(h===null || doorK!=="t") return; var s2=document.getElementById("nhDoorSub"); if(!s2 || s2.style.display==="none") return; fill(s2, h); }); }
           return r; };
@@ -17643,7 +17728,7 @@ W.nhOpenPair=function(name){
         +'<div style="flex:1">'+lab("Courts")+'<input id="nhAmCourts" type="number" class="ac-field" value="2" min="1" max="20"></div>'
         +'<div style="flex:1">'+lab("Rounds")+'<input id="nhAmRounds" type="number" class="ac-field" value="6" min="1" max="40"></div></div>'
         +'<div style="display:flex;gap:8px"><div style="flex:1">'+lab("First day")+'<input id="nhAmStart" type="date" class="ac-field"></div><div style="flex:1">'+lab("Last day (if more than one)")+'<input id="nhAmEnd" type="date" class="ac-field"></div></div>'
-        +'<p style="font-size:11px;color:#9b80b3;margin:2px 0 0">Every match is one set of the games or points chosen here, saved like any match, so it counts for ratings. Players join from the event page until the draw; you can add them too.</p>';
+        +'<p style="font-size:11px;color:#9b80b3;margin:2px 0 0">Every match is one short set of the games or points chosen here. The scores are for the event\'s own table — they do not count for ratings. Players enter on the event page until the draw; you can add them too.</p>';
       blk.appendChild(d);
       var sc=document.getElementById("nhAmScoring"), tg=document.getElementById("nhAmTarget");
       sc.addEventListener("change",function(){ tg.value = sc.value==="points" ? "24" : "5"; });
@@ -17697,6 +17782,60 @@ W.nhOpenPair=function(name){
     (function(){ var n=0, t=setInterval(function(){ var f0=W.adminLoadTournaments; if(typeof f0!=="function"){ if(++n>80) clearInterval(t); return; } clearInterval(t); if(f0.__nhAdm) return;
         var f1=async function(){ var r=await f0.apply(this, arguments); try{ admPaint(); }catch(e){} return r; };
         f1.__nhAdm=1; W.adminLoadTournaments=f1; try{ adminLoadTournaments=f1; }catch(e){} }, 250); })();
+    /* b43 (Andre, 10 Nov: "the delete button in the admin section is not active — I can't delete the Americano matches"):
+       the parent's adminDeleteMatch asks with confirm(), a pop-up the Claude browser blocks, so nothing happened. The same
+       delete (delete_match, ratings recompute on the server), asked and answered in the row. */
+    (function(){ var n=0, t=setInterval(function(){ var f0=W.adminDeleteMatch; if(typeof f0!=="function"){ if(++n>80) clearInterval(t); return; } clearInterval(t); if(f0.__nhNoPop) return;
+        var f1=function(id, sure){
+          var re=new RegExp("adminDeleteMatch\\(\\s*'?"+String(id).replace(/[^0-9A-Za-z_-]/g,"")+"'?\\s*\\)");
+          var el=Array.prototype.filter.call(document.querySelectorAll("#adminScreen [onclick], [onclick*=adminDeleteMatch]"),function(b){ return re.test(b.getAttribute("onclick")||""); })[0];
+          var host=el?el.parentNode:null, old=document.getElementById("nhDelAsk"); if(old) old.remove();
+          var note=function(html, col){ if(!host) return; var d=document.createElement("div"); d.id="nhDelAsk"; d.style.cssText="font-size:13px;white-space:normal;padding:4px 0;color:"+(col||"#4b4060"); d.innerHTML=html; host.appendChild(d); };
+          var q=JSON.stringify(id).replace(/"/g,"'");
+          if(!sure){ note('Delete this match? Ratings will recompute. <button onclick="adminDeleteMatch('+q+',true)" style="background:none;border:none;color:#c0392b;cursor:pointer;font-weight:700">yes, delete</button> '
+              +'<button onclick="var x=document.getElementById(\'nhDelAsk\'); if(x) x.remove();" style="background:none;border:none;color:#6c3483;cursor:pointer;font-weight:700">no</button>'); return; }
+          note("Deleting…");
+          var cid=Number((document.getElementById("adminClubSelect")||{}).value)||0;
+          Promise.resolve(adminCall("delete_match",{id:id, club_id:cid})).then(function(r){
+            var o2=document.getElementById("nhDelAsk"); if(o2) o2.remove();
+            if(!r || !r.ok){ note(esc((r&&r.error)||"Could not delete."), "#c0392b"); return; }
+            try{ adminLoadMatches(); }catch(e){} }).catch(function(){ note("Could not delete — try again.", "#c0392b"); }); };
+        f1.__nhNoPop=1; W.adminDeleteMatch=f1; try{ adminDeleteMatch=f1; }catch(e){} }, 250); })();
+    /* ---------------------------------------------------------------- b44: THE CONTROL ROOM ASKS IN THE PAGE
+       (Andre, 10 Nov: "close and archive is not working in blue"; before it, Matches → Delete.) The parent's Control Room
+       asks with confirm() / prompt() and reports with alert() — pop-ups the Claude browser blocks, so the buttons did
+       nothing. Those calls cannot wait for an answer in the page, so: the first tap is stopped at the question, the
+       question is shown in a card, and on Yes / OK the SAME button is tapped again with the answers given so far
+       (a second question of the same button is asked the same way). Only while the Control Room is the screen on view;
+       everywhere else confirm / prompt / alert are the browser's own, exactly as before. */
+    (function(){
+      var nC=W.confirm, nP=W.prompt, nA=W.alert, RUN={el:null, ans:[], i:0, replay:false};
+      var inAdmin=function(){ var a=document.querySelector(".screen.active"); return !!(a && a.id==="adminScreen"); };
+      var usable=function(){ return inAdmin() && RUN.el && document.body.contains(RUN.el); };
+      document.addEventListener("click", function(ev){ if(RUN.replay) return; var t=ev.target; if(!t || !t.closest || t.closest("#nhPop")) return;
+        RUN.el=t.closest("[onclick]")||null; RUN.ans=[]; RUN.i=0; }, true);
+      var shut=function(){ var o=document.getElementById("nhPop"); if(o) o.remove(); };
+      var show=function(kind, msg, def){ shut();
+        var o=document.createElement("div"); o.id="nhPop"; o.style.cssText="position:fixed;inset:0;z-index:100000;background:rgba(20,14,32,.45);display:flex;align-items:center;justify-content:center;padding:16px";
+        var b=function(label, id, primary){ return '<button id="'+id+'" style="flex:1;border:1.5px solid '+(primary?'#6c3483':'#ddd5e6')+';background:'+(primary?'#6c3483':'#fff')+';color:'+(primary?'#fff':'#4b4060')+';border-radius:12px;padding:11px 12px;font:inherit;font-size:14px;font-weight:800;cursor:pointer">'+label+'</button>'; };
+        o.innerHTML='<div style="background:#fff;border-radius:16px;padding:16px;max-width:420px;width:100%;box-shadow:0 10px 40px rgba(0,0,0,.25)"><div id="nhPopMsg" style="font-size:14px;line-height:1.5;color:#241d33;white-space:pre-wrap;max-height:50vh;overflow:auto">'+esc(msg)+'</div>'
+          +(kind==="prompt"?'<input id="nhPopIn" value="'+esc(def==null?"":def)+'" style="width:100%;box-sizing:border-box;margin-top:10px;padding:10px;font-size:16px;border:1.5px solid #ddd5e6;border-radius:10px;font-family:inherit">':'')
+          +'<div style="display:flex;gap:8px;margin-top:14px">'+(kind==="alert"?b("OK","nhPopYes",true):(b(kind==="prompt"?"Cancel":"No","nhPopNo",false)+b(kind==="prompt"?"OK":"Yes","nhPopYes",true)))+'</div></div>';
+        document.body.appendChild(o);
+        var inp=document.getElementById("nhPopIn"); if(inp){ try{ inp.focus(); inp.select(); }catch(e){} }
+        var no=document.getElementById("nhPopNo"); if(no) no.onclick=function(){ shut(); RUN.ans=[]; RUN.i=0; };
+        document.getElementById("nhPopYes").onclick=function(){ var v=(kind==="prompt")?String((document.getElementById("nhPopIn")||{}).value||""):true; shut();
+          if(kind==="alert") return;
+          var el=RUN.el; if(!el || !document.body.contains(el)){ RUN.ans=[]; RUN.i=0; return; }
+          RUN.ans.push(v); RUN.i=0; RUN.replay=true; try{ el.click(); }finally{ RUN.replay=false; } }; };
+      var ask=function(kind, msg, def, native){
+        if(!usable()) return native();
+        if(RUN.i<RUN.ans.length) return RUN.ans[RUN.i++];
+        show(kind, String(msg==null?"":msg), def); return (kind==="prompt")?null:false; };
+      W.confirm=function(msg){ return ask("confirm", msg, null, function(){ return nC.call(W, msg); }); };
+      W.prompt=function(msg, def){ return ask("prompt", msg, def, function(){ return nP.call(W, msg, def); }); };
+      W.alert=function(msg){ if(!inAdmin()) return nA.call(W, msg); show("alert", String(msg==null?"":msg)); };
+    })();
     var wrapCreate=function(){
       var f0=W.adminCreateTournament; if(typeof f0!=="function" || !f0.__nhTs) return false; if(f0.__nhAm) return true;
       var nf=async function(){
