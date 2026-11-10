@@ -3784,7 +3784,7 @@ const CLUB_NAME = _club.name;  // shown in the logo as "OPR · <name>"
     link.setAttribute('href', href);
   }catch(e){ /* install stays on the static manifest — no functional impact */ }
 })();
-const OPR_VERSION = "OPR-DOUBLES v2026.09.03-56 · NAT4 booking test b37 (nat3 n375) (no voice) (of PLAT p117)";  // MANUAL PAIR CREATION REMOVED FROM ADMIN: Create a pair, Bulk create pairs and Re-derive all pairs are gone (they only made match-less ghost pairs, and Re-derive rewrote every stored initial club-wide). Pairs are born automatically at match entry. Current pairs list untouched; the underlying JS is left in place unreferenced, so no other code path changes. Includes v47 (set-score fix + double-tap guard) and all prior.
+const OPR_VERSION = "OPR-DOUBLES v2026.09.03-56 · NAT4 booking test b38 (nat3 n375) (no voice) (of PLAT p117)";  // MANUAL PAIR CREATION REMOVED FROM ADMIN: Create a pair, Bulk create pairs and Re-derive all pairs are gone (they only made match-less ghost pairs, and Re-derive rewrote every stored initial club-wide). Pairs are born automatically at match entry. Current pairs list untouched; the underlying JS is left in place unreferenced, so no other code path changes. Includes v47 (set-score fix + double-tap guard) and all prior.
 // Explanation shown above the individual ladder. Open on load so it's read; collapsible
 // (state kept for the session) and scrolls away. Mechanics only — no outcome framing, so
 // members aren't nudged away from playing stronger opponents. Every clause maps to a real
@@ -13952,7 +13952,7 @@ W.nhOpenPair=function(name){
     setInterval(leapBrk, 900);
     W.__nhTsBuild=build;   /* for the test */
   })();
-  window.__nhBkAnon="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRqbWJudmlrcmRnbm9tamh0a2dmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODUzOTE0MzEsImV4cCI6MjEwMDk2NzQzMX0.vR8xlVFjV6jXW-pAclGjM74HqmWSKVpsacFjM-dCIJI"; window.__nhBkBuild="nat4 b37";
+  window.__nhBkAnon="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRqbWJudmlrcmRnbm9tamh0a2dmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODUzOTE0MzEsImV4cCI6MjEwMDk2NzQzMX0.vR8xlVFjV6jXW-pAclGjM74HqmWSKVpsacFjM-dCIJI"; window.__nhBkBuild="nat4 b38";
   /* ===================================================================================================
      COURT BOOKING (nat4 test copy, Manzini pilot, Andre 26 Oct). Started ONLY from the player's own My page: its
      "Court card" button becomes "Book a court", which asks "Where do you want to play?" — one tile per venue; a venue
@@ -17420,14 +17420,15 @@ W.nhOpenPair=function(name){
     /* ---------------------------------------------------------------- Create a tournament: Americano / Mexicano */
     setInterval(function(){ try{
       var f=document.getElementById("atFormat"); if(!f || f.querySelector('option[value="amex"]')) return;
-      var o=document.createElement("option"); o.value="amex"; o.textContent="Americano / Mexicano — short matches, partners change (or fixed pairs)"; f.appendChild(o);
+      var o=document.createElement("option"); o.value="amex"; o.textContent="Americano / Mexicano — short matches, everyone plays every round"; f.appendChild(o);
       var blk=document.getElementById("atFormatBlock"); if(!blk) return;
       var sel=function(id, opts){ return '<select id="'+id+'" class="ac-field">'+opts.map(function(x){ return '<option value="'+x[0]+'">'+x[1]+'</option>'; }).join("")+'</select>'; };
       var lab=function(t){ return '<label style="font-size:12px;color:#9b80b3;font-weight:700;">'+t+'</label>'; };
       var d=document.createElement("div"); d.id="nhAmNew"; d.style.cssText="display:none;margin:6px 0";
-      d.innerHTML=lab("Draw")+sel("nhAmDraw",[["americano","Americano — a fixed draw, partners change every round"],["mexicano","Mexicano — each round drawn from the table (1st & 3rd v 2nd & 4th)"]])
-        +lab("Players")+sel("nhAmKind",[["single","Single players (partners change)"],["pairs","Fixed pairs"]])
-        +lab("Division")+sel("nhAmDiv",[["All Sorts","All Sorts — anyone with anyone"],["Men's","Men's"],["Ladies","Ladies"],["Mixed","Mixed — one man and one lady a side"]])
+      var tick=function(id, t, on){ return '<label style="display:flex;align-items:center;gap:8px;padding:6px 2px;font-size:14px;cursor:pointer"><input type="checkbox" id="'+id+'"'+(on?' checked':'')+'> '+t+'</label>'; };
+      d.innerHTML=lab("Which one")+sel("nhAmWhich",[["americano|single","Americano — partners change every round"],["americano|pairs","Team Americano — you keep your partner"],["mexicano|single","Mexicano — partners change, each round drawn from the table"],["mexicano|pairs","Team Mexicano — you keep your partner, each round drawn from the table"]])
+        +lab("Divisions")+'<p style="font-size:11px;color:#9b80b3;margin:2px 0 2px">Tick each division. Each one gets its own players, rounds and table.</p>'
+        +'<div id="nhAmDivs" style="margin:0 0 8px">'+tick("nhAmDivAll","All Sorts — anyone with anyone",false)+tick("nhAmDivMen","Men's",false)+tick("nhAmDivLadies","Ladies",false)+tick("nhAmDivMixed","Mixed — one man and one lady a side",false)+'</div>'
         +lab("Scored in")+sel("nhAmScoring",[["games","Games (an odd number, all played)"],["points","Points (e.g. 24; at 12-12 one more point)"]])
         +'<div style="display:flex;gap:8px"><div style="flex:1">'+lab("Games / points a match")+'<input id="nhAmTarget" type="number" class="ac-field" value="5" min="1" max="64"></div>'
         +'<div style="flex:1">'+lab("Courts")+'<input id="nhAmCourts" type="number" class="ac-field" value="2" min="1" max="20"></div>'
@@ -17437,8 +17438,19 @@ W.nhOpenPair=function(name){
       blk.appendChild(d);
       var sc=document.getElementById("nhAmScoring"), tg=document.getElementById("nhAmTarget");
       sc.addEventListener("change",function(){ tg.value = sc.value==="points" ? "24" : "5"; });
-      f.addEventListener("change",function(){ d.style.display=(f.value==="amex")?"block":"none"; });
+      f.addEventListener("change",function(){ d.style.display=(f.value==="amex")?"block":"none"; amSync(); });
+      var ty=document.getElementById("atType"); if(ty) ty.addEventListener("change",function(){ setTimeout(amSync,0); });
     }catch(e){} }, 900);
+    /* b38: with Americano / Mexicano chosen, the parts of the form it does not use are put away (and brought back for any other format) */
+    var amSync=function(){ try{
+      var f=document.getElementById("atFormat"), ty=document.getElementById("atType"); if(!f) return;
+      var on=(f.value==="amex") && (!ty || ty.value==="internal");
+      var hc=document.getElementById("atHandicap"); hc=hc && hc.closest ? hc.closest("div") : null;
+      [document.getElementById("atDivBlock"), document.getElementById("nhRulesNew"), hc].forEach(function(el){ if(!el) return;
+        if(on){ if(el.style.display!=="none"){ el.dataset.nhAmHid=el.style.display||"-"; el.style.display="none"; } }
+        else if(el.dataset.nhAmHid){ el.style.display=(el.dataset.nhAmHid==="-")?"":el.dataset.nhAmHid; delete el.dataset.nhAmHid; } });
+    }catch(e){} };
+    setInterval(amSync, 900);
     var wrapCreate=function(){
       var f0=W.adminCreateTournament; if(typeof f0!=="function" || !f0.__nhTs) return false; if(f0.__nhAm) return true;
       var nf=async function(){
@@ -17447,13 +17459,23 @@ W.nhOpenPair=function(name){
         var msg=document.getElementById("adminTourMsg"), cid=Number((document.getElementById("adminClubSelect")||{}).value)||0;
         var v=function(id){ return ((document.getElementById(id)||{}).value||"").trim(); };
         var name=v("atName"), pin=""; try{ pin=String(ADMIN_PIN||""); }catch(e){}
-        var a={p_club:cid, p_code:pin, p_name:name, p_draw:v("nhAmDraw"), p_kind:v("nhAmKind"), p_division:v("nhAmDiv"), p_scoring:v("nhAmScoring"),
+        var wh=v("nhAmWhich").split("|"), ck=function(id){ var e=document.getElementById(id); return !!(e && e.checked); };
+        var divs=[["nhAmDivAll","All Sorts"],["nhAmDivMen","Men's"],["nhAmDivLadies","Ladies"],["nhAmDivMixed","Mixed"]].filter(function(x){ return ck(x[0]); }).map(function(x){ return x[1]; });
+        var a={p_club:cid, p_code:pin, p_name:name, p_draw:wh[0], p_kind:wh[1]||"single", p_division:divs[0]||"", p_scoring:v("nhAmScoring"),
                p_target:Number(v("nhAmTarget"))||0, p_courts:Number(v("nhAmCourts"))||0, p_rounds:Number(v("nhAmRounds"))||0, p_start:v("nhAmStart")||null, p_end:v("nhAmEnd")||null};
         if(!name){ if(msg) msg.innerHTML='<span style="color:#c0392b;">Tournament name required.</span>'; return; }
-        var r=await rpc("am_create",a);
-        if(!r || !r.ok){ if(msg) msg.innerHTML='<span style="color:#c0392b;">'+esc((r&&r.error)||"Not created.")+'</span>'; return; }
-        if(msg) msg.innerHTML='<span style="color:#1e8449;">Created '+esc(a.p_draw==="mexicano"?"Mexicano":"Americano")+' "'+esc(r.name)+'" — '+esc(a.p_division)+', '+a.p_courts+' court'+(a.p_courts===1?'':'s')+', '+a.p_rounds+' rounds, 1 set of '+a.p_target+' '+(a.p_scoring==="points"?"points":"games")+'. It is on the group\'s Tournaments page; players join there until you make the draw.</span>';
-        var n=document.getElementById("atName"); if(n) n.value=""; CK.key="";
+        if(!divs.length){ if(msg) msg.innerHTML='<span style="color:#c0392b;">Tick at least one division.</span>'; return; }
+        var made=[], bad="";
+        for(var i=0;i<divs.length;i++){
+          var ai={}; for(var k in a) ai[k]=a[k]; ai.p_division=divs[i]; ai.p_name=(divs.length>1)?(name+" · "+divs[i]):name;
+          var r=await rpc("am_create",ai);
+          if(!r || !r.ok){ bad=((r&&r.error)||"Not created.")+(divs.length>1?(" ("+divs[i]+")"):""); break; }
+          made.push(r.name); }
+        var kindW=(a.p_kind==="pairs"?"Team ":"")+(a.p_draw==="mexicano"?"Mexicano":"Americano");
+        var okh=made.length?('<span style="color:#1e8449;">Created '+esc(kindW)+' '+made.map(function(x){ return '"'+esc(x)+'"'; }).join(", ")+' — '+a.p_courts+' court'+(a.p_courts===1?'':'s')+', '+a.p_rounds+' rounds, 1 set of '+a.p_target+' '+(a.p_scoring==="points"?"points":"games")+'. '+(made.length>1?"They are":"It is")+' on the group\'s Tournaments page; players join there until you make the draw.</span>'):'';
+        if(msg) msg.innerHTML=okh+(bad?((okh?'<br>':'')+'<span style="color:#c0392b;">'+esc(bad)+'</span>'):'');
+        if(!made.length) return;
+        var n=document.getElementById("atName"); if(n && !bad) n.value=""; CK.key="";
         try{ adminLoadTournaments(); }catch(e){}
       };
       nf.__nhRules=1; nf.__nhTs=1; nf.__nhAm=1; W.adminCreateTournament=nf; try{ adminCreateTournament=nf; }catch(e){}
