@@ -3784,7 +3784,7 @@ const CLUB_NAME = _club.name;  // shown in the logo as "OPR · <name>"
     link.setAttribute('href', href);
   }catch(e){ /* install stays on the static manifest — no functional impact */ }
 })();
-const OPR_VERSION = "OPR-DOUBLES v2026.09.03-56 · NAT4 booking test b44 (nat3 n375) (no voice) (of PLAT p117)";  // MANUAL PAIR CREATION REMOVED FROM ADMIN: Create a pair, Bulk create pairs and Re-derive all pairs are gone (they only made match-less ghost pairs, and Re-derive rewrote every stored initial club-wide). Pairs are born automatically at match entry. Current pairs list untouched; the underlying JS is left in place unreferenced, so no other code path changes. Includes v47 (set-score fix + double-tap guard) and all prior.
+const OPR_VERSION = "OPR-DOUBLES v2026.09.03-56 · NAT4 booking test b47 (nat3 n375) (no voice) (of PLAT p117)";  // MANUAL PAIR CREATION REMOVED FROM ADMIN: Create a pair, Bulk create pairs and Re-derive all pairs are gone (they only made match-less ghost pairs, and Re-derive rewrote every stored initial club-wide). Pairs are born automatically at match entry. Current pairs list untouched; the underlying JS is left in place unreferenced, so no other code path changes. Includes v47 (set-score fix + double-tap guard) and all prior.
 // Explanation shown above the individual ladder. Open on load so it's read; collapsible
 // (state kept for the session) and scrolls away. Mechanics only — no outcome framing, so
 // members aren't nudged away from playing stronger opponents. Every clause maps to a real
@@ -13952,7 +13952,7 @@ W.nhOpenPair=function(name){
     setInterval(leapBrk, 900);
     W.__nhTsBuild=build;   /* for the test */
   })();
-  window.__nhBkAnon="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRqbWJudmlrcmRnbm9tamh0a2dmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODUzOTE0MzEsImV4cCI6MjEwMDk2NzQzMX0.vR8xlVFjV6jXW-pAclGjM74HqmWSKVpsacFjM-dCIJI"; window.__nhBkBuild="nat4 b44";
+  window.__nhBkAnon="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRqbWJudmlrcmRnbm9tamh0a2dmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODUzOTE0MzEsImV4cCI6MjEwMDk2NzQzMX0.vR8xlVFjV6jXW-pAclGjM74HqmWSKVpsacFjM-dCIJI"; window.__nhBkBuild="nat4 b47";
   /* ===================================================================================================
      COURT BOOKING (nat4 test copy, Manzini pilot, Andre 26 Oct). Started ONLY from the player's own My page: its
      "Court card" button becomes "Book a court", which asks "Where do you want to play?" — one tile per venue; a venue
@@ -16282,8 +16282,9 @@ W.nhOpenPair=function(name){
       /* b39 (Andre, 10 Nov): a group's Tournaments page shows only ITS OWN Topside, and none when a tournament was chosen
          on the way in (tn= in the address) — "we have already made our selection" */
       var me=Number(W.PLAT&&W.PLAT.cid)||0, chosen=false; try{ chosen=!!new URLSearchParams(location.search).get("tn"); }catch(e){}
-      if(chosen || (html && String(html).indexOf('data-nh-club="'+me+'"')<0)) html="";
-      if(html){ var tmp=document.createElement("div"); tmp.innerHTML=html;
+      var all=(boardsOfRegion()[0]===me);   /* b46: the region's own page lists every group's Topside; a group's page only its own */
+      if(chosen || (!all && html && String(html).indexOf('data-nh-club="'+me+'"')<0)) html="";
+      if(html && !all){ var tmp=document.createElement("div"); tmp.innerHTML=html;
         Array.prototype.forEach.call(tmp.querySelectorAll("button[data-nh-club]"),function(b){ if(Number(b.getAttribute("data-nh-club"))!==me) b.remove(); }); html=tmp.innerHTML; }
       if(!html){ if(box) box.remove(); return; }
       if(box){ if(box.__nhHtml!==html){ box.innerHTML=html; box.__nhHtml=html; } return; }
@@ -17614,6 +17615,14 @@ W.nhOpenPair=function(name){
       if(box){ if(box.__h!==html){ box.innerHTML=html; box.__h=html; } return; }
       box=document.createElement("div"); box.id=id; box.style.cssText=css; box.innerHTML=html; box.__h=html;
       if(before) host.insertBefore(box, before); else host.appendChild(box); };
+    /* b47 (Andre, 10 Nov: "Yes, one page"): "All tournaments" under Everything else opens the SAME page as the door's
+       Tournaments tile (cards, counts, Topside / Americano) — it used to open the parent's plain list. That older list is
+       the only place the closed (archived) tournaments are shown, so the tile's page gets "Past tournaments" at its foot. */
+    var allT0=null;
+    (function(){ var n=0, t=setInterval(function(){ var f0=W.nhAllTournaments; if(typeof f0!=="function"){ if(++n>80) clearInterval(t); return; } clearInterval(t); if(f0.__nhOne) return; allT0=f0;
+        var f1=function(){ if(document.getElementById("nhDoorMain") && typeof W.nhDoorSec==="function"){ W.nhDoorSec("t"); return; } return f0.apply(this, arguments); };
+        f1.__nhOne=1; W.nhAllTournaments=f1; }, 250); })();
+    W.__nhPastTours=function(){ if(allT0) allT0(); };
     var doorK="";
     /* b44 (Andre, 10 Nov: "because we are no longer having the ratings on the americano and mexicano — maybe we should add a
        recent matches section like we have with handicaps … so people can follow results there"). On the door's Recent
@@ -17658,6 +17667,8 @@ W.nhOpenPair=function(name){
     (function(){ var wrap=function(){ var f0=W.nhDoorSec; if(typeof f0!=="function") return false; if(f0.__nhAm) return true;
         var f1=function(k){ var r=f0.apply(this, arguments); doorK=k;
           if(k==="m"){ amrEvents().then(function(evs){ if(evs.length && doorK==="m") amrPut(); }); }   /* b44 */
+          if(k==="t"){ try{ var sp=document.getElementById("nhDoorSub"); sp=sp && sp.lastElementChild;   /* b47: the way to the closed ones, at the foot */
+            if(sp && !sp.querySelector("#nhPastT")) sp.innerHTML='<div id="nhPastT" style="padding:14px 12px 0;text-align:center"><a href="#" onclick="event.preventDefault();window.__nhPastTours()" style="color:#6b6480;font-size:13px;font-weight:700">Past tournaments ›</a></div>'; }catch(e){} }
           if(k==="t"){ var sub=document.getElementById("nhDoorSub"); if(CK.key===cardsKey() && CK.html!=null){ fill(sub, CK.html); }
             cards().then(function(h){ if(h===null || doorK!=="t") return; var s2=document.getElementById("nhDoorSub"); if(!s2 || s2.style.display==="none") return; fill(s2, h); }); }
           return r; };
@@ -17673,9 +17684,12 @@ W.nhOpenPair=function(name){
          only ITS OWN events, and none when a tournament was chosen on the way in (tn= in the address) */
       var me=Number(W.PLAT&&W.PLAT.cid)||0, chosen=false; try{ chosen=!!new URLSearchParams(location.search).get("tn"); }catch(e){}
       var have=pk.querySelector("#nhAmTourCards");
-      if(chosen || (CK.key===cardsKey() && CK.html!=null && String(CK.html).indexOf('data-nh-club="'+me+'"')<0)){ if(have) have.remove(); return; }
+      /* b46 (Andre, 10 Nov: the door's Tournaments page and "all tournaments" under Everything else did not list the same): the
+         REGION's own page lists every group's events, as its list of normal tournaments does; a group's page only its own */
+      var all=(boardsOfRegion()[0]===me);
+      if(chosen || (!all && CK.key===cardsKey() && CK.html!=null && String(CK.html).indexOf('data-nh-club="'+me+'"')<0)){ if(have) have.remove(); return; }
       if(CK.key===cardsKey() && CK.html){ if(!have){ if(/No active tournament right now/.test(pk.textContent||"") && !pk.querySelector("#nhTsTourCards")) pk.innerHTML=""; put(pk, "nhAmTourCards", CK.html, "margin:0 0 12px", pk.firstChild); }
-        Array.prototype.forEach.call(pk.querySelectorAll("#nhAmTourCards button[data-nh-club]"),function(b){ b.style.display=(Number(b.getAttribute("data-nh-club"))===me)?"flex":"none"; }); }
+        Array.prototype.forEach.call(pk.querySelectorAll("#nhAmTourCards button[data-nh-club]"),function(b){ b.style.display=(all || Number(b.getAttribute("data-nh-club"))===me)?"flex":"none"; }); }
       else if(CK.key!==cardsKey()) cards();
     }catch(e){} }, 800);
 
@@ -17751,6 +17765,10 @@ W.nhOpenPair=function(name){
        show so that I can turn it on or off and have it archived or deleted, like the normal tournaments"). Topside and
        Americano / Mexicano live in their own tables, so the parent's list never saw them. Same words as the parent's rows;
        close and delete are asked in the row (no pop-ups). ts_admin_set / am_admin_set check the code. */
+    /* b46 (Andre, 10 Nov: "when I scroll up the tournament name gets hidden behind the header"): the list's own heading row is
+       pinned (the parent's .ladder-table th is sticky), so on this short list it slid down over the one row under it. Here
+       the heading row simply scrolls with the list. */
+    (function(){ try{ var st=document.createElement("style"); st.id="nhAdmCss"; st.textContent="#adminTournaments .ladder-table th{position:static !important}"; document.head.appendChild(st); }catch(e){} })();
     var ADM={ask:null, msg:""};
     var admPaint=function(){
       var box=document.getElementById("adminTournaments"), cid=Number((document.getElementById("adminClubSelect")||{}).value)||0; if(!box || !cid) return;
@@ -17758,10 +17776,12 @@ W.nhOpenPair=function(name){
         if(Number((document.getElementById("adminClubSelect")||{}).value)!==cid) return;
         var rows=[]; (r[0]||[]).forEach(function(t){ rows.push({k:"ts", id:Number(t.tour_id), name:t.name, type:"Topside", active:t.active!==false, archived:!!t.archived}); });
         (r[1]||[]).forEach(function(e){ if(e.parent_id) return; rows.push({k:"am", id:Number(e.event_id), name:e.name, type:(e.kind==="pairs"?"Team ":"")+(e.draw==="mexicano"?"Mexicano":"Americano"), active:e.active!==false, archived:!!e.archived}); });
-        var old=box.querySelector("#nhAdmOwn"); if(old) old.remove(); if(!rows.length) return;
+        var old=box.querySelector("#nhAdmOwn"); if(old) old.remove();
+        Array.prototype.forEach.call(box.querySelectorAll("tr.nhAdmRow"),function(x){ x.remove(); });
+        if(!rows.length) return;
         Array.prototype.forEach.call(box.children,function(x){ if(/^No tournaments yet\.?$/.test((x.textContent||"").trim())) x.style.display="none"; });
         var b=function(label, on, col){ return '<button onclick="'+on+'" style="background:none;border:none;color:'+col+';cursor:pointer;">'+label+'</button>'; };
-        var h='<table class="ladder-table"><thead><tr><th>Name</th><th>Type</th><th>Status</th><th></th></tr></thead><tbody>';
+        var h='';
         rows.forEach(function(t){
           var status = t.archived ? '<span style="color:#888;">closed</span>' : (t.active ? '<span style="color:#1e8449;font-weight:700;">active</span>' : 'off');
           var call=function(what, sure){ return "window.__nhAdmSet('"+t.k+"',"+t.id+",'"+what+"',"+(sure?"true":"false")+")"; }, act="";
@@ -17770,9 +17790,15 @@ W.nhOpenPair=function(name){
               +b(ADM.ask.what==="delete"?"yes, delete":"yes, close", call(ADM.ask.what, true), "#c0392b")+' '+b("no", "window.__nhAdmSet('',0,'',false)", "#6c3483");
           } else if(t.archived) act='<span style="color:#aaa;">archived</span> '+b("delete", call("delete", false), "#c0392b");
           else act=(t.active ? b("turn off", call("off", true), "#8fb500") : b("turn on", call("on", true), "#1e8449"))+' '+b("close&amp;archive", call("close", false), "#c0392b");
-          h+='<tr><td>'+esc(t.name)+'</td><td>'+esc(t.type)+'</td><td>'+status+'</td><td>'+act+'</td></tr>'; });
-        h+='</tbody></table>'+(ADM.msg?('<div style="color:#c0392b;font-size:13px;padding:4px 0">'+esc(ADM.msg)+'</div>'):'');
-        var d=document.createElement("div"); d.id="nhAdmOwn"; d.style.marginTop="8px"; d.innerHTML=h; box.appendChild(d); }); };
+          h+='<tr class="nhAdmRow"><td>'+esc(t.name)+'</td><td>'+esc(t.type)+'</td><td>'+status+'</td><td>'+act+'</td></tr>'; });
+        /* b45 (Andre, 10 Nov: "why is red showing 2 header rows"): ONE table — the rows join the parent's own list when the
+           group has normal tournaments too; a table of their own only when it has none */
+        var msg=(ADM.msg?('<div style="color:#c0392b;font-size:13px;padding:4px 0">'+esc(ADM.msg)+'</div>'):'');
+        var tb=Array.prototype.filter.call(box.querySelectorAll("table.ladder-table tbody"),function(x){ return !x.closest("#nhAdmOwn"); })[0];
+        var d=document.createElement("div"); d.id="nhAdmOwn";
+        if(tb){ tb.insertAdjacentHTML("beforeend", h); d.innerHTML=msg; }
+        else { d.style.marginTop="8px"; d.innerHTML='<table class="ladder-table"><thead><tr><th>Name</th><th>Type</th><th>Status</th><th></th></tr></thead><tbody>'+h+'</tbody></table>'+msg; }
+        box.appendChild(d); }); };
     W.__nhAdmSet=function(k, id, what, sure){
       if(!k){ ADM.ask=null; admPaint(); return; }
       if(!sure){ ADM.ask={k:k, id:Number(id), what:what}; ADM.msg=""; admPaint(); return; }
