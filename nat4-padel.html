@@ -3784,7 +3784,7 @@ const CLUB_NAME = _club.name;  // shown in the logo as "OPR · <name>"
     link.setAttribute('href', href);
   }catch(e){ /* install stays on the static manifest — no functional impact */ }
 })();
-const OPR_VERSION = "OPR-DOUBLES v2026.09.03-56 · NAT4 booking test b55 (nat3 n375) (no voice) (of PLAT p117)";  // MANUAL PAIR CREATION REMOVED FROM ADMIN: Create a pair, Bulk create pairs and Re-derive all pairs are gone (they only made match-less ghost pairs, and Re-derive rewrote every stored initial club-wide). Pairs are born automatically at match entry. Current pairs list untouched; the underlying JS is left in place unreferenced, so no other code path changes. Includes v47 (set-score fix + double-tap guard) and all prior.
+const OPR_VERSION = "OPR-DOUBLES v2026.09.03-56 · NAT4 booking test b56 (nat3 n375) (no voice) (of PLAT p117)";  // MANUAL PAIR CREATION REMOVED FROM ADMIN: Create a pair, Bulk create pairs and Re-derive all pairs are gone (they only made match-less ghost pairs, and Re-derive rewrote every stored initial club-wide). Pairs are born automatically at match entry. Current pairs list untouched; the underlying JS is left in place unreferenced, so no other code path changes. Includes v47 (set-score fix + double-tap guard) and all prior.
 // Explanation shown above the individual ladder. Open on load so it's read; collapsible
 // (state kept for the session) and scrolls away. Mechanics only — no outcome framing, so
 // members aren't nudged away from playing stronger opponents. Every clause maps to a real
@@ -13952,7 +13952,7 @@ W.nhOpenPair=function(name){
     setInterval(leapBrk, 900);
     W.__nhTsBuild=build;   /* for the test */
   })();
-  window.__nhBkAnon="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRqbWJudmlrcmRnbm9tamh0a2dmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODUzOTE0MzEsImV4cCI6MjEwMDk2NzQzMX0.vR8xlVFjV6jXW-pAclGjM74HqmWSKVpsacFjM-dCIJI"; window.__nhBkBuild="nat4 b55";
+  window.__nhBkAnon="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRqbWJudmlrcmRnbm9tamh0a2dmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODUzOTE0MzEsImV4cCI6MjEwMDk2NzQzMX0.vR8xlVFjV6jXW-pAclGjM74HqmWSKVpsacFjM-dCIJI"; window.__nhBkBuild="nat4 b56";
   /* ===================================================================================================
      COURT BOOKING (nat4 test copy, Manzini pilot, Andre 26 Oct). Started ONLY from the player's own My page: its
      "Court card" button becomes "Book a court", which asks "Where do you want to play?" — one tile per venue; a venue
@@ -17546,8 +17546,12 @@ W.nhOpenPair=function(name){
       /* b54 (Andre, 11 Nov — his 3-court event drew 2 + 1 and he took it for a fault): the question that decides the courts.
          Same time = the event's courts are shared between the sections; one after the other = each section has them all. */
       if(!S.one && S.courts){ var pill=function(label, on, v){ return '<button class="nhAmTog'+(on?' on':'')+'" onclick="window.__nhAmTogether('+v+')" style="flex:1;border:1.5px solid '+c+';background:'+(on?c:'#fff')+';color:'+(on?'#fff':c)+';border-radius:12px;padding:10px 8px;font:inherit;font-size:13px;font-weight:800;cursor:pointer;line-height:1.3">'+label+'</button>'; };
-        s+='<div id="nhAmTogether" style="margin:4px 0 8px"><div style="font-size:13.5px;font-weight:800;color:#241d33;margin-bottom:6px">Do the sections play at the same time?</div>'
-          +'<div style="display:flex;gap:8px">'+pill('Yes — they share the '+S.total+' court'+(S.total===1?'':'s'), S.together, 'true')+pill('No — one after the other: each has all '+S.total, !S.together, 'false')+'</div></div>'; }
+        /* b56 (Andre, 11 Nov: "each selection boils down to the same thing?" — "share" read as "any court when free"): the
+           words now say what happens, with the event's own numbers (4 courts → 2 and 2; 3 → 2 and 1; 2 → 1 and 1) */
+        var c1=Math.max(1,Math.ceil(S.total/2)), c2=Math.max(1,Math.floor(S.total/2)), cw=function(n){ return n+' court'+(n===1?'':'s'); };
+        s+='<div id="nhAmTogether" style="margin:4px 0 8px"><div style="font-size:13.5px;font-weight:800;color:#241d33;margin-bottom:6px">Are both sections on court at the same moment?</div>'
+          +'<div style="display:flex;gap:8px">'+pill('Yes, together — Section 1 gets '+cw(c1)+', Section 2 gets '+cw(c2), S.together, 'true')
+          +pill('No, they take turns — each section’s round uses '+(S.total===1?'the court':('all '+S.total+' courts')), !S.together, 'false')+'</div></div>'; }
       G.forEach(function(A, k){ var er=setupErr(S, A), P=er?[]:setupPairs(S, A); if(er) bad=true;
         s+='<div class="nhAmSecCard" style="background:#f4f0f8;border-radius:12px;padding:10px 12px;margin:6px 0"><div style="display:flex;justify-content:space-between;align-items:baseline"><b style="font-size:14px;color:#241d33">'+esc(e.division)+(S.one?'':(' · Section '+(k+1)))+'</b><span style="font-size:12px;color:#8a8196">'+(er?'':(P.length+(S.mode==="single"?' players':' pairs')))+'</span></div>'
           +(er?('<div style="font-size:13.5px;color:#a3321f;margin-top:3px">'+esc(er)+'</div>')
