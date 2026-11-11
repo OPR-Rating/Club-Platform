@@ -3784,7 +3784,7 @@ const CLUB_NAME = _club.name;  // shown in the logo as "OPR · <name>"
     link.setAttribute('href', href);
   }catch(e){ /* install stays on the static manifest — no functional impact */ }
 })();
-const OPR_VERSION = "OPR-DOUBLES v2026.09.03-56 · NAT4 booking test b47 (nat3 n375) (no voice) (of PLAT p117)";  // MANUAL PAIR CREATION REMOVED FROM ADMIN: Create a pair, Bulk create pairs and Re-derive all pairs are gone (they only made match-less ghost pairs, and Re-derive rewrote every stored initial club-wide). Pairs are born automatically at match entry. Current pairs list untouched; the underlying JS is left in place unreferenced, so no other code path changes. Includes v47 (set-score fix + double-tap guard) and all prior.
+const OPR_VERSION = "OPR-DOUBLES v2026.09.03-56 · NAT4 booking test b48 (nat3 n375) (no voice) (of PLAT p117)";  // MANUAL PAIR CREATION REMOVED FROM ADMIN: Create a pair, Bulk create pairs and Re-derive all pairs are gone (they only made match-less ghost pairs, and Re-derive rewrote every stored initial club-wide). Pairs are born automatically at match entry. Current pairs list untouched; the underlying JS is left in place unreferenced, so no other code path changes. Includes v47 (set-score fix + double-tap guard) and all prior.
 // Explanation shown above the individual ladder. Open on load so it's read; collapsible
 // (state kept for the session) and scrolls away. Mechanics only — no outcome framing, so
 // members aren't nudged away from playing stronger opponents. Every clause maps to a real
@@ -13952,7 +13952,7 @@ W.nhOpenPair=function(name){
     setInterval(leapBrk, 900);
     W.__nhTsBuild=build;   /* for the test */
   })();
-  window.__nhBkAnon="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRqbWJudmlrcmRnbm9tamh0a2dmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODUzOTE0MzEsImV4cCI6MjEwMDk2NzQzMX0.vR8xlVFjV6jXW-pAclGjM74HqmWSKVpsacFjM-dCIJI"; window.__nhBkBuild="nat4 b47";
+  window.__nhBkAnon="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRqbWJudmlrcmRnbm9tamh0a2dmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODUzOTE0MzEsImV4cCI6MjEwMDk2NzQzMX0.vR8xlVFjV6jXW-pAclGjM74HqmWSKVpsacFjM-dCIJI"; window.__nhBkBuild="nat4 b48";
   /* ===================================================================================================
      COURT BOOKING (nat4 test copy, Manzini pilot, Andre 26 Oct). Started ONLY from the player's own My page: its
      "Court card" button becomes "Book a court", which asks "Where do you want to play?" — one tile per venue; a venue
@@ -17696,15 +17696,32 @@ W.nhOpenPair=function(name){
     /* ---------------------------------------------------------------- b39: Enter a score → "Enter which tournament you played in"
        lists the region's Topside and Americano / Mexicano events too (Andre, 10 Nov). A tap opens the event's page, where
        you tap your match. The list is glue_nat's (#nhPickTours, shared with nat3), so the rows are added here, in nat4. */
-    var PK={key:"", html:null, busy:false};
+    var PK={key:"", html:null, busy:false, types:null, drawn:null};
+    /* b48 (Andre, 11 Nov: "it is supposed to open the draw so that you can click on the match and enter from there … they
+       should be opening on the page like Topside"): the list's own rows (glue_nat n322) open the score sheet with the
+       event chosen. Here a tournament the app DRAWS (internal) opens its draw instead — or its own page while it has no
+       draw yet. An external tournament has no draw (the app only keeps its stats), so it still opens the score sheet. */
+    var retarget=function(box){ if(!PK.types) return;
+      Array.prototype.forEach.call(box.querySelectorAll("button[onclick]"),function(b){ if(b.__nhDraw || (b.closest && b.closest("#nhPickOwn"))) return;
+        var oc=b.getAttribute("onclick")||"", m=oc.match(/[?&]club=(\d+)[^'"]*?&go=entry&tn=([^&'"]+)/); if(!m) return; b.__nhDraw=1;
+        var name=""; try{ name=decodeURIComponent(m[2]); }catch(e){ name=m[2]; }
+        var k=m[1]+"|"+lc(name); if(PK.types[k]!=="internal") return;
+        b.setAttribute("onclick", (PK.drawn[k]?"try{sessionStorage.setItem('nh_pick_rounds','1')}catch(e){};":"")+oc.replace("&go=entry&tn=", PK.drawn[k] ? "&go=tsheet&tn=" : "&go=tournaments&tn=")); b.setAttribute("data-nh-draw", PK.drawn[k]?"draw":"page"); }); };
+    /* the draw opened from that list lands on its Rounds (the matches to tap), not on Teams */
+    setInterval(function(){ try{ if(sessionStorage.getItem("nh_pick_rounds")!=="1") return;
+      var sc=document.getElementById("tournamentSheetScreen"); if(!sc || !sc.classList.contains("active") || typeof W.tmSetTab!=="function") return;
+      if(!document.querySelector("#tournamentSheetContent .tm-nav button")) return;
+      sessionStorage.removeItem("nh_pick_rounds"); W.tmSetTab("rounds"); }catch(e){} }, 300);
     var pickRow=function(name, tag, club, on){ var g=boardOf(club), col=g.colour||ink();
       return '<button onclick="'+on+'" style="display:flex;align-items:center;gap:10px;width:100%;text-align:left;background:#fff;border:1.5px solid #e2dbe8;border-radius:14px;padding:12px 13px;margin:0 0 8px;font:inherit;cursor:pointer">'
         +'<span style="flex:1;min-width:0;font-size:14.5px;font-weight:800;color:#241d33">'+esc(name)+' <span style="font-size:11px;font-weight:800;color:'+ink()+'">'+tag+'</span></span>'
         +(g.name?'<span style="flex:none;padding:3px 9px;border-radius:999px;font-size:11px;font-weight:800;color:#fff;background:'+col+'">'+esc(g.name)+'</span>':'')
         +'<span style="flex:none;display:inline-grid;place-items:center;width:26px;height:26px;border-radius:50%;background:'+ink()+';color:#fff;font-weight:800">›</span></button>'; };
     setInterval(function(){ try{
-      var box=document.getElementById("nhPickTours"); if(!box || box.offsetParent===null || box.querySelector("#nhPickOwn")) return;
+      var box=document.getElementById("nhPickTours"); if(!box || box.offsetParent===null) return;
       var k=cardsKey(); if(!k) return;
+      if(PK.key===k) retarget(box);
+      if(box.querySelector("#nhPickOwn")) return;
       var fill=function(){ if(!PK.html || box.querySelector("#nhPickOwn") || !document.body.contains(box)) return;
         var d=document.createElement("div"); d.id="nhPickOwn";
         if(!box.firstChild) d.innerHTML='<div style="display:flex;align-items:center;gap:10px;margin:22px 12px 14px"><span style="flex:1;height:2px;background:#e2dbe8"></span>'
@@ -17716,11 +17733,15 @@ W.nhOpenPair=function(name){
         box.appendChild(d); };
       if(PK.key===k && PK.html!=null){ fill(); return; }
       if(PK.busy) return; PK.busy=true;
-      Promise.all([get("plat_topside?club_id=in.("+k+")&select=*&order=tour_id.asc"), get("plat_amex?club_id=in.("+k+")&select=*&order=event_id.asc")]).then(function(r){
+      Promise.all([get("plat_topside?club_id=in.("+k+")&select=*&order=tour_id.asc"), get("plat_amex?club_id=in.("+k+")&select=*&order=event_id.asc"),
+                   get("plat_padel_tournaments?club_id=in.("+k+")&active=eq.true&archived=eq.false&select=club_id,name,type"),
+                   get("plat_padel_tournament_fixtures?club_id=in.("+k+")&select=club_id,tournament&limit=5000")]).then(function(r){
+        var ty={}, dr={}; (r[2]||[]).forEach(function(t){ ty[Number(t.club_id)+"|"+lc(t.name)]=t.type; }); (r[3]||[]).forEach(function(f){ dr[Number(f.club_id)+"|"+lc(f.tournament)]=1; });
+        PK.types=ty; PK.drawn=dr;
         var h="";
         (r[0]||[]).forEach(function(t){ if(t.active===false || t.archived) return; h+=pickRow(t.name, "TOPSIDE", t.club_id, "window.nhTopsideOpen("+Number(t.tour_id)+")"); });
         (r[1]||[]).forEach(function(e){ if(e.parent_id || e.active===false || e.archived) return; h+=pickRow(e.name, e.draw==="mexicano"?"MEXICANO":"AMERICANO", e.club_id, "window.nhAmOpen("+Number(e.event_id)+")"); });
-        PK.key=k; PK.html=h; PK.busy=false; fill(); }).catch(function(){ PK.busy=false; });
+        PK.key=k; PK.html=h; PK.busy=false; retarget(box); fill(); }).catch(function(){ PK.busy=false; });
     }catch(e){} }, 700);
 
     /* ---------------------------------------------------------------- Create a tournament: Americano / Mexicano */
