@@ -3784,7 +3784,7 @@ const CLUB_NAME = _club.name;  // shown in the logo as "OPR · <name>"
     link.setAttribute('href', href);
   }catch(e){ /* install stays on the static manifest — no functional impact */ }
 })();
-const OPR_VERSION = "OPR-DOUBLES v2026.09.03-56 · NAT4 booking test b50 (nat3 n375) (no voice) (of PLAT p117)";  // MANUAL PAIR CREATION REMOVED FROM ADMIN: Create a pair, Bulk create pairs and Re-derive all pairs are gone (they only made match-less ghost pairs, and Re-derive rewrote every stored initial club-wide). Pairs are born automatically at match entry. Current pairs list untouched; the underlying JS is left in place unreferenced, so no other code path changes. Includes v47 (set-score fix + double-tap guard) and all prior.
+const OPR_VERSION = "OPR-DOUBLES v2026.09.03-56 · NAT4 booking test b54 (nat3 n375) (no voice) (of PLAT p117)";  // MANUAL PAIR CREATION REMOVED FROM ADMIN: Create a pair, Bulk create pairs and Re-derive all pairs are gone (they only made match-less ghost pairs, and Re-derive rewrote every stored initial club-wide). Pairs are born automatically at match entry. Current pairs list untouched; the underlying JS is left in place unreferenced, so no other code path changes. Includes v47 (set-score fix + double-tap guard) and all prior.
 // Explanation shown above the individual ladder. Open on load so it's read; collapsible
 // (state kept for the session) and scrolls away. Mechanics only — no outcome framing, so
 // members aren't nudged away from playing stronger opponents. Every clause maps to a real
@@ -13952,7 +13952,7 @@ W.nhOpenPair=function(name){
     setInterval(leapBrk, 900);
     W.__nhTsBuild=build;   /* for the test */
   })();
-  window.__nhBkAnon="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRqbWJudmlrcmRnbm9tamh0a2dmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODUzOTE0MzEsImV4cCI6MjEwMDk2NzQzMX0.vR8xlVFjV6jXW-pAclGjM74HqmWSKVpsacFjM-dCIJI"; window.__nhBkBuild="nat4 b50";
+  window.__nhBkAnon="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRqbWJudmlrcmRnbm9tamh0a2dmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODUzOTE0MzEsImV4cCI6MjEwMDk2NzQzMX0.vR8xlVFjV6jXW-pAclGjM74HqmWSKVpsacFjM-dCIJI"; window.__nhBkBuild="nat4 b54";
   /* ===================================================================================================
      COURT BOOKING (nat4 test copy, Manzini pilot, Andre 26 Oct). Started ONLY from the player's own My page: its
      "Court card" button becomes "Book a court", which asks "Where do you want to play?" — one tile per venue; a venue
@@ -15939,7 +15939,12 @@ W.nhOpenPair=function(name){
         +'<button class="'+(ST.tab==="reigns"?"active":"")+'" onclick="window.__nhTsTab(\'reigns\')">\ud83d\udcca Reigns</button></div>';
       html+= ST.tab==="rounds" ? roundsTab(cur) : ST.tab==="reigns" ? reignsTab() : pairsTab();
       html+= organiser(cur);
+      /* b53 (Andre, 11 Nov: "every time I tick a player the table jumps back to the top of the alphabet"): the page is redrawn
+         after a tick, which sent each name list back to its top. The lists keep their place; a new search starts at the top. */
+      var kq=(ST.q||"")+"|"+(ST.bq||"")+"|"+(ST.rq||""), ks=Array.prototype.map.call(o.querySelectorAll("[data-keep]"),function(x){ return [x.getAttribute("data-keep"), x.scrollTop]; });
       o.innerHTML=html;
+      if(ST.keepQ===kq) ks.forEach(function(k){ var el=o.querySelector('[data-keep="'+k[0]+'"]'); if(el && k[1]) el.scrollTop=k[1]; });
+      ST.keepQ=kq;
       ["nhTsQ","nhTsBQ","nhTsRQ"].forEach(function(id){ var i=document.getElementById(id); if(i && ST.focus===id){ i.focus(); i.setSelectionRange(i.value.length,i.value.length); } });
     };
     W.__nhTsSec=function(d){ ST.sec=d; paint(); };
@@ -15989,7 +15994,7 @@ W.nhOpenPair=function(name){
       var other=(ST.pickMode==="other"), joined={}; (D.players||[]).forEach(function(p){ if(!p.left_at) joined[lc(p.name)]=1; });
       return card(h(other?"Who is joining?":"Which one is you?")
         +'<input id="nhTsQ" value="'+esc(ST.q)+'" oninput="window.__nhTsQ(this.value)" placeholder="Type the first letters of the name" style="width:100%;box-sizing:border-box;padding:11px;font-size:15px;border:1.5px solid #ddd5e6;border-radius:10px;margin-bottom:8px;font-family:inherit">'
-        +'<div style="max-height:320px;overflow:auto">'+names.map(function(n){ var r=D.rating[lc(n)];
+        +'<div data-keep="pk" style="max-height:320px;overflow:auto">'+names.map(function(n){ var r=D.rating[lc(n)];
           return '<button onclick="window.__nhTsChose(\''+String(n).replace(/\\/g,"\\\\").replace(/'/g,"\\'")+'\')" style="display:flex;width:100%;justify-content:space-between;background:#fff;border:none;border-bottom:1px solid #f0ecf4;padding:10px 4px;font:inherit;font-size:14px;cursor:pointer;text-align:left"><span>'+esc(n)+(joined[lc(n)]?' <span style="color:#1e8449;font-size:12px;font-weight:800">\u00b7 in Topside</span>':'')+'</span><span style="color:#8a8196">'+(r!=null?r:"")+'</span></button>'; }).join("")+'</div>'
         +'<div style="margin-top:10px;display:flex;gap:8px;flex-wrap:wrap">'+btn("Cancel","window.__nhTsPickOff()",false)
         /* b30 (Andre, 9 Nov: "I want to test it as organiser and not as a player"): this phone forgets the name */
@@ -16080,7 +16085,7 @@ W.nhOpenPair=function(name){
         s+='<div style="font-size:13.5px;font-weight:800;color:#241d33;margin-bottom:6px">Add players</div>'
           +'<input id="nhTsBQ" value="'+esc(ST.bq)+'" oninput="window.__nhTsBQ(this.value)" placeholder="First letters of a name" style="width:100%;box-sizing:border-box;padding:10px;font-size:15px;border:1.5px solid #ddd5e6;border-radius:10px;margin-bottom:6px;font-family:inherit">'
           +'<div style="display:flex;gap:8px;margin-bottom:6px">'+btn("Tick all shown","window.__nhTsTickAll()",false,"flex:1;padding:7px;font-size:12px")+btn("Clear","window.__nhTsTickNone()",false,"flex:1;padding:7px;font-size:12px")+'</div>'
-          +'<div style="max-height:300px;overflow:auto;border:1px solid #f0ecf4;border-radius:10px">'+(L.length?L.map(function(n){ var on=!!ST.ticks[n], r=D.rating[lc(n)];
+          +'<div data-keep="bulk" style="max-height:300px;overflow:auto;border:1px solid #f0ecf4;border-radius:10px">'+(L.length?L.map(function(n){ var on=!!ST.ticks[n], r=D.rating[lc(n)];
               return '<label style="display:flex;align-items:center;gap:10px;padding:9px 8px;border-bottom:1px solid #f0ecf4;font-size:14px;cursor:pointer"><input type="checkbox" '+(on?'checked ':'')+'onchange="window.__nhTsTick(this.dataset.n,this.checked)" data-n="'+esc(n)+'" style="width:18px;height:18px"><span style="flex:1">'+esc(n)+'</span><span style="color:#8a8196">'+(r!=null?r:"")+'</span></label>'; }).join("")
             :'<div style="padding:10px;font-size:13px;color:#8a8196">Everyone shown is already in.</div>')+'</div>'
           +'<div style="display:flex;gap:8px;margin-top:8px">'+btn("Close","window.__nhTsBulk(false)",false,"flex:1")+btn("Add "+nT+" player"+(nT===1?"":"s"),"window.__nhTsBulkGo()",nT>0,"flex:1")+'</div>'
@@ -16100,7 +16105,7 @@ W.nhOpenPair=function(name){
             +'<div style="display:flex;gap:8px">'+btn("No, keep them","window.__nhTsRmAsk(false)",false,"flex:1")+btn("Yes, remove","window.__nhTsRmGo()",true,"flex:1")+'</div></div>';
         } else {
           s+='<input id="nhTsRQ" value="'+esc(ST.rq)+'" oninput="window.__nhTsRQ(this.value)" placeholder="First letters of a name" style="width:100%;box-sizing:border-box;padding:10px;font-size:15px;border:1.5px solid #ddd5e6;border-radius:10px;margin-bottom:6px;font-family:inherit">'
-            +'<div style="max-height:300px;overflow:auto;border:1px solid #f0ecf4;border-radius:10px">'+(RL.length?RL.map(function(n){ var on=!!ST.rticks[n], r=D.rating[lc(n)];
+            +'<div data-keep="rm" style="max-height:300px;overflow:auto;border:1px solid #f0ecf4;border-radius:10px">'+(RL.length?RL.map(function(n){ var on=!!ST.rticks[n], r=D.rating[lc(n)];
                 return '<label style="display:flex;align-items:center;gap:10px;padding:9px 8px;border-bottom:1px solid #f0ecf4;font-size:14px;cursor:pointer"><input type="checkbox" '+(on?'checked ':'')+'onchange="window.__nhTsRmTick(this.dataset.n,this.checked)" data-n="'+esc(n)+'" style="width:18px;height:18px"><span style="flex:1">'+esc(n)+(mates[lc(n)]?' <span style="color:#8a8196;font-size:12px">· with '+esc(mates[lc(n)])+'</span>':'')+'</span><span style="color:#8a8196">'+(r!=null?r:"")+'</span></label>'; }).join("")
               :'<div style="padding:10px;font-size:13px;color:#8a8196">Nobody in Topside by that name.</div>')+'</div>'
             +'<div style="display:flex;gap:8px;margin-top:8px">'+btn("Close","window.__nhTsRm(false)",false,"flex:1")+btn("Remove "+rN.length+" player"+(rN.length===1?"":"s"),"window.__nhTsRmAsk(true)",rN.length>0,"flex:1")+'</div>';
@@ -16534,6 +16539,19 @@ W.nhOpenPair=function(name){
     var esc=function(s){ return String(s==null?"":s).replace(/[&<>"']/g,function(c){ return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]; }); };
     var ROWS=[{p1:"",p2:""},{p1:"",p2:""},{p1:"",p2:""}], FOR="";
     var isLady=function(g){ return g==="F" || g==="L"; };
+    /* b51 (Andre, 11 Nov: "I selected the men's teams but did not generate … when I went back all the selected names had
+       gone — the system needs to keep the names"). The rows were one list for every division and were wiped when the
+       division changed. Now each tournament + division keeps its own chosen pairs, on this device, until they are
+       entered (or removed) — through a change of division, the other division's draw, and a reload. Chosen is not
+       entered: the card says so in amber until "Enter N pairs" is tapped. */
+    var fresh=function(){ return [{p1:"",p2:""},{p1:"",p2:""},{p1:"",p2:""}]; };
+    var dkey=function(k){ var club=0; try{ club=(typeof CLUB_ID!=="undefined"?CLUB_ID:0); }catch(e){} return "nhMultiDraft|"+club+"|"+k; };
+    var save=function(){ try{ if(!FOR) return; var keep=ROWS.filter(function(r){ return !r.done && (r.p1 || r.p2); }).map(function(r){ return {p1:r.p1||"", p2:r.p2||""}; });
+      if(keep.length) localStorage.setItem(dkey(FOR), JSON.stringify(keep)); else localStorage.removeItem(dkey(FOR)); }catch(e){} };
+    var load=function(k){ try{ var raw=localStorage.getItem(dkey(k)); if(!raw) return fresh();
+      var L=JSON.parse(raw); if(!L || !L.length) return fresh();
+      L=L.map(function(r){ return {p1:String(r.p1||""), p2:String(r.p2||"")}; }); while(L.length<3) L.push({p1:"",p2:""}); return L; }catch(e){ return fresh(); } };
+    var ready=function(){ return ROWS.filter(function(r){ return r.p1 && r.p2 && r.p1!==r.p2 && !r.done; }).length; };
     var used=function(){ var s={}; ROWS.forEach(function(r){ if(r.p1) s[r.p1]=1; if(r.p2) s[r.p2]=1; }); return s; };
     function listFor(k, which){
       var players=W._etPlayers||[], cat=(document.getElementById("etCat")||{}).value||"", r=ROWS[k], other=which===1?r.p2:r.p1, mine=which===1?r.p1:r.p2;
@@ -16547,9 +16565,9 @@ W.nhOpenPair=function(name){
       return all;   /* All Sorts — anyone */
     }
     W.nhMultiPick=function(k,which){ if(typeof W.openNamePicker!=="function") return;
-      W.openNamePicker("Pair "+(k+1)+" · Player "+which, listFor(k,which), function(n){ ROWS[k][which===1?"p1":"p2"]=n; ROWS[k].msg=""; draw(); }); };
+      W.openNamePicker("Pair "+(k+1)+" · Player "+which, listFor(k,which), function(n){ ROWS[k][which===1?"p1":"p2"]=n; ROWS[k].msg=""; save(); draw(); }); };
     W.nhMultiAdd=function(){ ROWS.push({p1:"",p2:""}); draw(); };
-    W.nhMultiClear=function(k){ ROWS.splice(k,1); if(!ROWS.length) ROWS.push({p1:"",p2:""}); draw(); };
+    W.nhMultiClear=function(k){ ROWS.splice(k,1); if(!ROWS.length) ROWS.push({p1:"",p2:""}); save(); draw(); };
     W.nhMultiGo=function(){
       var tour=(document.getElementById("etTour")||{}).value, cat=(document.getElementById("etCat")||{}).value;
       var todo=ROWS.filter(function(r){ return r.p1 && r.p2 && r.p1!==r.p2 && !r.done; });
@@ -16566,7 +16584,7 @@ W.nhOpenPair=function(name){
             .then(function(x){ return x.json().catch(function(){ return {}; }).then(function(j){ if(x.ok && j.ok!==false){ r.done=true; r.msg="entered"; } else r.msg=(j&&j.error)||("not saved ("+x.status+")"); }); });
         }).catch(function(){ r.msg="not saved"; }).then(draw); }); });
       chain.then(function(){ var ok=ROWS.filter(function(r){ return r.done; }).length;
-        ROWS=ROWS.filter(function(r){ return !r.done; }); if(!ROWS.length) ROWS=[{p1:"",p2:""}];
+        ROWS=ROWS.filter(function(r){ return !r.done; }); if(!ROWS.length) ROWS=[{p1:"",p2:""}]; save();
         try{ if(typeof renderEnterScreen==="function") renderEnterScreen(); }catch(e){}
         setTimeout(function(){ var m=document.getElementById("nhMultiMsg"); if(m) m.innerHTML='<span style="color:#1e8449;font-weight:800">'+ok+' pair'+(ok===1?"":"s")+' entered.</span>'+(ROWS.some(function(r){ return r.msg; })?' The rest are still listed with the reason.':''); }, 900); });
     };
@@ -16581,14 +16599,52 @@ W.nhOpenPair=function(name){
       });
       var addB=Array.prototype.filter.call(document.querySelectorAll("#enterTournamentScreen button"),function(b){ return /^\s*Add team\s*$/i.test(b.textContent||""); })[0];
       var cls=addB?addB.className:"", sty=addB?(addB.getAttribute("style")||""):"";   /* the same look as "Add team" */
+      var nr=ready();
+      if(nr) h+='<div id="nhMultiWarn" style="margin:2px 0 10px;padding:9px 11px;border-radius:10px;background:#fff6e0;border:1.5px solid #e0a800;color:#6b4e00;font-size:13px;line-height:1.45"><b>'+nr+' pair'+(nr===1?' is':'s are')+' chosen but NOT entered yet.</b> Tap “Enter '+nr+' pair'+(nr===1?'':'s')+'” below to enter '+(nr===1?'it':'them')+'. The names are kept here until you do.</div>';
       h+='<button type="button" onclick="window.nhMultiAdd()" style="width:100%;margin:2px 0 8px;padding:11px;border-radius:12px;border:1.5px solid var(--nhc,#6c3483);background:#fff;color:var(--nhc,#6c3483);font:inherit;font-weight:800;cursor:pointer">+ Add another pair</button>'
-        +'<button type="button" id="nhMultiBtn" onclick="window.nhMultiGo()" class="'+cls+'" style="'+sty+';width:100%">Enter all pairs</button><div id="nhMultiMsg" class="sub" style="margin-top:8px"></div>';
+        +'<button type="button" id="nhMultiBtn" onclick="window.nhMultiGo()" class="'+cls+'" style="'+sty+';width:100%">'+(nr?('Enter '+nr+' pair'+(nr===1?'':'s')):'Enter all pairs')+'</button><div id="nhMultiMsg" class="sub" style="margin-top:8px"></div>';
       box.innerHTML=h;
     }
+    /* b52 (Andre, 11 Nov: "we need to add what type of tournament it is … round robin, handicap, knockout, Swiss pairing";
+       and "the person must be able to clearly define — I'm entering the Men's section or Ladies or Mixed"):
+       (1) a line at the top: the format, and Handicap when it is one;
+       (2) the division buttons are big pills under "Which division are you entering?"; with more than one division
+           NOTHING is chosen for you — the entry cards appear once you tap one (asked again on every visit). */
+    var KIND={}, CHOSEN={};
+    var kindOf=function(tour){ var club=0; try{ club=(typeof CLUB_ID!=="undefined"?CLUB_ID:0); }catch(e){}
+      var k=club+"|"+tour; if(KIND[k]!==undefined) return KIND[k]; KIND[k]=null;
+      try{ sbGet("tournaments?select=format,handicap,type&name=eq."+encodeURIComponent(tour)+"&club_id=eq."+club+"&limit=1").then(function(r){ KIND[k]=(r&&r[0])||{}; }).catch(function(){ KIND[k]={}; }); }catch(e){ KIND[k]={}; }
+      return null; };
+    var kindText=function(t){ var f=t.format==="knockout"?"Knockout + Plate":(t.format==="round_robin"?"Round robin":"Swiss pairing"); return f+(t.handicap?" · Handicap (just for fun)":""); };
+    var etDress=function(scr){
+      if(!document.getElementById("nhEtCss")){ var st=document.createElement("style"); st.id="nhEtCss";
+        st.textContent="#enterTournamentScreen .cl-divbar{display:flex;flex-wrap:wrap;gap:8px;margin:0 0 14px}"
+          +"#enterTournamentScreen .cl-divbar button{flex:1 1 40%;min-width:0;border:2px solid var(--nhc,#6c3483);background:#fff;color:var(--nhc,#6c3483);border-radius:14px;padding:13px 10px;font:inherit;font-size:15px;font-weight:800;cursor:pointer}"
+          +"#enterTournamentScreen .cl-divbar button.active{background:var(--nhc,#6c3483);color:#fff}"
+          +"#etBody.nhEtChoose .cl-divbar button.active{background:#fff;color:var(--nhc,#6c3483)}"
+          +"#etBody.nhEtChoose > *:not(#nhEtHead):not(.cl-divbar){display:none !important}";
+        document.head.appendChild(st); }
+      var body=document.getElementById("etBody"), bar=body && body.querySelector(".cl-divbar"); if(!body || !bar || bar.parentNode!==body) return;
+      var tour=(W._etTournament||(document.getElementById("etTour")||{}).value||""), t=kindOf(tour), n=bar.querySelectorAll("button").length;
+      var choose=(n>1 && !CHOSEN[tour]); body.classList.toggle("nhEtChoose", choose);
+      var html=(t && (t.format || t.handicap!=null)?('<div id="nhEtKind" style="display:inline-block;background:var(--nhtint,#efe8f6);color:var(--nhdeep,#3a1d6e);border-radius:99px;padding:5px 12px;font-size:13px;font-weight:800;margin:0 0 10px">'+esc(kindText(t))+'</div>'):'')
+        +'<div style="font-size:15px;font-weight:800;color:#241d33;margin:0 0 8px">'+(n>1?(choose?"Which division are you entering? Tap one.":"Which division are you entering?"):"Division")+'</div>';
+      var head=document.getElementById("nhEtHead");
+      if(!head){ head=document.createElement("div"); head.id="nhEtHead"; body.insertBefore(head, bar); }
+      if(head.__h!==html){ head.innerHTML=html; head.__h=html; }
+      if(head.nextSibling!==bar) body.insertBefore(head, bar); };
+    (function(){ var n=0, t=setInterval(function(){ var f0=W.etPickDiv; if(typeof f0!=="function"){ if(++n>120) clearInterval(t); return; } clearInterval(t); if(f0.__nhEt) return;
+        var f1=function(){ try{ CHOSEN[W._etTournament||""]=1; var b=document.getElementById("etBody"); if(b) b.classList.remove("nhEtChoose"); }catch(e){} return f0.apply(this, arguments); };
+        f1.__nhEt=1; W.etPickDiv=f1; try{ etPickDiv=f1; }catch(e){} }, 250); })();
     setInterval(function(){ try{
-      var scr=document.getElementById("enterTournamentScreen"); if(!scr || !scr.classList.contains("active")) return;
+      var scr=document.getElementById("enterTournamentScreen"); if(!scr || !scr.classList.contains("active")){ CHOSEN={}; return; }
+      etDress(scr);
       var k=((document.getElementById("etTour")||{}).value||"")+"|"+((document.getElementById("etCat")||{}).value||"");
-      if(k!==FOR){ FOR=k; ROWS=[{p1:"",p2:""},{p1:"",p2:""},{p1:"",p2:""}]; }   /* another tournament or division: fresh rows */
+      if(k!==FOR){ FOR=k; ROWS=load(k); var ob=document.getElementById("nhMulti"); if(ob) draw(); }   /* another tournament or division: ITS OWN rows (b51) */
+      /* a chosen player who has since been entered in this division (by someone else, or the single entry above) leaves the rows */
+      try{ var cat0=(document.getElementById("etCat")||{}).value||"", inD={}; ((W._etUsedInDiv&&W._etUsedInDiv[cat0])||[]).forEach(function(n){ if(n) inD[n]=1; });
+        var before=ROWS.length, kept=ROWS.filter(function(r){ return r.done || !((r.p1 && inD[r.p1]) || (r.p2 && inD[r.p2])); });
+        if(kept.length!==before){ ROWS=kept.length?kept:fresh(); save(); if(document.getElementById("nhMulti")) draw(); } }catch(e){}
       var add=Array.prototype.filter.call(scr.querySelectorAll("button"),function(b){ return /^\s*Add team\s*$/i.test(b.textContent||""); })[0];
       if(!add || document.getElementById("nhMulti") || !document.getElementById("etP2")) return;   /* doubles entry open */
       var card=add.closest(".card")||add.parentNode, box=document.createElement("div"); box.id="nhMulti"; box.className=card.className||"card";
@@ -17230,7 +17286,12 @@ W.nhOpenPair=function(name){
         +'<button class="'+(ST.tab==="table"?"active":"")+'" onclick="window.__nhAmTab(\'table\')">📊 Table</button></div>';
       html+= ST.tab==="players" ? playersTab() : ST.tab==="table" ? tableTab() : roundsTab();
       html+= organiser();
+      /* b53 (Andre, 11 Nov: "every time I tick a player the table jumps back to the top of the alphabet"): the page is redrawn
+         after a tick, which sent each name list back to its top. The lists keep their place; a new search starts at the top. */
+      var kq=(ST.q||"")+"|"+(ST.rq||""), ks=Array.prototype.map.call(o.querySelectorAll("[data-keep]"),function(x){ return [x.getAttribute("data-keep"), x.scrollTop]; });
       o.innerHTML=html;
+      if(ST.keepQ===kq) ks.forEach(function(k){ var el=o.querySelector('[data-keep="'+k[0]+'"]'); if(el && k[1]) el.scrollTop=k[1]; });
+      ST.keepQ=kq;
       if(ST.askFocus){ ST.askFocus=false; var ci=document.getElementById("nhAmCode"); if(ci){ try{ ci.scrollIntoView({block:"center"}); ci.focus(); }catch(x){} } }
       ["nhAmQ","nhAmRQ"].forEach(function(id){ var i=document.getElementById(id); if(i && ST.focus===id){ i.focus(); i.setSelectionRange(i.value.length,i.value.length); } });
       if(ST.focus==="nhAmSa"){ ST.focus=""; var sa=document.getElementById("nhAmSa"); if(sa){ try{ sa.focus(); }catch(x){} } }
@@ -17249,9 +17310,9 @@ W.nhOpenPair=function(name){
         if(e.sections==="split") how+=" The field is then split into sections by rating; each section has its own rounds and table.";
         /* b41 (Andre, 10 Nov: "there must be multiple selection for an admin person"): with the organiser unlocked the
            list on top IS the organiser's — tick as many as you like; a player on his own phone ticks one name */
-        if(ST.adm) s+='<div class="card"><h2>Enter players</h2><p class="sub" style="text-align:left;margin-bottom:0"><b>Organiser:</b> '+(sl?"tick as many names as you like, then tap Add.":"tick two names to make a pair, then the next two, and so on; then tap Add.")+'</p>'+picker("add")+'</div>';
-        else s+='<div class="card"><h2>Enter this tournament</h2><p class="sub" style="text-align:left;margin-bottom:0">'+how+'</p>'+picker("join")
-          +'<p class="sub" style="text-align:left;margin:10px 0 0"><a href="#" onclick="event.preventDefault();window.__nhAmAskTop()" style="color:'+ink()+';font-weight:800">Organiser? Enter several players at once</a></p></div>';
+        /* b53 (Andre, 11 Nov: "make the process uniform between the Topside and Americano / Mexicano — the same look and
+           feel"): the organiser's way in is the Organiser link at the foot, as on Topside — no extra link here */
+        s+='<div class="card"><h2>Enter this tournament</h2><p class="sub" style="text-align:left;margin-bottom:0">'+how+'</p>'+(ST.pick==="add" ? '' : picker("join"))+'</div>';
       }
       s+='<div class="card"><h2>'+(open?"Entered":"Players")+' <span class="tm-divtag">'+L.length+(sl?" players":" pairs")+'</span></h2>';
       s+= L.length ? ('<table><thead><tr><th class="num">#</th><th>'+(sl?"Player":"Pair")+'</th><th class="num">Rating</th></tr></thead><tbody>'
@@ -17270,11 +17331,13 @@ W.nhOpenPair=function(name){
       var fits=function(n){ if(e.division==="Men's") return g(n)==="M"; if(e.division==="Ladies") return g(n)==="F"; return true; };
       var names=D.people.map(function(p){ return p.full_name; }).filter(function(n){ return n && !inn[lc(n)] && fits(n) && starts(n, ST.q); }).sort(function(a,b){ return a.localeCompare(b); }).slice(0,80);
       var pairs=!solo(e), chosen=Object.keys(ST.ticks).filter(function(k){ return ST.ticks[k]; });
-      var head = mode==="join" ? (pairs?"Which two of you are playing?":"Which one is you?") : (pairs?"Add pairs — tick two names to make a pair":"Add players — tick as many as you like");
+      var head = mode==="join" ? (pairs?"Which two of you are playing?":"Which one is you?") : (pairs?"Add pairs — tick two names to make a pair":"Add players");
       var s='<div style="margin-top:12px;border:1px solid #e6e0ee;border-radius:12px;padding:12px"><div style="font-size:13.5px;font-weight:800;color:#241d33;margin-bottom:6px">'+head+'</div>';
       if(pairs && ST.pend.length) s+='<div style="font-size:13px;color:#4b4060;margin-bottom:6px">'+ST.pend.map(function(pp,i){ return 'Pair '+(i+1)+': <b>'+esc(pp[0])+(pp[1]?(' &amp; '+esc(pp[1])):' &amp; …')+'</b>'; }).join("<br>")+'</div>';
-      s+='<input id="nhAmQ" value="'+esc(ST.q)+'" oninput="window.__nhAmQ(this.value)" placeholder="Type the first letters of a name" style="'+inp+'">'
-        +'<div style="max-height:300px;overflow:auto;border:1px solid #f0ecf4;border-radius:10px">'+(names.length?names.map(function(n){ var r=D.rating[lc(n)];
+      ST.shown=names;
+      s+='<input id="nhAmQ" value="'+esc(ST.q)+'" oninput="window.__nhAmQ(this.value)" placeholder="'+(mode==="add"?"First letters of a name":"Type the first letters of a name")+'" style="'+inp+'">'
+        +(mode==="add" ? ('<div style="display:flex;gap:8px;margin-bottom:6px">'+(pairs?'':btn("Tick all shown","window.__nhAmTickAll()",false,"flex:1;padding:7px;font-size:12px"))+btn("Clear","window.__nhAmTickNone()",false,"flex:1;padding:7px;font-size:12px")+'</div>') : '')
+        +'<div data-keep="pick" style="max-height:300px;overflow:auto;border:1px solid #f0ecf4;border-radius:10px">'+(names.length?names.map(function(n){ var r=D.rating[lc(n)];
             return '<label style="display:flex;align-items:center;gap:10px;padding:9px 8px;border-bottom:1px solid #f0ecf4;font-size:14px;cursor:pointer"><input type="checkbox" '+(ST.ticks[n]?'checked ':'')+'onchange="window.__nhAmTick(this.dataset.n,this.checked)" data-n="'+esc(n)+'" style="width:18px;height:18px"><span style="flex:1">'+esc(n)+(g(n)?(' <span style="color:#8a8196;font-size:12px">'+(g(n)==="F"?"lady":"man")+'</span>'):'')+'</span><span style="color:#8a8196">'+(r!=null?r:"")+'</span></label>'; }).join("")
           :'<div style="padding:10px;font-size:13px;color:#8a8196">Nobody to show — everyone shown is already in.</div>')+'</div>';
       var n=pairs?ST.pend.filter(function(pp){ return pp[1]; }).length:chosen.length;
@@ -17282,11 +17345,13 @@ W.nhOpenPair=function(name){
       s+='<div style="display:flex;gap:8px;margin-top:8px">'+((mode==="join" || topAdd())?"":btn("Close","window.__nhAmPick(null)",false,"flex:1"))+btn(go,"window.__nhAmGo('"+mode+"')",n>0,"flex:1")+'</div></div>';
       return s;
     };
-    var topAdd=function(){ return !!ST.adm && !!ST.D && entryOpen(ST.D.e) && ST.tab==="players"; };   /* b41 */
+    var topAdd=function(){ return false; };   /* b41's list-on-top for the organiser, taken out in b53 (uniform with Topside) */
     var addMode=function(){ return ST.pick==="add" || topAdd(); };
     W.__nhAmAskTop=function(){ ST.askFocus=true; W.__nhAmAsk(true); };
     W.__nhAmPick=function(m){ ST.pick=m; ST.q=""; ST.ticks={}; ST.pend=[]; ST.focus=m?"nhAmQ":""; ST.msg=""; paint(); };
     W.__nhAmQ=function(v){ ST.q=v; ST.focus="nhAmQ"; paint(); };
+    W.__nhAmTickAll=function(){ (ST.shown||[]).forEach(function(n){ ST.ticks[n]=true; }); ST.focus=""; paint(); };   /* as Topside's organiser */
+    W.__nhAmTickNone=function(){ ST.ticks={}; ST.pend=[]; ST.focus=""; paint(); };
     W.__nhAmTick=function(n,on){ var e=ST.D.e; ST.focus="";
       if(!solo(e)){ if(on){ var last=ST.pend[ST.pend.length-1]; if(last && !last[1]) last[1]=n; else ST.pend.push([n,null]); }
         else ST.pend=ST.pend.map(function(pp){ return pp.filter(function(x){ return x && x!==n; }); }).filter(function(pp){ return pp.length; }).map(function(pp){ return [pp[0], pp[1]||null]; });
@@ -17351,7 +17416,7 @@ W.nhOpenPair=function(name){
         if(ST.rask) s+='<div style="font-size:13px;color:#4b4060;margin-bottom:8px"><b>Take '+n.length+' out?</b> '+n.map(esc).join(", ")+(cur?' — their matches still to play stay on the draw; mark them Not played.':'')+'</div>'
           +'<div style="display:flex;gap:8px">'+btn("No, keep them","window.__nhAmRmAsk(false)",false,"flex:1")+btn("Yes, remove","window.__nhAmRmGo()",true,"flex:1")+'</div>';
         else s+='<input id="nhAmRQ" value="'+esc(ST.rq||"")+'" oninput="window.__nhAmRQ(this.value)" placeholder="First letters of a name" style="'+inp+'">'
-          +'<div style="max-height:260px;overflow:auto;border:1px solid #f0ecf4;border-radius:10px">'+L.map(function(p){ var u=unitOf(p);
+          +'<div data-keep="rm" style="max-height:260px;overflow:auto;border:1px solid #f0ecf4;border-radius:10px">'+L.map(function(p){ var u=unitOf(p);
             return '<label style="display:flex;align-items:center;gap:10px;padding:9px 8px;border-bottom:1px solid #f0ecf4;font-size:14px;cursor:pointer"><input type="checkbox" '+(ST.rticks[p.p1]?'checked ':'')+'onchange="window.__nhAmRmTick(this.dataset.n,this.checked)" data-n="'+esc(p.p1)+'" style="width:18px;height:18px"><span style="flex:1">'+esc(u)+'</span></label>'; }).join("")+'</div>'
           +'<div style="display:flex;gap:8px;margin-top:8px">'+btn("Close","window.__nhAmRm(false)",false,"flex:1")+btn("Remove "+n.length,"window.__nhAmRmAsk(true)",n.length>0,"flex:1")+'</div>';
         s+='</div>';
@@ -17395,7 +17460,7 @@ W.nhOpenPair=function(name){
       rpc("am_reset",{p_event:ST.id, p_code:ST.adm}).then(function(r){ if(!r||!r.ok){ say(esc((r&&r.error)||"Not done.")); return; }
         CK.key=""; W.__nhAmSec(root, "The draw is scrapped. "+((D.e.pairing==="system"||D.e.sections==="split")?"Make the pairs and sections again if you want to change them, then make the draw.":"Entry is open again; make the draw when everyone is in.")); }); };
     W.__nhAmUnlock=function(){ var code=((document.getElementById("nhAmCode")||{}).value||"").trim(); if(!code) return;
-      rpc("am_admin_check",{p_event:ST.id, p_code:code}).then(function(r){ if(r&&r.ok){ ST.adm=code; ST.ask=false; ST.ticks={}; ST.pend=[]; ST.q=""; try{ window.scrollTo(0,0); var sc=document.getElementById("tournamentSheetScreen"); if(sc) sc.scrollTop=0; }catch(x){} try{ sessionStorage.setItem("nhAmAdm|"+ST.id, code); }catch(e){} ST.msg=""; paint(); } else say(esc((r&&r.error)||"That code was not accepted.")); }); };
+      rpc("am_admin_check",{p_event:ST.id, p_code:code}).then(function(r){ if(r&&r.ok){ ST.adm=code; ST.ask=false; ST.ticks={}; ST.pend=[]; ST.q=""; try{ sessionStorage.setItem("nhAmAdm|"+ST.id, code); }catch(e){} ST.msg=""; paint(); } else say(esc((r&&r.error)||"That code was not accepted.")); }); };
     W.__nhAmLock=function(){ ST.adm=""; ST.preview=null; ST.rm=false; ST.pick=null; try{ sessionStorage.removeItem("nhAmAdm|"+ST.id); }catch(e){} paint(); };
     W.__nhAmRm=function(on){ ST.rm=!!on; ST.rq=""; ST.rticks={}; ST.rask=false; ST.focus=on?"nhAmRQ":""; paint(); };
     W.__nhAmRQ=function(v){ ST.rq=v; ST.focus="nhAmRQ"; paint(); };
@@ -17475,25 +17540,32 @@ W.nhOpenPair=function(name){
       });
       s+=step(sys?"STEP 3 · THE LEVEL PAIRS, THEN SAVE":"STEP 3 · SAVE, THEN MAKE THE DRAW");
       if(sys) s+='<p class="sub" style="text-align:left;margin:0 0 6px">Strongest with weakest'+(S.one?'':' inside each section')+', so the pairs are as level as they can be. They stay together for the whole event.</p>';
+      /* b54 (Andre, 11 Nov — his 3-court event drew 2 + 1 and he took it for a fault): the question that decides the courts.
+         Same time = the event's courts are shared between the sections; one after the other = each section has them all. */
+      if(!S.one && S.courts){ var pill=function(label, on, v){ return '<button class="nhAmTog'+(on?' on':'')+'" onclick="window.__nhAmTogether('+v+')" style="flex:1;border:1.5px solid '+c+';background:'+(on?c:'#fff')+';color:'+(on?'#fff':c)+';border-radius:12px;padding:10px 8px;font:inherit;font-size:13px;font-weight:800;cursor:pointer;line-height:1.3">'+label+'</button>'; };
+        s+='<div id="nhAmTogether" style="margin:4px 0 8px"><div style="font-size:13.5px;font-weight:800;color:#241d33;margin-bottom:6px">Do the sections play at the same time?</div>'
+          +'<div style="display:flex;gap:8px">'+pill('Yes — they share the '+S.total+' court'+(S.total===1?'':'s'), S.together, 'true')+pill('No — one after the other: each has all '+S.total, !S.together, 'false')+'</div></div>'; }
       G.forEach(function(A, k){ var er=setupErr(S, A), P=er?[]:setupPairs(S, A); if(er) bad=true;
         s+='<div class="nhAmSecCard" style="background:#f4f0f8;border-radius:12px;padding:10px 12px;margin:6px 0"><div style="display:flex;justify-content:space-between;align-items:baseline"><b style="font-size:14px;color:#241d33">'+esc(e.division)+(S.one?'':(' · Section '+(k+1)))+'</b><span style="font-size:12px;color:#8a8196">'+(er?'':(P.length+(S.mode==="single"?' players':' pairs')))+'</span></div>'
           +(er?('<div style="font-size:13.5px;color:#a3321f;margin-top:3px">'+esc(er)+'</div>')
               :(courtLine(S, k, P.length)+(sys?P.map(function(p){ return '<div class="nhAmPairRow" style="display:flex;justify-content:space-between;gap:8px;font-size:13px;padding:3px 0;border-bottom:1px solid #e9e2f0"><span>'+esc(p[0])+' / '+esc(p[1])+'</span><span style="color:#8a8196">'+pairR(D,p[0],p[1])+'</span></div>'; }).join(""):'')))+'</div>'; });
       if(!bad && S.courts){ var sum=0; G.forEach(function(A,k){ sum+=Number(S.courts[k])||0; });
-        if(sum>S.total) s+='<p class="sub nhAmCtNote" style="text-align:left;margin:4px 0 0">That is '+sum+' courts in all — the event was set up with '+S.total+'.</p>'; }
+        if(S.together && sum>S.total) s+='<p class="sub nhAmCtNote" style="text-align:left;margin:4px 0 0">That is '+sum+' courts in all — the event was set up with '+S.total+'.</p>'; }
       return s+'<div style="display:flex;gap:8px;margin-top:12px">'+btn("Cancel","window.__nhAmSetupOff()",false,"flex:1")
         +(bad?'<button disabled style="flex:1;border:1.5px solid #e6e0ee;background:#f4f0f8;color:#b9b2c4;border-radius:12px;padding:11px 12px;font:inherit;font-size:13.5px;font-weight:800">Save</button>':btn("Save","window.__nhAmSetupSave()",true,"flex:1"))+'</div></div>'; };
     W.__nhAmSetup=function(){ var D=ST.D; if(!D) return; var fam=(D.fam && D.fam.length)?D.fam:[D.e];
       Promise.all(fam.map(function(x){ return get("plat_amex_players?event_id=eq."+x.event_id+"&left_at=is.null&select=*&order=id.asc"); })).then(function(rs){
         var rows=[]; rs.forEach(function(r){ (r||[]).forEach(function(p){ rows.push(p); }); });
         var S=setupBuild(D, rows); if(S.error){ say(esc(S.error)); return; }
-        var tot=Number(D.e.courts_all||D.e.courts)||1; S.total=tot; S.courts=S.one?[tot]:[Math.max(1,Math.ceil(tot/2)), Math.max(1,Math.floor(tot/2))];   /* b43 */
+        var tot=Number(D.e.courts_all||D.e.courts)||1; S.total=tot; S.together=true; S.courts=courtsFor(S);   /* b43, b54 */
         ST.setup=S; ST.msg=""; ST.pick=null; ST.rm=false; paint(); }); };
     /* b43: courts for this section, and what that means each round (a court takes 4 players, or 2 pairs) */
     var courtLine=function(S, k, n){ var c=Math.max(1, Number(S.courts && S.courts[k])||1), per=(S.mode==="single")?4:2, ms=Math.min(c, Math.floor(n/per)), sit=n-ms*per, unit=(S.mode==="single")?"player":"pair";
       return '<div style="display:flex;align-items:center;gap:8px;margin:6px 0 4px;font-size:13px;color:#4b4060"><b>Courts</b>'
         +'<input class="nhAmCt" type="number" inputmode="numeric" min="1" max="20" value="'+c+'" onchange="window.__nhAmCourts('+k+',this.value)" style="width:58px;box-sizing:border-box;padding:7px 4px;font-size:15px;font-weight:800;text-align:center;border:1.5px solid #ddd5e6;border-radius:9px;font-family:inherit">'
-        +'<span class="nhAmSit">'+(sit>0?(sit+' '+unit+(sit===1?' sits':'s sit')+' out each round'):'everyone plays each round')+(c>ms?(' · only '+ms+' court'+(ms===1?' is':'s are')+' needed'):'')+'</span></div>'; };
+        +'<span class="nhAmSit" style="'+(sit>0?'color:#8a5a00;font-weight:800':'')+'">'+(sit>0?(sit+' '+unit+(sit===1?' sits':'s sit')+' out each round'):'everyone plays each round')+(c>ms?(' · only '+ms+' court'+(ms===1?' is':'s are')+' needed'):'')+'</span></div>'; };
+    var courtsFor=function(S){ var t=S.total||1; return S.one ? [t] : (S.together ? [Math.max(1,Math.ceil(t/2)), Math.max(1,Math.floor(t/2))] : [t, t]); };
+    W.__nhAmTogether=function(v){ var S=ST.setup; if(!S || S.one) return; S.together=!!v; S.courts=courtsFor(S); paint(); };
     W.__nhAmCourts=function(k, v){ var S=ST.setup; if(!S || !S.courts) return; var n=Math.floor(Number(v)); if(!(n>=1)) n=1; if(n>20) n=20; S.courts[Number(k)]=n; paint(); };
     W.__nhAmSetupOff=function(){ ST.setup=null; paint(); };
     W.__nhAmMove=function(idx, to){ var S=ST.setup; if(!S || S.one) return; var x=S.items[Number(idx)]; if(!x) return; x.sec=Number(to)?1:0; paint(); };
