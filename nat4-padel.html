@@ -3784,7 +3784,7 @@ const CLUB_NAME = _club.name;  // shown in the logo as "OPR · <name>"
     link.setAttribute('href', href);
   }catch(e){ /* install stays on the static manifest — no functional impact */ }
 })();
-const OPR_VERSION = "OPR-DOUBLES v2026.09.03-56 · NAT4 booking test b56 (nat3 n375) (no voice) (of PLAT p117)";  // MANUAL PAIR CREATION REMOVED FROM ADMIN: Create a pair, Bulk create pairs and Re-derive all pairs are gone (they only made match-less ghost pairs, and Re-derive rewrote every stored initial club-wide). Pairs are born automatically at match entry. Current pairs list untouched; the underlying JS is left in place unreferenced, so no other code path changes. Includes v47 (set-score fix + double-tap guard) and all prior.
+const OPR_VERSION = "OPR-DOUBLES v2026.09.03-56 · NAT4 booking test b57 (nat3 n375) (no voice) (of PLAT p117)";  // MANUAL PAIR CREATION REMOVED FROM ADMIN: Create a pair, Bulk create pairs and Re-derive all pairs are gone (they only made match-less ghost pairs, and Re-derive rewrote every stored initial club-wide). Pairs are born automatically at match entry. Current pairs list untouched; the underlying JS is left in place unreferenced, so no other code path changes. Includes v47 (set-score fix + double-tap guard) and all prior.
 // Explanation shown above the individual ladder. Open on load so it's read; collapsible
 // (state kept for the session) and scrolls away. Mechanics only — no outcome framing, so
 // members aren't nudged away from playing stronger opponents. Every clause maps to a real
@@ -13952,7 +13952,7 @@ W.nhOpenPair=function(name){
     setInterval(leapBrk, 900);
     W.__nhTsBuild=build;   /* for the test */
   })();
-  window.__nhBkAnon="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRqbWJudmlrcmRnbm9tamh0a2dmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODUzOTE0MzEsImV4cCI6MjEwMDk2NzQzMX0.vR8xlVFjV6jXW-pAclGjM74HqmWSKVpsacFjM-dCIJI"; window.__nhBkBuild="nat4 b56";
+  window.__nhBkAnon="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRqbWJudmlrcmRnbm9tamh0a2dmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODUzOTE0MzEsImV4cCI6MjEwMDk2NzQzMX0.vR8xlVFjV6jXW-pAclGjM74HqmWSKVpsacFjM-dCIJI"; window.__nhBkBuild="nat4 b57";
   /* ===================================================================================================
      COURT BOOKING (nat4 test copy, Manzini pilot, Andre 26 Oct). Started ONLY from the player's own My page: its
      "Court card" button becomes "Book a court", which asks "Where do you want to play?" — one tile per venue; a venue
@@ -17377,19 +17377,22 @@ W.nhOpenPair=function(name){
       var ms=D.matches.filter(function(m){ return m.round===R; });
       var playing={}; ms.forEach(function(m){ [m.a1,m.a2,m.b1,m.b2].forEach(function(n){ playing[lc(n)]=1; }); });
       var out=[]; D.players.forEach(function(p){ if(e.kind==="pairs"){ if(!playing[lc(p.p1)]) out.push(unitOf(p)); } else if(!playing[lc(p.p1)]) out.push(p.p1); });
+      var nCt=Math.max(1, Number(e.courts)||1), queue=ms.some(function(m){ return Number(m.court)>nCt; });
       var rows=ms.map(function(m){
         var res = m.status==="played" ? ('<b>'+m.games_a+'-'+m.games_b+'</b>') : m.status==="not_played" ? '<span style="color:#8a8196">not played</span>' : '<span style="color:#9a9a9a;font-weight:600">to play</span>';
         var aw=m.status==="played" && m.games_a>m.games_b, bw=m.status==="played" && m.games_b>m.games_a;
         var tap=m.status==="open" ? ' style="cursor:pointer;" onclick="window.__nhAmScore('+m.id+')" title="Tap to enter the score"' : '';
-        return '<tr'+tap+'><td class="num">'+m.court+'</td><td class="ta'+(aw?' winr':'')+'">'+esc(m.a1)+'<br>'+esc(m.a2)+'</td><td class="num">v</td><td class="tb'+(bw?' winr':'')+'">'+esc(m.b1)+'<br>'+esc(m.b2)+'</td><td class="num">'+res+'</td></tr>'
+        var onCt=(Number(m.court)<=nCt);
+        return '<tr'+tap+'><td class="num">'+(onCt?m.court:('<span class="nhAmNext" style="display:block;font-size:10.5px;color:#8a8196;line-height:1.1">next</span>'+m.court))+'</td><td class="ta'+(aw?' winr':'')+'">'+esc(m.a1)+'<br>'+esc(m.a2)+'</td><td class="num">v</td><td class="tb'+(bw?' winr':'')+'">'+esc(m.b1)+'<br>'+esc(m.b2)+'</td><td class="num">'+res+'</td></tr>'
           +((ST.score && ST.score.id===Number(m.id))?scoreRow(m):'')
           +(ST.adm?('<tr><td></td><td colspan="4" style="padding-top:0"><span style="display:flex;gap:4px">'
             +(m.status!=="not_played"&&m.status!=="played"?'<button onclick="window.__nhAmResult('+m.id+',\'not_played\')" style="border:1px solid #ddd5e6;background:#fff;border-radius:8px;padding:5px 7px;font:inherit;font-size:11px;cursor:pointer">Not played</button>':'')
             +(m.status!=="open"?'<button onclick="window.__nhAmResult('+m.id+',\'open\')" style="border:1px solid #ddd5e6;background:#fff;border-radius:8px;padding:5px 7px;font:inherit;font-size:11px;cursor:pointer">Reopen</button>':'')+'</span></td></tr>'):''); }).join("");
       return '<div class="card"><h2>Round Fixtures &amp; Results</h2>'
         +'<div class="rsel">'+rounds.map(function(i){ return '<button class="fixed '+(i===R?'active':'')+'" onclick="window.__nhAmRound('+i+')">R'+i+'</button>'; }).join("")+'</div>'
-        +(rows?'<table class="fxtbl"><thead><tr><th class="num">Court</th><th class="ta">Side A</th><th class="num"></th><th class="tb">Side B</th><th class="num">Score</th></tr></thead><tbody>'+rows+'</tbody></table>':'<p class="sub">No matches in this round.</p>')
+        +(rows?'<table class="fxtbl"><thead><tr><th class="num">'+(queue?"Court / order":"Court")+'</th><th class="ta">Side A</th><th class="num"></th><th class="tb">Side B</th><th class="num">Score</th></tr></thead><tbody>'+rows+'</tbody></table>':'<p class="sub">No matches in this round.</p>')
         +(out.length?'<p class="sub" style="text-align:left"><b>Sitting out:</b> '+out.map(esc).join(", ")+'</p>':'')
+        +(queue?('<p class="sub nhAmQueue" style="text-align:left"><b>'+(nCt===1?'Match 1 starts on the court.':('Matches 1 to '+nCt+' start on courts 1 to '+nCt+'.'))+'</b> The next match in the order goes on as soon as a court is free.</p>'):'')
         +'<p class="sub" style="text-align:left"><b>Tap a match to enter the score.</b> '+esc(scoreLine(e))+'.</p></div>';
     };
     /* the table */
@@ -17442,7 +17445,7 @@ W.nhOpenPair=function(name){
       if(ST.preview){ var P=ST.preview;
         s+='<div style="font-size:14px;font-weight:800;color:#241d33;margin:8px 0 4px">'+(P.rounds.length>1?('Rounds '+P.rounds[0][0].round+'–'+P.rounds[P.rounds.length-1][0].round):('Round '+P.rounds[0][0].round))+'</div>'
           + P.rounds.map(function(r){ return '<div style="font-size:12px;font-weight:800;color:'+c+';margin:6px 0 2px">ROUND '+r[0].round+'</div>'
-              + r.map(function(m){ return '<div style="font-size:13px;padding:3px 0">Court '+m.court+': '+esc(m.a1)+' &amp; '+esc(m.a2)+' <span style="color:#8a8196">v</span> '+esc(m.b1)+' &amp; '+esc(m.b2)+'</div>'; }).join(""); }).join("")
+              + r.map(function(m){ return '<div style="font-size:13px;padding:3px 0">'+(Number(m.court)<=Math.max(1,Number(e.courts)||1)?('Court '+m.court):('Next · '+m.court))+': '+esc(m.a1)+' &amp; '+esc(m.a2)+' <span style="color:#8a8196">v</span> '+esc(m.b1)+' &amp; '+esc(m.b2)+'</div>'; }).join(""); }).join("")
           + (P.sits && P.sits.length?'<div style="font-size:12.5px;color:#8a8196;margin-top:6px">Sitting out: '+P.sits.map(esc).join(", ")+'</div>':'')
           + '<div style="display:flex;gap:8px;margin-top:12px">'+btn("Cancel","window.__nhAmPreviewOff()",false,"flex:1")+btn("Save this draw","window.__nhAmSave()",true,"flex:1")+'</div>';
       }
@@ -17567,10 +17570,11 @@ W.nhOpenPair=function(name){
         var tot=Number(D.e.courts_all||D.e.courts)||1; S.total=tot; S.together=true; S.courts=courtsFor(S);   /* b43, b54 */
         ST.setup=S; ST.msg=""; ST.pick=null; ST.rm=false; paint(); }); };
     /* b43: courts for this section, and what that means each round (a court takes 4 players, or 2 pairs) */
-    var courtLine=function(S, k, n){ var c=Math.max(1, Number(S.courts && S.courts[k])||1), per=(S.mode==="single")?4:2, ms=Math.min(c, Math.floor(n/per)), sit=n-ms*per, unit=(S.mode==="single")?"player":"pair";
+    var courtLine=function(S, k, n){ var c=Math.max(1, Number(S.courts && S.courts[k])||1), per=(S.mode==="single")?4:2, ms=Math.floor(n/per), sit=n-ms*per, unit=(S.mode==="single")?"player":"pair";
       return '<div style="display:flex;align-items:center;gap:8px;margin:6px 0 4px;font-size:13px;color:#4b4060"><b>Courts</b>'
         +'<input class="nhAmCt" type="number" inputmode="numeric" min="1" max="20" value="'+c+'" onchange="window.__nhAmCourts('+k+',this.value)" style="width:58px;box-sizing:border-box;padding:7px 4px;font-size:15px;font-weight:800;text-align:center;border:1.5px solid #ddd5e6;border-radius:9px;font-family:inherit">'
-        +'<span class="nhAmSit" style="'+(sit>0?'color:#8a5a00;font-weight:800':'')+'">'+(sit>0?(sit+' '+unit+(sit===1?' sits':'s sit')+' out each round'):'everyone plays each round')+(c>ms?(' · only '+ms+' court'+(ms===1?' is':'s are')+' needed'):'')+'</span></div>'; };
+        +'<span class="nhAmSit">'+ms+' match'+(ms===1?'':'es')+' a round'+(ms>c?(', '+c+' at a time — the next goes on when a court is free'):(c>ms?(' · only '+ms+' court'+(ms===1?' is':'s are')+' needed'):''))
+        +(sit>0?(' · <b style="color:#8a5a00">'+sit+' '+unit+(sit===1?' sits':'s sit')+' out each round</b>'):'')+'</span></div>'; };
     var courtsFor=function(S){ var t=S.total||1; return S.one ? [t] : (S.together ? [Math.max(1,Math.ceil(t/2)), Math.max(1,Math.floor(t/2))] : [t, t]); };
     W.__nhAmTogether=function(v){ var S=ST.setup; if(!S || S.one) return; S.together=!!v; S.courts=courtsFor(S); paint(); };
     W.__nhAmCourts=function(k, v){ var S=ST.setup; if(!S || !S.courts) return; var n=Math.floor(Number(v)); if(!(n>=1)) n=1; if(n>20) n=20; S.courts[Number(k)]=n; paint(); };
@@ -17604,23 +17608,29 @@ W.nhOpenPair=function(name){
     var makeDraw=function(D){
       var e=D.e, cur=Number(e.current_round)||0, mixed=(e.division==="Mixed"), units=D.players.slice();
       if(needsSetup(e)) return {error:setupLabel(e)+" first."};
+      /* b57 (Andre, 11 Nov: 40 players on 3 courts drew 3 matches and 28 sitting out — "it should show the full round … as soon
+         as court 1 is free the next players go on — it is a full round for all normally"): a round is everyone playing once.
+         The draw is made for as many matches as the players make (40 players = 10); the event's courts only say how many
+         are on at once. A match's number in the round is its place in the queue: 1…courts start, the rest follow as a
+         court comes free. Only the odd ones out sit (a number that does not divide by 4, or an odd number of pairs). */
+      var full=Math.max(1, Math.floor(units.length/((e.kind==="single")?4:2)));
       if(e.kind==="single"){
         var byRating=units.map(function(p){ return {name:p.p1, rating:rt(D,p.p1), g:D.gender[p.p1]}; }).sort(function(a,b){ return b.rating-a.rating; });
         if(byRating.length<4) return {error:"At least 4 players are needed."};
-        if(e.draw==="americano") return {rounds:DR().americano(byRating,{courts:e.courts, rounds:e.rounds, mixed:mixed}), sits:[]};
+        if(e.draw==="americano") return {rounds:DR().americano(byRating,{courts:full, rounds:e.rounds, mixed:mixed}), sits:[]};
         var order = cur ? DR().table(byRating.map(function(p){ return p.name; }), D.matches, "single").map(function(r){ return r.name; }) : byRating.map(function(p){ return p.name; });
         var sat=sitCounts(D, byRating.map(function(p){ return p.name; }));
-        var res=DR().mexicano(order,{courts:e.courts, mixed:mixed}, sat, D.gender);
+        var res=DR().mexicano(order,{courts:full, mixed:mixed}, sat, D.gender);
         if(!res.rows.length) return {error:"Not enough players for a court."};
         return {rounds:[res.rows.map(function(r){ r.round=cur+1; return r; })], sits:res.sits};
       }
       var pairs=units.map(function(p){ return {u:unitOf(p), r:unitRating(D,p)}; }).sort(function(a,b){ return b.r-a.r; }).map(function(x){ return x.u; });
       if(pairs.length<2) return {error:"At least 2 pairs are needed."};
-      if(e.draw==="americano") return {rounds:DR().teamAmericano(pairs,{courts:e.courts, rounds:e.rounds}), sits:[]};
+      if(e.draw==="americano") return {rounds:DR().teamAmericano(pairs,{courts:full, rounds:e.rounds}), sits:[]};
       var orderP = cur ? DR().table(pairs, D.matches, "pairs").map(function(r){ return r.name; }) : pairs;
       var last={}; D.matches.filter(function(m){ return m.round===cur; }).forEach(function(m){ var A=m.a1+" & "+m.a2, B=m.b1+" & "+m.b2; last[A<B?A+"|"+B:B+"|"+A]=1;
         var A2=m.a2+" & "+m.a1, B2=m.b2+" & "+m.b1; [[A,B2],[A2,B],[A2,B2]].forEach(function(x){ last[x[0]<x[1]?x[0]+"|"+x[1]:x[1]+"|"+x[0]]=1; }); });
-      var res2=DR().teamMexicano(orderP,{courts:e.courts}, sitCounts(D, pairs), last);
+      var res2=DR().teamMexicano(orderP,{courts:full}, sitCounts(D, pairs), last);
       return {rounds:[res2.rows.map(function(r){ r.round=cur+1; return r; })], sits:res2.sits};
     };
     var sitCounts=function(D, units){ var sat={}, rounds={}; D.matches.forEach(function(m){ (rounds[m.round]=rounds[m.round]||[]).push(m); });
