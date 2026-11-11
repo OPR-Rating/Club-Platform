@@ -3784,7 +3784,7 @@ const CLUB_NAME = _club.name;  // shown in the logo as "OPR · <name>"
     link.setAttribute('href', href);
   }catch(e){ /* install stays on the static manifest — no functional impact */ }
 })();
-const OPR_VERSION = "OPR-DOUBLES v2026.09.03-56 · NAT4 booking test b48 (nat3 n375) (no voice) (of PLAT p117)";  // MANUAL PAIR CREATION REMOVED FROM ADMIN: Create a pair, Bulk create pairs and Re-derive all pairs are gone (they only made match-less ghost pairs, and Re-derive rewrote every stored initial club-wide). Pairs are born automatically at match entry. Current pairs list untouched; the underlying JS is left in place unreferenced, so no other code path changes. Includes v47 (set-score fix + double-tap guard) and all prior.
+const OPR_VERSION = "OPR-DOUBLES v2026.09.03-56 · NAT4 booking test b50 (nat3 n375) (no voice) (of PLAT p117)";  // MANUAL PAIR CREATION REMOVED FROM ADMIN: Create a pair, Bulk create pairs and Re-derive all pairs are gone (they only made match-less ghost pairs, and Re-derive rewrote every stored initial club-wide). Pairs are born automatically at match entry. Current pairs list untouched; the underlying JS is left in place unreferenced, so no other code path changes. Includes v47 (set-score fix + double-tap guard) and all prior.
 // Explanation shown above the individual ladder. Open on load so it's read; collapsible
 // (state kept for the session) and scrolls away. Mechanics only — no outcome framing, so
 // members aren't nudged away from playing stronger opponents. Every clause maps to a real
@@ -13952,7 +13952,7 @@ W.nhOpenPair=function(name){
     setInterval(leapBrk, 900);
     W.__nhTsBuild=build;   /* for the test */
   })();
-  window.__nhBkAnon="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRqbWJudmlrcmRnbm9tamh0a2dmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODUzOTE0MzEsImV4cCI6MjEwMDk2NzQzMX0.vR8xlVFjV6jXW-pAclGjM74HqmWSKVpsacFjM-dCIJI"; window.__nhBkBuild="nat4 b48";
+  window.__nhBkAnon="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRqbWJudmlrcmRnbm9tamh0a2dmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODUzOTE0MzEsImV4cCI6MjEwMDk2NzQzMX0.vR8xlVFjV6jXW-pAclGjM74HqmWSKVpsacFjM-dCIJI"; window.__nhBkBuild="nat4 b50";
   /* ===================================================================================================
      COURT BOOKING (nat4 test copy, Manzini pilot, Andre 26 Oct). Started ONLY from the player's own My page: its
      "Court card" button becomes "Book a court", which asks "Where do you want to play?" — one tile per venue; a venue
@@ -17748,6 +17748,14 @@ W.nhOpenPair=function(name){
     setInterval(function(){ try{
       var f=document.getElementById("atFormat"); if(!f || f.querySelector('option[value="amex"]')) return;
       var o=document.createElement("option"); o.value="amex"; o.textContent="Americano / Mexicano — short matches, everyone plays every round"; f.appendChild(o);
+      /* b50 (Andre, 11 Nov: "the default is External — can we not have it that the default is 'select' … and when you select
+         Internal the default is Swiss — this also needs to be select"): both lists start on "Select"; nothing is created
+         until a type (and, for Internal, a format) has been chosen */
+      try{ var ty0=document.getElementById("atType");
+        if(ty0 && !ty0.querySelector('option[value=""]')){ var o1=document.createElement("option"); o1.value=""; o1.textContent="— Select the type of tournament —"; ty0.insertBefore(o1, ty0.firstChild); ty0.value=""; try{ atToggleType(); }catch(e){} }
+        if(!f.querySelector('option[value=""]')){ var o2=document.createElement("option"); o2.value=""; o2.textContent="— Select the format —"; f.insertBefore(o2, f.firstChild); f.value=""; f.dispatchEvent(new Event("change")); }
+        var clr=function(){ var m=document.getElementById("adminTourMsg"); if(m && /^Select the /.test((m.textContent||"").trim())) m.innerHTML=""; setTimeout(amSync,0); };
+        if(ty0 && !ty0.__nhClr){ ty0.__nhClr=1; ty0.addEventListener("change", clr); } if(!f.__nhClr){ f.__nhClr=1; f.addEventListener("change", clr); } }catch(e){}
       var blk=document.getElementById("atFormatBlock"); if(!blk) return;
       var sel=function(id, opts){ return '<select id="'+id+'" class="ac-field">'+opts.map(function(x){ return '<option value="'+x[0]+'">'+x[1]+'</option>'; }).join("")+'</select>'; };
       var lab=function(t){ return '<label style="font-size:12px;color:#9b80b3;font-weight:700;">'+t+'</label>'; };
@@ -17775,7 +17783,7 @@ W.nhOpenPair=function(name){
     /* b38: with Americano / Mexicano chosen, the parts of the form it does not use are put away (and brought back for any other format) */
     var amSync=function(){ try{
       var f=document.getElementById("atFormat"), ty=document.getElementById("atType"); if(!f) return;
-      var on=(f.value==="amex") && (!ty || ty.value==="internal");
+      var on=((f.value==="amex") && (!ty || ty.value==="internal")) || (ty && (ty.value==="" || (ty.value==="internal" && f.value==="")));   /* b50: nothing below until the type / format is chosen */
       var hc=document.getElementById("atHandicap"); hc=hc && hc.closest ? hc.closest("div") : null;
       [document.getElementById("atDivBlock"), document.getElementById("nhRulesNew"), hc].forEach(function(el){ if(!el) return;
         if(on){ if(el.style.display!=="none"){ el.dataset.nhAmHid=el.style.display||"-"; el.style.display="none"; } }
@@ -17790,7 +17798,7 @@ W.nhOpenPair=function(name){
        pinned (the parent's .ladder-table th is sticky), so on this short list it slid down over the one row under it. Here
        the heading row simply scrolls with the list. */
     (function(){ try{ var st=document.createElement("style"); st.id="nhAdmCss"; st.textContent="#adminTournaments .ladder-table th{position:static !important}"; document.head.appendChild(st); }catch(e){} })();
-    var ADM={ask:null, msg:""};
+    var ADM={msg:""};
     var admPaint=function(){
       var box=document.getElementById("adminTournaments"), cid=Number((document.getElementById("adminClubSelect")||{}).value)||0; if(!box || !cid) return;
       Promise.all([get("plat_topside?club_id=eq."+cid+"&select=*&order=tour_id.asc"), get("plat_amex?club_id=eq."+cid+"&select=*&order=event_id.asc")]).then(function(r){
@@ -17805,12 +17813,12 @@ W.nhOpenPair=function(name){
         var h='';
         rows.forEach(function(t){
           var status = t.archived ? '<span style="color:#888;">closed</span>' : (t.active ? '<span style="color:#1e8449;font-weight:700;">active</span>' : 'off');
-          var call=function(what, sure){ return "window.__nhAdmSet('"+t.k+"',"+t.id+",'"+what+"',"+(sure?"true":"false")+")"; }, act="";
-          if(ADM.ask && ADM.ask.k===t.k && ADM.ask.id===t.id){
-            act='<span style="color:#4b4060;white-space:normal">'+(ADM.ask.what==="delete"?"Delete it for good? Its draw and table go; the matches played stay in the ratings.":"Close it? It leaves the door and nobody can enter any more.")+'</span> '
-              +b(ADM.ask.what==="delete"?"yes, delete":"yes, close", call(ADM.ask.what, true), "#c0392b")+' '+b("no", "window.__nhAdmSet('',0,'',false)", "#6c3483");
-          } else if(t.archived) act='<span style="color:#aaa;">archived</span> '+b("delete", call("delete", false), "#c0392b");
-          else act=(t.active ? b("turn off", call("off", true), "#8fb500") : b("turn on", call("on", true), "#1e8449"))+' '+b("close&amp;archive", call("close", false), "#c0392b");
+          /* b49 (Andre, 11 Nov: "can we not have all the tournaments work the same way — I think the pop-up dialogue box is
+             better"): these rows ask exactly as the normal tournaments' rows do — the question card, then the result card */
+          var call=function(what){ return "window.__nhAdmSet('"+t.k+"',"+t.id+",'"+what+"',this.getAttribute('data-n'))"; }, act="";
+          var bn=function(label, what, col){ return '<button data-n="'+esc(t.name)+'" onclick="'+call(what)+'" style="background:none;border:none;color:'+col+';cursor:pointer;">'+label+'</button>'; };
+          if(t.archived) act='<span style="color:#aaa;">archived</span> '+bn("delete", "delete", "#c0392b");
+          else act=(t.active ? bn("turn off", "off", "#8fb500") : bn("turn on", "on", "#1e8449"))+' '+bn("close&amp;archive", "close", "#c0392b");
           h+='<tr class="nhAdmRow"><td>'+esc(t.name)+'</td><td>'+esc(t.type)+'</td><td>'+status+'</td><td>'+act+'</td></tr>'; });
         /* b45 (Andre, 10 Nov: "why is red showing 2 header rows"): ONE table — the rows join the parent's own list when the
            group has normal tournaments too; a table of their own only when it has none */
@@ -17820,34 +17828,22 @@ W.nhOpenPair=function(name){
         if(tb){ tb.insertAdjacentHTML("beforeend", h); d.innerHTML=msg; }
         else { d.style.marginTop="8px"; d.innerHTML='<table class="ladder-table"><thead><tr><th>Name</th><th>Type</th><th>Status</th><th></th></tr></thead><tbody>'+h+'</tbody></table>'+msg; }
         box.appendChild(d); }); };
-    W.__nhAdmSet=function(k, id, what, sure){
-      if(!k){ ADM.ask=null; admPaint(); return; }
-      if(!sure){ ADM.ask={k:k, id:Number(id), what:what}; ADM.msg=""; admPaint(); return; }
-      ADM.ask=null; var pin=""; try{ pin=String(ADMIN_PIN||""); }catch(e){}
+    W.__nhAdmSet=function(k, id, what, name){
+      name=String(name||"");
+      /* confirm / alert are the Control Room's question card (b44) — the same card the normal tournaments use */
+      if(what==="close" && !confirm('Close & ARCHIVE "'+name+'"? It leaves the door and nobody can enter any more. Its rounds and table are kept.')) return;
+      if(what==="delete"){
+        if(!confirm('Permanently DELETE the archived "'+name+'"?\n\nThis removes the event, its draw and its table. Matches already played and player ratings are NOT affected.')) return;
+        if(!confirm('Are you sure? This cannot be undone.')) return; }
+      var pin=""; try{ pin=String(ADMIN_PIN||""); }catch(e){}
       rpc(k==="ts"?"ts_admin_set":"am_admin_set", k==="ts"?{p_tour:Number(id), p_code:pin, p_what:what}:{p_event:Number(id), p_code:pin, p_what:what}).then(function(r){
-        ADM.msg=(r&&r.ok)?"":((r&&r.error)||"Not changed."); CK.key=""; PK.key=""; try{ if(typeof W.__nhTsCardsReset==="function") W.__nhTsCardsReset(); }catch(e){} admPaint(); }); };
+        CK.key=""; PK.key=""; AMR.key="";
+        if(!r || !r.ok){ alert((r&&r.error)||"Not changed."); return; }
+        if(what==="close") alert('"'+name+'" archived.'); else if(what==="delete") alert('"'+name+'" deleted.');
+        admPaint(); }); };
     (function(){ var n=0, t=setInterval(function(){ var f0=W.adminLoadTournaments; if(typeof f0!=="function"){ if(++n>80) clearInterval(t); return; } clearInterval(t); if(f0.__nhAdm) return;
         var f1=async function(){ var r=await f0.apply(this, arguments); try{ admPaint(); }catch(e){} return r; };
         f1.__nhAdm=1; W.adminLoadTournaments=f1; try{ adminLoadTournaments=f1; }catch(e){} }, 250); })();
-    /* b43 (Andre, 10 Nov: "the delete button in the admin section is not active — I can't delete the Americano matches"):
-       the parent's adminDeleteMatch asks with confirm(), a pop-up the Claude browser blocks, so nothing happened. The same
-       delete (delete_match, ratings recompute on the server), asked and answered in the row. */
-    (function(){ var n=0, t=setInterval(function(){ var f0=W.adminDeleteMatch; if(typeof f0!=="function"){ if(++n>80) clearInterval(t); return; } clearInterval(t); if(f0.__nhNoPop) return;
-        var f1=function(id, sure){
-          var re=new RegExp("adminDeleteMatch\\(\\s*'?"+String(id).replace(/[^0-9A-Za-z_-]/g,"")+"'?\\s*\\)");
-          var el=Array.prototype.filter.call(document.querySelectorAll("#adminScreen [onclick], [onclick*=adminDeleteMatch]"),function(b){ return re.test(b.getAttribute("onclick")||""); })[0];
-          var host=el?el.parentNode:null, old=document.getElementById("nhDelAsk"); if(old) old.remove();
-          var note=function(html, col){ if(!host) return; var d=document.createElement("div"); d.id="nhDelAsk"; d.style.cssText="font-size:13px;white-space:normal;padding:4px 0;color:"+(col||"#4b4060"); d.innerHTML=html; host.appendChild(d); };
-          var q=JSON.stringify(id).replace(/"/g,"'");
-          if(!sure){ note('Delete this match? Ratings will recompute. <button onclick="adminDeleteMatch('+q+',true)" style="background:none;border:none;color:#c0392b;cursor:pointer;font-weight:700">yes, delete</button> '
-              +'<button onclick="var x=document.getElementById(\'nhDelAsk\'); if(x) x.remove();" style="background:none;border:none;color:#6c3483;cursor:pointer;font-weight:700">no</button>'); return; }
-          note("Deleting…");
-          var cid=Number((document.getElementById("adminClubSelect")||{}).value)||0;
-          Promise.resolve(adminCall("delete_match",{id:id, club_id:cid})).then(function(r){
-            var o2=document.getElementById("nhDelAsk"); if(o2) o2.remove();
-            if(!r || !r.ok){ note(esc((r&&r.error)||"Could not delete."), "#c0392b"); return; }
-            try{ adminLoadMatches(); }catch(e){} }).catch(function(){ note("Could not delete — try again.", "#c0392b"); }); };
-        f1.__nhNoPop=1; W.adminDeleteMatch=f1; try{ adminDeleteMatch=f1; }catch(e){} }, 250); })();
     /* ---------------------------------------------------------------- b44: THE CONTROL ROOM ASKS IN THE PAGE
        (Andre, 10 Nov: "close and archive is not working in blue"; before it, Matches → Delete.) The parent's Control Room
        asks with confirm() / prompt() and reports with alert() — pop-ups the Claude browser blocks, so the buttons did
@@ -17887,6 +17883,9 @@ W.nhOpenPair=function(name){
       var f0=W.adminCreateTournament; if(typeof f0!=="function" || !f0.__nhTs) return false; if(f0.__nhAm) return true;
       var nf=async function(){
         var fmt=(document.getElementById("atFormat")||{}).value, type=(document.getElementById("atType")||{}).value;
+        var msg0=document.getElementById("adminTourMsg");
+        if(!type){ if(msg0) msg0.innerHTML='<span style="color:#c0392b;">Select the type of tournament first.</span>'; return; }   /* b50 */
+        if(type==="internal" && !fmt){ if(msg0) msg0.innerHTML='<span style="color:#c0392b;">Select the format first.</span>'; return; }
         if(type!=="internal" || fmt!=="amex") return f0.apply(this, arguments);
         var msg=document.getElementById("adminTourMsg"), cid=Number((document.getElementById("adminClubSelect")||{}).value)||0;
         var v=function(id){ return ((document.getElementById(id)||{}).value||"").trim(); };
