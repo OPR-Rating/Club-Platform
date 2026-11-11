@@ -3784,7 +3784,7 @@ const CLUB_NAME = _club.name;  // shown in the logo as "OPR · <name>"
     link.setAttribute('href', href);
   }catch(e){ /* install stays on the static manifest — no functional impact */ }
 })();
-const OPR_VERSION = "OPR-DOUBLES v2026.09.03-56 · NAT4 booking test b54 (nat3 n375) (no voice) (of PLAT p117)";  // MANUAL PAIR CREATION REMOVED FROM ADMIN: Create a pair, Bulk create pairs and Re-derive all pairs are gone (they only made match-less ghost pairs, and Re-derive rewrote every stored initial club-wide). Pairs are born automatically at match entry. Current pairs list untouched; the underlying JS is left in place unreferenced, so no other code path changes. Includes v47 (set-score fix + double-tap guard) and all prior.
+const OPR_VERSION = "OPR-DOUBLES v2026.09.03-56 · NAT4 booking test b55 (nat3 n375) (no voice) (of PLAT p117)";  // MANUAL PAIR CREATION REMOVED FROM ADMIN: Create a pair, Bulk create pairs and Re-derive all pairs are gone (they only made match-less ghost pairs, and Re-derive rewrote every stored initial club-wide). Pairs are born automatically at match entry. Current pairs list untouched; the underlying JS is left in place unreferenced, so no other code path changes. Includes v47 (set-score fix + double-tap guard) and all prior.
 // Explanation shown above the individual ladder. Open on load so it's read; collapsible
 // (state kept for the session) and scrolls away. Mechanics only — no outcome framing, so
 // members aren't nudged away from playing stronger opponents. Every clause maps to a real
@@ -13952,7 +13952,7 @@ W.nhOpenPair=function(name){
     setInterval(leapBrk, 900);
     W.__nhTsBuild=build;   /* for the test */
   })();
-  window.__nhBkAnon="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRqbWJudmlrcmRnbm9tamh0a2dmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODUzOTE0MzEsImV4cCI6MjEwMDk2NzQzMX0.vR8xlVFjV6jXW-pAclGjM74HqmWSKVpsacFjM-dCIJI"; window.__nhBkBuild="nat4 b54";
+  window.__nhBkAnon="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRqbWJudmlrcmRnbm9tamh0a2dmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODUzOTE0MzEsImV4cCI6MjEwMDk2NzQzMX0.vR8xlVFjV6jXW-pAclGjM74HqmWSKVpsacFjM-dCIJI"; window.__nhBkBuild="nat4 b55";
   /* ===================================================================================================
      COURT BOOKING (nat4 test copy, Manzini pilot, Andre 26 Oct). Started ONLY from the player's own My page: its
      "Court card" button becomes "Book a court", which asks "Where do you want to play?" — one tile per venue; a venue
@@ -17426,7 +17426,10 @@ W.nhOpenPair=function(name){
       if(setupOn && !cur){
         if(ST.setup) s+=setupPreview();
         else if(!e.setup_done) s+=btn(setupLabel(e)+" — show them first","window.__nhAmSetup()",true,"width:100%");
-        else s+='<p class="sub" style="text-align:left">'+madeLine(e)+' <a href="#" onclick="event.preventDefault();window.__nhAmSetup()" style="color:'+c+';font-weight:800">Make them again</a></p>';
+        /* b55 (Andre, 11 Nov: scrapped the draw and could not find the way back to the sections and courts — it was a small
+           link, "Make them again", and he went straight to the draw preview): a proper button, saying what it is for */
+        else if(!ST.preview) s+='<p class="sub" style="text-align:left;margin-bottom:6px">'+madeLine(e)+' This section has <b>'+e.courts+' court'+(Number(e.courts)===1?'':'s')+'</b>.</p>'
+          +btn("Change the "+(e.pairing==="system"?"pairs, ":"")+"sections or courts","window.__nhAmSetup()",false,"width:100%;margin-bottom:8px");
       }
       if(ST.setup || (setupOn && !e.setup_done)){ /* the draw comes after the pairs / sections */ }
       else if(e.draw==="americano"){
@@ -17458,7 +17461,7 @@ W.nhOpenPair=function(name){
     W.__nhAmScrap=function(on){ ST.scrap=!!on; ST.msg=""; paint(); };
     W.__nhAmScrapGo=function(){ var D=ST.D; if(!D) return; var root=Number((D.fam && D.fam[0] && D.fam[0].event_id)||D.e.parent_id||D.e.event_id); ST.scrap=false; say("Scrapping the draw…");
       rpc("am_reset",{p_event:ST.id, p_code:ST.adm}).then(function(r){ if(!r||!r.ok){ say(esc((r&&r.error)||"Not done.")); return; }
-        CK.key=""; W.__nhAmSec(root, "The draw is scrapped. "+((D.e.pairing==="system"||D.e.sections==="split")?"Make the pairs and sections again if you want to change them, then make the draw.":"Entry is open again; make the draw when everyone is in.")); }); };
+        CK.key=""; W.__nhAmSec(root, "The draw is scrapped. "+((D.e.pairing==="system"||D.e.sections==="split")?"To change the sections or the courts, tap “Change the "+(D.e.pairing==="system"?"pairs, ":"")+"sections or courts” below; then make the draw.":"Entry is open again; make the draw when everyone is in.")); }); };
     W.__nhAmUnlock=function(){ var code=((document.getElementById("nhAmCode")||{}).value||"").trim(); if(!code) return;
       rpc("am_admin_check",{p_event:ST.id, p_code:code}).then(function(r){ if(r&&r.ok){ ST.adm=code; ST.ask=false; ST.ticks={}; ST.pend=[]; ST.q=""; try{ sessionStorage.setItem("nhAmAdm|"+ST.id, code); }catch(e){} ST.msg=""; paint(); } else say(esc((r&&r.error)||"That code was not accepted.")); }); };
     W.__nhAmLock=function(){ ST.adm=""; ST.preview=null; ST.rm=false; ST.pick=null; try{ sessionStorage.removeItem("nhAmAdm|"+ST.id); }catch(e){} paint(); };
@@ -17556,7 +17559,7 @@ W.nhOpenPair=function(name){
     W.__nhAmSetup=function(){ var D=ST.D; if(!D) return; var fam=(D.fam && D.fam.length)?D.fam:[D.e];
       Promise.all(fam.map(function(x){ return get("plat_amex_players?event_id=eq."+x.event_id+"&left_at=is.null&select=*&order=id.asc"); })).then(function(rs){
         var rows=[]; rs.forEach(function(r){ (r||[]).forEach(function(p){ rows.push(p); }); });
-        var S=setupBuild(D, rows); if(S.error){ say(esc(S.error)); return; }
+        var S=setupBuild(D, rows); if(S.error){ say(esc(S.error)); return; } ST.preview=null;
         var tot=Number(D.e.courts_all||D.e.courts)||1; S.total=tot; S.together=true; S.courts=courtsFor(S);   /* b43, b54 */
         ST.setup=S; ST.msg=""; ST.pick=null; ST.rm=false; paint(); }); };
     /* b43: courts for this section, and what that means each round (a court takes 4 players, or 2 pairs) */
