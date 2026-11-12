@@ -3784,7 +3784,7 @@ const CLUB_NAME = _club.name;  // shown in the logo as "OPR · <name>"
     link.setAttribute('href', href);
   }catch(e){ /* install stays on the static manifest — no functional impact */ }
 })();
-const OPR_VERSION = "OPR-DOUBLES v2026.09.03-56 · NAT4 booking test b58 (nat3 n375) (no voice) (of PLAT p117)";  // MANUAL PAIR CREATION REMOVED FROM ADMIN: Create a pair, Bulk create pairs and Re-derive all pairs are gone (they only made match-less ghost pairs, and Re-derive rewrote every stored initial club-wide). Pairs are born automatically at match entry. Current pairs list untouched; the underlying JS is left in place unreferenced, so no other code path changes. Includes v47 (set-score fix + double-tap guard) and all prior.
+const OPR_VERSION = "OPR-DOUBLES v2026.09.03-56 · NAT4 booking test b59 (nat3 n375) (no voice) (of PLAT p117)";  // MANUAL PAIR CREATION REMOVED FROM ADMIN: Create a pair, Bulk create pairs and Re-derive all pairs are gone (they only made match-less ghost pairs, and Re-derive rewrote every stored initial club-wide). Pairs are born automatically at match entry. Current pairs list untouched; the underlying JS is left in place unreferenced, so no other code path changes. Includes v47 (set-score fix + double-tap guard) and all prior.
 // Explanation shown above the individual ladder. Open on load so it's read; collapsible
 // (state kept for the session) and scrolls away. Mechanics only — no outcome framing, so
 // members aren't nudged away from playing stronger opponents. Every clause maps to a real
@@ -13952,7 +13952,7 @@ W.nhOpenPair=function(name){
     setInterval(leapBrk, 900);
     W.__nhTsBuild=build;   /* for the test */
   })();
-  window.__nhBkAnon="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRqbWJudmlrcmRnbm9tamh0a2dmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODUzOTE0MzEsImV4cCI6MjEwMDk2NzQzMX0.vR8xlVFjV6jXW-pAclGjM74HqmWSKVpsacFjM-dCIJI"; window.__nhBkBuild="nat4 b58";
+  window.__nhBkAnon="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRqbWJudmlrcmRnbm9tamh0a2dmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODUzOTE0MzEsImV4cCI6MjEwMDk2NzQzMX0.vR8xlVFjV6jXW-pAclGjM74HqmWSKVpsacFjM-dCIJI"; window.__nhBkBuild="nat4 b59";
   /* ===================================================================================================
      COURT BOOKING (nat4 test copy, Manzini pilot, Andre 26 Oct). Started ONLY from the player's own My page: its
      "Court card" button becomes "Book a court", which asks "Where do you want to play?" — one tile per venue; a venue
@@ -14068,7 +14068,11 @@ W.nhOpenPair=function(name){
       if(!ensure()) return; showScreen("nhBkScreen"); try{ W.scrollTo(0,0); }catch(e){}
       BK=0; ADMIN=null; FORP=false; venues(); }); };
     var venues=function(){
-      var P=Number((W.PLAT&&W.PLAT.pool)||0), list=VENUES[P]||Object.keys(CFG||{}).map(function(k){ var c=(W.PLAT.clubs||[]).find(function(x){ return Number(x.id)===Number(k); }); return {n:(c&&c.name)||("Club "+k),c:Number(k)}; });
+      /* b59 (Andre, 12 Nov: a club outside Eswatini was shown Manzini, LIV, MCC … and every booking was refused with "That
+         player is not on this register"): a register with no venue list of its own was offered EVERY venue in the
+         database. Now only the venues that belong to one of THIS register's own boards are offered; none → said plainly. */
+      var P=Number((W.PLAT&&W.PLAT.pool)||0), mineB={}; (W.PLAT.clubs||[]).forEach(function(x){ mineB[Number(x.id)]=x; });
+      var list=VENUES[P]||Object.keys(CFG||{}).filter(function(k){ return !!mineB[grpOf(k)]; }).map(function(k){ var c=mineB[Number(k)]; return {n:(CFG[k]&&CFG[k].name)||(c&&c.name)||("Club "+k),c:Number(k)}; });
       var m=me(), h='<div class="brk" style="padding:14px 12px"><h2 style="margin:0 0 4px">Where do you want to play?</h2>'
         +'<div style="font-size:12.5px;color:#6b6f88;margin-bottom:12px">'+(m.id?("Booking as <b>"+esc(m.name)+"</b>"):("Claim your My page first \u2014 bookings are made in your name."
           +((W.nhNmOpen&&W.nhNmOpen())?' <div style="margin-top:8px"><button type="button" onclick="nhNewMember()" style="font:inherit;font-size:13.5px;font-weight:800;border:none;border-radius:10px;padding:9px 13px;color:#fff;background:'+col()+';cursor:pointer">New here? Register as a member</button></div>':'')))+'</div>'
@@ -14078,7 +14082,7 @@ W.nhOpenPair=function(name){
         h+='<button type="button" class="nhBkVen" '+(on?('onclick="nhBkVenue('+v.c+')"'):'disabled')+' style="font:inherit;font-size:16px;font-weight:800;border:none;border-radius:16px;padding:22px 10px;'
           +'color:#fff;background:'+cc+';'+(on?'cursor:pointer;box-shadow:0 4px 12px rgba(0,0,0,.15)':'cursor:default;opacity:.75')+'">'+esc(v.n)
           +'<div style="font-size:11px;font-weight:700;margin-top:4px;opacity:.9">'+(on?'Book here':'Not yet')+'</div></button>'; });
-      h+='</div></div>';
+      h+='</div>'+(list.length?'':'<div id="nhBkNone" style="font-size:14px;color:#4b4060;line-height:1.5;padding:6px 2px"><b>No courts can be booked here yet.</b> Court booking is switched on club by club; none of this region’s clubs has it yet.</div>')+'</div>';
       document.getElementById("nhBkMine").innerHTML=""; document.getElementById("nhBkAdminBar").innerHTML=""; document.getElementById("nhBkDays").innerHTML=""; LIST=false;
       var tl=document.getElementById("nhBkTools"); if(tl) tl.innerHTML="";
       document.getElementById("nhBkFoot").innerHTML='<div style="font-size:11px;color:#9aa0b4;margin-top:6px">Build '+esc(W.__nhBkBuild||"")+'</div>'; document.getElementById("nhBkGrid").innerHTML=h; mine(true);
