@@ -24,6 +24,10 @@ main{padding:16px 16px 40px}
 .why{background:var(--lime);color:var(--dark);border-radius:16px;padding:14px 16px;margin:0 0 16px;font-size:14.5px;line-height:1.5}
 .why b.h{display:block;font-family:var(--display);font-size:16.5px;line-height:1.2;margin-bottom:5px}
 .q{background:var(--card);border:1.5px solid var(--line);border-radius:16px;padding:14px 14px 12px;margin:0 0 12px}
+.sec{margin:20px 2px 8px;font-family:var(--display);font-weight:800;font-size:13px;letter-spacing:.14em;text-transform:uppercase;color:var(--purple);display:flex;align-items:center;gap:10px}
+.sec::after{content:"";flex:1;height:2px;background:var(--line)}
+.sec:first-child{margin-top:4px}
+.q.follow{margin-left:14px;border-style:dashed;border-color:var(--purple);background:#fbf8fe}
 .q h2{margin:0 0 3px;font-family:var(--display);font-size:16.5px;line-height:1.25}
 .q .hint{font-size:13px;color:var(--muted);margin:0 0 9px}
 .opts{display:grid;gap:8px}
@@ -76,7 +80,7 @@ textarea{min-height:96px;resize:vertical}
   <div id="questions"></div>
   <button class="send" id="send" type="button">Send my answers</button>
   <p class="msg" id="msg" role="status"></p>
-  <p class="small">Anonymous: we store your ticks only, never your name or number.<br><a href="#results" id="toResults">See the results so far</a></p>
+  <p class="small">Anonymous: we store your answers only, never your name or number.<br><a href="#results" id="toResults">See the results so far</a></p>
 </section>
 
 <section id="resultsView" hidden>
@@ -92,7 +96,7 @@ textarea{min-height:96px;resize:vertical}
 <section id="adminView" hidden>
   <div class="q">
     <h2>Organiser: the typed answers</h2>
-    <p class="hint">"One thing you would change" and the optional names. Type the region's admin code.</p>
+    <p class="hint">What people typed under "One thing you would change or add". Type the region's admin code.</p>
     <input type="password" id="code" inputmode="numeric" placeholder="Admin code" autocomplete="off">
     <button class="send" id="codeGo" type="button" style="margin-top:10px">Show them</button>
     <p class="msg" id="codeMsg" role="status"></p>
@@ -107,8 +111,12 @@ textarea{min-height:96px;resize:vertical}
   "use strict";
   var SURVEY = "knl-2026-11";
   var API = "https://djmbnvikrdgnomjhtkgf.supabase.co/rest/v1/rpc/", KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRqbWJudmlrcmRnbm9tamh0a2dmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODUzOTE0MzEsImV4cCI6MjEwMDk2NzQzMX0.vR8xlVFjV6jXW-pAclGjM74HqmWSKVpsacFjM-dCIJI";
-  /* type: one = tap one · many = tap several (max = at most) · scale = 1 to 5 · text = typed (keys beginning t_ are never public) */
+  /* v2 (Andre, 12 Nov): the questions in three brackets — Tournaments · OPR · General — and two follow-up questions that
+     only show after a certain answer (`when`). The optional name is gone.
+     type: head = a bracket's heading · one = tap one · many = tap several (max = at most) · scale = 1 to 5 ·
+           text = typed (keys beginning t_ are never public). Keys stay as they were (q1…q11), new ones are q12…q14. */
   var Q = [
+    {type:"head", t:"Tournaments"},
     {k:"q1", type:"one", t:"Did you play in know-no-limits?", o:["Yes, I played","No, but I followed it on OPR","No"]},
     {k:"q2", type:"scale", t:"How was the tournament overall?", lo:"Poor", hi:"Excellent"},
     {k:"q3", type:"many", max:2, t:"What did you like most?", hint:"Tap up to two.", o:["The format","Close, even matches","Playing people I don’t usually play","The finals","Following the draw and results on OPR","Something else"]},
@@ -121,14 +129,19 @@ textarea{min-height:96px;resize:vertical}
       "Mexicano: like Americano, but each round you play people on a similar score",
       "Topside: you enter alone and are drawn a partner; win and you stay together, lose and you get a new partner"]},
     {k:"q5", type:"one", t:"How long should a tournament run?", o:["One day","One weekend","A few weeks, playing each match when it suits us","No preference"]},
-    {k:"q6", type:"scale", t:"How easy is it to enter a score on OPR?", lo:"Very hard", hi:"Very easy"},
-    {k:"q7", type:"one", t:"Do you think your OPR rating is about right?", o:["Yes","Mostly","No","I don’t know my rating"]},
-    {k:"q8", type:"many", t:"When you play a social match, what stops you entering the score?", hint:"Tap all that apply.", o:["Nothing, I enter them","I forget","I didn’t know social matches could be entered","It takes too many steps","I leave it to someone else in the four","I only enter tournament matches","Something else"]},
     {k:"q9", type:"one", t:"Would you enter a competition where the system draws your partner for you?", o:["Yes","Maybe","No"]},
     {k:"q10", type:"one", t:"Would you be interested in playing in an interclub league?", hint:"Club against club, as a team.", o:["Yes","Maybe","No"]},
     {k:"q11", type:"one", t:"Which kind of matches do you prefer?", o:["Men’s and ladies’ matches kept separate","Matched by strength: I play whoever is at my level, men or ladies","Both are fine"]},
-    {k:"t_change", type:"text", t:"One thing you would change or add", hint:"In the tournaments or in OPR. Only the organiser reads this."},
-    {k:"t_name", type:"name", t:"Want to hear first about the next event?", hint:"Leave your name if you like. Only the organiser sees it."}
+    {type:"head", t:"OPR"},
+    {k:"q12", type:"one", t:"Do you find OPR useful?", o:["Yes","Sometimes","No"]},
+    {k:"q13", type:"one", t:"Do you use OPR to enter your scores?", o:["Yes, most of my matches","Only tournament matches","No"]},
+    {k:"q8", type:"many", when:{k:"q13", is:["Only tournament matches","No"]}, t:"What stops you entering your other matches?", hint:"Tap all that apply.", o:[
+      "I forget","I didn’t know social matches could be entered","It takes too long to enter a match","I’m happy just playing in my own group","I’m not interested in a rating","I leave it to someone else in the four","Something else"]},
+    {k:"q6", type:"scale", t:"How easy is it to enter a score on OPR?", lo:"Very hard", hi:"Very easy"},
+    {k:"q7", type:"one", t:"Do you think your OPR rating is about right?", o:["Yes","Mostly","No","I don’t know my rating"]},
+    {k:"q14", type:"one", when:{k:"q7", is:["No"]}, t:"How often do you enter your scores?", o:["Every match","Most matches","Only tournament matches","Hardly ever"]},
+    {type:"head", t:"General"},
+    {k:"t_change", type:"text", t:"One thing you would change or add", hint:"In the tournaments or in OPR. Only the organiser reads this."}
   ];
   var $ = function(id){ return document.getElementById(id); };
   var esc = function(s){ return String(s==null?"":s).replace(/[&<>"']/g,function(c){ return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]; }); };
@@ -136,15 +149,25 @@ textarea{min-height:96px;resize:vertical}
   var device = store.get("oprSurveyDevice");
   if(!device){ device = "d" + Date.now().toString(36) + Math.random().toString(36).slice(2,12) + Math.random().toString(36).slice(2,8); store.set("oprSurveyDevice", device); }
   var A = {}; try{ A = JSON.parse(store.get("oprSurvey|"+SURVEY) || "{}") || {}; }catch(e){ A = {}; }
+  delete A.t_name;
   var sent = store.get("oprSurveySent|"+SURVEY) === "1";
   var rpc = function(fn, args){ return fetch(API+fn, {method:"POST", headers:{"Content-Type":"application/json", apikey:KEY, Authorization:"Bearer "+KEY}, body:JSON.stringify(args)})
     .then(function(r){ return r.json().catch(function(){ return {ok:false, error:"No reply ("+r.status+")"}; }); })
     .catch(function(){ return {ok:false, error:"No connection. Check your signal and try again."}; }); };
+  /* a follow-up question is asked only after the answer it follows; when it is not asked its answer is dropped */
+  var asked = function(q){ return !q.when || (q.when.is.indexOf(A[q.when.k]) >= 0); };
+  var prune = function(){ Q.forEach(function(q){ if(q.k && q.when && !asked(q)) delete A[q.k]; }); };
+  /* the numbers people see: 1, 2, 3 … for the main questions; a follow-up carries no number */
+  var NUM = {}; (function(){ var n = 0; Q.forEach(function(q){ if(q.k && !q.when) NUM[q.k] = ++n; }); })();
+  var label = function(q){ return (NUM[q.k] ? (NUM[q.k]+". ") : "") + q.t; };
 
   /* ---------- the questions ---------- */
   function drawForm(){
+    prune();
     $("questions").innerHTML = Q.map(function(q, qi){
-      var h = '<div class="q" data-k="'+q.k+'"><h2>'+(q.type==="name"?"":((qi+1)+". "))+esc(q.t)+'</h2>'+(q.hint?'<p class="hint">'+esc(q.hint)+'</p>':'');
+      if(q.type==="head") return '<h3 class="sec">'+esc(q.t)+'</h3>';
+      if(!asked(q)) return '';
+      var h = '<div class="q'+(q.when?' follow':'')+'" data-k="'+q.k+'"><h2>'+esc(label(q))+'</h2>'+(q.hint?'<p class="hint">'+esc(q.hint)+'</p>':'');
       if(q.type==="one" || q.type==="many"){
         var cur = A[q.k]; var has = function(o){ return q.type==="one" ? cur===o : (Array.isArray(cur) && cur.indexOf(o)>=0); };
         h += '<div class="opts" role="group" aria-label="'+esc(q.t)+'">'+q.o.map(function(o, oi){
@@ -152,10 +175,8 @@ textarea{min-height:96px;resize:vertical}
       } else if(q.type==="scale"){
         h += '<div class="scale" role="group" aria-label="'+esc(q.t)+'">'+[1,2,3,4,5].map(function(n){ return '<button type="button" class="sc'+(A[q.k]===n?" on":"")+'" data-q="'+qi+'" data-n="'+n+'" aria-pressed="'+(A[q.k]===n?"true":"false")+'">'+n+'</button>'; }).join("")+'</div>'
           +'<div class="ends"><span>1 = '+esc(q.lo)+'</span><span>5 = '+esc(q.hi)+'</span></div>';
-      } else if(q.type==="text"){
-        h += '<textarea id="f_'+q.k+'" maxlength="600" placeholder="Type here (optional)">'+esc(A[q.k]||"")+'</textarea>';
       } else {
-        h += '<input type="text" id="f_'+q.k+'" maxlength="60" placeholder="Your name (optional)" value="'+esc(A[q.k]||"")+'" autocomplete="name">';
+        h += '<textarea id="f_'+q.k+'" maxlength="600" placeholder="Type here (optional)">'+esc(A[q.k]||"")+'</textarea>';
       }
       return h+'</div>'; }).join("");
   }
@@ -167,18 +188,19 @@ textarea{min-height:96px;resize:vertical}
     else { var o = q.o[Number(b.getAttribute("data-o"))];
       if(q.type==="one") A[q.k] = (A[q.k]===o) ? undefined : o;
       else { var L = Array.isArray(A[q.k]) ? A[q.k].slice() : [], i = L.indexOf(o);
-        if(i>=0) L.splice(i,1); else { if(q.max && L.length>=q.max){ $("msg").textContent = "Question "+(Q.indexOf(q)+1)+": at most "+q.max+". Untick one first."; return; } L.push(o); }
+        if(i>=0) L.splice(i,1); else { if(q.max && L.length>=q.max){ $("msg").textContent = "“"+q.t+"”: at most "+q.max+". Untick one first."; return; } L.push(o); }
         A[q.k] = L.length ? L : undefined; } }
     if(A[q.k]===undefined) delete A[q.k];
-    keep();
-    /* redraw only this question, so the page does not jump */
-    var card = b.closest(".q"), y = window.scrollY; drawForm(); window.scrollTo(0, y);
+    prune(); keep();
+    /* redraw, staying where the reader is */
+    var y = window.scrollY; drawForm(); window.scrollTo(0, y);
     var again = document.querySelector('.q[data-k="'+q.k+'"] [data-'+(b.classList.contains("sc")?'n="'+b.getAttribute("data-n"):'o="'+b.getAttribute("data-o"))+'"]'); if(again) again.focus({preventScroll:true});
   });
   document.addEventListener("input", function(ev){ var id = ev.target && ev.target.id; if(!id || id.indexOf("f_")!==0) return; var k = id.slice(2), v = String(ev.target.value||"").trim(); if(v) A[k] = v; else delete A[k]; keep(); });
 
   $("send").addEventListener("click", function(){
-    var ticks = Q.filter(function(q){ return q.type!=="text" && q.type!=="name" && A[q.k]!==undefined; }).length;
+    prune();
+    var ticks = Q.filter(function(q){ return q.k && q.type!=="text" && A[q.k]!==undefined; }).length;
     if(!ticks){ $("msg").textContent = "Tap at least one answer first."; return; }
     var btn = $("send"); btn.disabled = true; btn.textContent = "Sending…"; $("msg").textContent = "";
     rpc("sv_submit", {p_survey:SURVEY, p_device:device, p_answers:A}).then(function(r){
@@ -197,16 +219,23 @@ textarea{min-height:96px;resize:vertical}
       var n = Number(r.n)||0, R = r.q || {};
       $("count").textContent = n===0 ? "No answers yet. Be the first." : (n+" "+(n===1?"person has":"people have")+" answered so far.");
       if(!n) return;
-      $("results").innerHTML = Q.filter(function(q){ return q.type!=="text" && q.type!=="name"; }).map(function(q){
-        var c = R[q.k] || {}, mine = A[q.k], h = '<div class="q"><h2>'+(Q.indexOf(q)+1)+'. '+esc(q.t)+'</h2>';
-        var bar = function(label, v, tot, isMine){ var p = tot ? Math.round(100*v/tot) : 0;
-          return '<div class="bar'+(isMine?' mine':'')+'"><div class="t"><span>'+esc(label)+(isMine?' ✓':'')+'</span><span>'+v+(tot?' · '+p+'%':'')+'</span></div><div class="r"><i style="width:'+p+'%"></i></div></div>'; };
+      var RQ = Q.filter(function(q){ return q.type!=="text"; }); RQ = RQ.filter(function(q, i){ return q.type!=="head" || (RQ[i+1] && RQ[i+1].type!=="head"); });   /* no heading over nothing */
+      $("results").innerHTML = RQ.map(function(q){
+        if(q.type==="head") return '<h3 class="sec">'+esc(q.t)+'</h3>';
+        var c = R[q.k] || {}, mine = A[q.k], h = '<div class="q'+(q.when?' follow':'')+'"><h2>'+esc(label(q))+'</h2>';
+        /* a follow-up was asked only of some: say of whom, and count against them */
+        var askedN = n;
+        if(q.when){ var pc = R[q.when.k] || {}; askedN = q.when.is.reduce(function(s,o){ return s+(Number(pc[o])||0); }, 0);
+          var pq = Q.filter(function(x){ return x.k===q.when.k; })[0];
+          h += '<p class="hint">Asked only of the '+askedN+' who answered “'+q.when.is.join('” or “')+'” to “'+esc(pq?pq.t:"")+'”.</p>'; }
+        var bar = function(text, v, tot, isMine){ var p = tot ? Math.round(100*v/tot) : 0;
+          return '<div class="bar'+(isMine?' mine':'')+'"><div class="t"><span>'+esc(text)+(isMine?' ✓':'')+'</span><span>'+v+(tot?' · '+p+'%':'')+'</span></div><div class="r"><i style="width:'+p+'%"></i></div></div>'; };
         if(q.type==="scale"){
           var tot = 0, sum = 0; [1,2,3,4,5].forEach(function(k){ var v = Number(c[k])||0; tot += v; sum += v*k; });
           h += '<p class="hint">'+(tot?('Average <span class="avg">'+(sum/tot).toFixed(1)+'</span> out of 5, from '+tot+' answer'+(tot===1?'':'s')):'No answers yet')+'</p>'
             + [5,4,3,2,1].map(function(k){ return bar(k+(k===5?' = '+q.hi:(k===1?' = '+q.lo:'')), Number(c[k])||0, tot, mine===k); }).join("");
         } else {
-          var base = q.type==="one" ? q.o.reduce(function(s,o){ return s+(Number(c[o])||0); }, 0) : n;
+          var base = q.type==="one" ? q.o.reduce(function(s,o){ return s+(Number(c[o])||0); }, 0) : askedN;
           if(q.type==="many") h += '<p class="hint">People could tap more than one, so these add up to more than 100%.</p>';
           h += q.o.map(function(o){ return bar(o, Number(c[o])||0, base, q.type==="one" ? mine===o : (Array.isArray(mine) && mine.indexOf(o)>=0)); }).join("");
         }
@@ -220,8 +249,8 @@ textarea{min-height:96px;resize:vertical}
     $("codeMsg").textContent = "Reading…";
     rpc("sv_comments", {p_survey:SURVEY, p_code:code}).then(function(r){
       if(!r || !r.ok){ $("codeMsg").textContent = (r && r.error) || "Not read."; return; }
-      $("codeMsg").textContent = ""; var L = r.comments || [];
-      $("comments").innerHTML = L.length ? L.map(function(c){ return '<div class="cm">'+(c.change?esc(c.change):'<i>(no comment)</i>')+'<small>'+esc(c.when||"")+(c.name?' · name left: '+esc(c.name):'')+'</small></div>'; }).join("")
+      $("codeMsg").textContent = ""; var L = (r.comments || []).filter(function(c){ return c.change; });
+      $("comments").innerHTML = L.length ? L.map(function(c){ return '<div class="cm">'+esc(c.change)+'<small>'+esc(c.when||"")+'</small></div>'; }).join("")
         : '<p class="small">No typed answers yet.</p>'; });
   });
 
