@@ -3784,7 +3784,7 @@ const CLUB_NAME = _club.name;  // shown in the logo as "OPR · <name>"
     link.setAttribute('href', href);
   }catch(e){ /* install stays on the static manifest — no functional impact */ }
 })();
-const OPR_VERSION = "OPR-DOUBLES v2026.09.03-56 · NAT4 booking test b57 (nat3 n375) (no voice) (of PLAT p117)";  // MANUAL PAIR CREATION REMOVED FROM ADMIN: Create a pair, Bulk create pairs and Re-derive all pairs are gone (they only made match-less ghost pairs, and Re-derive rewrote every stored initial club-wide). Pairs are born automatically at match entry. Current pairs list untouched; the underlying JS is left in place unreferenced, so no other code path changes. Includes v47 (set-score fix + double-tap guard) and all prior.
+const OPR_VERSION = "OPR-DOUBLES v2026.09.03-56 · NAT4 booking test b58 (nat3 n375) (no voice) (of PLAT p117)";  // MANUAL PAIR CREATION REMOVED FROM ADMIN: Create a pair, Bulk create pairs and Re-derive all pairs are gone (they only made match-less ghost pairs, and Re-derive rewrote every stored initial club-wide). Pairs are born automatically at match entry. Current pairs list untouched; the underlying JS is left in place unreferenced, so no other code path changes. Includes v47 (set-score fix + double-tap guard) and all prior.
 // Explanation shown above the individual ladder. Open on load so it's read; collapsible
 // (state kept for the session) and scrolls away. Mechanics only — no outcome framing, so
 // members aren't nudged away from playing stronger opponents. Every clause maps to a real
@@ -13952,7 +13952,7 @@ W.nhOpenPair=function(name){
     setInterval(leapBrk, 900);
     W.__nhTsBuild=build;   /* for the test */
   })();
-  window.__nhBkAnon="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRqbWJudmlrcmRnbm9tamh0a2dmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODUzOTE0MzEsImV4cCI6MjEwMDk2NzQzMX0.vR8xlVFjV6jXW-pAclGjM74HqmWSKVpsacFjM-dCIJI"; window.__nhBkBuild="nat4 b57";
+  window.__nhBkAnon="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRqbWJudmlrcmRnbm9tamh0a2dmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODUzOTE0MzEsImV4cCI6MjEwMDk2NzQzMX0.vR8xlVFjV6jXW-pAclGjM74HqmWSKVpsacFjM-dCIJI"; window.__nhBkBuild="nat4 b58";
   /* ===================================================================================================
      COURT BOOKING (nat4 test copy, Manzini pilot, Andre 26 Oct). Started ONLY from the player's own My page: its
      "Court card" button becomes "Book a court", which asks "Where do you want to play?" — one tile per venue; a venue
@@ -17368,6 +17368,13 @@ W.nhOpenPair=function(name){
         var pp=list[i++]; rpc("am_join",{p_event:ST.id, p_name:pp[0], p_name2:pp[1], p_code:code}).then(function(r){ if(r&&r.ok&&!r.already) ok++; else bad.push((pp[1]?pp[0]+" & "+pp[1]:pp[0])+" ("+((r&&r.error)||(r&&r.already?"already in":"error"))+")"); next(); }); })();
     };
 
+    /* b58 (Andre, 12 Nov: a Mixed Mexicano of 24 men and 16 ladies drew 8 matches with 8 sitting out — "why does it still show
+       sitting out … I am not understanding the logic"): the reason is said beside the names. Mixed = one man and one lady a
+       side, so the extra men (or ladies) have no partner that round; they take turns. */
+    var mixNote=function(D){ var e=D.e; if(e.division!=="Mixed" || e.kind!=="single") return "";
+      var m=0, l=0; D.players.forEach(function(p){ var x=String(D.gender[p.p1]||"").toUpperCase(); if(x==="M") m++; else if(x==="F"||x==="L") l++; });
+      if(m===l) return ""; var d=Math.abs(m-l), per=d-(d%2);
+      return ' <span class="nhAmMix" style="display:block;margin-top:4px;color:#8a5a00"><b>Why:</b> this is a Mixed event — every side is one man and one lady. There are '+m+' men and '+l+' ladies, so '+(per||d)+' '+(m>l?'men':'ladies')+' have no partner each round and sit out, in turn. For everyone to play every round, enter the same number of men and ladies, or make it All Sorts.</span>'; };
     /* rounds: R1 … and the courts; tap a match to score it */
     var roundsTab=function(){
       var D=ST.D, e=D.e, cur=Number(e.current_round)||0;
@@ -17391,7 +17398,7 @@ W.nhOpenPair=function(name){
       return '<div class="card"><h2>Round Fixtures &amp; Results</h2>'
         +'<div class="rsel">'+rounds.map(function(i){ return '<button class="fixed '+(i===R?'active':'')+'" onclick="window.__nhAmRound('+i+')">R'+i+'</button>'; }).join("")+'</div>'
         +(rows?'<table class="fxtbl"><thead><tr><th class="num">'+(queue?"Court / order":"Court")+'</th><th class="ta">Side A</th><th class="num"></th><th class="tb">Side B</th><th class="num">Score</th></tr></thead><tbody>'+rows+'</tbody></table>':'<p class="sub">No matches in this round.</p>')
-        +(out.length?'<p class="sub" style="text-align:left"><b>Sitting out:</b> '+out.map(esc).join(", ")+'</p>':'')
+        +(out.length?'<p class="sub" style="text-align:left"><b>Sitting out:</b> '+out.map(esc).join(", ")+mixNote(D)+'</p>':'')
         +(queue?('<p class="sub nhAmQueue" style="text-align:left"><b>'+(nCt===1?'Match 1 starts on the court.':('Matches 1 to '+nCt+' start on courts 1 to '+nCt+'.'))+'</b> The next match in the order goes on as soon as a court is free.</p>'):'')
         +'<p class="sub" style="text-align:left"><b>Tap a match to enter the score.</b> '+esc(scoreLine(e))+'.</p></div>';
     };
@@ -17446,7 +17453,7 @@ W.nhOpenPair=function(name){
         s+='<div style="font-size:14px;font-weight:800;color:#241d33;margin:8px 0 4px">'+(P.rounds.length>1?('Rounds '+P.rounds[0][0].round+'–'+P.rounds[P.rounds.length-1][0].round):('Round '+P.rounds[0][0].round))+'</div>'
           + P.rounds.map(function(r){ return '<div style="font-size:12px;font-weight:800;color:'+c+';margin:6px 0 2px">ROUND '+r[0].round+'</div>'
               + r.map(function(m){ return '<div style="font-size:13px;padding:3px 0">'+(Number(m.court)<=Math.max(1,Number(e.courts)||1)?('Court '+m.court):('Next · '+m.court))+': '+esc(m.a1)+' &amp; '+esc(m.a2)+' <span style="color:#8a8196">v</span> '+esc(m.b1)+' &amp; '+esc(m.b2)+'</div>'; }).join(""); }).join("")
-          + (P.sits && P.sits.length?'<div style="font-size:12.5px;color:#8a8196;margin-top:6px">Sitting out: '+P.sits.map(esc).join(", ")+'</div>':'')
+          + (P.sits && P.sits.length?'<div style="font-size:12.5px;color:#8a8196;margin-top:6px">Sitting out: '+P.sits.map(esc).join(", ")+mixNote(D)+'</div>':'')
           + '<div style="display:flex;gap:8px;margin-top:12px">'+btn("Cancel","window.__nhAmPreviewOff()",false,"flex:1")+btn("Save this draw","window.__nhAmSave()",true,"flex:1")+'</div>';
       }
       /* b44 (Andre, 10 Nov): a wrong set-up no longer means deleting the event — while no score is in, the draw can go */

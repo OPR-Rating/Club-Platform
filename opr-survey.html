@@ -1,0 +1,241 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>OPR survey</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;700&family=Sora:wght@700;800&display=swap">
+<style>
+/* OPR survey · v1 (12 Nov 2026). One page: the questions as tap buttons → Send → the results as bars.
+   Anonymous: the page sends only the ticked answers and a random number kept on this phone (one phone = one answer).
+   To run another survey: change SURVEY and Q below, and add a row for the new code in plat_surveys. */
+:root{--purple:#5b2a86;--deep:#3a1d6e;--lime:#d4f22a;--ink:#1f1a2b;--muted:#5f5770;--paper:#f6f3fa;--card:#fff;--line:#e0d6ec;--dark:#15111c;--bad:#a3321f;
+ --display:'Sora','Segoe UI',system-ui,sans-serif;--body:'DM Sans',system-ui,-apple-system,'Segoe UI',sans-serif}
+*{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{margin:0;background:var(--paper);color:var(--ink);font-family:var(--body);font-size:16px;line-height:1.45}
+.band{background:var(--purple);color:#fff;padding:22px 18px 20px}
+.in{max-width:640px;margin:0 auto}
+.logo{display:inline-block;font-family:var(--display);font-weight:800;font-size:14px;letter-spacing:.08em;border:2px solid rgba(255,255,255,.7);border-radius:10px;padding:3px 10px}
+.band h1{margin:12px 0 6px;font-family:var(--display);font-weight:800;font-size:27px;line-height:1.1}
+.band p{margin:0;font-size:15px;opacity:.96}
+main{padding:16px 16px 40px}
+.why{background:var(--lime);color:var(--dark);border-radius:16px;padding:14px 16px;margin:0 0 16px;font-size:14.5px;line-height:1.5}
+.why b.h{display:block;font-family:var(--display);font-size:16.5px;line-height:1.2;margin-bottom:5px}
+.q{background:var(--card);border:1.5px solid var(--line);border-radius:16px;padding:14px 14px 12px;margin:0 0 12px}
+.q h2{margin:0 0 3px;font-family:var(--display);font-size:16.5px;line-height:1.25}
+.q .hint{font-size:13px;color:var(--muted);margin:0 0 9px}
+.opts{display:grid;gap:8px}
+.opt{display:flex;align-items:center;gap:10px;width:100%;text-align:left;font:inherit;font-size:15px;line-height:1.35;color:var(--ink);background:#fff;border:1.5px solid var(--line);border-radius:12px;padding:12px 12px;cursor:pointer;-webkit-tap-highlight-color:transparent}
+.opt .box{flex:none;width:22px;height:22px;border:2px solid #b9aecb;border-radius:50%;display:grid;place-items:center;font-size:14px;font-weight:800;color:transparent}
+.opt.multi .box{border-radius:6px}
+.opt.on{border-color:var(--purple);background:#f3ecfa}
+.opt.on .box{background:var(--purple);border-color:var(--purple);color:#fff}
+.opt:focus-visible,.sc:focus-visible,.send:focus-visible,a:focus-visible{outline:3px solid var(--lime);outline-offset:2px}
+.scale{display:grid;grid-template-columns:repeat(5,1fr);gap:8px}
+.sc{font:inherit;font-family:var(--display);font-weight:800;font-size:18px;padding:13px 0;border:1.5px solid var(--line);border-radius:12px;background:#fff;color:var(--ink);cursor:pointer}
+.sc.on{background:var(--purple);border-color:var(--purple);color:#fff}
+.ends{display:flex;justify-content:space-between;font-size:12.5px;color:var(--muted);margin-top:5px}
+textarea,input[type=text],input[type=password]{width:100%;font:inherit;font-size:16px;padding:11px 12px;border:1.5px solid var(--line);border-radius:12px;background:#fff;color:var(--ink)}
+textarea{min-height:96px;resize:vertical}
+.send{width:100%;font:inherit;font-family:var(--display);font-weight:800;font-size:17px;padding:15px;border:0;border-radius:14px;background:var(--purple);color:#fff;cursor:pointer;margin-top:4px}
+.send[disabled]{opacity:.6;cursor:default}
+.msg{margin:10px 0 0;font-size:14.5px;color:var(--bad);font-weight:700;text-align:center;min-height:1.2em}
+.small{font-size:13px;color:var(--muted);text-align:center;margin:12px 0 0}
+.small a{color:var(--purple);font-weight:700}
+.done{background:var(--deep);color:#fff;border-radius:16px;padding:16px;margin:0 0 16px}
+.done b.h{display:block;font-family:var(--display);font-size:19px;color:var(--lime);margin-bottom:4px}
+.count{font-family:var(--display);font-weight:800;font-size:15px;color:var(--purple);margin:0 0 10px}
+.bar{margin:0 0 9px}
+.bar .t{display:flex;justify-content:space-between;gap:10px;font-size:14px;line-height:1.3}
+.bar .t span:last-child{flex:none;font-weight:700;font-variant-numeric:tabular-nums}
+.bar .r{height:10px;background:#ece5f4;border-radius:99px;overflow:hidden;margin-top:4px}
+.bar .r i{display:block;height:100%;background:var(--purple);border-radius:99px}
+.bar.mine .t span:first-child{font-weight:700}
+.avg{font-family:var(--display);font-weight:800;font-size:22px;color:var(--purple)}
+.cm{background:var(--card);border:1.5px solid var(--line);border-radius:12px;padding:10px 12px;margin:0 0 8px;font-size:14.5px}
+.cm small{display:block;color:var(--muted);font-size:12px;margin-top:3px}
+[hidden]{display:none!important}
+</style>
+</head>
+<body>
+<header class="band"><div class="in">
+  <span class="logo">OPR</span>
+  <h1 id="title">Know-no-limits and OPR</h1>
+  <p id="lead">Two minutes of your opinion. No name needed.</p>
+</div></header>
+<main><div class="in">
+
+<section id="formView">
+  <div class="why">
+    <b class="h">Why the finals were so close</b>
+    In know-no-limits every division was made from your OPR ratings, so you played people of your own strength. That is why so many matches, and the finals, went down to the wire.
+    It only works because scores were entered. <b>Every match you enter, social games too, keeps your rating right</b> and keeps the next event just as close.
+  </div>
+  <div id="questions"></div>
+  <button class="send" id="send" type="button">Send my answers</button>
+  <p class="msg" id="msg" role="status"></p>
+  <p class="small">Anonymous: we store your ticks only, never your name or number.<br><a href="#results" id="toResults">See the results so far</a></p>
+</section>
+
+<section id="resultsView" hidden>
+  <div class="done" id="thanks" hidden>
+    <b class="h">Thank you. Your answers are in.</b>
+    One more thing you can do for the next event: keep entering your matches on OPR, social games too. It is what keeps the ratings right and the matches close.
+  </div>
+  <p class="count" id="count"></p>
+  <div id="results"></div>
+  <p class="small"><a href="#" id="toForm">Answer the survey</a><span id="changeNote" hidden> (you can change your answers)</span></p>
+</section>
+
+<section id="adminView" hidden>
+  <div class="q">
+    <h2>Organiser: the typed answers</h2>
+    <p class="hint">"One thing you would change" and the optional names. Type the region's admin code.</p>
+    <input type="password" id="code" inputmode="numeric" placeholder="Admin code" autocomplete="off">
+    <button class="send" id="codeGo" type="button" style="margin-top:10px">Show them</button>
+    <p class="msg" id="codeMsg" role="status"></p>
+  </div>
+  <div id="comments"></div>
+  <p class="small"><a href="#results">See the results</a></p>
+</section>
+
+</div></main>
+<script>
+(function(){
+  "use strict";
+  var SURVEY = "knl-2026-11";
+  var API = "https://djmbnvikrdgnomjhtkgf.supabase.co/rest/v1/rpc/", KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRqbWJudmlrcmRnbm9tamh0a2dmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODUzOTE0MzEsImV4cCI6MjEwMDk2NzQzMX0.vR8xlVFjV6jXW-pAclGjM74HqmWSKVpsacFjM-dCIJI";
+  /* type: one = tap one · many = tap several (max = at most) · scale = 1 to 5 · text = typed (keys beginning t_ are never public) */
+  var Q = [
+    {k:"q1", type:"one", t:"Did you play in know-no-limits?", o:["Yes, I played","No, but I followed it on OPR","No"]},
+    {k:"q2", type:"scale", t:"How was the tournament overall?", lo:"Poor", hi:"Excellent"},
+    {k:"q3", type:"many", max:2, t:"What did you like most?", hint:"Tap up to two.", o:["The format","Close, even matches","Playing people I don’t usually play","The finals","Following the draw and results on OPR","Something else"]},
+    {k:"q4", type:"many", t:"Which of these would you enter?", hint:"Tap all you would enter.", o:[
+      "Swiss: everyone plays every round, against teams doing as well as you",
+      "Round robin groups, then a knockout",
+      "Straight knockout, with a plate for first-round losers",
+      "Handicap event: weaker pairs get a head start, just for fun",
+      "Americano: one evening, a new partner every round, short matches",
+      "Mexicano: like Americano, but each round you play people on a similar score",
+      "Topside: you enter alone and are drawn a partner; win and you stay together, lose and you get a new partner"]},
+    {k:"q5", type:"one", t:"How long should a tournament run?", o:["One day","One weekend","A few weeks, playing each match when it suits us","No preference"]},
+    {k:"q6", type:"scale", t:"How easy is it to enter a score on OPR?", lo:"Very hard", hi:"Very easy"},
+    {k:"q7", type:"one", t:"Do you think your OPR rating is about right?", o:["Yes","Mostly","No","I don’t know my rating"]},
+    {k:"q8", type:"many", t:"When you play a social match, what stops you entering the score?", hint:"Tap all that apply.", o:["Nothing, I enter them","I forget","I didn’t know social matches could be entered","It takes too many steps","I leave it to someone else in the four","I only enter tournament matches","Something else"]},
+    {k:"q9", type:"one", t:"Would you enter a competition where the system draws your partner for you?", o:["Yes","Maybe","No"]},
+    {k:"q10", type:"one", t:"Would you be interested in playing in an interclub league?", hint:"Club against club, as a team.", o:["Yes","Maybe","No"]},
+    {k:"q11", type:"one", t:"Which kind of matches do you prefer?", o:["Men’s and ladies’ matches kept separate","Matched by strength: I play whoever is at my level, men or ladies","Both are fine"]},
+    {k:"t_change", type:"text", t:"One thing you would change or add", hint:"In the tournaments or in OPR. Only the organiser reads this."},
+    {k:"t_name", type:"name", t:"Want to hear first about the next event?", hint:"Leave your name if you like. Only the organiser sees it."}
+  ];
+  var $ = function(id){ return document.getElementById(id); };
+  var esc = function(s){ return String(s==null?"":s).replace(/[&<>"']/g,function(c){ return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]; }); };
+  var store = { get:function(k){ try{ return localStorage.getItem(k); }catch(e){ return null; } }, set:function(k,v){ try{ localStorage.setItem(k,v); }catch(e){} } };
+  var device = store.get("oprSurveyDevice");
+  if(!device){ device = "d" + Date.now().toString(36) + Math.random().toString(36).slice(2,12) + Math.random().toString(36).slice(2,8); store.set("oprSurveyDevice", device); }
+  var A = {}; try{ A = JSON.parse(store.get("oprSurvey|"+SURVEY) || "{}") || {}; }catch(e){ A = {}; }
+  var sent = store.get("oprSurveySent|"+SURVEY) === "1";
+  var rpc = function(fn, args){ return fetch(API+fn, {method:"POST", headers:{"Content-Type":"application/json", apikey:KEY, Authorization:"Bearer "+KEY}, body:JSON.stringify(args)})
+    .then(function(r){ return r.json().catch(function(){ return {ok:false, error:"No reply ("+r.status+")"}; }); })
+    .catch(function(){ return {ok:false, error:"No connection. Check your signal and try again."}; }); };
+
+  /* ---------- the questions ---------- */
+  function drawForm(){
+    $("questions").innerHTML = Q.map(function(q, qi){
+      var h = '<div class="q" data-k="'+q.k+'"><h2>'+(q.type==="name"?"":((qi+1)+". "))+esc(q.t)+'</h2>'+(q.hint?'<p class="hint">'+esc(q.hint)+'</p>':'');
+      if(q.type==="one" || q.type==="many"){
+        var cur = A[q.k]; var has = function(o){ return q.type==="one" ? cur===o : (Array.isArray(cur) && cur.indexOf(o)>=0); };
+        h += '<div class="opts" role="group" aria-label="'+esc(q.t)+'">'+q.o.map(function(o, oi){
+          return '<button type="button" class="opt'+(q.type==="many"?" multi":"")+(has(o)?" on":"")+'" data-q="'+qi+'" data-o="'+oi+'" aria-pressed="'+(has(o)?"true":"false")+'"><span class="box">✓</span><span>'+esc(o)+'</span></button>'; }).join("")+'</div>';
+      } else if(q.type==="scale"){
+        h += '<div class="scale" role="group" aria-label="'+esc(q.t)+'">'+[1,2,3,4,5].map(function(n){ return '<button type="button" class="sc'+(A[q.k]===n?" on":"")+'" data-q="'+qi+'" data-n="'+n+'" aria-pressed="'+(A[q.k]===n?"true":"false")+'">'+n+'</button>'; }).join("")+'</div>'
+          +'<div class="ends"><span>1 = '+esc(q.lo)+'</span><span>5 = '+esc(q.hi)+'</span></div>';
+      } else if(q.type==="text"){
+        h += '<textarea id="f_'+q.k+'" maxlength="600" placeholder="Type here (optional)">'+esc(A[q.k]||"")+'</textarea>';
+      } else {
+        h += '<input type="text" id="f_'+q.k+'" maxlength="60" placeholder="Your name (optional)" value="'+esc(A[q.k]||"")+'" autocomplete="name">';
+      }
+      return h+'</div>'; }).join("");
+  }
+  function keep(){ store.set("oprSurvey|"+SURVEY, JSON.stringify(A)); }
+  document.addEventListener("click", function(ev){
+    var b = ev.target.closest ? ev.target.closest(".opt, .sc") : null; if(!b) return;
+    var q = Q[Number(b.getAttribute("data-q"))]; if(!q) return; $("msg").textContent = "";
+    if(b.classList.contains("sc")){ var n = Number(b.getAttribute("data-n")); A[q.k] = (A[q.k]===n) ? undefined : n; }
+    else { var o = q.o[Number(b.getAttribute("data-o"))];
+      if(q.type==="one") A[q.k] = (A[q.k]===o) ? undefined : o;
+      else { var L = Array.isArray(A[q.k]) ? A[q.k].slice() : [], i = L.indexOf(o);
+        if(i>=0) L.splice(i,1); else { if(q.max && L.length>=q.max){ $("msg").textContent = "Question "+(Q.indexOf(q)+1)+": at most "+q.max+". Untick one first."; return; } L.push(o); }
+        A[q.k] = L.length ? L : undefined; } }
+    if(A[q.k]===undefined) delete A[q.k];
+    keep();
+    /* redraw only this question, so the page does not jump */
+    var card = b.closest(".q"), y = window.scrollY; drawForm(); window.scrollTo(0, y);
+    var again = document.querySelector('.q[data-k="'+q.k+'"] [data-'+(b.classList.contains("sc")?'n="'+b.getAttribute("data-n"):'o="'+b.getAttribute("data-o"))+'"]'); if(again) again.focus({preventScroll:true});
+  });
+  document.addEventListener("input", function(ev){ var id = ev.target && ev.target.id; if(!id || id.indexOf("f_")!==0) return; var k = id.slice(2), v = String(ev.target.value||"").trim(); if(v) A[k] = v; else delete A[k]; keep(); });
+
+  $("send").addEventListener("click", function(){
+    var ticks = Q.filter(function(q){ return q.type!=="text" && q.type!=="name" && A[q.k]!==undefined; }).length;
+    if(!ticks){ $("msg").textContent = "Tap at least one answer first."; return; }
+    var btn = $("send"); btn.disabled = true; btn.textContent = "Sending…"; $("msg").textContent = "";
+    rpc("sv_submit", {p_survey:SURVEY, p_device:device, p_answers:A}).then(function(r){
+      btn.disabled = false; btn.textContent = "Send my answers";
+      if(!r || !r.ok){ $("msg").textContent = (r && r.error) || "Not sent. Please try again."; return; }
+      sent = true; store.set("oprSurveySent|"+SURVEY, "1"); justSent = true; if(location.hash==="#results") show(); else location.hash = "results"; });
+  });
+
+  /* ---------- the results ---------- */
+  var justSent = false;
+  function drawResults(){
+    $("thanks").hidden = !justSent; $("changeNote").hidden = !sent; $("toForm").textContent = sent ? "Change my answers" : "Answer the survey";
+    $("count").textContent = "Reading the results…"; $("results").innerHTML = "";
+    rpc("sv_results", {p_survey:SURVEY}).then(function(r){
+      if(!r || r.ok===false){ $("count").textContent = (r && r.error) || "The results could not be read. Please try again."; return; }
+      var n = Number(r.n)||0, R = r.q || {};
+      $("count").textContent = n===0 ? "No answers yet. Be the first." : (n+" "+(n===1?"person has":"people have")+" answered so far.");
+      if(!n) return;
+      $("results").innerHTML = Q.filter(function(q){ return q.type!=="text" && q.type!=="name"; }).map(function(q){
+        var c = R[q.k] || {}, mine = A[q.k], h = '<div class="q"><h2>'+(Q.indexOf(q)+1)+'. '+esc(q.t)+'</h2>';
+        var bar = function(label, v, tot, isMine){ var p = tot ? Math.round(100*v/tot) : 0;
+          return '<div class="bar'+(isMine?' mine':'')+'"><div class="t"><span>'+esc(label)+(isMine?' ✓':'')+'</span><span>'+v+(tot?' · '+p+'%':'')+'</span></div><div class="r"><i style="width:'+p+'%"></i></div></div>'; };
+        if(q.type==="scale"){
+          var tot = 0, sum = 0; [1,2,3,4,5].forEach(function(k){ var v = Number(c[k])||0; tot += v; sum += v*k; });
+          h += '<p class="hint">'+(tot?('Average <span class="avg">'+(sum/tot).toFixed(1)+'</span> out of 5, from '+tot+' answer'+(tot===1?'':'s')):'No answers yet')+'</p>'
+            + [5,4,3,2,1].map(function(k){ return bar(k+(k===5?' = '+q.hi:(k===1?' = '+q.lo:'')), Number(c[k])||0, tot, mine===k); }).join("");
+        } else {
+          var base = q.type==="one" ? q.o.reduce(function(s,o){ return s+(Number(c[o])||0); }, 0) : n;
+          if(q.type==="many") h += '<p class="hint">People could tap more than one, so these add up to more than 100%.</p>';
+          h += q.o.map(function(o){ return bar(o, Number(c[o])||0, base, q.type==="one" ? mine===o : (Array.isArray(mine) && mine.indexOf(o)>=0)); }).join("");
+        }
+        return h+'</div>'; }).join("");
+    });
+  }
+
+  /* ---------- the organiser's typed answers ---------- */
+  $("codeGo").addEventListener("click", function(){
+    var code = $("code").value.trim(); if(!code){ $("codeMsg").textContent = "Type the admin code."; return; }
+    $("codeMsg").textContent = "Reading…";
+    rpc("sv_comments", {p_survey:SURVEY, p_code:code}).then(function(r){
+      if(!r || !r.ok){ $("codeMsg").textContent = (r && r.error) || "Not read."; return; }
+      $("codeMsg").textContent = ""; var L = r.comments || [];
+      $("comments").innerHTML = L.length ? L.map(function(c){ return '<div class="cm">'+(c.change?esc(c.change):'<i>(no comment)</i>')+'<small>'+esc(c.when||"")+(c.name?' · name left: '+esc(c.name):'')+'</small></div>'; }).join("")
+        : '<p class="small">No typed answers yet.</p>'; });
+  });
+
+  function show(){
+    var h = (location.hash||"").replace("#","");
+    $("formView").hidden = !(h==="" || h==="form"); $("resultsView").hidden = h!=="results"; $("adminView").hidden = h!=="organiser";
+    if(h==="results") drawResults(); else if(h==="" || h==="form"){ justSent = false; drawForm(); $("send").textContent = sent ? "Send my changed answers" : "Send my answers"; }
+    window.scrollTo(0,0);
+  }
+  $("toForm").addEventListener("click", function(ev){ ev.preventDefault(); location.hash = "form"; });
+  window.addEventListener("hashchange", show);
+  if(sent && !location.hash) location.hash = "results";
+  show();
+})();
+</script>
+</body>
+</html>
