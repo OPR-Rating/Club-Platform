@@ -127,13 +127,15 @@ textarea{min-height:96px;resize:vertical}
       "Handicap event: weaker pairs get a head start, just for fun",
       "Americano: one evening, a new partner every round, short matches",
       "Mexicano: like Americano, but each round you play people on a similar score",
-      "Topside: you enter alone and are drawn a partner; win and you stay together, lose and you get a new partner"]},
+      "Topside (new, coming next year): you enter alone and are drawn a partner; win and you stay together, lose and you get a new partner"]},
     {k:"q5", type:"one", t:"How long should a tournament run?", o:["One day","One weekend","A few weeks, playing each match when it suits us","No preference"]},
     {k:"q9", type:"one", t:"Would you enter a competition where the system draws your partner for you?", o:["Yes","Maybe","No"]},
     {k:"q10", type:"one", t:"Would you be interested in playing in an interclub league?", hint:"Club against club, as a team.", o:["Yes","Maybe","No"]},
     {k:"q11", type:"one", t:"Which kind of matches do you prefer?", o:["Men’s and ladies’ matches kept separate","Matched by strength: I play whoever is at my level, men or ladies","Both are fine"]},
     {type:"head", t:"OPR"},
     {k:"q12", type:"one", t:"Do you find OPR useful?", o:["Yes","Sometimes","No"]},
+    {k:"q15", type:"one", t:"Do you look at your club’s page on OPR?", hint:"It has the ratings and ladders, recent matches, who is in form and the biggest movers.", o:["Yes, often","Now and then","No","I didn’t know it was there"]},
+    {k:"q16", type:"one", t:"Do you follow your own profile on OPR?", hint:"Your rating and how it has moved, every match you played, your partners and your results.", o:["Yes, often","Now and then","No","I didn’t know I had one"]},
     {k:"q13", type:"one", t:"Do you use OPR to enter your scores?", o:["Yes, most of my matches","Only tournament matches","No"]},
     {k:"q8", type:"many", when:{k:"q13", is:["Only tournament matches","No"]}, t:"What stops you entering your other matches?", hint:"Tap all that apply.", o:[
       "I forget","I didn’t know social matches could be entered","It takes too long to enter a match","I’m happy just playing in my own group","I’m not interested in a rating","I leave it to someone else in the four","Something else"]},
@@ -235,9 +237,11 @@ textarea{min-height:96px;resize:vertical}
           h += '<p class="hint">'+(tot?('Average <span class="avg">'+(sum/tot).toFixed(1)+'</span> out of 5, from '+tot+' answer'+(tot===1?'':'s')):'No answers yet')+'</p>'
             + [5,4,3,2,1].map(function(k){ return bar(k+(k===5?' = '+q.hi:(k===1?' = '+q.lo:'')), Number(c[k])||0, tot, mine===k); }).join("");
         } else {
-          var base = q.type==="one" ? q.o.reduce(function(s,o){ return s+(Number(c[o])||0); }, 0) : askedN;
+          /* the server keeps the first 120 letters of an answer, so a long option is looked up by its first 120 */
+          var cnt = function(o){ var v = c[o]; if(v==null) v = c[String(o).slice(0,120)]; return Number(v)||0; };
+          var base = q.type==="one" ? q.o.reduce(function(s,o){ return s+cnt(o); }, 0) : askedN;
           if(q.type==="many") h += '<p class="hint">People could tap more than one, so these add up to more than 100%.</p>';
-          h += q.o.map(function(o){ return bar(o, Number(c[o])||0, base, q.type==="one" ? mine===o : (Array.isArray(mine) && mine.indexOf(o)>=0)); }).join("");
+          h += q.o.map(function(o){ return bar(o, cnt(o), base, q.type==="one" ? mine===o : (Array.isArray(mine) && mine.indexOf(o)>=0)); }).join("");
         }
         return h+'</div>'; }).join("");
     });
