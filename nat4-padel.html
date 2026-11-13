@@ -3784,7 +3784,7 @@ const CLUB_NAME = _club.name;  // shown in the logo as "OPR · <name>"
     link.setAttribute('href', href);
   }catch(e){ /* install stays on the static manifest — no functional impact */ }
 })();
-const OPR_VERSION = "OPR-DOUBLES v2026.09.03-56 · NAT4 booking test b59 (nat3 n375) (no voice) (of PLAT p117)";  // MANUAL PAIR CREATION REMOVED FROM ADMIN: Create a pair, Bulk create pairs and Re-derive all pairs are gone (they only made match-less ghost pairs, and Re-derive rewrote every stored initial club-wide). Pairs are born automatically at match entry. Current pairs list untouched; the underlying JS is left in place unreferenced, so no other code path changes. Includes v47 (set-score fix + double-tap guard) and all prior.
+const OPR_VERSION = "OPR-DOUBLES v2026.09.03-56 · NAT4 booking test b60 (nat3 n375) (no voice) (of PLAT p117)";  // MANUAL PAIR CREATION REMOVED FROM ADMIN: Create a pair, Bulk create pairs and Re-derive all pairs are gone (they only made match-less ghost pairs, and Re-derive rewrote every stored initial club-wide). Pairs are born automatically at match entry. Current pairs list untouched; the underlying JS is left in place unreferenced, so no other code path changes. Includes v47 (set-score fix + double-tap guard) and all prior.
 // Explanation shown above the individual ladder. Open on load so it's read; collapsible
 // (state kept for the session) and scrolls away. Mechanics only — no outcome framing, so
 // members aren't nudged away from playing stronger opponents. Every clause maps to a real
@@ -13952,7 +13952,7 @@ W.nhOpenPair=function(name){
     setInterval(leapBrk, 900);
     W.__nhTsBuild=build;   /* for the test */
   })();
-  window.__nhBkAnon="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRqbWJudmlrcmRnbm9tamh0a2dmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODUzOTE0MzEsImV4cCI6MjEwMDk2NzQzMX0.vR8xlVFjV6jXW-pAclGjM74HqmWSKVpsacFjM-dCIJI"; window.__nhBkBuild="nat4 b59";
+  window.__nhBkAnon="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRqbWJudmlrcmRnbm9tamh0a2dmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODUzOTE0MzEsImV4cCI6MjEwMDk2NzQzMX0.vR8xlVFjV6jXW-pAclGjM74HqmWSKVpsacFjM-dCIJI"; window.__nhBkBuild="nat4 b60";
   /* ===================================================================================================
      COURT BOOKING (nat4 test copy, Manzini pilot, Andre 26 Oct). Started ONLY from the player's own My page: its
      "Court card" button becomes "Book a court", which asks "Where do you want to play?" — one tile per venue; a venue
@@ -15153,6 +15153,13 @@ W.nhOpenPair=function(name){
        • opened from the draw, its ← goes back to the "You are scoring" card (Use the umpire · Enter the score myself …);
        • any bottom-bar tap closes the umpire and then goes where it was tapped;
        • once a point has been played, both first ask on the card: "Leave this match?" — Yes, leave / No, keep scoring. */
+    /* b60 (Andre, 13 Nov: "the bottom banner covers the lowest tile" — on the laptop and on the phone): the Live Umpire is a
+       full-screen layer of its own (not one of the .screen pages that are given room for the bottom bar), so its last
+       button, "Confirm score & continue", sat UNDER the bar. The umpire now ends above the bar. */
+    (function(){ try{ if(document.getElementById("nhMkBarCss")) return; var st=document.createElement("style"); st.id="nhMkBarCss";
+      st.textContent="#markerScreen{padding-bottom:calc(60px + env(safe-area-inset-bottom, 0px))}"
+        /* on a wide, short window (a laptop) the score digit was sized by the WIDTH alone and ran into the "Games" pill */
+        +"#markerScreen .mk-side .mk-score{font-size:min(17vw,18vh)}"; document.head.appendChild(st); }catch(e){} })();
     var umpOn=function(){ var m=document.getElementById("markerScreen"); return !!(m && m.classList.contains("on")); };
     var umpPlayed=function(){ try{ return !!(MK.live && ((MK.hist&&MK.hist.length) || (MK.setScores&&MK.setScores.length))); }catch(e){ return false; } };
     var umpShut=function(){ try{
