@@ -3784,7 +3784,7 @@ const CLUB_NAME = _club.name;  // shown in the logo as "OPR · <name>"
     link.setAttribute('href', href);
   }catch(e){ /* install stays on the static manifest — no functional impact */ }
 })();
-const OPR_VERSION = "OPR-DOUBLES v2026.09.03-56 · NAT4 booking test b62 (nat3 n375) (no voice) (of PLAT p117)";  // MANUAL PAIR CREATION REMOVED FROM ADMIN: Create a pair, Bulk create pairs and Re-derive all pairs are gone (they only made match-less ghost pairs, and Re-derive rewrote every stored initial club-wide). Pairs are born automatically at match entry. Current pairs list untouched; the underlying JS is left in place unreferenced, so no other code path changes. Includes v47 (set-score fix + double-tap guard) and all prior.
+const OPR_VERSION = "OPR-DOUBLES v2026.09.03-56 · NAT4 booking test b63 (nat3 n375) (no voice) (of PLAT p117)";  // MANUAL PAIR CREATION REMOVED FROM ADMIN: Create a pair, Bulk create pairs and Re-derive all pairs are gone (they only made match-less ghost pairs, and Re-derive rewrote every stored initial club-wide). Pairs are born automatically at match entry. Current pairs list untouched; the underlying JS is left in place unreferenced, so no other code path changes. Includes v47 (set-score fix + double-tap guard) and all prior.
 // Explanation shown above the individual ladder. Open on load so it's read; collapsible
 // (state kept for the session) and scrolls away. Mechanics only — no outcome framing, so
 // members aren't nudged away from playing stronger opponents. Every clause maps to a real
@@ -8183,11 +8183,12 @@ async function loadTournamentSheet(tournament, division) {
     // ============================================================
     // choose advancement
     const maxAdv = Math.min(4, minGroupSize);   /* b34 q156: up to 4 per group (quarter-finals) */
+    try{ window.__nhPoInfo = { G: groupLabels.length, maxAdv: maxAdv }; }catch(e){}   /* b63: for the in-page question */
     let adv = 1;
     if(maxAdv >= 2){
       const ans = prompt('How many teams advance from EACH group?\n\n  1  = group winners only ('+groupLabels.length+' teams → '+(groupLabels.length<=2?'final':(groupLabels.length<=4?'semi-finals':'knockout'))+')\n  2  = top two per group ('+(groupLabels.length*2)+' teams → '+(groupLabels.length*2<=4?'semi-finals':'quarter-finals')+')'+(maxAdv>=4?('\n  4  = top four per group ('+(groupLabels.length*4)+' teams → '+(groupLabels.length*4<=8?'quarter-finals':'knockout')+')'):'')+'\n\nEnter 1, 2'+(maxAdv>=4?' or 4':'')+':', '2');
       if(ans===null) return;
-      adv = (ans.trim()==='1') ? 1 : ((ans.trim()==='4' && maxAdv>=4) ? 4 : 2);   /* b34 q156 */
+      adv = (ans.trim()==='1') ? 1 : ((ans.trim()==='4' && maxAdv>=4) ? 4 : ((ans.trim()==='3' && maxAdv>=3) ? 3 : 2));   /* b34 q156 · b63: three per group */
     }
     const qualifiers = groupLabels.length * adv;
     if(qualifiers < 2){ alert('Not enough qualifiers for a knockout.'); return; }
@@ -13952,7 +13953,7 @@ W.nhOpenPair=function(name){
     setInterval(leapBrk, 900);
     W.__nhTsBuild=build;   /* for the test */
   })();
-  window.__nhBkAnon="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRqbWJudmlrcmRnbm9tamh0a2dmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODUzOTE0MzEsImV4cCI6MjEwMDk2NzQzMX0.vR8xlVFjV6jXW-pAclGjM74HqmWSKVpsacFjM-dCIJI"; window.__nhBkBuild="nat4 b62";
+  window.__nhBkAnon="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRqbWJudmlrcmRnbm9tamh0a2dmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODUzOTE0MzEsImV4cCI6MjEwMDk2NzQzMX0.vR8xlVFjV6jXW-pAclGjM74HqmWSKVpsacFjM-dCIJI"; window.__nhBkBuild="nat4 b63";
   /* ===================================================================================================
      COURT BOOKING (nat4 test copy, Manzini pilot, Andre 26 Oct). Started ONLY from the player's own My page: its
      "Court card" button becomes "Book a court", which asks "Where do you want to play?" — one tile per venue; a venue
@@ -18426,6 +18427,150 @@ W.nhOpenPair=function(name){
         clearInterval(t);
         var f1=async function(){ var r=await f0.apply(this, arguments); try{ admPaint(); }catch(e){} return r; };
         Object.keys(f0).forEach(function(k){ f1[k]=f0[k]; }); f1.__nhPuAdm=1; W.adminLoadTournaments=f1; try{ adminLoadTournaments=f1; }catch(e){} }, 250); })();
+  })();
+  /* ===================================================================================================================
+     NAT4 b63 · THE KNOCKOUT AFTER THE GROUPS: THREE PER GROUP + THE THIRD-PLACE MATCH (Andre, 16 Nov — the Mormond
+     format: two groups of three; "team 1 through to a semi-final and then 2 and 3 play a qualifying final"; a final and
+     a third-place match).
+       1. "Set up the knockout" on a grouped round robin asks IN THE PAGE (the parent asked with pop-ups, which the Claude
+          browser blocks): how many go through from each group — 1, 2, 3 (new) or 4 — and the admin code. Three per group
+          with two groups = six teams in a draw of eight: the two group winners have a bye to the semi-final; A2 v B3 and
+          B2 v A3 play for the other two places; semis A1 v (B2/A3) and B1 v (A2/B3). The layout is the approved one
+          (nat4_kolayout.js); the server moves the winners on as for any knockout — nothing changes there.
+       2. The third-place match: when both semi-finals have a score, the Bracket tab offers the organiser "Add the
+          third-place match" (the two losing semi-finalists). It is kept as its own fixture (round 99, the plate rail,
+          band "3rd place") so the knockout tree and the server's advancing never see it; it is shown in a card under
+          the bracket and tapped like any match.
+     ================================================================================================================== */
+  (function(){
+    var W=window;
+    var esc=function(s){ return String(s==null?"":s).replace(/[&<>"']/g,function(c){ return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]; }); };
+    var ink=function(){ try{ return (getComputedStyle(document.documentElement).getPropertyValue("--nhc")||"").trim()||"#6c3483"; }catch(e){ return "#6c3483"; } };
+    var knownPin=function(){ try{ return String(TM_ADMIN_PIN||""); }catch(e){ return ""; } };
+    var toast=function(t){ var o=document.getElementById("nhPoToast"); if(o) o.remove(); o=document.createElement("div"); o.id="nhPoToast";
+      o.style.cssText="position:fixed;left:12px;right:12px;bottom:calc(76px + env(safe-area-inset-bottom, 0px));z-index:100001;background:#241d33;color:#fff;border-radius:14px;padding:12px 14px;font-size:13.5px;line-height:1.45;box-shadow:0 8px 30px rgba(0,0,0,.3)";
+      o.textContent=t; document.body.appendChild(o); setTimeout(function(){ if(o.parentNode) o.remove(); }, 9000); o.onclick=function(){ o.remove(); }; };
+
+    /* ---------------------------------------------------------------- 1. the knockout after the groups, asked in the page */
+    /* the parent's own function is run with its questions answered from the card (and its messages caught) */
+    var run=function(answers){ var nP=W.prompt, nA=W.alert, i=0, said=[];
+      W.prompt=function(){ return i<answers.length ? answers[i++] : null; };
+      W.alert=function(m){ said.push(String(m==null?"":m)); };
+      var back=function(){ W.prompt=nP; W.alert=nA; return said; }, p;
+      try{ p=W.tmGeneratePlayoff("snake"); }catch(e){ said.push("Something went wrong ("+String(e&&e.message||e)+")."); }
+      return Promise.resolve(p).then(back, back); };
+    var PO={pick:0, busy:false};
+    var shut=function(){ var o=document.getElementById("nhPo"); if(o) o.remove(); PO.busy=false; };
+    var roundWord=function(n){ return n<=2?"the final":(n<=4?"semi-finals":(n<=8?"quarter-finals":"a knockout of "+n)); };
+    var card=function(info, msg){ shut(); var c=ink(), G=info.G, mx=info.maxAdv;
+      var opt=function(k, title, sub){ if(k>mx && k>1) return ""; var on=(PO.pick===k);
+        return '<button data-k="'+k+'" class="nhPoOpt" style="display:block;width:100%;text-align:left;border:1.5px solid '+(on?c:'#ddd5e6')+';background:'+(on?'#f6f1fb':'#fff')+';border-radius:12px;padding:10px 12px;margin:0 0 8px;font:inherit;cursor:pointer">'
+          +'<span style="display:block;font-size:14px;font-weight:800;color:#241d33">'+title+'</span><span style="display:block;font-size:12.5px;color:#6b6480;margin-top:2px;line-height:1.4">'+sub+'</span></button>'; };
+      var size=function(n){ var p=1; while(p<n) p*=2; return p; };
+      var three = (G===2) ? "Six teams. The two group winners go straight to the semi-finals; 2nd plays 3rd of the other group for the other two places."
+                          : ((G*3)+" teams → "+roundWord(size(G*3))+((size(G*3)-G*3)>0?("; the best "+(size(G*3)-G*3)+" have a bye in the first round"):"")+".");
+      var o=document.createElement("div"); o.id="nhPo"; o.style.cssText="position:fixed;inset:0;z-index:100000;background:rgba(20,14,32,.45);display:flex;align-items:center;justify-content:center;padding:16px";
+      o.innerHTML='<div style="background:#fff;border-radius:16px;padding:16px;max-width:440px;width:100%;max-height:88vh;overflow:auto;box-shadow:0 10px 40px rgba(0,0,0,.25)">'
+        +'<div style="font-size:16px;font-weight:800;color:#241d33;margin-bottom:4px">The knockout after the groups</div>'
+        +'<div style="font-size:13px;color:#6b6480;margin-bottom:10px;line-height:1.45">'+G+' groups. How many teams go through from each group?</div>'
+        +opt(1,"1 — the group winners", G+" teams → "+roundWord(size(G))+".")
+        +opt(2,"2 — the top two", (G*2)+" teams → "+roundWord(size(G*2))+".")
+        +opt(3,"3 — the top three", three)
+        +opt(4,"4 — the top four", (G*4)+" teams → "+roundWord(size(G*4))+".")
+        +'<div style="font-size:12px;color:#9b80b3;font-weight:700;margin:6px 0 4px">Admin code</div>'
+        +'<input id="nhPoCode" type="password" inputmode="numeric" autocomplete="off" value="'+esc(knownPin())+'" placeholder="Admin code" style="width:100%;box-sizing:border-box;padding:10px;font-size:16px;border:1.5px solid #ddd5e6;border-radius:10px;font-family:inherit">'
+        +'<div id="nhPoMsg" style="font-size:13px;color:#c0392b;margin:8px 0 0;line-height:1.45">'+esc(msg||"")+'</div>'
+        +'<div style="display:flex;gap:8px;margin-top:12px"><button id="nhPoNo" style="flex:1;border:1.5px solid #ddd5e6;background:#fff;color:#4b4060;border-radius:12px;padding:11px 12px;font:inherit;font-size:14px;font-weight:800;cursor:pointer">Cancel</button>'
+        +'<button id="nhPoYes" style="flex:1.4;border:1.5px solid '+c+';background:'+c+';color:#fff;border-radius:12px;padding:11px 12px;font:inherit;font-size:14px;font-weight:800;cursor:pointer">Create the knockout</button></div></div>';
+      document.body.appendChild(o);
+      Array.prototype.forEach.call(o.querySelectorAll(".nhPoOpt"),function(b){ b.onclick=function(){ var code=(document.getElementById("nhPoCode")||{}).value||""; PO.pick=Number(b.getAttribute("data-k")); card(info, ""); var ci=document.getElementById("nhPoCode"); if(ci) ci.value=code; }; });
+      document.getElementById("nhPoNo").onclick=shut;
+      document.getElementById("nhPoYes").onclick=function(){ if(PO.busy) return; var m=document.getElementById("nhPoMsg"), code=String((document.getElementById("nhPoCode")||{}).value||"").trim();
+        if(mx>=2 && !PO.pick){ m.textContent="Choose how many go through."; return; }
+        if(!code){ m.textContent="The admin code is needed."; return; }
+        PO.busy=true; m.style.color="#4b4060"; m.textContent="Creating…";
+        run(mx>=2 ? [String(PO.pick), code] : [code]).then(function(said){ PO.busy=false; var t=said.join(" ");
+          if(/created/i.test(t) && !/could not/i.test(t)){ shut(); toast(t.replace(/Enter results on the Bracket tab/,"Tap a match on the Bracket tab to enter its score")); return; }
+          var m2=document.getElementById("nhPoMsg"); if(m2){ m2.style.color="#c0392b"; m2.textContent=t||"Not created."; } }); }; };
+    document.addEventListener("click", function(ev){ var t=ev.target; if(!t || !t.closest) return; var b=t.closest("[onclick]"); if(!b) return;
+      if(!/tmGeneratePlayoff\(\s*['"]snake['"]\s*\)/.test(b.getAttribute("onclick")||"")) return;
+      if(typeof W.tmGeneratePlayoff!=="function") return;
+      ev.preventDefault(); ev.stopPropagation(); if(ev.stopImmediatePropagation) ev.stopImmediatePropagation();
+      W.__nhPoInfo=null; PO.pick=0;
+      run([]).then(function(said){                               /* a dry look: stops at the first question; says why if it cannot start */
+        if(said.length){ toast(said.join(" ")); return; }
+        var info=W.__nhPoInfo; if(!info){ return; }
+        if(info.maxAdv<2) PO.pick=1;
+        card(info, ""); }); }, true);
+
+    /* two groups, three from each (Mormond): top to bottom  A1 · bye | B2 v A3 | A2 v B3 | B1 · bye  — so the semi-finals are
+       A1 v (B2 / A3) and B1 v (A2 / B3): nobody can meet a team of his own group again before the final. The general
+       layout (nat4_kolayout.js) was drawn up for 1, 2 and 4 per group; this case is laid out here by hand. */
+    (function(){ var n=0, t=setInterval(function(){ var f0=W.__nhKoSlots; if(typeof f0!=="function"){ if(++n>80) clearInterval(t); return; } clearInterval(t); if(f0.__nhPo3) return;
+        var f1=function(groupLabels, rankInGroup, adv){
+          try{ if(groupLabels.length===2 && adv===3){ var A=rankInGroup[groupLabels[0]], B=rankInGroup[groupLabels[1]];
+              if(A && B && A.length>=3 && B.length>=3) return [Number(A[0]), null, Number(B[1]), Number(A[2]), Number(A[1]), Number(B[2]), Number(B[0]), null]; } }catch(e){}
+          return f0.apply(this, arguments); };
+        f1.__nhPo3=1; W.__nhKoSlots=f1; }, 100); })();
+
+    /* ---------------------------------------------------------------- 2. the third-place match (Bracket tab) */
+    var T3={ask:false, msg:"", busy:false, key:""};
+    var state=function(){
+      var F=W._tmAllFixtures||[], ctx=W._tmCtx||{}; if(!ctx.tournament || !ctx.division || ctx.topside || ctx.amex) return null;
+      if(!F.some(function(f){ return f.round_type==="rr"; })) return null;
+      var ko=F.filter(function(f){ return f.round_type==="ko" && String(f.band||"").indexOf("·")<0; }); if(!ko.length) return null;
+      var byR={}; ko.forEach(function(f){ (byR[f.round]=byR[f.round]||[]).push(f); });
+      var rs=Object.keys(byR).map(Number).sort(function(a,b){ return a-b; }), semis=null;
+      rs.forEach(function(r){ var here=byR[r], nx=byR[r+1]; if(here.length===2 && (!nx || nx.length===1) && here.every(function(f){ return Number(f.seed_b)!==0 && Number(f.seed_a)!==0; })) semis=here; });
+      var third=F.filter(function(f){ return f.round_type==="plate" && Number(f.round)===99; })[0]||null;
+      if(!semis && !third) return null;
+      var loser=function(f){ return (f.sets_a==null || f.sets_b==null) ? null : (Number(f.sets_a)>Number(f.sets_b) ? f.seed_b : f.seed_a); };
+      var la=semis?loser(semis[0]):null, lb=semis?loser(semis[1]):null;
+      return {ctx:ctx, third:third, la:la, lb:lb, ready:(la!=null && lb!=null)}; };
+    var nm=function(s){ return (W._tmSeedNames||{})[s] || ("Seed "+s); };
+    var html=function(S){ var c=ink();
+      if(S.third){ var f=S.third, done=(f.sets_a!=null && f.sets_b!=null), aw=done && Number(f.sets_a)>Number(f.sets_b);
+        return '<div class="card"><h2>Third-place match</h2>'
+          +'<div onclick="tmEnterFixtureResult('+Number(f.id)+')" style="border:1.5px solid '+(done?'#e6e0ee':c)+';border-radius:12px;padding:10px 12px;cursor:pointer">'
+          +'<div style="display:flex;justify-content:space-between;gap:10px;font-size:14px;font-weight:'+(aw?800:600)+';color:#241d33;padding:3px 0"><span>'+esc(nm(f.seed_a))+(aw?' ✓':'')+'</span><span>'+(done?f.sets_a:'')+'</span></div>'
+          +'<div style="display:flex;justify-content:space-between;gap:10px;font-size:14px;font-weight:'+(done&&!aw?800:600)+';color:#241d33;padding:3px 0;border-top:1px solid #f0ecf4"><span>'+esc(nm(f.seed_b))+(done&&!aw?' ✓':'')+'</span><span>'+(done?f.sets_b:'')+'</span></div>'
+          +'<div style="font-size:12px;color:#8a8196;margin-top:6px">'+(done?('Third place: <b>'+esc(nm(aw?f.seed_a:f.seed_b))+'</b>'):'to play — tap to enter the score')+'</div></div></div>'; }
+      if(!S.ready) return "";
+      if(!T3.ask) return '<p style="text-align:center;margin:14px 0 6px"><a href="#" onclick="event.preventDefault();window.__nhThirdAsk()" style="color:#6b6480;font-size:13px;font-weight:700">Organiser: add a third-place match</a></p>';
+      return '<div class="card" style="border:1.5px solid '+c+'"><h2>Third-place match</h2><p class="sub" style="text-align:left">The two losing semi-finalists play for third place:<br><b>'+esc(nm(S.la))+'</b> v <b>'+esc(nm(S.lb))+'</b></p>'
+        +'<input id="nhThirdCode" type="password" inputmode="numeric" autocomplete="off" value="'+esc(knownPin())+'" placeholder="Admin code" style="width:100%;box-sizing:border-box;padding:10px;font-size:15px;border:1.5px solid #ddd5e6;border-radius:10px;margin-bottom:6px;font-family:inherit">'
+        +'<div style="font-size:13px;color:#c0392b;margin:0 0 6px">'+esc(T3.msg)+'</div>'
+        +'<div style="display:flex;gap:8px"><button onclick="window.__nhThirdAsk(false)" style="flex:1;border:1.5px solid #ddd5e6;background:#fff;color:#4b4060;border-radius:12px;padding:11px 12px;font:inherit;font-size:13.5px;font-weight:800;cursor:pointer">Close</button>'
+        +'<button onclick="window.__nhThirdGo()" style="flex:1.4;border:1.5px solid '+c+';background:'+c+';color:#fff;border-radius:12px;padding:11px 12px;font:inherit;font-size:13.5px;font-weight:800;cursor:pointer">Add the match</button></div></div>'; };
+    var onBracket=function(){ var sc=document.getElementById("tournamentSheetScreen"); if(!sc || !sc.classList.contains("active")) return null;
+      var box=document.getElementById("tournamentSheetContent"); if(!box || box.querySelector("#nhTs,#nhAm,#nhPu")) return null;
+      var a=box.querySelector(".tm-nav button.active"); if(!a || !/bracket/i.test(a.textContent||"")) return null; return box; };
+    var paint=function(force){ try{
+      var box=onBracket(), old=document.getElementById("nhThird");
+      if(!box){ if(old) old.remove(); return; }
+      var S=state(), h=S?html(S):"";
+      if(!h){ if(old) old.remove(); return; }
+      if(old && old.parentNode===box && old.__h===h && !force) return;
+      var keep=(document.getElementById("nhThirdCode")||{}).value;
+      if(!old || old.parentNode!==box){ if(old) old.remove(); old=document.createElement("div"); old.id="nhThird"; var rules=box.querySelector("#nhRulesDraw"); if(rules && rules.parentNode===box) box.insertBefore(old, rules); else box.appendChild(old); }
+      old.innerHTML=h; old.__h=h; var ci=document.getElementById("nhThirdCode"); if(ci && keep) ci.value=keep;
+    }catch(e){} };
+    setInterval(paint, 600);
+    W.__nhThirdAsk=function(on){ T3.ask=(on!==false); T3.msg=""; paint(true); if(T3.ask){ var ci=document.getElementById("nhThirdCode"); if(ci){ try{ ci.focus(); }catch(e){} } } };
+    W.__nhThirdGo=function(){ if(T3.busy) return; var S=state(); if(!S || !S.ready || S.third) return;
+      var code=String((document.getElementById("nhThirdCode")||{}).value||"").trim(); if(!code){ T3.msg="The admin code is needed."; paint(true); return; }
+      T3.busy=true; T3.msg="Adding…"; paint(true);
+      var base="", AK="", cid=0; try{ base=SB_URL; AK=SB_ANON; cid=CLUB_ID; }catch(e){}
+      fetch(base+"/functions/v1/tournament",{method:"POST",headers:{apikey:AK,Authorization:"Bearer "+AK,"Content-Type":"application/json"},
+        body:JSON.stringify({action:"write_fixtures", club_id:cid, admin_pin:code, tournament:S.ctx.tournament, division:S.ctx.division, replace:false,
+          fixtures:[{tournament:S.ctx.tournament, division:S.ctx.division, round:99, round_type:"plate", band:"3rd place", seed_a:S.la, seed_b:S.lb}]})})
+        .then(function(r){ return r.json().catch(function(){ return {}; }).then(function(j){ return {ok:(r.ok && j && j.ok!==false), error:(j&&j.error)||("("+r.status+")")}; }); }).catch(function(){ return {ok:false,error:"no connection"}; })
+        .then(function(r){ T3.busy=false;
+          if(!r.ok){ T3.msg="Not added — "+r.error; paint(true); return; }
+          T3.ask=false; T3.msg="";
+          try{ W.loadTournamentSheet(S.ctx.tournament, S.ctx.division); }catch(e){}
+          var n=0, t=setInterval(function(){ if(++n>40){ clearInterval(t); return; }
+            if((W._tmAllFixtures||[]).some(function(f){ return f.round_type==="plate" && Number(f.round)===99; }) && typeof W.tmSetTab==="function" && document.querySelector("#tournamentSheetContent .tm-nav button")){ clearInterval(t); try{ W.tmSetTab("bracket"); }catch(e){} } }, 250); }); };
   })();
   /* n350: COLUMN NAMES THAT STAY PUT. Group Members gets Name · Rating · Level · Move · Rank in the frozen block with
      its search box (each name measured onto the pill beneath it); on Member profiles and List all members the names
