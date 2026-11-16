@@ -3784,7 +3784,7 @@ const CLUB_NAME = _club.name;  // shown in the logo as "OPR · <name>"
     link.setAttribute('href', href);
   }catch(e){ /* install stays on the static manifest — no functional impact */ }
 })();
-const OPR_VERSION = "OPR-DOUBLES v2026.09.03-56 · NAT4 booking test b60 (nat3 n375) (no voice) (of PLAT p117)";  // MANUAL PAIR CREATION REMOVED FROM ADMIN: Create a pair, Bulk create pairs and Re-derive all pairs are gone (they only made match-less ghost pairs, and Re-derive rewrote every stored initial club-wide). Pairs are born automatically at match entry. Current pairs list untouched; the underlying JS is left in place unreferenced, so no other code path changes. Includes v47 (set-score fix + double-tap guard) and all prior.
+const OPR_VERSION = "OPR-DOUBLES v2026.09.03-56 · NAT4 booking test b61 (nat3 n375) (no voice) (of PLAT p117)";  // MANUAL PAIR CREATION REMOVED FROM ADMIN: Create a pair, Bulk create pairs and Re-derive all pairs are gone (they only made match-less ghost pairs, and Re-derive rewrote every stored initial club-wide). Pairs are born automatically at match entry. Current pairs list untouched; the underlying JS is left in place unreferenced, so no other code path changes. Includes v47 (set-score fix + double-tap guard) and all prior.
 // Explanation shown above the individual ladder. Open on load so it's read; collapsible
 // (state kept for the session) and scrolls away. Mechanics only — no outcome framing, so
 // members aren't nudged away from playing stronger opponents. Every clause maps to a real
@@ -13952,7 +13952,7 @@ W.nhOpenPair=function(name){
     setInterval(leapBrk, 900);
     W.__nhTsBuild=build;   /* for the test */
   })();
-  window.__nhBkAnon="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRqbWJudmlrcmRnbm9tamh0a2dmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODUzOTE0MzEsImV4cCI6MjEwMDk2NzQzMX0.vR8xlVFjV6jXW-pAclGjM74HqmWSKVpsacFjM-dCIJI"; window.__nhBkBuild="nat4 b60";
+  window.__nhBkAnon="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRqbWJudmlrcmRnbm9tamh0a2dmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODUzOTE0MzEsImV4cCI6MjEwMDk2NzQzMX0.vR8xlVFjV6jXW-pAclGjM74HqmWSKVpsacFjM-dCIJI"; window.__nhBkBuild="nat4 b61";
   /* ===================================================================================================
      COURT BOOKING (nat4 test copy, Manzini pilot, Andre 26 Oct). Started ONLY from the player's own My page: its
      "Court card" button becomes "Book a court", which asks "Where do you want to play?" — one tile per venue; a venue
@@ -18020,6 +18020,391 @@ W.nhOpenPair=function(name){
       nf.__nhRules=1; nf.__nhTs=1; nf.__nhAm=1; W.adminCreateTournament=nf; try{ adminCreateTournament=nf; }catch(e){}
       return true; };
     if(!wrapCreate()){ var cn=0, ct=setInterval(function(){ if(wrapCreate() || ++cn>60) clearInterval(ct); }, 250); }
+  })();
+  /* ===================================================================================================================
+     "ENTER ALONE" ROUND ROBIN (Andre, 16 Nov 2026 — the Mormond tournament: "people enter there like they do normally or
+     the organiser can enter them … when the 24 are entered the entry closes … the system must pair them to form the groups").
+     Its own tables (tools/sql_nov/pairup_v1.sql: plat_pairup, plat_pairup_players; functions pu_*). One file for nat4 and
+     nat3 — it uses nothing that only nat4 has.
+       · Create a tournament → Internal → Format "Round robin — players enter alone": Men's / Ladies / All Sorts, players in
+         each division (12), the divisions' names (Advance, Intermediate). Entry closes at divisions × players (24).
+       · The page (on the draw screen): Enter this tournament (tick your name) · Entered (by rating, "17 of 24") · Organiser
+         (the group's code): Add players (tick many) · Remove players · Make the divisions and pairs.
+       · Make the divisions and pairs: by rating, top 12 = first division, next 12 = second (move a player up or down first);
+         in each division 1st + 12th, 2nd + 11th … 6th + 7th. Shown first; on Save each division becomes a NORMAL round-robin
+         tournament ("<name> Advance") with its six pairs entered — from there it is drawn and played like any round robin.
+     No pop-ups on the page.
+     ================================================================================================================== */
+  (function(){
+    var W=window;
+    var esc=function(s){ return String(s==null?"":s).replace(/[&<>"']/g,function(c){ return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]; }); };
+    var ENC=encodeURIComponent, RB="https://djmbnvikrdgnomjhtkgf.supabase.co/rest/v1/", RPCB="https://DJMBNVIKRDGNOMJHTKGF.supabase.co/rest/v1/rpc/";
+    var anon=function(){ var k=W.__nhBkAnon||""; if(!k){ try{ k=SB_ANON; }catch(e){} } return k||""; };
+    var get=function(q){ return fetch(RB+q).then(function(r){ return r.ok?r.json():[]; }).catch(function(){ return []; }); };
+    var rpc=function(fn,args){ var AK=anon(); return fetch(RPCB+fn,{method:"POST",headers:{"Content-Type":"application/json",apikey:AK,Authorization:"Bearer "+AK},body:JSON.stringify(args)})
+      .then(function(r){ return r.json().catch(function(){ return {ok:false,error:"No reply ("+r.status+")"}; }); }).catch(function(){ return {ok:false,error:"No connection — try again."}; }); };
+    var ink=function(){ try{ return (getComputedStyle(document.documentElement).getPropertyValue("--nhc")||"").trim()||"#6c3483"; }catch(e){ return "#6c3483"; } };
+    var lc=function(s){ return String(s||"").trim().toLowerCase(); };
+    var starts=function(n,q){ return !q || (typeof W.nhStartsIn==="function" ? W.nhStartsIn(n,q) : lc(n).indexOf(lc(q))===0); };
+    var boardsOfRegion=function(){ try{ var region=Number(W.PLAT&&(W.PLAT.parentId||W.PLAT.cid))||0; if(!region) return [];
+      return [region].concat((W.PLAT.clubs||[]).filter(function(c){ return Number(c.parent_id)===region; }).map(function(c){ return Number(c.id); })); }catch(e){ return []; } };
+    var boardOf=function(id){ return ((W.PLAT&&W.PLAT.clubs)||[]).filter(function(c){ return Number(c.id)===Number(id); })[0]||{}; };
+    var pair6040=function(a,b){ return Math.round(Math.max(a,b)*0.6+Math.min(a,b)*0.4); };
+    var tourName=function(e, sec){ return e.name+" "+sec; };
+
+    /* ---------------------------------------------------------------- reading an event */
+    var load=function(id){
+      return get("plat_pairup?event_id=eq."+id+"&select=*").then(function(e){ e=e&&e[0]; if(!e) return null;
+        return Promise.all([get("plat_pairup_players?event_id=eq."+id+"&left_at=is.null&select=*&order=id.asc"),
+                            get("plat_padel_v_pool_individuals?pool_id=eq."+(Number(W.PLAT&&W.PLAT.pool)||0)+"&select=full_name,current_rating,seed_rating,gender")])
+          .then(function(r){ var rating={}, gender={}; (r[1]||[]).forEach(function(p){ var v=(p.current_rating!=null?p.current_rating:p.seed_rating); rating[lc(p.full_name)]=v!=null?Math.round(Number(v)):null; gender[p.full_name]=p.gender; });
+            return {e:e, players:r[0]||[], people:r[1]||[], rating:rating, gender:gender}; }); }); };
+    var rt=function(D,n){ var v=D.rating[lc(n)]; return v!=null?v:1200; };
+
+    /* ---------------------------------------------------------------- the page (on the draw screen) */
+    var ST={on:false, id:0, D:null, adm:"", msg:"", pick:null, q:"", ticks:{}, rm:false, rq:"", rticks:{}, ask:false, make:null, busy:false, focus:""};
+    var PREV={screen:"", ctx:null};
+    W.nhPuOpen=function(id){
+      ST.id=Number(id)||0; ST.msg=""; ST.pick=null; ST.q=""; ST.ticks={}; ST.rm=false; ST.rq=""; ST.rticks={}; ST.ask=false; ST.make=null; ST.busy=false; ST.D=null;
+      try{ ST.adm=sessionStorage.getItem("nhPuAdm|"+ST.id)||""; }catch(e){ ST.adm=""; }
+      var a=document.querySelector(".screen.active"); if(!ST.on){ PREV.screen=(a && !/^(tournamentSheetScreen|entryScreen|markerScreen)$/.test(a.id))?a.id:"homeScreen"; PREV.ctx=W._tmCtx||null; }
+      ST.on=true;
+      try{ showScreen("tournamentSheetScreen"); }catch(e){}
+      ST.on=true; try{ W._tmCtx=null; }catch(e){}
+      var box=document.getElementById("tournamentSheetContent"); if(box) box.innerHTML='<div id="nhPu"><div class="loading">Loading…</div></div>';
+      refresh(); };
+    W.nhPuClose=function(stay){ if(!ST.on) return;
+      try{ sessionStorage.removeItem("nhPuAdm|"+ST.id); }catch(e){}
+      ST.adm=""; ST.make=null; ST.ask=false; ST.on=false; ST.id=0; try{ W._tmCtx=PREV.ctx; }catch(e){}
+      if(!stay){ try{ showScreen(PREV.screen||"homeScreen"); }catch(e){} } };
+    var OPENING=false;
+    (function(){ var n=0, t=setInterval(function(){ if(typeof W.showScreen!=="function"){ if(++n>200) clearInterval(t); return; } if(W.showScreen.__nhPu){ clearInterval(t); return; }
+        var s0=W.showScreen; var s1=function(id){ if(ST.on && id!=="tournamentSheetScreen") W.nhPuClose(true); return s0.apply(this, arguments); };
+        Object.keys(s0).forEach(function(k){ s1[k]=s0[k]; }); s1.__nhPu=1; W.showScreen=s1; try{ showScreen=s1; }catch(e){} clearInterval(t); }, 300); })();
+    (function(){ var n=0, t=setInterval(function(){ var f0=W.loadTournamentSheet; if(typeof f0!=="function"){ if(++n>200) clearInterval(t); return; } clearInterval(t); if(f0.__nhPu) return;
+        var f1=function(){ if(ST.on) W.nhPuClose(true); return f0.apply(this, arguments); }; Object.keys(f0).forEach(function(k){ f1[k]=f0[k]; }); f1.__nhPu=1; W.loadTournamentSheet=f1; try{ loadTournamentSheet=f1; }catch(e){} }, 300); })();
+    document.addEventListener("click", function(e){ if(!ST.on) return; var b=e.target && e.target.closest && e.target.closest("#tournamentSheetScreen .back-btn"); if(!b) return;
+      e.preventDefault(); e.stopPropagation(); if(e.stopImmediatePropagation) e.stopImmediatePropagation(); W.nhPuClose(); }, true);
+    var refresh=function(){ var id=ST.id; return load(id).then(function(D){ if(ST.id!==id || !ST.on) return; ST.D=D; paint(); }); };
+    var card=function(inner, style){ return '<div class="card" style="'+(style||"")+'">'+inner+'</div>'; };
+    var btn=function(label, on, primary, style){ var c=ink(); return '<button onclick="'+on+'" style="border:1.5px solid '+(primary?c:'#ddd5e6')+';background:'+(primary?c:'#fff')+';color:'+(primary?'#fff':'#4b4060')+';border-radius:12px;padding:11px 12px;font:inherit;font-size:13.5px;font-weight:800;cursor:pointer;'+(style||"")+'">'+label+'</button>'; };
+    var inp='width:100%;box-sizing:border-box;padding:10px;font-size:15px;border:1.5px solid #ddd5e6;border-radius:10px;margin-bottom:6px;font-family:inherit';
+    var gOf=function(D,n){ var x=String(D.gender[n]||"").toUpperCase(); return x==="F"||x==="L"?"F":(x==="M"?"M":""); };
+    var fits=function(D,n){ var d=D.e.division; if(d==="Men's") return gOf(D,n)==="M"; if(d==="Ladies") return gOf(D,n)==="F"; return true; };
+    var secLine=function(e){ return (e.sections||[]).map(function(s){ return s+" "+e.per_section; }).join(", "); };
+
+    var paint=function(){
+      var o=document.getElementById("nhPu"); if(!o || !ST.on) return; var D=ST.D, c=ink();
+      if(!D){ o.innerHTML=card('<h2>Tournament</h2><p class="sub">This tournament could not be read.</p>'); return; }
+      var e=D.e, n=D.players.length, full=n>=e.cap;
+      try{ var tt=document.getElementById("tournamentSheetTitle"); if(tt) tt.textContent=e.name;
+        var g=boardOf(e.club_id), pill=document.querySelector("#tournamentSheetScreen .platWhere"); if(pill){ pill.textContent=g.name||""; if(g.colour) pill.style.background=g.colour; } }catch(x){}
+      var html='<p class="sub" style="text-align:center;margin:6px 0 8px">Round robin · '+esc(e.division)+' · players enter alone · '+e.cap+' players ('+esc(secLine(e))+') · level pairs made by the system</p>';
+      if(ST.msg) html+=card('<div style="font-size:13.5px;color:#4b4060;line-height:1.5">'+ST.msg+'</div>', 'border:1.5px solid '+c);
+      if(e.made) html+=madeCard();
+      else {
+        if(e.archived || e.active===false) html+=card('<h2>Entry</h2><p class="sub" style="text-align:left;margin-bottom:0">This tournament is closed.</p>');
+        else if(full) html+=card('<h2>Entry is closed</h2><p class="sub" style="text-align:left;margin-bottom:0">All '+e.cap+' places are taken. The organiser now makes the divisions and the pairs.</p>');
+        else html+=card('<h2>Enter this tournament <span class="tm-divtag">'+(e.cap-n)+' place'+(e.cap-n===1?'':'s')+' left</span></h2><p class="sub" style="text-align:left;margin-bottom:0">Tick your name and tap Enter. You enter on your own. When all '+e.cap+' are in, entry closes; the system then puts the players into '+(e.sections||[]).length+' divisions by rating ('+esc((e.sections||[]).join(", "))+') and gives you a partner so that the pairs in a division are as level as possible.</p>'+(ST.pick==="add"?'':picker("join")));
+        html+=enteredCard();
+      }
+      html+=organiser();
+      var kq=(ST.q||"")+"|"+(ST.rq||""), ks=Array.prototype.map.call(o.querySelectorAll("[data-keep]"),function(x){ return [x.getAttribute("data-keep"), x.scrollTop]; });
+      o.innerHTML=html;
+      if(ST.keepQ===kq) ks.forEach(function(k){ var el=o.querySelector('[data-keep="'+k[0]+'"]'); if(el && k[1]) el.scrollTop=k[1]; });
+      ST.keepQ=kq;
+      ["nhPuQ","nhPuRQ","nhPuCode"].forEach(function(id){ var i=document.getElementById(id); if(i && ST.focus===id){ try{ i.focus(); i.setSelectionRange(i.value.length,i.value.length); }catch(x){} } });
+    };
+    var sorted=function(D){ return D.players.slice().sort(function(a,b){ return rt(D,b.name)-rt(D,a.name) || a.name.localeCompare(b.name); }); };
+    var enteredCard=function(){ var D=ST.D, e=D.e, L=sorted(D);
+      var s='<div class="card"><h2>Entered <span class="tm-divtag">'+L.length+' of '+e.cap+'</span></h2>';
+      s+= L.length ? ('<table><thead><tr><th class="num">#</th><th>Player</th><th class="num">Rating</th></tr></thead><tbody>'
+          + L.map(function(p,i){ return '<tr><td class="num"><span class="seed">'+(i+1)+'</span></td><td><b>'+esc(p.name)+'</b></td><td class="num">'+rt(D,p.name)+'</td></tr>'; }).join("")+'</tbody></table>')
+        : '<p class="sub">Nobody yet.</p>';
+      return s+'<p class="sub" style="text-align:left;margin-top:8px">'+(L.length>=e.cap?'Entry is closed — the field is full.':'Entry is open until all '+e.cap+' places are taken.')+'</p></div>'; };
+    var madeCard=function(){ var D=ST.D, e=D.e, R=(e.result&&e.result.sections)||[], c=ink();
+      var s=card('<h2>The divisions and pairs are made</h2><p class="sub" style="text-align:left;margin-bottom:0">Each division is now a round-robin tournament of its own. Open it to see the teams, the draw and the standings.</p>');
+      R.forEach(function(sec){
+        s+='<div class="card"><h2>'+esc(sec.name)+' <span class="tm-divtag">'+(sec.pairs||[]).length+' pairs</span></h2><table><thead><tr><th class="num">#</th><th>Pair</th><th class="num">Rating</th></tr></thead><tbody>'
+          +(sec.pairs||[]).map(function(p,i){ return '<tr><td class="num"><span class="seed">'+(i+1)+'</span></td><td><b>'+esc(p[0])+' &amp; '+esc(p[1])+'</b></td><td class="num">'+esc(p[2])+'</td></tr>'; }).join("")+'</tbody></table>'
+          +'<div style="margin-top:10px">'+btn('Open '+esc(sec.tournament)+' ›', "window.__nhPuGoTour(this.getAttribute('data-t'))", true, "width:100%").replace("<button ", '<button data-t="'+esc(sec.tournament)+'" ')+'</div></div>'; });
+      return s; };
+    W.__nhPuGoTour=function(name){ var e=ST.D&&ST.D.e; if(!e) return; location.href=location.pathname+"?club="+Number(e.club_id)+"&go=tournaments&tn="+ENC(name); };
+
+    /* the name list (first letters); join = you (one name); add = the organiser's bulk ticks */
+    var picker=function(mode){
+      var D=ST.D, inn={}; D.players.forEach(function(p){ inn[lc(p.name)]=1; });
+      var names=D.people.map(function(p){ return p.full_name; }).filter(function(n){ return n && !inn[lc(n)] && fits(D,n) && starts(n, ST.q); }).sort(function(a,b){ return a.localeCompare(b); }).slice(0,80);
+      var chosen=Object.keys(ST.ticks).filter(function(k){ return ST.ticks[k]; }), left=D.e.cap-D.players.length;
+      var s='<div style="margin-top:12px;border:1px solid #e6e0ee;border-radius:12px;padding:12px"><div style="font-size:13.5px;font-weight:800;color:#241d33;margin-bottom:6px">'+(mode==="join"?"Which one is you?":"Add players — "+left+" place"+(left===1?"":"s")+" left")+'</div>';
+      ST.shown=names;
+      s+='<input id="nhPuQ" value="'+esc(ST.q)+'" oninput="window.__nhPuQ(this.value)" placeholder="'+(mode==="add"?"First letters of a name":"Type the first letters of a name")+'" style="'+inp+'">'
+        +(mode==="add" ? ('<div style="display:flex;gap:8px;margin-bottom:6px">'+btn("Tick all shown","window.__nhPuTickAll()",false,"flex:1;padding:7px;font-size:12px")+btn("Clear","window.__nhPuTickNone()",false,"flex:1;padding:7px;font-size:12px")+'</div>') : '')
+        +'<div data-keep="pick" style="max-height:300px;overflow:auto;border:1px solid #f0ecf4;border-radius:10px">'+(names.length?names.map(function(n){ var r=D.rating[lc(n)], g=gOf(D,n);
+            return '<label style="display:flex;align-items:center;gap:10px;padding:9px 8px;border-bottom:1px solid #f0ecf4;font-size:14px;cursor:pointer"><input type="checkbox" '+(ST.ticks[n]?'checked ':'')+'onchange="window.__nhPuTick(this.dataset.n,this.checked)" data-n="'+esc(n)+'" style="width:18px;height:18px"><span style="flex:1">'+esc(n)+(g?(' <span style="color:#8a8196;font-size:12px">'+(g==="F"?"lady":"man")+'</span>'):'')+'</span><span style="color:#8a8196">'+(r!=null?r:"")+'</span></label>'; }).join("")
+          :'<div style="padding:10px;font-size:13px;color:#8a8196">Nobody to show — everyone shown is already in.</div>')+'</div>';
+      var n=chosen.length, go = mode==="join" ? (n?"Enter "+esc(chosen[0]):"Tick your name") : ("Add "+n+" player"+(n===1?"":"s"));
+      s+='<div style="display:flex;gap:8px;margin-top:8px">'+(mode==="join"?"":btn("Close","window.__nhPuPick(null)",false,"flex:1"))+btn(go,"window.__nhPuGo('"+mode+"')",n>0,"flex:1")+'</div></div>';
+      return s; };
+    W.__nhPuPick=function(m){ ST.pick=m; ST.rm=false; ST.make=null; ST.q=""; ST.ticks={}; ST.focus=m?"nhPuQ":""; ST.msg=""; paint(); };
+    W.__nhPuQ=function(v){ ST.q=v; ST.focus="nhPuQ"; paint(); };
+    W.__nhPuTickAll=function(){ (ST.shown||[]).forEach(function(n){ ST.ticks[n]=true; }); ST.focus=""; paint(); };
+    W.__nhPuTickNone=function(){ ST.ticks={}; ST.focus=""; paint(); };
+    W.__nhPuTick=function(n,on){ ST.focus=""; if(ST.pick!=="add"){ ST.ticks={}; if(on) ST.ticks[n]=true; } else ST.ticks[n]=!!on; paint(); };
+    W.__nhPuGo=function(mode){ if(ST.busy) return; var list=Object.keys(ST.ticks).filter(function(k){ return ST.ticks[k]; }); if(!list.length) return;
+      var ok=0, bad=[], rest=[], i=0, code=(mode==="add")?ST.adm:null, id=ST.id; ST.busy=true; ST.msg=(mode==="add"?"Adding…":"Entering…"); ST.focus=""; paint();
+      (function next(){
+        if(i>=list.length){ ST.busy=false; if(mode==="add") ST.pick=null; ST.ticks={}; ST.q="";
+          ST.msg = mode==="join" ? (ok?"You are entered. When all the places are taken the system gives you a partner.":("Not entered: "+(bad.concat(rest.map(function(x){ return x+" — entry is full"; }))).map(esc).join(", ")))
+                                 : ("Added "+ok+" player"+(ok===1?"":"s")+"."+(bad.length?(" Not added: "+bad.map(esc).join(", ")+"."):"")+(rest.length?(" The field is full — not added: "+rest.map(esc).join(", ")+"."):""));
+          CK.key=""; refresh(); return; }
+        var nm=list[i++];
+        rpc("pu_join",{p_event:id, p_name:nm, p_code:code}).then(function(r){
+          if(r && r.ok) ok++;
+          else if(r && r.full){ rest=[nm].concat(list.slice(i)); i=list.length; }    /* full: the rest are not tried */
+          else bad.push(nm+" — "+((r&&r.error)||"not saved"));
+          next(); }); })(); };
+
+    /* ---------------------------------------------------------------- the organiser */
+    var organiser=function(){ var D=ST.D, e=D.e, c=ink(), n=D.players.length;
+      if(!ST.adm){
+        if(!ST.ask) return '<p style="text-align:center;margin:14px 0 6px"><a href="#" onclick="event.preventDefault();window.__nhPuAsk()" style="color:#6b6480;font-size:13px;font-weight:700">Organiser</a></p>';
+        return card('<h2>Organiser</h2><p class="sub" style="text-align:left">The admin code of this group.</p><input id="nhPuCode" type="password" inputmode="numeric" autocomplete="off" placeholder="Admin code" style="'+inp+'">'
+          +'<div id="nhPuOrgMsg" style="font-size:13px;color:#c0392b;margin:0 0 6px">'+esc(ST.orgMsg||"")+'</div><div style="display:flex;gap:8px">'+btn("Close","window.__nhPuAskOff()",false,"flex:1")+btn("Unlock","window.__nhPuUnlock()",true,"flex:1")+'</div>'); }
+      var s='<div class="card" style="border:1.5px solid '+c+'"><h2>Organiser</h2>';
+      if(e.made){ s+='<p class="sub" style="text-align:left">The divisions and pairs are made. Each division is drawn and run from its own tournament page. This entry page can be closed in Admin control → Tournaments.</p>'; }
+      else if(ST.make){ s+=makeView(); }
+      else {
+        s+='<div style="display:flex;flex-wrap:wrap;gap:8px">'
+          +(n<e.cap ? btn("Add players","window.__nhPuPick('add')",ST.pick==="add","flex:1 1 45%") : '')
+          +(n ? btn("Remove players","window.__nhPuRm()",ST.rm,"flex:1 1 45%") : '')
+          +btn("Make the divisions and pairs","window.__nhPuMake()",n>=e.cap,"flex:1 1 100%")+'</div>';
+        if(ST.pick==="add") s+=picker("add");
+        if(ST.rm) s+=rmView();
+      }
+      s+='<div style="margin-top:10px">'+btn("Lock","window.__nhPuLock()",false,"width:100%")+'</div></div>';
+      return s; };
+    W.__nhPuAsk=function(){ ST.ask=true; ST.orgMsg=""; ST.focus="nhPuCode"; paint(); };
+    W.__nhPuAskOff=function(){ ST.ask=false; ST.focus=""; paint(); };
+    W.__nhPuUnlock=function(){ var i=document.getElementById("nhPuCode"), code=String((i&&i.value)||"").trim(), id=ST.id; if(!code) return;
+      ST.orgMsg="Checking…"; ST.focus=""; paint();
+      rpc("pu_admin_check",{p_event:id, p_code:code}).then(function(r){ if(ST.id!==id) return;
+        if(!r || !r.ok){ ST.orgMsg=(r&&r.error)||"Not accepted."; ST.focus="nhPuCode"; paint(); return; }
+        ST.adm=code; ST.ask=false; ST.orgMsg=""; try{ sessionStorage.setItem("nhPuAdm|"+id, code); }catch(e){} paint(); }); };
+    W.__nhPuLock=function(){ try{ sessionStorage.removeItem("nhPuAdm|"+ST.id); }catch(e){} ST.adm=""; ST.pick=null; ST.rm=false; ST.make=null; ST.ask=false; ST.msg=""; paint(); };
+    var rmView=function(){ var D=ST.D, L=D.players.map(function(p){ return p.name; }).filter(function(n){ return starts(n, ST.rq); }).sort(function(a,b){ return a.localeCompare(b); });
+      var n=Object.keys(ST.rticks).filter(function(k){ return ST.rticks[k]; }).length;
+      return '<div style="margin-top:12px;border:1px solid #e6e0ee;border-radius:12px;padding:12px"><div style="font-size:13.5px;font-weight:800;color:#241d33;margin-bottom:6px">Remove players</div>'
+        +'<input id="nhPuRQ" value="'+esc(ST.rq)+'" oninput="window.__nhPuRQ(this.value)" placeholder="First letters of a name" style="'+inp+'">'
+        +'<div data-keep="rm" style="max-height:300px;overflow:auto;border:1px solid #f0ecf4;border-radius:10px">'+(L.length?L.map(function(nm){
+            return '<label style="display:flex;align-items:center;gap:10px;padding:9px 8px;border-bottom:1px solid #f0ecf4;font-size:14px;cursor:pointer"><input type="checkbox" '+(ST.rticks[nm]?'checked ':'')+'onchange="window.__nhPuRmTick(this.dataset.n,this.checked)" data-n="'+esc(nm)+'" style="width:18px;height:18px"><span style="flex:1">'+esc(nm)+'</span><span style="color:#8a8196">'+rt(D,nm)+'</span></label>'; }).join("")
+          :'<div style="padding:10px;font-size:13px;color:#8a8196">Nobody to show.</div>')+'</div>'
+        +'<div style="display:flex;gap:8px;margin-top:8px">'+btn("Close","window.__nhPuRm()",false,"flex:1")+btn("Remove "+n+" player"+(n===1?"":"s"),"window.__nhPuRmGo()",n>0,"flex:1")+'</div></div>'; };
+    W.__nhPuRm=function(){ ST.rm=!ST.rm; ST.pick=null; ST.make=null; ST.rq=""; ST.rticks={}; ST.focus=ST.rm?"nhPuRQ":""; ST.msg=""; paint(); };
+    W.__nhPuRQ=function(v){ ST.rq=v; ST.focus="nhPuRQ"; paint(); };
+    W.__nhPuRmTick=function(n,on){ ST.rticks[n]=!!on; ST.focus=""; paint(); };
+    W.__nhPuRmGo=function(){ if(ST.busy) return; var list=Object.keys(ST.rticks).filter(function(k){ return ST.rticks[k]; }); if(!list.length) return;
+      var ok=0, bad=[], i=0, id=ST.id; ST.busy=true; ST.msg="Removing…"; ST.focus=""; paint();
+      (function next(){ if(i>=list.length){ ST.busy=false; ST.rm=false; ST.rticks={}; ST.msg="Removed "+ok+" player"+(ok===1?"":"s")+"."+(bad.length?(" Not removed: "+bad.map(esc).join(", ")+"."):""); CK.key=""; refresh(); return; }
+        var nm=list[i++]; rpc("pu_leave",{p_event:id, p_name:nm, p_code:ST.adm}).then(function(r){ if(r && r.ok) ok++; else bad.push(nm+" — "+((r&&r.error)||"not removed")); next(); }); })(); };
+
+    /* ---------------------------------------------------------------- make the divisions and pairs
+       By rating: the first <per> are the first division, the next <per> the second …; a player can be moved up or down
+       (he changes places with the nearest player on the other side of the line). In a division: 1st + last, 2nd + last
+       but one … (Mormond: 1st + 12th, 2nd + 11th … 6th + 7th). */
+    var secsOf=function(M){ var D=ST.D, out=[]; M.secs.forEach(function(names, i){ var L=names.slice().sort(function(a,b){ return rt(D,b)-rt(D,a) || a.localeCompare(b); }), prs=[];
+        for(var k=0;k<L.length/2;k++){ var a=L[k], b=L[L.length-1-k]; prs.push([a, b, pair6040(rt(D,a), rt(D,b))]); }
+        out.push({name:M.names[i], list:L, pairs:prs}); }); return out; };
+    W.__nhPuMake=function(){ var D=ST.D, e=D.e, n=D.players.length, ns=(e.sections||[]).length||1;
+      ST.pick=null; ST.rm=false; ST.msg="";
+      if(n<e.cap && (n<8*ns || n%(2*ns)!==0)){
+        ST.msg="<b>"+n+" of "+e.cap+" are in.</b> The divisions can be made when the field is full"+(8*ns<e.cap?", or earlier with a number that splits into "+ns+" equal divisions of pairs ("+[8*ns,10*ns,12*ns].filter(function(x){ return x<e.cap; }).slice(0,3).join(", ")+" …)":"")+"."; paint(); return; }
+      var L=sorted(D).map(function(p){ return p.name; }), per=n/ns, secs=[]; for(var i=0;i<ns;i++) secs.push(L.slice(i*per,(i+1)*per));
+      ST.make={secs:secs, names:(e.sections||[]).slice(), log:"", done:false, short:(n<e.cap)}; paint(); };
+    W.__nhPuMove=function(si, name, dir){ var M=ST.make, D=ST.D; if(!M || ST.busy) return; var ti=si+dir; if(ti<0 || ti>=M.secs.length) return;
+      var by=function(a,b){ return rt(D,b)-rt(D,a) || a.localeCompare(b); }, T=M.secs[ti].slice().sort(by);
+      var other = dir<0 ? T[T.length-1] : T[0];   /* going up: the lowest of the division above comes down; going down: the highest below comes up */
+      M.secs[si]=M.secs[si].filter(function(x){ return x!==name; }).concat([other]); M.secs[ti]=M.secs[ti].filter(function(x){ return x!==other; }).concat([name]); paint(); };
+    W.__nhPuMakeOff=function(){ if(ST.busy) return; ST.make=null; paint(); };
+    var makeView=function(){ var D=ST.D, e=D.e, M=ST.make, S=secsOf(M), c=ink(), s='';
+      s+='<p class="sub" style="text-align:left">'+(M.short?('<b>Only '+D.players.length+' of '+e.cap+' are in</b> — the divisions are made with these. '):'')+'By rating, highest first. Use ▲ ▼ to move a player to the division above or below (he changes places with the nearest player across the line). Nothing is saved until you tap Save.</p>';
+      S.forEach(function(sec, si){
+        s+='<div style="border:1px solid #e6e0ee;border-radius:12px;padding:10px;margin-bottom:10px"><div style="font-size:14px;font-weight:800;color:#241d33;margin-bottom:6px">'+esc(sec.name)+' <span style="font-weight:700;color:#8a8196;font-size:12px">· '+sec.list.length+' players · becomes “'+esc(tourName(e, sec.name))+'”</span></div>'
+          +'<table><thead><tr><th class="num">#</th><th>Player</th><th class="num">Rating</th><th></th></tr></thead><tbody>'
+          +sec.list.map(function(nm,i){ var mv=function(dir, lab){ return '<button data-n="'+esc(nm)+'" onclick="window.__nhPuMove('+si+',this.getAttribute(\'data-n\'),'+dir+')" style="border:1px solid #ddd5e6;background:#fff;border-radius:8px;padding:3px 8px;font:inherit;font-size:12px;cursor:pointer;color:'+c+'">'+lab+'</button>'; };
+              return '<tr><td class="num">'+(i+1)+'</td><td>'+esc(nm)+'</td><td class="num">'+rt(D,nm)+'</td><td style="white-space:nowrap;text-align:right">'+(si>0?mv(-1,"▲"):"")+(si<S.length-1?(" "+mv(1,"▼")):"")+'</td></tr>'; }).join("")+'</tbody></table>'
+          +'<div style="font-size:12.5px;font-weight:800;color:#4b4060;margin:10px 0 4px">The pairs</div>'
+          +'<table><tbody>'+sec.pairs.map(function(p,i){ return '<tr><td class="num">'+(i+1)+'</td><td><b>'+esc(p[0])+' &amp; '+esc(p[1])+'</b></td><td class="num">'+p[2]+'</td></tr>'; }).join("")+'</tbody></table></div>'; });
+      if(M.log) s+='<div id="nhPuLog" style="font-size:13px;color:#4b4060;line-height:1.5;margin:0 0 8px">'+M.log+'</div>';
+      s+='<div style="display:flex;gap:8px">'+btn("Cancel","window.__nhPuMakeOff()",false,"flex:1")+btn(ST.busy?"Saving…":"Save — make the divisions","window.__nhPuSave()",true,"flex:1.4")+'</div>';
+      return s; };
+    var edge=function(body){ var base=""; try{ base=SB_URL; }catch(e){ base="https://djmbnvikrdgnomjhtkgf.supabase.co"; } var AK=anon(); try{ AK=SB_ANON||AK; }catch(e){}
+      return fetch(base+"/functions/v1/tournament",{method:"POST",headers:{apikey:AK,Authorization:"Bearer "+AK,"Content-Type":"application/json"},body:JSON.stringify(body)})
+        .then(function(r){ return r.json().catch(function(){ return {}; }).then(function(j){ return {ok:(r.ok && j && j.ok!==false), error:(j&&j.error)||("("+r.status+")")}; }); }).catch(function(){ return {ok:false,error:"no connection"}; }); };
+    W.__nhPuSave=async function(){ var M=ST.make, D=ST.D; if(!M || ST.busy || !D) return; var e=D.e, id=ST.id, S=secsOf(M), cid=Number(e.club_id);
+      var log=function(t){ M.log=t; paint(); }; ST.busy=true; log("Saving…");
+      var fail=function(t){ ST.busy=false; log('<span style="color:#c0392b"><b>Stopped:</b> '+t+' Nothing is lost — tap Save again to carry on.</span>'); };
+      try{
+        var have=await get("plat_padel_tournaments?club_id=eq."+cid+"&select=name");
+        var has={}; (have||[]).forEach(function(t){ has[lc(t.name)]=1; });
+        var res=[];
+        for(var i=0;i<S.length;i++){ var sec=S[i], tn=tourName(e, sec.name);
+          if(!has[lc(tn)]){ log("Creating “"+esc(tn)+"”…");
+            var r=await adminCall("create_tournament",{club_id:cid, name:tn, type:"internal", format:"round_robin", divisions:e.division, caps:null, handicap:false}, ST.adm);
+            if(!r || !r.ok){ fail("“"+esc(tn)+"” could not be created — "+esc((r&&r.error)||"no reply")+"."); return; } }
+          var ent=await get("plat_padel_tournament_entries?club_id=eq."+cid+"&tournament=eq."+ENC(tn)+"&select=p1,p2");
+          var inn={}; (ent||[]).forEach(function(x){ inn[lc(x.p1)]=1; if(x.p2) inn[lc(x.p2)]=1; });
+          for(var k=0;k<sec.pairs.length;k++){ var p=sec.pairs[k]; if(inn[lc(p[0])] || inn[lc(p[1])]) continue;
+            log("“"+esc(tn)+"”: entering pair "+(k+1)+" of "+sec.pairs.length+"…");
+            var r2=await edge({action:"enter_team", club_id:cid, entry:{tournament:tn, category:e.division, p1:p[0], p2:p[1], seed_rating:p[2]}});
+            if(!r2.ok){ fail("“"+esc(tn)+"”: "+esc(p[0])+" &amp; "+esc(p[1])+" could not be entered — "+esc(r2.error)+"."); return; } }
+          res.push({name:sec.name, tournament:tn, pairs:sec.pairs}); }
+        log("Finishing…");
+        var r3=await rpc("pu_made",{p_event:id, p_code:ST.adm, p_result:{sections:res}});
+        if(!r3 || !r3.ok){ fail(esc((r3&&r3.error)||"The last step was not saved.")); return; }
+        ST.busy=false; ST.make=null; CK.key=""; ST.msg="<b>Done.</b> "+res.map(function(x){ return "“"+esc(x.tournament)+"”"; }).join(" and ")+" "+(res.length>1?"are":"is")+" on the Tournaments page with the pairs entered. Open a division and generate its round robin as usual.";
+        refresh();
+      }catch(x){ fail("something went wrong ("+esc(String(x&&x.message||x))+")."); } };
+
+    /* ---------------------------------------------------------------- cards: the door's Tournaments page and a group's */
+    var CK={key:"", html:null, busy:null};
+    var cardsKey=function(){ return boardsOfRegion().join(","); };
+    var cards=function(){ var k=cardsKey(); if(!k) return Promise.resolve("");
+      if(CK.key===k && CK.busy) return CK.busy;
+      CK.key=k; CK.html=null; CK.busy=get("plat_pairup?club_id=in.("+k+")&select=*&order=event_id.asc").then(function(all){
+        var ev=(all||[]).filter(function(x){ return x.active!==false && !x.archived && !x.made; }); if(!ev.length){ CK.html=""; CK.busy=null; return ""; }
+        return get("plat_pairup_players?event_id=in.("+ev.map(function(x){ return x.event_id; }).join(",")+")&left_at=is.null&select=event_id").then(function(ps){
+          var n={}; (ps||[]).forEach(function(p){ n[p.event_id]=(n[p.event_id]||0)+1; });
+          var h=ev.map(function(e){ var g=boardOf(e.club_id), col=g.colour||ink(), c=n[e.event_id]||0;
+            return '<button data-nh-club="'+Number(e.club_id)+'" onclick="window.nhPuOpen('+e.event_id+')" style="display:flex;width:100%;align-items:center;gap:10px;background:#fff;border:1px solid #e6e0ee;border-radius:14px;padding:10px 12px;margin-top:6px;font:inherit;cursor:pointer;text-align:left">'
+              +'<span style="flex:1;min-width:0"><span data-plat-keep="1" style="display:inline-block;background:'+col+';color:#fff;border-radius:99px;padding:2px 9px;font-size:10.5px;font-weight:800;letter-spacing:.04em">GROUP · '+esc(g.name||"")+'</span>'
+              +'<span style="display:block;font-weight:800;font-size:14px;color:#241d33;margin-top:4px">'+esc(e.name)+' <span style="font-size:11px;font-weight:800;color:'+ink()+'">ROUND ROBIN</span></span>'
+              +'<span style="display:block;font-size:12px;color:#8a8196;margin-top:2px">'+esc(e.division)+' · enter on your own · '+(c>=e.cap?"entry closed — full":"entry open")+'</span></span>'
+              +'<span style="text-align:right;line-height:1.2"><span style="display:block;font-size:15px;font-weight:800;color:'+col+'">'+c+'/'+e.cap+'</span><span style="font-size:10px;color:#8a8196">players</span></span>'
+              +'<span style="color:'+ink()+';font-weight:800">›</span></button>'; }).join("");
+          CK.html=h; CK.busy=null; return h; }); }).catch(function(){ CK.busy=null; return null; });
+      return CK.busy; };
+    var put=function(host, id, html, css, before){ if(!host) return; var box=host.querySelector("#"+id);
+      if(!html){ if(box) box.remove(); return; }
+      if(box){ if(box.__h!==html){ box.innerHTML=html; box.__h=html; } return; }
+      box=document.createElement("div"); box.id=id; box.style.cssText=css; box.innerHTML=html; box.__h=html;
+      if(before) host.insertBefore(box, before); else host.appendChild(box); };
+    var doorK="";
+    (function(){ var fill=function(sub, h){ if(!sub || !h) return; var empty=Array.prototype.filter.call(sub.children,function(x){ return /^Nothing here yet\.$/.test((x.textContent||"").trim()); })[0];
+          if(empty) empty.style.display="none"; put(sub, "nhPuDoorCards", h, "padding:0 10px 10px", sub.lastElementChild); };
+      var wrap=function(){ var f0=W.nhDoorSec; if(typeof f0!=="function") return false; if(f0.__nhPu) return true;
+        var f1=function(k){ var r=f0.apply(this, arguments); doorK=k;
+          if(k==="t"){ var sub=document.getElementById("nhDoorSub"); if(CK.key===cardsKey() && CK.html!=null) fill(sub, CK.html);
+            CK.key=""; cards().then(function(h){ if(h===null || doorK!=="t") return; var s2=document.getElementById("nhDoorSub"); if(!s2 || s2.style.display==="none") return; if(h) fill(s2, h); else put(s2, "nhPuDoorCards", ""); }); }
+          return r; };
+        Object.keys(f0).forEach(function(p){ f1[p]=f0[p]; }); f1.__nhPu=1; W.nhDoorSec=f1; return true; };
+      var n=0, t=setInterval(function(){ if(++n>24){ if(wrap() || n>80) clearInterval(t); }
+        try{ var k=cardsKey(); if(k && CK.key!==k) cards(); }catch(e){} }, 250); })();
+    setInterval(function(){ try{
+      var sc=document.getElementById("tournamentScreen"), pk=document.getElementById("tournamentPicker");
+      if(!sc || !sc.classList.contains("active") || !pk) return;
+      var me=Number(W.PLAT&&W.PLAT.cid)||0, chosen=false; try{ chosen=!!new URLSearchParams(location.search).get("tn"); }catch(e){}
+      var have=pk.querySelector("#nhPuTourCards"), all=(boardsOfRegion()[0]===me);
+      if(CK.key!==cardsKey()){ cards(); return; }
+      if(CK.html==null) return;
+      if(chosen || !CK.html || (!all && String(CK.html).indexOf('data-nh-club="'+me+'"')<0)){ if(have) have.remove(); return; }
+      if(!have){ if(/No active tournament right now/.test(pk.textContent||"") && !pk.querySelector("#nhTsTourCards") && !pk.querySelector("#nhAmTourCards")) pk.innerHTML=""; }
+      put(pk, "nhPuTourCards", CK.html, "margin:0 0 12px", pk.firstChild && pk.firstChild.id==="nhPuTourCards" ? null : pk.firstChild);
+      Array.prototype.forEach.call(pk.querySelectorAll("#nhPuTourCards button[data-nh-club]"),function(b){ b.style.display=(all || Number(b.getAttribute("data-nh-club"))===me)?"flex":"none"; });
+    }catch(e){} }, 800);
+
+    /* ---------------------------------------------------------------- Create a tournament: the format and its few questions */
+    var puOn=function(){ var f=document.getElementById("atFormat"), ty=document.getElementById("atType"); return !!(f && f.value==="pairup" && (!ty || ty.value==="internal")); };
+    var puSync=function(){ try{
+      var d=document.getElementById("nhPuNew"); if(!d) return; var on=puOn(); d.style.display=on?"block":"none";
+      var hc=document.getElementById("atHandicap"); hc=hc && hc.closest ? hc.closest("div") : null;
+      [document.getElementById("atDivBlock"), document.getElementById("nhRulesNew"), hc].forEach(function(el){ if(!el) return;
+        if(on){ if(el.style.display!=="none"){ el.dataset.nhPuHid=el.style.display||"-"; el.style.display="none"; } }
+        else if(el.dataset.nhPuHid){ if(el.style.display==="none" && !el.dataset.nhAmHid) el.style.display=(el.dataset.nhPuHid==="-")?"":el.dataset.nhPuHid; delete el.dataset.nhPuHid; } });
+      var per=Number((document.getElementById("nhPuPer")||{}).value)||0, names=String((document.getElementById("nhPuSecs")||{}).value||"").split(",").map(function(x){ return x.trim(); }).filter(Boolean);
+      var tot=document.getElementById("nhPuTotal"); if(tot) tot.textContent=(per>=4 && per%2===0 && names.length) ? ("Entry closes at "+(per*names.length)+" players: "+names.map(function(x){ return x+" "+per+" ("+(per/2)+" pairs)"; }).join(", ")+".") : "Players in a division: an even number, 4 or more — and a name for each division.";
+    }catch(e){} };
+    setInterval(function(){ try{
+      var f=document.getElementById("atFormat"); if(!f) return;
+      if(!f.querySelector('option[value="pairup"]')){ var o=document.createElement("option"); o.value="pairup"; o.textContent="Round Robin, players enter alone — the system makes the divisions and level pairs"; f.appendChild(o);
+        f.addEventListener("change", function(){ setTimeout(puSync,0); }); var ty=document.getElementById("atType"); if(ty) ty.addEventListener("change", function(){ setTimeout(puSync,0); }); }
+      var blk=document.getElementById("atFormatBlock"); if(!blk || document.getElementById("nhPuNew")) { puSync(); return; }
+      var lab=function(t){ return '<label style="font-size:12px;color:#9b80b3;font-weight:700;">'+t+'</label>'; };
+      var tick=function(id, t){ return '<label style="display:flex;align-items:center;gap:8px;padding:6px 2px;font-size:14px;cursor:pointer"><input type="checkbox" id="'+id+'"> '+t+'</label>'; };
+      var d=document.createElement("div"); d.id="nhPuNew"; d.style.cssText="display:none;margin:6px 0";
+      d.innerHTML=lab("Who is it for")+'<p style="font-size:11px;color:#9b80b3;margin:2px 0 2px">Tick each one. Each gets its own entry list.</p>'
+        +'<div style="margin:0 0 8px">'+tick("nhPuDivMen","Men's")+tick("nhPuDivLadies","Ladies")+tick("nhPuDivAll","All Sorts — anyone with anyone")+'</div>'
+        +'<div style="display:flex;gap:8px"><div style="flex:1">'+lab("Players in each division")+'<input id="nhPuPer" type="number" class="ac-field" value="12" min="4" max="64" step="2" oninput="void 0"></div>'
+        +'<div style="flex:2">'+lab("The divisions, strongest first (a comma between)")+'<input id="nhPuSecs" type="text" class="ac-field" value="Advance, Intermediate"></div></div>'
+        +'<p id="nhPuTotal" style="font-size:12px;color:#4b4060;font-weight:700;margin:2px 0 4px"></p>'
+        +'<p style="font-size:11px;color:#9b80b3;margin:2px 0 0">Players enter on their own on the tournament\'s page (you can add them too). Entry closes when the last place is taken. You then tap “Make the divisions and pairs”: by rating the strongest go into the first division, and in each division the 1st is paired with the last, the 2nd with the last but one, and so on. Each division then becomes a round-robin tournament with its pairs entered.</p>';
+      blk.appendChild(d); puSync();
+    }catch(e){} }, 900);
+    var wrapCreate=function(){
+      var f0=W.adminCreateTournament; if(typeof f0!=="function") return false; if(f0.__nhPu) return true;
+      if(W.NhAmDraw && !f0.__nhAm) return false;                 /* nat4: go on the outside of the Americano / Mexicano one */
+      var nf=async function(){
+        if(!puOn()) return f0.apply(this, arguments);
+        var msg=document.getElementById("adminTourMsg"), cid=Number((document.getElementById("adminClubSelect")||{}).value)||0;
+        var v=function(id){ return ((document.getElementById(id)||{}).value||"").trim(); }, ck=function(id){ var e=document.getElementById(id); return !!(e && e.checked); };
+        var red=function(t){ if(msg) msg.innerHTML='<span style="color:#c0392b;">'+t+'</span>'; };
+        var name=v("atName"), pin=""; try{ pin=String(ADMIN_PIN||""); }catch(e){}
+        var divs=[["nhPuDivMen","Men's"],["nhPuDivLadies","Ladies"],["nhPuDivAll","All Sorts"]].filter(function(x){ return ck(x[0]); }).map(function(x){ return x[1]; });
+        var per=Number(v("nhPuPer"))||0, secs=v("nhPuSecs").split(",").map(function(x){ return x.trim(); }).filter(Boolean);
+        if(!name){ red("Tournament name required."); return; }
+        if(!divs.length){ red("Tick who it is for: Men's, Ladies or All Sorts."); return; }
+        if(per<4 || per%2){ red("Players in each division: an even number, 4 or more."); return; }
+        if(!secs.length){ red("Give the divisions a name, for example: Advance, Intermediate."); return; }
+        var made=[], bad="";
+        for(var i=0;i<divs.length;i++){
+          var r=await rpc("pu_create",{p_club:cid, p_code:pin, p_name:(divs.length>1 ? (name+" "+divs[i]) : name), p_division:divs[i], p_cap:per*secs.length, p_per:per, p_sections:secs});
+          if(!r || !r.ok){ bad=((r&&r.error)||"Not created.")+(divs.length>1?(" ("+divs[i]+")"):""); break; }
+          made.push(r.name); }
+        var okh=made.length?('<span style="color:#1e8449;">Created '+made.map(function(x){ return '"'+esc(x)+'"'; }).join(" and ")+' — players enter on their own, entry closes at '+(per*secs.length)+' players, then you make the divisions ('+esc(secs.join(", "))+') and the pairs. '+(made.length>1?"They are":"It is")+' on the Tournaments page now.</span>'):'';
+        if(msg) msg.innerHTML=okh+(bad?((okh?'<br>':'')+'<span style="color:#c0392b;">'+esc(bad)+'</span>'):'');
+        if(!made.length) return;
+        var n=document.getElementById("atName"); if(n && !bad) n.value=""; CK.key="";
+        try{ adminLoadTournaments(); }catch(e){}
+      };
+      Object.keys(f0).forEach(function(k){ nf[k]=f0[k]; }); nf.__nhPu=1; W.adminCreateTournament=nf; try{ adminCreateTournament=nf; }catch(e){}
+      return true; };
+    if(!wrapCreate()){ var cn=0, ct=setInterval(function(){ if(wrapCreate() || ++cn>120) clearInterval(ct); }, 250); }
+
+    /* ---------------------------------------------------------------- the Control Room's Tournaments list: on / off / close / delete */
+    var ADMR={cid:0, rows:null};
+    var admRows=function(){ var box=document.getElementById("adminTournaments"); if(!box || !ADMR.rows) return;
+      if(Number((document.getElementById("adminClubSelect")||{}).value)!==ADMR.cid) return;
+      Array.prototype.forEach.call(box.querySelectorAll("tr.nhPuRow"),function(x){ x.remove(); }); var old=box.querySelector("#nhPuAdmOwn"); if(old) old.remove();
+      if(!ADMR.rows.length) return;
+      Array.prototype.forEach.call(box.children,function(x){ if(/^No tournaments yet\.?$/.test((x.textContent||"").trim())) x.style.display="none"; });
+      var h=ADMR.rows.map(function(t){
+        var status = t.archived ? '<span style="color:#888;">closed</span>' : (t.active!==false ? '<span style="color:#1e8449;font-weight:700;">active</span>' : 'off');
+        var bn=function(label, what, col){ return '<button data-n="'+esc(t.name)+'" onclick="window.__nhPuAdmSet('+Number(t.event_id)+',\''+what+'\',this.getAttribute(\'data-n\'))" style="background:none;border:none;color:'+col+';cursor:pointer;">'+label+'</button>'; };
+        var act = t.archived ? ('<span style="color:#aaa;">archived</span> '+bn("delete","delete","#c0392b")) : ((t.active!==false ? bn("turn off","off","#8fb500") : bn("turn on","on","#1e8449"))+' '+bn("close&amp;archive","close","#c0392b"));
+        return '<tr class="nhPuRow"><td>'+esc(t.name)+'</td><td>Entry list'+(t.made?' (pairs made)':'')+'</td><td>'+status+'</td><td>'+act+'</td></tr>'; }).join("");
+      var tb=box.querySelector("table.ladder-table tbody");
+      if(tb) tb.insertAdjacentHTML("beforeend", h);
+      else { var d=document.createElement("div"); d.id="nhPuAdmOwn"; d.style.marginTop="8px"; d.innerHTML='<table class="ladder-table"><thead><tr><th>Name</th><th>Type</th><th>Status</th><th></th></tr></thead><tbody>'+h+'</tbody></table>'; box.appendChild(d); } };
+    var admPaint=function(){ var cid=Number((document.getElementById("adminClubSelect")||{}).value)||0; if(!cid) return;
+      get("plat_pairup?club_id=eq."+cid+"&select=*&order=event_id.asc").then(function(r){ ADMR.cid=cid; ADMR.rows=r||[]; admRows(); }); };
+    setInterval(function(){ try{ var a=document.querySelector(".screen.active"); if(!a || a.id!=="adminScreen" || !ADMR.rows || !ADMR.rows.length) return;
+      var box=document.getElementById("adminTournaments"); if(!box || box.offsetParent===null) return;
+      if(Number((document.getElementById("adminClubSelect")||{}).value)!==ADMR.cid){ ADMR.rows=null; return; }
+      if(box.querySelectorAll("tr.nhPuRow").length!==ADMR.rows.length) admRows(); }catch(e){} }, 700);
+    W.__nhPuAdmSet=function(id, what, name){ name=String(name||"");
+      if(what==="close" && !confirm('Close & ARCHIVE "'+name+'"? It leaves the door and nobody can enter any more. Divisions already made from it are tournaments of their own and stay.')) return;
+      if(what==="delete"){ if(!confirm('Permanently DELETE the archived "'+name+'"?\n\nThis removes the entry list only. Divisions already made from it, matches and ratings are NOT affected.')) return;
+        if(!confirm('Are you sure? This cannot be undone.')) return; }
+      var pin=""; try{ pin=String(ADMIN_PIN||""); }catch(e){}
+      rpc("pu_admin_set",{p_event:Number(id), p_code:pin, p_what:what}).then(function(r){ CK.key="";
+        if(!r || !r.ok){ alert((r&&r.error)||"Not changed."); return; }
+        if(what==="close") alert('"'+name+'" archived.'); else if(what==="delete") alert('"'+name+'" deleted.');
+        admPaint(); }); };
+    (function(){ var n=0, t=setInterval(function(){ var f0=W.adminLoadTournaments; if(typeof f0!=="function"){ if(++n>200) clearInterval(t); return; } if(f0.__nhPuAdm){ clearInterval(t); return; }
+        if(W.NhAmDraw && !f0.__nhAdm && n++<40) return;
+        clearInterval(t);
+        var f1=async function(){ var r=await f0.apply(this, arguments); try{ admPaint(); }catch(e){} return r; };
+        Object.keys(f0).forEach(function(k){ f1[k]=f0[k]; }); f1.__nhPuAdm=1; W.adminLoadTournaments=f1; try{ adminLoadTournaments=f1; }catch(e){} }, 250); })();
   })();
   /* n350: COLUMN NAMES THAT STAY PUT. Group Members gets Name · Rating · Level · Move · Rank in the frozen block with
      its search box (each name measured onto the pill beneath it); on Member profiles and List all members the names
