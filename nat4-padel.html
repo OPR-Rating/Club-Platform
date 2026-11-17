@@ -3784,7 +3784,7 @@ const CLUB_NAME = _club.name;  // shown in the logo as "OPR · <name>"
     link.setAttribute('href', href);
   }catch(e){ /* install stays on the static manifest — no functional impact */ }
 })();
-const OPR_VERSION = "OPR-DOUBLES v2026.09.03-56 · NAT4 booking test b66 (nat3 n375) (no voice) (of PLAT p117)";  // MANUAL PAIR CREATION REMOVED FROM ADMIN: Create a pair, Bulk create pairs and Re-derive all pairs are gone (they only made match-less ghost pairs, and Re-derive rewrote every stored initial club-wide). Pairs are born automatically at match entry. Current pairs list untouched; the underlying JS is left in place unreferenced, so no other code path changes. Includes v47 (set-score fix + double-tap guard) and all prior.
+const OPR_VERSION = "OPR-DOUBLES v2026.09.03-56 · NAT4 booking test b67 (nat3 n375) (no voice) (of PLAT p117)";  // MANUAL PAIR CREATION REMOVED FROM ADMIN: Create a pair, Bulk create pairs and Re-derive all pairs are gone (they only made match-less ghost pairs, and Re-derive rewrote every stored initial club-wide). Pairs are born automatically at match entry. Current pairs list untouched; the underlying JS is left in place unreferenced, so no other code path changes. Includes v47 (set-score fix + double-tap guard) and all prior.
 // Explanation shown above the individual ladder. Open on load so it's read; collapsible
 // (state kept for the session) and scrolls away. Mechanics only — no outcome framing, so
 // members aren't nudged away from playing stronger opponents. Every clause maps to a real
@@ -13953,7 +13953,7 @@ W.nhOpenPair=function(name){
     setInterval(leapBrk, 900);
     W.__nhTsBuild=build;   /* for the test */
   })();
-  window.__nhBkAnon="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRqbWJudmlrcmRnbm9tamh0a2dmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODUzOTE0MzEsImV4cCI6MjEwMDk2NzQzMX0.vR8xlVFjV6jXW-pAclGjM74HqmWSKVpsacFjM-dCIJI"; window.__nhBkBuild="nat4 b66";
+  window.__nhBkAnon="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRqbWJudmlrcmRnbm9tamh0a2dmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODUzOTE0MzEsImV4cCI6MjEwMDk2NzQzMX0.vR8xlVFjV6jXW-pAclGjM74HqmWSKVpsacFjM-dCIJI"; window.__nhBkBuild="nat4 b67";
   /* ===================================================================================================
      COURT BOOKING (nat4 test copy, Manzini pilot, Andre 26 Oct). Started ONLY from the player's own My page: its
      "Court card" button becomes "Book a court", which asks "Where do you want to play?" — one tile per venue; a venue
@@ -18525,6 +18525,18 @@ W.nhOpenPair=function(name){
       try{ p=W.tmGeneratePlayoff(mode==="block"?"block":"snake"); }catch(e){ said.push("Something went wrong ("+String(e&&e.message||e)+")."); }
       return Promise.resolve(p).then(back, back); };
     var PO={pick:0, busy:false, asked:[], mode:"snake"};
+    /* b67 (Andre, 17 Nov: "it still did not put the top team through … I tried both options"): the card offered 1, 2 or 3 per
+       group and "1 — the group winners" made a final of A1 v B1. Two groups of three have ONE knockout, so nothing is
+       asked: the group winners wait in the semi-finals, 2nd plays 3rd of the other group, then the final. The page's two
+       buttons (Combined knockout / Section finals) become one button for such a division. */
+    var MORTXT='<b>The winner of each group goes straight to a semi-final.</b><br>First: 2nd of group A v 3rd of group B, and 2nd of group B v 3rd of group A.<br>Semi-finals: winner of group A v the winner of (B 2nd v A 3rd); winner of group B v the winner of (A 2nd v B 3rd).<br>Then the final, and the third-place match.';
+    var isMor=function(){ var g={}; (W._tmAllFixtures||[]).forEach(function(f){ if(f.round_type!=="rr") return; var L=String(f.band||"").split("·")[0]; if(!L || String(f.band||"").indexOf("·")<0) return;
+        g[L]=g[L]||{}; if(Number(f.seed_a)) g[L][f.seed_a]=1; if(Number(f.seed_b)) g[L][f.seed_b]=1; });
+      var k=Object.keys(g); return k.length===2 && k.every(function(L){ return Object.keys(g[L]).length===3; }); };
+    setInterval(function(){ try{ var b=document.querySelector("#tournamentSheetContent [onclick*=\"tmGeneratePlayoff('snake')\"]"); if(!b || b.__nhMor) return; if(!isMor()) return;
+        b.__nhMor=1; b.innerHTML='🏆 <b>Set up the knockout</b> — the group winners go straight to the semi-finals; 2nd plays 3rd of the other group for the other two places';
+        var x=b.parentNode.querySelector("[onclick*=\"tmGeneratePlayoff('block')\"]"); if(x) x.style.display="none";
+        var n=b.parentNode.nextElementSibling; if(n && /Choose how the finals run/.test(n.textContent||"")) n.textContent="All group matches are complete."; }catch(e){} }, 400);
     var shut=function(){ var o=document.getElementById("nhPo"); if(o) o.remove(); PO.busy=false; };
     var roundWord=function(n){ return n<=2?"the final":(n<=4?"semi-finals":(n<=8?"quarter-finals":"a knockout of "+n)); };
     var card=function(info, msg){ shut(); var c=ink(), G=info.G, mx=info.maxAdv, blk=!!info.block;
@@ -18540,6 +18552,9 @@ W.nhOpenPair=function(name){
           ? ('<div style="font-size:16px;font-weight:800;color:#241d33;margin-bottom:4px">Section finals</div>'
             +'<div style="font-size:13px;color:#6b6480;margin-bottom:10px;line-height:1.45">Each group plays its own knockout for its own winner — the groups do not meet. '+(info.ask4?'How many of each group play in it?':'The top two of each group play that group\'s final.')+'</div>'
             +(info.ask4 ? (opt(2,"2 — the top two","Straight to the group\'s final.")+opt(4,"4 — the top four","Semi-finals (1 v 4, 2 v 3), then the group\'s final.")) : ""))
+          : info.mor
+          ? ('<div style="font-size:16px;font-weight:800;color:#241d33;margin-bottom:4px">The knockout after the groups</div>'
+            +'<div style="font-size:13.5px;color:#4b4060;margin-bottom:10px;line-height:1.55">'+MORTXT+'</div>')
           : ('<div style="font-size:16px;font-weight:800;color:#241d33;margin-bottom:4px">The knockout after the groups</div>'
             +'<div style="font-size:13px;color:#6b6480;margin-bottom:10px;line-height:1.45">'+G+' groups. How many teams go through from each group?</div>'
             +opt(1,"1 — the group winners", G+" teams → "+roundWord(size(G))+".")
@@ -18573,6 +18588,7 @@ W.nhOpenPair=function(name){
           card({block:true, G:0, maxAdv:0, ask4:/how many advance/i.test(PO.asked[0])}, ""); return; }
         var info=W.__nhPoInfo; if(!info){ return; }
         if(info.maxAdv<2) PO.pick=1;
+        if(info.G===2 && info.maxAdv===3 && isMor()){ info.mor=true; PO.pick=3; }
         card(info, ""); }); }, true);
 
     /* two groups, three from each (Mormond): top to bottom  A1 · bye | B2 v A3 | A2 v B3 | B1 · bye  — so the semi-finals are
