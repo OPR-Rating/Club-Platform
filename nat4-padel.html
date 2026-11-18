@@ -3784,7 +3784,7 @@ const CLUB_NAME = _club.name;  // shown in the logo as "OPR · <name>"
     link.setAttribute('href', href);
   }catch(e){ /* install stays on the static manifest — no functional impact */ }
 })();
-const OPR_VERSION = "OPR-DOUBLES v2026.09.03-56 · NAT4 booking test b72 (nat3 n375) (no voice) (of PLAT p117)";  // MANUAL PAIR CREATION REMOVED FROM ADMIN: Create a pair, Bulk create pairs and Re-derive all pairs are gone (they only made match-less ghost pairs, and Re-derive rewrote every stored initial club-wide). Pairs are born automatically at match entry. Current pairs list untouched; the underlying JS is left in place unreferenced, so no other code path changes. Includes v47 (set-score fix + double-tap guard) and all prior.
+const OPR_VERSION = "OPR-DOUBLES v2026.09.03-56 · NAT4 booking test b75 (nat3 n375) (no voice) (of PLAT p117)";  // MANUAL PAIR CREATION REMOVED FROM ADMIN: Create a pair, Bulk create pairs and Re-derive all pairs are gone (they only made match-less ghost pairs, and Re-derive rewrote every stored initial club-wide). Pairs are born automatically at match entry. Current pairs list untouched; the underlying JS is left in place unreferenced, so no other code path changes. Includes v47 (set-score fix + double-tap guard) and all prior.
 // Explanation shown above the individual ladder. Open on load so it's read; collapsible
 // (state kept for the session) and scrolls away. Mechanics only — no outcome framing, so
 // members aren't nudged away from playing stronger opponents. Every clause maps to a real
@@ -13965,7 +13965,7 @@ W.nhOpenPair=function(name){
     setInterval(leapBrk, 900);
     W.__nhTsBuild=build;   /* for the test */
   })();
-  window.__nhBkAnon="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRqbWJudmlrcmRnbm9tamh0a2dmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODUzOTE0MzEsImV4cCI6MjEwMDk2NzQzMX0.vR8xlVFjV6jXW-pAclGjM74HqmWSKVpsacFjM-dCIJI"; window.__nhBkBuild="nat4 b72";
+  window.__nhBkAnon="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRqbWJudmlrcmRnbm9tamh0a2dmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODUzOTE0MzEsImV4cCI6MjEwMDk2NzQzMX0.vR8xlVFjV6jXW-pAclGjM74HqmWSKVpsacFjM-dCIJI"; window.__nhBkBuild="nat4 b75";
   /* ===================================================================================================
      COURT BOOKING (nat4 test copy, Manzini pilot, Andre 26 Oct). Started ONLY from the player's own My page: its
      "Court card" button becomes "Book a court", which asks "Where do you want to play?" — one tile per venue; a venue
@@ -15316,6 +15316,53 @@ W.nhOpenPair=function(name){
       /* q188: once the draw shows the result, the match is no longer "on its way" */
       var m=PEND.all(); Object.keys(m).forEach(function(id){ var f=(W._tmFixturesById||{})[id]; if(f && f.sets_a!=null) PEND.drop(id); });
     }catch(e){} }, 400);
+  })();
+
+  /* ===================================================================================================
+     NAT4 b75 · THE "ALREADY RECORDED" WARNINGS KNOW THE DRAW (Andre, 18 Nov: "when it is a final why does the system not
+     know that it is a final and that obviously people would have played each other — this message is confusing").
+     The score sheet has two duplicate warnings from the parent, both by NAMES only: "This match has previously been
+     recorded by …" (same four players, same event, in the last 30 matches) and "A result for this pairing … is already
+     recorded in Round N". Two pairs that meet again in a semi-final or final always got them.
+     When the sheet is on a match TAPPED ON A DRAW, the app knows exactly which match it is, so:
+       · that match has no score yet  → no warning: it is a new match, it just saves;
+       · that match already has a score → ONE warning that says which match it is, its score and who entered it.
+     An ordinary Enter a score (no draw match) keeps both warnings as they are.
+     =================================================================================================== */
+  (function(){
+    var W=window, ST=null;
+    var isDup=function(m){ m=String(m||""); return /has previously been recorded by/.test(m) || /A result for this pairing in/.test(m); };
+    var label=function(f){ var b=String(f.band||""), t=String(f.round_type||""), s=b.split("·").pop();
+      if(t==="plate" && Number(f.round)===99) return "third-place match";
+      if(t==="final" || t==="ko"){ if(/^F[AB]?$/.test(s)) return "final"; if(/^SF[AB]?$/.test(s)) return "semi-final"; if(s==="QF") return "quarter-final"; return "knockout match"; }
+      if(t==="rr") return (b.indexOf("·")>0) ? "group match" : "round robin match";
+      return "round "+f.round+" match"; };
+    var look=async function(){
+      ST=null; var c=W.__nhFxCand, ev=""; try{ ev=String(entryData.event||""); }catch(e){}
+      if(!c || !c.id || !c.tour || ev!==c.tour || Date.now()-(c.at||0)>3600000) return;
+      var base="", AK=""; try{ base=SB_URL; AK=SB_ANON; }catch(e){ return; }
+      var H={apikey:AK, Authorization:"Bearer "+AK};
+      var r=await fetch(base+"/rest/v1/plat_padel_tournament_fixtures?id=eq."+Number(c.id)+"&select=id,round,round_type,band,sets_a,sets_b,games_a,games_b,match_id", {headers:H});
+      if(!r.ok) return; var j=await r.json(); var f=j && j[0]; if(!f) return;
+      var who="";
+      if(f.sets_a!=null && f.match_id){ try{ var r2=await fetch(base+"/rest/v1/plat_matches?id=eq."+Number(f.match_id)+"&select=submitted_by", {headers:H}); if(r2.ok){ var j2=await r2.json(); who=String((j2&&j2[0]&&j2[0].submitted_by)||"").trim(); } }catch(e){} }
+      ST={f:f, open:(f.sets_a==null), who:who, tour:c.tour, said:false, ans:false};
+    };
+    var hook=function(){
+      var s0=W.submitMatch; if(typeof s0!=="function" || s0.__nhDup) return false;
+      var s1=async function(){ try{ await look(); }catch(e){ ST=null; } try{ return await s0.apply(this, arguments); } finally { ST=null; } };
+      s1.__nhDup=1; W.submitMatch=s1; try{ submitMatch=s1; }catch(e){}
+      var c0=W.confirm;
+      W.confirm=function(msg){
+        if(!ST || !isDup(msg)) return c0.apply(W, arguments);
+        if(ST.open) return true;                                   /* a new match on the draw: nothing to warn about */
+        if(ST.said) return ST.ans;                                 /* the second of the two warnings: already answered */
+        var f=ST.f, sc=f.sets_a+"–"+f.sets_b+((f.games_a!=null && f.games_b!=null)?(" ("+f.games_a+"–"+f.games_b+")"):"");
+        ST.said=true;
+        ST.ans=c0.call(W, "This "+label(f)+" of "+ST.tour+" already has a score: "+sc+(ST.who?(", entered by "+ST.who):"")+".\n\nSaving again adds a second match for the same players.\n\nClick OK to save it anyway, or Cancel to go back.");
+        return ST.ans; };
+      return true; };
+    var n=0, t=setInterval(function(){ if(hook() || ++n>80) clearInterval(t); }, 250);
   })();
   /* ===================================================================================================================
      NAT4 b19 · HOW A MATCH IS PLAYED — PER DIVISION. A port of Nat-Squash sq_rules.js (q179/q182/q183/q184/q199/q235/q250)
@@ -17982,7 +18029,7 @@ W.nhOpenPair=function(name){
       var nC=W.confirm, nP=W.prompt, nA=W.alert, RUN={el:null, ans:[], i:0, replay:false};
       /* b68 (Andre, 18 Nov: Swiss "Generate next round" did nothing in the Claude browser): the draw, the generate page and
          Enter a team ask their admin code / questions the same way (they used pop-ups too). */
-      var inAdmin=function(){ var a=document.querySelector(".screen.active"); return !!(a && (a.id==="adminScreen" || a.id==="tournamentSheetScreen" || a.id==="tournamentScreen" || a.id==="enterTournamentScreen")); };
+      var inAdmin=function(){ var a=document.querySelector(".screen.active"); return !!(a && (a.id==="adminScreen" || a.id==="tournamentSheetScreen" || a.id==="tournamentScreen" || a.id==="enterTournamentScreen" || a.id==="entryScreen")); };   /* b73: the score sheet too — "Submit Match" asks "this match has previously been recorded … proceed anyway?" with a pop-up (Andre, 18 Nov: "it stalled again") */
       var usable=function(){ return inAdmin() && RUN.el && document.body.contains(RUN.el); };
       document.addEventListener("click", function(ev){ if(RUN.replay) return; var t=ev.target; if(!t || !t.closest || t.closest("#nhPop")) return;
         /* b72: a button that loads first and asks afterwards (Generate next round) lost its place when the screen was
@@ -17990,28 +18037,35 @@ W.nhOpenPair=function(name){
            in the Claude browser). A tap on something that is not a button keeps the last button for 10 seconds. */
         var c=t.closest("[onclick]")||null;
         if(!c && RUN.el && Date.now()-(RUN.at||0)<10000) return;
-        RUN.el=c; RUN.at=Date.now(); RUN.ans=[]; RUN.i=0; }, true);
+        RUN.el=c; RUN.at=Date.now(); RUN.ans=[]; RUN.i=0; RUN.wait=false; }, true);
       var shut=function(){ var o=document.getElementById("nhPop"); if(o) o.remove(); };
       var show=function(kind, msg, def){ shut();
         var o=document.createElement("div"); o.id="nhPop"; o.style.cssText="position:fixed;inset:0;z-index:100000;background:rgba(20,14,32,.45);display:flex;align-items:center;justify-content:center;padding:16px";
         var b=function(label, id, primary){ return '<button id="'+id+'" style="flex:1;border:1.5px solid '+(primary?'#6c3483':'#ddd5e6')+';background:'+(primary?'#6c3483':'#fff')+';color:'+(primary?'#fff':'#4b4060')+';border-radius:12px;padding:11px 12px;font:inherit;font-size:14px;font-weight:800;cursor:pointer">'+label+'</button>'; };
         o.innerHTML='<div style="background:#fff;border-radius:16px;padding:16px;max-width:420px;width:100%;box-shadow:0 10px 40px rgba(0,0,0,.25)"><div id="nhPopMsg" style="font-size:14px;line-height:1.5;color:#241d33;white-space:pre-wrap;max-height:50vh;overflow:auto">'+esc(msg)+'</div>'
-          +(kind==="prompt"?'<input id="nhPopIn" value="'+esc(def==null?"":def)+'" style="width:100%;box-sizing:border-box;margin-top:10px;padding:10px;font-size:16px;border:1.5px solid #ddd5e6;border-radius:10px;font-family:inherit">':'')
-          +'<div style="display:flex;gap:8px;margin-top:14px">'+(kind==="alert"?b("OK","nhPopYes",true):(b(kind==="prompt"?"Cancel":"No","nhPopNo",false)+b(kind==="prompt"?"OK":"Yes","nhPopYes",true)))+'</div></div>';
+          +(kind==="prompt"?'<input id="nhPopIn"'+(/\b(PIN|admin code)\b/i.test(msg)?' type="password" inputmode="numeric" autocomplete="off"':'')+' value="'+esc(def==null?"":def)+'" style="width:100%;box-sizing:border-box;margin-top:10px;padding:10px;font-size:16px;border:1.5px solid #ddd5e6;border-radius:10px;font-family:inherit">':'')
+          +'<div style="display:flex;gap:8px;margin-top:14px">'+(kind==="alert"?b("OK","nhPopYes",true):(b((kind==="prompt"||/Click OK/.test(msg))?"Cancel":"No","nhPopNo",false)+b((kind==="prompt"||/Click OK/.test(msg))?"OK":"Yes","nhPopYes",true)))+'</div></div>';
         document.body.appendChild(o);
         var inp=document.getElementById("nhPopIn"); if(inp){ try{ inp.focus(); inp.select(); }catch(e){} }
-        var no=document.getElementById("nhPopNo"); if(no) no.onclick=function(){ shut(); RUN.ans=[]; RUN.i=0; };
+        var no=document.getElementById("nhPopNo"); if(no) no.onclick=function(){ shut(); RUN.ans=[]; RUN.i=0; RUN.wait=false; };
         document.getElementById("nhPopYes").onclick=function(){ var v=(kind==="prompt")?String((document.getElementById("nhPopIn")||{}).value||""):true; shut();
           if(kind==="alert") return;
           var el=RUN.el; if(!el || !document.body.contains(el)){ RUN.ans=[]; RUN.i=0; return; }
-          RUN.ans.push(v); RUN.i=0; RUN.replay=true; try{ el.click(); }finally{ RUN.replay=false; } }; };
+          RUN.ans.push(v); RUN.i=0; RUN.wait=false; RUN.replay=true; try{ el.click(); }finally{ RUN.replay=false; } }; };
       var ask=function(kind, msg, def, native){
         if(!usable()) return native();
         if(RUN.i<RUN.ans.length) return RUN.ans[RUN.i++];
+        /* b74 (Andre, 18 Nov: editing a score "does not like my pin 4747"): a button that asks SEVERAL things in a row
+           (the organiser's score edit: sets, games, set scores, date, admin PIN) carried on past the question on show —
+           an unanswered prompt reads as "blank" — so the card of the LAST question (the PIN) covered the one really
+           being asked, and the code typed there was taken as the answer to an earlier question. Once a question is on
+           show, the rest of that run asks nothing; each answer taps the button again and the next question is shown. */
+        if(RUN.wait) return (kind==="prompt")?null:false;
+        RUN.wait=true;
         show(kind, String(msg==null?"":msg), def); return (kind==="prompt")?null:false; };
       W.confirm=function(msg){ return ask("confirm", msg, null, function(){ return nC.call(W, msg); }); };
       W.prompt=function(msg, def){ return ask("prompt", msg, def, function(){ return nP.call(W, msg, def); }); };
-      W.alert=function(msg){ if(!inAdmin()) return nA.call(W, msg); show("alert", String(msg==null?"":msg)); };
+      W.alert=function(msg){ if(!inAdmin()) return nA.call(W, msg); if(RUN.wait) return; show("alert", String(msg==null?"":msg)); };
     })();
     var wrapCreate=function(){
       var f0=W.adminCreateTournament; if(typeof f0!=="function" || !f0.__nhTs) return false; if(f0.__nhAm) return true;
