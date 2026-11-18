@@ -3784,7 +3784,7 @@ const CLUB_NAME = _club.name;  // shown in the logo as "OPR · <name>"
     link.setAttribute('href', href);
   }catch(e){ /* install stays on the static manifest — no functional impact */ }
 })();
-const OPR_VERSION = "OPR-DOUBLES v2026.09.03-56 · NAT4 booking test b77 (nat3 n375) (no voice) (of PLAT p117)";  // MANUAL PAIR CREATION REMOVED FROM ADMIN: Create a pair, Bulk create pairs and Re-derive all pairs are gone (they only made match-less ghost pairs, and Re-derive rewrote every stored initial club-wide). Pairs are born automatically at match entry. Current pairs list untouched; the underlying JS is left in place unreferenced, so no other code path changes. Includes v47 (set-score fix + double-tap guard) and all prior.
+const OPR_VERSION = "OPR-DOUBLES v2026.09.03-56 · NAT4 booking test b78 (nat3 n375) (no voice) (of PLAT p117)";  // MANUAL PAIR CREATION REMOVED FROM ADMIN: Create a pair, Bulk create pairs and Re-derive all pairs are gone (they only made match-less ghost pairs, and Re-derive rewrote every stored initial club-wide). Pairs are born automatically at match entry. Current pairs list untouched; the underlying JS is left in place unreferenced, so no other code path changes. Includes v47 (set-score fix + double-tap guard) and all prior.
 // Explanation shown above the individual ladder. Open on load so it's read; collapsible
 // (state kept for the session) and scrolls away. Mechanics only — no outcome framing, so
 // members aren't nudged away from playing stronger opponents. Every clause maps to a real
@@ -7898,7 +7898,9 @@ async function loadTournamentSheet(tournament, division) {
     // KO/single-group RR just shows Teams. (Bands are a Swiss-only concept.)
     const _teamsLbl = _ko ? '👥 Teams'
       : (_isRR ? (_hasGroups ? '👥 Teams & Groups' : '👥 Teams') : '👥 Teams & Bands');
-    const tabs = _ko
+    const _koOnly = _ko && !fixtures.some(f=> f.round_type!=='ko' && f.round_type!=='plate');   /* b78 */
+    if(_koOnly && (activeTab==='rounds' || activeTab==='standings')) activeTab='bracket';
+    const tabs = _koOnly ? [['teams', _teamsLbl], ['bracket', '🗂 Bracket']] : _ko
       ? [['teams', _teamsLbl], ['rounds', '🥎 Rounds'], ['bracket', '🗂 Bracket'], ['standings', '📊 Standings']]
       : [['teams', _teamsLbl], ['rounds', '🥎 Rounds'], ['standings', '📊 Standings']];
     if(showFinals && !_ko) tabs.push(['finals', '🏆 Finals']);  // knockout finals live in the Bracket, not the Swiss Finals tab
@@ -13972,7 +13974,7 @@ W.nhOpenPair=function(name){
     setInterval(leapBrk, 900);
     W.__nhTsBuild=build;   /* for the test */
   })();
-  window.__nhBkAnon="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRqbWJudmlrcmRnbm9tamh0a2dmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODUzOTE0MzEsImV4cCI6MjEwMDk2NzQzMX0.vR8xlVFjV6jXW-pAclGjM74HqmWSKVpsacFjM-dCIJI"; window.__nhBkBuild="nat4 b77";
+  window.__nhBkAnon="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRqbWJudmlrcmRnbm9tamh0a2dmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODUzOTE0MzEsImV4cCI6MjEwMDk2NzQzMX0.vR8xlVFjV6jXW-pAclGjM74HqmWSKVpsacFjM-dCIJI"; window.__nhBkBuild="nat4 b78";
   /* ===================================================================================================
      COURT BOOKING (nat4 test copy, Manzini pilot, Andre 26 Oct). Started ONLY from the player's own My page: its
      "Court card" button becomes "Book a court", which asks "Where do you want to play?" — one tile per venue; a venue
@@ -15370,6 +15372,34 @@ W.nhOpenPair=function(name){
         return ST.ans; };
       return true; };
     var n=0, t=setInterval(function(){ if(hook() || ++n>80) clearInterval(t); }, 250);
+  })();
+
+  /* ===================================================================================================
+     NAT4 b78 · THE UMPIRE SAYS WHO IS SERVING (Andre, 18 Nov: the little dot with "1st" was read as "who serves first in the
+     match"; "a pill, maybe a bit bigger — but don't let it inhibit space on the mobile"). The dot and the tiny "1st" /
+     "2nd" in the corner become ONE pill on the serving side: "● SERVING · 1st serve", and after a Fault "● SERVING ·
+     2nd serve" in amber. It sits in the free strip under the "Games" pill (which moves up 10px to give the two some air); no room is taken.
+     Display only — the umpire's scoring is untouched.
+     =================================================================================================== */
+  (function(){
+    var W=window;
+    try{ if(!document.getElementById("nhMkServeCss")){ var st=document.createElement("style"); st.id="nhMkServeCss";
+      st.textContent="#markerScreen .mk-side .mk-sv{display:none!important}"
+        +"#markerScreen .mk-side .mk-svbox{top:auto;right:auto;left:50%;bottom:5px;transform:translateX(-50%);white-space:nowrap;"
+        +"font-size:12px;font-weight:800;letter-spacing:.3px;line-height:1;padding:5px 12px;border-radius:999px;background:#fff;color:#241d33;box-shadow:0 2px 8px rgba(0,0,0,.25)}"
+        +"#markerScreen .mk-side .mk-svbox.nh2nd{background:#ffb020;color:#3a2500}"
+        /* on a screen with the height for it (phones), the Games pill sits 10px higher so the two pills have air between
+           them; a short laptop window keeps the b60 spacing, where the big score digit needs that room */
+        +"@media (min-height:640px){#markerScreen .mk-side .mk-gtally{bottom:42px}#markerScreen .mk-side .mk-svbox{bottom:9px}}"
+        +"@media (max-width:340px){#markerScreen .mk-side .mk-svbox{font-size:10.5px;padding:4px 8px}}";
+      document.head.appendChild(st); } }catch(e){}
+    var paint=function(){ try{ [1,2].forEach(function(k){ var b=document.getElementById("mkBox"+k); if(!b) return;
+        var second=false; try{ second=(MK.serve===2); }catch(e){ second=/2nd/.test(b.textContent||""); }
+        var t="● SERVING · "+(second?"2nd serve":"1st serve");
+        if(b.textContent!==t) b.textContent=t; b.classList.toggle("nh2nd", second); }); }catch(e){} };
+    var n=0, t=setInterval(function(){ var r0=W.mkRender; if(typeof r0!=="function"){ if(++n>80) clearInterval(t); return; } clearInterval(t); if(r0.__nhServe) return;
+      var r1=function(){ var r=r0.apply(this, arguments); paint(); return r; };
+      r1.__nhServe=1; W.mkRender=r1; try{ mkRender=r1; }catch(e){} paint(); }, 250);
   })();
   /* ===================================================================================================================
      NAT4 b19 · HOW A MATCH IS PLAYED — PER DIVISION. A port of Nat-Squash sq_rules.js (q179/q182/q183/q184/q199/q235/q250)
