@@ -3784,7 +3784,7 @@ const CLUB_NAME = _club.name;  // shown in the logo as "OPR · <name>"
     link.setAttribute('href', href);
   }catch(e){ /* install stays on the static manifest — no functional impact */ }
 })();
-const OPR_VERSION = "OPR-DOUBLES v2026.09.03-56 · NAT4 booking test b78 (nat3 n375) (no voice) (of PLAT p117)";  // MANUAL PAIR CREATION REMOVED FROM ADMIN: Create a pair, Bulk create pairs and Re-derive all pairs are gone (they only made match-less ghost pairs, and Re-derive rewrote every stored initial club-wide). Pairs are born automatically at match entry. Current pairs list untouched; the underlying JS is left in place unreferenced, so no other code path changes. Includes v47 (set-score fix + double-tap guard) and all prior.
+const OPR_VERSION = "OPR-DOUBLES v2026.09.03-56 · NAT4 booking test b79 (nat3 n375) (no voice) (of PLAT p117)";  // MANUAL PAIR CREATION REMOVED FROM ADMIN: Create a pair, Bulk create pairs and Re-derive all pairs are gone (they only made match-less ghost pairs, and Re-derive rewrote every stored initial club-wide). Pairs are born automatically at match entry. Current pairs list untouched; the underlying JS is left in place unreferenced, so no other code path changes. Includes v47 (set-score fix + double-tap guard) and all prior.
 // Explanation shown above the individual ladder. Open on load so it's read; collapsible
 // (state kept for the session) and scrolls away. Mechanics only — no outcome framing, so
 // members aren't nudged away from playing stronger opponents. Every clause maps to a real
@@ -13974,7 +13974,7 @@ W.nhOpenPair=function(name){
     setInterval(leapBrk, 900);
     W.__nhTsBuild=build;   /* for the test */
   })();
-  window.__nhBkAnon="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRqbWJudmlrcmRnbm9tamh0a2dmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODUzOTE0MzEsImV4cCI6MjEwMDk2NzQzMX0.vR8xlVFjV6jXW-pAclGjM74HqmWSKVpsacFjM-dCIJI"; window.__nhBkBuild="nat4 b78";
+  window.__nhBkAnon="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRqbWJudmlrcmRnbm9tamh0a2dmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODUzOTE0MzEsImV4cCI6MjEwMDk2NzQzMX0.vR8xlVFjV6jXW-pAclGjM74HqmWSKVpsacFjM-dCIJI"; window.__nhBkBuild="nat4 b79";
   /* ===================================================================================================
      COURT BOOKING (nat4 test copy, Manzini pilot, Andre 26 Oct). Started ONLY from the player's own My page: its
      "Court card" button becomes "Book a court", which asks "Where do you want to play?" — one tile per venue; a venue
@@ -14795,10 +14795,7 @@ W.nhOpenPair=function(name){
       /* the region's records (ratings, ladders, profiles and the Global Ledger) — the door's strip used to carry it */
       return '<div data-plat-keep="1" style="margin:12px 12px 0"><button onclick="window.nhJumpTo(\'__records\')" style="width:100%;background:#fff;border:1px solid #cfc5e0;border-radius:99px;'
         +'padding:9.5px 12.5px;font:inherit;font-weight:800;font-size:13.5px;color:#241d33;cursor:pointer">Ratings \u00b7 Ladders \u00b7 Profiles</button></div>'
-        +'<div data-plat-keep="1" style="display:flex;gap:10px;margin:14px 12px 0">'
-        + b("window.nhBook()",IC.book,"Book a court")
-        + b("window.nhNewMember()",IC.member,"New member")
-        + '</div>';
+        ;   /* b79: Book a court and New member are under "Everything else" now */
     };
     /* the four tiles, after some clear space */
     W.nhDoorTiles=function(col){
@@ -19236,6 +19233,7 @@ W.nhOpenPair=function(name){
         /* n63: these were opening the chooser panel that lives further up the page, so from the foot they
            looked dead. They ask the same question, in place. */
         /* n97: ratings, profiles and the court card belong to a group; the door keeps the three that are not */
+        + quiet("Book a court","window.nhBook()") + quiet("New member","window.nhNewMember()")   /* b79 */
         + quiet((meName()?esc(meName()):"My page"),"window.nhNav('"+PAGE+"?club="+C+"&go=me')")
         + quiet("All tournaments","window.nhAllTournaments()")   /* n314: the region's tournaments, current and archived, one sheet */
         + quiet("Club admin","window.nhAdminPage()")
