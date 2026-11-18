@@ -3784,7 +3784,7 @@ const CLUB_NAME = _club.name;  // shown in the logo as "OPR · <name>"
     link.setAttribute('href', href);
   }catch(e){ /* install stays on the static manifest — no functional impact */ }
 })();
-const OPR_VERSION = "OPR-DOUBLES v2026.09.03-56 · NAT4 booking test b69 (nat3 n375) (no voice) (of PLAT p117)";  // MANUAL PAIR CREATION REMOVED FROM ADMIN: Create a pair, Bulk create pairs and Re-derive all pairs are gone (they only made match-less ghost pairs, and Re-derive rewrote every stored initial club-wide). Pairs are born automatically at match entry. Current pairs list untouched; the underlying JS is left in place unreferenced, so no other code path changes. Includes v47 (set-score fix + double-tap guard) and all prior.
+const OPR_VERSION = "OPR-DOUBLES v2026.09.03-56 · NAT4 booking test b71 (nat3 n375) (no voice) (of PLAT p117)";  // MANUAL PAIR CREATION REMOVED FROM ADMIN: Create a pair, Bulk create pairs and Re-derive all pairs are gone (they only made match-less ghost pairs, and Re-derive rewrote every stored initial club-wide). Pairs are born automatically at match entry. Current pairs list untouched; the underlying JS is left in place unreferenced, so no other code path changes. Includes v47 (set-score fix + double-tap guard) and all prior.
 // Explanation shown above the individual ladder. Open on load so it's read; collapsible
 // (state kept for the session) and scrolls away. Mechanics only — no outcome framing, so
 // members aren't nudged away from playing stronger opponents. Every clause maps to a real
@@ -7865,10 +7865,11 @@ async function loadTournamentSheet(tournament, division) {
       const allDone = swissFix.length>0 && swissFix.every(f=> f.sets_a!=null);
       let h = '<div class="card"><h2>Semi-Finals &amp; Final <span class="tm-divtag">' + TM_DIVISION + '</span></h2>';
       if(!allDone){
-        h += '<p class="sub">Once all rounds are complete, an admin can start the finals here. ' + (hasABSplit()? 'This field (' + N + ' teams) splits into Division A and Division B — each with its own top-4 semis and final.' : 'Top 4 teams will contest the semi-finals (1v4, 2v3), winners to the Final.') + '</p></div>';
+        h += '<p class="sub">Once all rounds are complete, an admin can start the finals here. ' + (hasABSplit()? 'This field (' + N + ' teams) splits into Division A and Division B — each with its own top-4 semis and final.' : 'Top 4 teams will contest the semi-finals (1v4, 2v3), winners to the Final.' + (N>=12 ? ' With 12 or more pairs the organiser can choose Division A and Division B finals instead, here, when the rounds are complete.' : '')) + '</p></div>';
         return h;
       }
       h += '<p class="sub">All rounds complete. ' + (hasABSplit()? 'Division A (top-half seeds) and Division B (bottom-half) will each get top-4 semis + a final.' : 'Top 4 by standings will contest the semis (1v4, 2v3) → Final.') + '</p>'
+        + nhFinalsChoice()
         + '<div style="text-align:center;margin-top:10px;"><button class="menu-btn" style="display:inline-block;width:auto;padding:10px 18px;border-color:#c4e000;font-weight:700;" onclick="tmStartFinals()">🏆 Start finals</button></div></div>';
       return h;
     }
@@ -8049,7 +8050,18 @@ async function loadTournamentSheet(tournament, division) {
   //   90 = Div A semis, 91 = Div A final, 92 = Div B semis, 93 = Div B final
   //   (single division uses 90/91 only)
   const FINALS_ROUNDS = { aSemi:90, aFinal:91, bSemi:92, bFinal:93 };
-  function hasABSplit(){ return N >= 12; }
+  function hasABSplit(){ if(N < 12) return false;
+    const _ff = fixtures.filter(f=> f.round>=90 && f.round_type==='final');
+    if(_ff.length) return _ff.some(f=> /^(SFA|SFB|FA|FB)$/.test(String(f.band||'')));
+    return !!(window.__nhFinalsAB && window.__nhFinalsAB[tournament+'|'+TM_DIVISION]); }
+  window.__nhFinalsPick = function(ab){ (window.__nhFinalsAB = window.__nhFinalsAB || {})[tournament+'|'+TM_DIVISION] = !!ab; render(); };
+  function nhFinalsChoice(){ if(N < 12) return '';
+    const ab = hasABSplit();
+    const b = (on, val, t, sub)=> '<button onclick="window.__nhFinalsPick('+val+')" style="display:block;width:100%;text-align:left;border:1.5px solid '+(on?'#3a1d6e':'#ddd5e6')+';background:'+(on?'#f6f1fb':'#fff')+';border-radius:12px;padding:10px 12px;margin:0 0 8px;font:inherit;cursor:pointer"><span style="display:block;font-size:14px;font-weight:800;color:#241d33">'+(on?'● ':'○ ')+t+'</span><span style="display:block;font-size:12.5px;color:#6b6480;margin-top:2px;line-height:1.4">'+sub+'</span></button>';
+    return '<div id="nhFinalsChoice" style="max-width:520px;margin:10px auto 0;"><div style="font-size:12.5px;font-weight:800;color:#4b4060;margin:0 0 6px;text-align:left">How the finals are played</div>'
+      + b(!ab, 'false', 'One final', 'The top 4 pairs on the standings play the semi-finals (1 v 4, 2 v 3), then the final.')
+      + b(ab, 'true', 'Division A and Division B', 'The top half and the bottom half of the field (by starting seed) each get their own semi-finals and final. 8 pairs go through.')
+      + '</div>'; }
 
   // ---- GROUP → KNOCKOUT PLAYOFF (Piece 2c) ----
   // For a SPLIT round robin (groups), once every group match is complete, build a
@@ -13953,7 +13965,7 @@ W.nhOpenPair=function(name){
     setInterval(leapBrk, 900);
     W.__nhTsBuild=build;   /* for the test */
   })();
-  window.__nhBkAnon="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRqbWJudmlrcmRnbm9tamh0a2dmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODUzOTE0MzEsImV4cCI6MjEwMDk2NzQzMX0.vR8xlVFjV6jXW-pAclGjM74HqmWSKVpsacFjM-dCIJI"; window.__nhBkBuild="nat4 b69";
+  window.__nhBkAnon="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRqbWJudmlrcmRnbm9tamh0a2dmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODUzOTE0MzEsImV4cCI6MjEwMDk2NzQzMX0.vR8xlVFjV6jXW-pAclGjM74HqmWSKVpsacFjM-dCIJI"; window.__nhBkBuild="nat4 b71";
   /* ===================================================================================================
      COURT BOOKING (nat4 test copy, Manzini pilot, Andre 26 Oct). Started ONLY from the player's own My page: its
      "Court card" button becomes "Book a court", which asks "Where do you want to play?" — one tile per venue; a venue
@@ -22232,8 +22244,11 @@ W.nhOpenPair=function(name){
     /* directly under the draw's Teams / Rounds / Standings tabs, in the draw's own column */
     var strip=nhTabStrip(act);
     if(strip && strip.parentNode){ strip.parentNode.insertBefore(bar, strip.nextSibling); }
+    else if(act.id==="tournamentSheetScreen"){ return; }   /* b71: wait for the tabs */
     else { var head=act.querySelector(".header"); if(head && head.parentNode===act) head.insertAdjacentElement("afterend", bar); else act.insertBefore(bar, act.firstChild); }
   }
+  (function(){ var mo=null, go=function(){ var c=document.getElementById("tournamentSheetContent"); if(!c || typeof MutationObserver!=="function"){ setTimeout(go,500); return; }
+      mo=new MutationObserver(function(){ try{ nhTourBar(); }catch(e){} }); mo.observe(c,{childList:true}); }; go(); })();   /* b71 */
   (function(){ var _ss=W.showScreen; if(typeof _ss!=="function") return;
     W.showScreen=function(id){ var r=_ss.apply(this,arguments); if(TOUR_SCREENS[id]) setTimeout(nhTourBar,0); return r; }; })();
   setInterval(function(){ try{ nhTourBar(); }catch(e){} }, 800);
