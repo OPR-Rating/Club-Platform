@@ -3784,7 +3784,7 @@ const CLUB_NAME = _club.name;  // shown in the logo as "OPR · <name>"
     link.setAttribute('href', href);
   }catch(e){ /* install stays on the static manifest — no functional impact */ }
 })();
-const OPR_VERSION = "OPR-DOUBLES v2026.09.03-56 · NAT4 booking test b75 (nat3 n375) (no voice) (of PLAT p117)";  // MANUAL PAIR CREATION REMOVED FROM ADMIN: Create a pair, Bulk create pairs and Re-derive all pairs are gone (they only made match-less ghost pairs, and Re-derive rewrote every stored initial club-wide). Pairs are born automatically at match entry. Current pairs list untouched; the underlying JS is left in place unreferenced, so no other code path changes. Includes v47 (set-score fix + double-tap guard) and all prior.
+const OPR_VERSION = "OPR-DOUBLES v2026.09.03-56 · NAT4 booking test b77 (nat3 n375) (no voice) (of PLAT p117)";  // MANUAL PAIR CREATION REMOVED FROM ADMIN: Create a pair, Bulk create pairs and Re-derive all pairs are gone (they only made match-less ghost pairs, and Re-derive rewrote every stored initial club-wide). Pairs are born automatically at match entry. Current pairs list untouched; the underlying JS is left in place unreferenced, so no other code path changes. Includes v47 (set-score fix + double-tap guard) and all prior.
 // Explanation shown above the individual ladder. Open on load so it's read; collapsible
 // (state kept for the session) and scrolls away. Mechanics only — no outcome framing, so
 // members aren't nudged away from playing stronger opponents. Every clause maps to a real
@@ -6112,9 +6112,9 @@ async function doSubmit(btn){
         // SPEED (aligned): fire-and-forget — submit_match already fires the same advance
         // server-side; this client copy stays as belt-and-braces but no longer blocks
         // the success screen. Idempotent under the box-centric routine.
-        fetch(SB_URL+'/functions/v1/tournament',{ method:'POST',
+        setTimeout(()=>{ fetch(SB_URL+'/functions/v1/tournament',{ method:'POST',
           headers:{ apikey:SB_ANON, Authorization:'Bearer '+SB_ANON, 'Content-Type':'application/json' },
-          body: JSON.stringify({ action:'advance_bracket', club_id:CLUB_ID, tournament:_ev, division:_div }) }).catch(()=>{});
+          body: JSON.stringify({ action:'advance_bracket', club_id:CLUB_ID, tournament:_ev, division:_div }) }).catch(()=>{}); }, 2500);   /* b77 */
       }catch(e){ /* advancement is best-effort; the result itself is saved */ }
     }
 
@@ -8394,6 +8394,13 @@ async function tmEnsureBracketFixtures(){
     collect(mains,'ko'); collect(plates,'plate');
     if(!toWrite.length) return false;
     if(!TM_ADMIN_PIN) return false;               // only an unlocked admin writes new rounds
+    try{
+      await new Promise(r=>setTimeout(r, 900));
+      const _fresh = await tmLoadFixtures(ctx.tournament, ctx.division);
+      const _have = new Set((_fresh||[]).map(f=> f.round_type+':'+f.round+':'+[f.seed_a,f.seed_b].sort((x,y)=>x-y).join('-')));
+      for(let _i=toWrite.length-1; _i>=0; _i--){ const _w=toWrite[_i]; if(_have.has(_w.round_type+':'+_w.round+':'+[_w.seed_a,_w.seed_b].sort((x,y)=>x-y).join('-'))) toWrite.splice(_i,1); }
+    }catch(e){}
+    if(!toWrite.length) return false;             /* b76: the server wrote them meanwhile */
     const resp = await fetch(SB_URL + '/functions/v1/tournament', {
       method:'POST', headers:{ apikey:SB_ANON, Authorization:'Bearer '+SB_ANON, 'Content-Type':'application/json' },
       body: JSON.stringify({ action:'write_fixtures', club_id:CLUB_ID, admin_pin:TM_ADMIN_PIN,
@@ -13965,7 +13972,7 @@ W.nhOpenPair=function(name){
     setInterval(leapBrk, 900);
     W.__nhTsBuild=build;   /* for the test */
   })();
-  window.__nhBkAnon="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRqbWJudmlrcmRnbm9tamh0a2dmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODUzOTE0MzEsImV4cCI6MjEwMDk2NzQzMX0.vR8xlVFjV6jXW-pAclGjM74HqmWSKVpsacFjM-dCIJI"; window.__nhBkBuild="nat4 b75";
+  window.__nhBkAnon="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRqbWJudmlrcmRnbm9tamh0a2dmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODUzOTE0MzEsImV4cCI6MjEwMDk2NzQzMX0.vR8xlVFjV6jXW-pAclGjM74HqmWSKVpsacFjM-dCIJI"; window.__nhBkBuild="nat4 b77";
   /* ===================================================================================================
      COURT BOOKING (nat4 test copy, Manzini pilot, Andre 26 Oct). Started ONLY from the player's own My page: its
      "Court card" button becomes "Book a court", which asks "Where do you want to play?" — one tile per venue; a venue
