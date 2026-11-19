@@ -3784,7 +3784,7 @@ const CLUB_NAME = _club.name;  // shown in the logo as "OPR · <name>"
     link.setAttribute('href', href);
   }catch(e){ /* install stays on the static manifest — no functional impact */ }
 })();
-const OPR_VERSION = "OPR-DOUBLES v2026.09.03-56 · NAT4 booking test b81 (nat3 n375) (no voice) (of PLAT p117)";  // MANUAL PAIR CREATION REMOVED FROM ADMIN: Create a pair, Bulk create pairs and Re-derive all pairs are gone (they only made match-less ghost pairs, and Re-derive rewrote every stored initial club-wide). Pairs are born automatically at match entry. Current pairs list untouched; the underlying JS is left in place unreferenced, so no other code path changes. Includes v47 (set-score fix + double-tap guard) and all prior.
+const OPR_VERSION = "OPR-DOUBLES v2026.09.03-56 · NAT4 booking test b82 (nat3 n375) (no voice) (of PLAT p117)";  // MANUAL PAIR CREATION REMOVED FROM ADMIN: Create a pair, Bulk create pairs and Re-derive all pairs are gone (they only made match-less ghost pairs, and Re-derive rewrote every stored initial club-wide). Pairs are born automatically at match entry. Current pairs list untouched; the underlying JS is left in place unreferenced, so no other code path changes. Includes v47 (set-score fix + double-tap guard) and all prior.
 // Explanation shown above the individual ladder. Open on load so it's read; collapsible
 // (state kept for the session) and scrolls away. Mechanics only — no outcome framing, so
 // members aren't nudged away from playing stronger opponents. Every clause maps to a real
@@ -13974,7 +13974,7 @@ W.nhOpenPair=function(name){
     setInterval(leapBrk, 900);
     W.__nhTsBuild=build;   /* for the test */
   })();
-  window.__nhBkAnon="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRqbWJudmlrcmRnbm9tamh0a2dmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODUzOTE0MzEsImV4cCI6MjEwMDk2NzQzMX0.vR8xlVFjV6jXW-pAclGjM74HqmWSKVpsacFjM-dCIJI"; window.__nhBkBuild="nat4 b81";
+  window.__nhBkAnon="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRqbWJudmlrcmRnbm9tamh0a2dmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODUzOTE0MzEsImV4cCI6MjEwMDk2NzQzMX0.vR8xlVFjV6jXW-pAclGjM74HqmWSKVpsacFjM-dCIJI"; window.__nhBkBuild="nat4 b82";
   /* ===================================================================================================
      COURT BOOKING (nat4 test copy, Manzini pilot, Andre 26 Oct). Started ONLY from the player's own My page: its
      "Court card" button becomes "Book a court", which asks "Where do you want to play?" — one tile per venue; a venue
@@ -18779,6 +18779,8 @@ W.nhOpenPair=function(name){
     st.textContent="#nh > #nhDoorMain > .nhDoorGap{flex:0 0 auto!important;min-height:0!important}"
       +"#nh:has(> #nhDoorMain){padding-bottom:76px!important}"
       +"#nhDoorMain button[style*='#cfc5e0']{border:1.5px solid #a898c4!important}"
+      /* b82 (Andre, 19 Nov: "you can lose that little opr at the bottom — it does nothing"): the build line at the door's foot is hidden */
+      +"#nhDoorMain > div[style*='font-size:10.5px'][style*='text-align:center']{display:none!important}"
       +"#nhDoorMain button[style*='min-width:88px']{flex:1 1 30%!important}";   /* the six Everything else pills: always three and three */
     (document.head||document.documentElement).appendChild(st); }catch(e){} })();
   /* b81 (Andre, 19 Nov, phone: "the balance is way out and you moved it too high — move down"): the clear space above the
@@ -18788,9 +18790,11 @@ W.nhOpenPair=function(name){
   (function(){ var W=window;
     var fit=function(){ try{
       var main=document.getElementById("nhDoorMain"), nh=document.getElementById("nh"), bar=document.getElementById("nhBar"); if(!main || !nh || !bar || !main.offsetParent) return;
-      var g=main.querySelector(".nhDoorGap"), last=main.lastElementChild; if(!g || !last || last===g) return;
+      var g=main.querySelector(".nhDoorGap"), last=main.lastElementChild;
+      while(last && !last.offsetParent) last=last.previousElementSibling;      /* b82: the last thing actually on show (the Everything else pills) */
+      if(!g || !last || last===g) return;
       if(nh.scrollTop>0) return;                                        /* only while the door is at its top */
-      var cur=g.getBoundingClientRect().height, room=bar.getBoundingClientRect().top-10-last.getBoundingClientRect().bottom;
+      var cur=g.getBoundingClientRect().height, room=bar.getBoundingClientRect().top-12-last.getBoundingClientRect().bottom;
       var h=Math.max(24, Math.min(170, Math.round(cur+room)));
       if(Math.abs(h-cur)>1) g.style.setProperty("height", h+"px", "important");
       nh.style.setProperty("padding-bottom", (h>24 ? "8px" : "76px"), "important");   /* it fits: nothing to scroll; it does not: room to scroll the last row clear of the bar */
